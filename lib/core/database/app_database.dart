@@ -156,6 +156,20 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  /// Retrieves all visual templates
+  Future<List<Template>> getAllTemplates() => select(templates).get();
+
+  /// Retrieves a template by its ID
+  Future<Template?> getTemplateById(String id) {
+    return (select(templates)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  /// Retrieves all notebooks
+  Future<List<Notebook>> getAllNotebooks() => select(notebooks).get();
+
+  /// Inserts a new entry into the database
+  Future<int> createEntry(EntriesCompanion entry) => into(entries).insert(entry);
+
   /// Retrieves a single entry by its ID
   Future<Entry?> getEntryById(String id) {
     return (select(entries)..where((t) => t.id.equals(id))).getSingleOrNull();
@@ -225,6 +239,166 @@ class AppDatabase extends _$AppDatabase {
       ),
     );
   }
+
+  /// Retrieves paginated timeline entries ordered reverse-chronologically
+  Future<List<Entry>> getTimelineEntries({int limit = 20, int offset = 0}) {
+    return (select(entries)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.entryDate)])
+          ..limit(limit, offset: offset))
+        .get();
+  }
+
+  /// Retrieves all media attachments associated with a specific entry
+  Future<List<MediaAttachment>> getMediaForEntry(String entryId) {
+    return (select(mediaAttachments)..where((t) => t.entryId.equals(entryId)))
+        .get();
+  }
+
+  /// Batch retrieves the primary (first) media attachment for each given entry ID
+  Future<Map<String, MediaAttachment>> getPrimaryMediaForEntries(
+      List<String> entryIds) async {
+    if (entryIds.isEmpty) return {};
+    final records = await (select(mediaAttachments)
+          ..where((t) => t.entryId.isIn(entryIds)))
+        .get();
+    final map = <String, MediaAttachment>{};
+    for (final item in records) {
+      map.putIfAbsent(item.entryId, () => item);
+    }
+    return map;
+  }
+
+  /// Soft deletes an entry (moves to 30-day recycle bin)
+  Future<int> softDeleteEntry(String entryId) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        isDeleted: const Value(true),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Restores an entry from the recycle bin back to the active timeline
+  Future<int> restoreEntry(String entryId) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        isDeleted: const Value(false),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Retrieves soft-deleted entries ordered by most recently deleted
+  Future<List<Entry>> getDeletedEntries() {
+    return (select(entries)
+          ..where((t) => t.isDeleted.equals(true))
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+        .get();
+  }
+
+  /// Retrieves soft-deleted entries that have exceeded retention period (default 30 days)
+  Future<List<Entry>> getExpiredDeletedEntries({
+    Duration retention = const Duration(days: 30),
+  }) {
+    final threshold = DateTime.now().subtract(retention);
+    return (select(entries)
+          ..where((t) =>
+              t.isDeleted.equals(true) &
+              t.updatedAt.isSmallerThanValue(threshold)))
+        .get();
+  }
+
+  /// Permanently removes SQLite records for an entry and its media attachments
+  Future<int> hardDeleteEntryRecords(String entryId) async {
+    await (delete(mediaAttachments)..where((t) => t.entryId.equals(entryId)))
+        .go();
+    return (delete(entries)..where((t) => t.id.equals(entryId))).go();
+  }
+
+  /// Multi-condition search combining FTS5 full-text indexing with relational filters.
+  /// When query is empty, branches directly to relational predicates.
+  /// Conceals or excludes sealed Time Capsules to guarantee search privacy.
+  Future<List<Entry>> searchEntriesWithFilters({
+    String query = '',
+    DateTime? startDate,
+    DateTime? endDate,
+    int? mood,
+    String? weather,
+    bool hasImage = false,
+    bool weeklyReviewOnly = false,
+    int limit = 50,
+    bool excludeSealedTimeCapsules = true,
+  }) async {
+    final trimmed = query.trim();
+    Set<String>? ftsMatchedIds;
+
+    // 1. Clean query branching: only execute FTS5 MATCH if query is non-empty
+    if (trimmed.isNotEmpty) {
+      final escaped = trimmed.replaceAll('"', '""');
+      final ftsRows = await customSelect(
+        'SELECT id FROM entries_fts WHERE entries_fts MATCH ?',
+        variables: [Variable.withString('"$escaped"*')],
+        readsFrom: {entries},
+      ).get();
+
+      ftsMatchedIds = ftsRows.map((r) => r.read<String>('id')).toSet();
+      if (ftsMatchedIds.isEmpty) return [];
+    }
+
+    // 2. Has image filter
+    Set<String>? imageEntryIds;
+    if (hasImage) {
+      final mediaRows = await (selectOnly(mediaAttachments, distinct: true)
+            ..addColumns([mediaAttachments.entryId]))
+          .get();
+      imageEntryIds =
+          mediaRows.map((r) => r.read(mediaAttachments.entryId)!).toSet();
+      if (imageEntryIds.isEmpty) return [];
+    }
+
+    final now = DateTime.now();
+
+    // 3. Combine relational filter predicates
+    final queryBuilder = select(entries)
+      ..where((t) {
+        Expression<bool> predicate = t.isDeleted.equals(false);
+
+        if (ftsMatchedIds != null) {
+          predicate = predicate & t.id.isIn(ftsMatchedIds);
+        }
+        if (imageEntryIds != null) {
+          predicate = predicate & t.id.isIn(imageEntryIds);
+        }
+        if (startDate != null) {
+          predicate = predicate & t.entryDate.isBiggerOrEqualValue(startDate);
+        }
+        if (endDate != null) {
+          predicate = predicate & t.entryDate.isSmallerOrEqualValue(endDate);
+        }
+        if (mood != null) {
+          predicate = predicate & t.mood.equals(mood);
+        }
+        if (weather != null && weather.isNotEmpty) {
+          predicate = predicate & t.weather.equals(weather);
+        }
+        if (weeklyReviewOnly) {
+          predicate = predicate & t.isWeeklyReview.equals(true);
+        }
+        // Privacy invariant: sealed capsules are concealed from text search
+        if (excludeSealedTimeCapsules) {
+          predicate = predicate &
+              (t.unlockAt.isNull() | t.unlockAt.isSmallerOrEqualValue(now));
+        }
+
+        return predicate;
+      })
+      ..orderBy([(t) => OrderingTerm.desc(t.entryDate)])
+      ..limit(limit);
+
+    return queryBuilder.get();
+  }
 }
+
 
 

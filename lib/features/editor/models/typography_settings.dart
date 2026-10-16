@@ -113,6 +113,15 @@ class TypographySettings {
     this.lineSpacing = 1.5,
   });
 
+  /// Derives initial typography settings from a Template model
+  factory TypographySettings.fromTemplate(dynamic template) {
+    final family = template.fontFamily;
+    return TypographySettings(
+      fontFamily: (family == null || family == 'System') ? null : family,
+      lineSpacing: template.lineSpacing ?? 1.5,
+    );
+  }
+
   TypographySettings copyWith({
     String? fontId,
     String? fontFamily,
