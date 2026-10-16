@@ -28,6 +28,12 @@ dependencies:
   uuid: ^4.5.1
   flutter_image_compress: ^2.4.0
   permission_handler: ^11.3.1
+  image_picker: ^1.1.2
+
+  # Rich Text Editor & Multimodal Input
+  flutter_quill: ^11.6.0
+  speech_to_text: ^7.5.0
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

@@ -155,5 +155,76 @@ class AppDatabase extends _$AppDatabase {
           ..where((t) => t.id.isIn(ids) & t.isDeleted.equals(false)))
         .get();
   }
+
+  /// Retrieves a single entry by its ID
+  Future<Entry?> getEntryById(String id) {
+    return (select(entries)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  /// Updates an entry's visual template without mutating contentDelta or plainText
+  Future<int> updateEntryTemplate(String entryId, String newTemplateId) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        templateId: Value(newTemplateId),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Updates an entry's Delta content and plainText representation (triggers FTS5 update)
+  Future<int> updateEntryContent(
+    String entryId,
+    String contentDelta,
+    String plainText,
+  ) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        contentDelta: Value(contentDelta),
+        plainText: Value(plainText),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Updates entry metadata (date, mood, weather, unlockAt, title)
+  Future<int> updateEntryMetadata(
+    String entryId, {
+    DateTime? entryDate,
+    int? mood,
+    String? weather,
+    DateTime? unlockAt,
+    String? title,
+  }) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        entryDate: entryDate != null ? Value(entryDate) : const Value.absent(),
+        mood: mood != null ? Value(mood) : const Value.absent(),
+        weather: weather != null ? Value(weather) : const Value.absent(),
+        unlockAt: unlockAt != null ? Value(unlockAt) : const Value.absent(),
+        title: title != null ? Value(title) : const Value.absent(),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Records a media attachment linked to an entry with strictly relative path
+  Future<int> attachMediaToEntry({
+    required String id,
+    required String entryId,
+    required String relativePath,
+    String mediaType = 'image',
+    String? thumbnailPath,
+  }) {
+    return into(mediaAttachments).insert(
+      MediaAttachmentsCompanion.insert(
+        id: id,
+        entryId: entryId,
+        mediaType: mediaType,
+        relativePath: relativePath,
+        thumbnailPath: Value(thumbnailPath),
+      ),
+    );
+  }
 }
+
 

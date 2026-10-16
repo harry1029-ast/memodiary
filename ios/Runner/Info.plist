@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>MemoDiary requires microphone access for voice dictation.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>MemoDiary requires speech recognition to transcribe your voice notes to diary text.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>MemoDiary requires camera access to attach photos to your diary entries.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MemoDiary requires photo library access to import images to your diary entries.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
