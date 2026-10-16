@@ -38,6 +38,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   bool _isLoadingMore = false;
   bool _hasMore = true;
   int _offset = 0;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -62,24 +63,39 @@ class _TimelineScreenState extends State<TimelineScreen> {
   }
 
   Future<void> _loadInitial() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    final entries = await widget.database.getTimelineEntries(
-      limit: _pageSize,
-      offset: 0,
-    );
+    try {
+      final entries = await widget.database.getTimelineEntries(
+        limit: _pageSize,
+        offset: 0,
+      );
 
-    final ids = entries.map((e) => e.id).toList();
-    final mediaMap = await widget.database.getPrimaryMediaForEntries(ids);
+      final ids = entries.map((e) => e.id).toList();
+      final mediaMap = await widget.database.getPrimaryMediaForEntries(ids);
 
-    if (mounted) {
-      setState(() {
-        _entries = entries;
-        _mediaMap = mediaMap;
-        _offset = entries.length;
-        _hasMore = entries.length >= _pageSize;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _entries = entries;
+          _mediaMap = mediaMap;
+          _offset = entries.length;
+          _hasMore = entries.length >= _pageSize;
+          _isLoading = false;
+          _errorMessage = null;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('Error loading timeline entries: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+          _hasMore = false;
+        });
+      }
     }
   }
 
@@ -88,22 +104,31 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
     setState(() => _isLoadingMore = true);
 
-    final nextBatch = await widget.database.getTimelineEntries(
-      limit: _pageSize,
-      offset: _offset,
-    );
+    try {
+      final nextBatch = await widget.database.getTimelineEntries(
+        limit: _pageSize,
+        offset: _offset,
+      );
 
-    final ids = nextBatch.map((e) => e.id).toList();
-    final nextMediaMap = await widget.database.getPrimaryMediaForEntries(ids);
+      final ids = nextBatch.map((e) => e.id).toList();
+      final nextMediaMap = await widget.database.getPrimaryMediaForEntries(ids);
 
-    if (mounted) {
-      setState(() {
-        _entries.addAll(nextBatch);
-        _mediaMap.addAll(nextMediaMap);
-        _offset += nextBatch.length;
-        _hasMore = nextBatch.length >= _pageSize;
-        _isLoadingMore = false;
-      });
+      if (mounted) {
+        setState(() {
+          _entries.addAll(nextBatch);
+          _mediaMap.addAll(nextMediaMap);
+          _offset += nextBatch.length;
+          _hasMore = nextBatch.length >= _pageSize;
+          _isLoadingMore = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('Error loading more timeline entries: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
     }
   }
 
@@ -229,9 +254,11 @@ class _TimelineScreenState extends State<TimelineScreen> {
       ),
       body: _isLoading && _entries.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : _entries.isEmpty
-              ? _buildEmptyState(theme)
-              : RefreshIndicator(
+          : _errorMessage != null && _entries.isEmpty
+              ? _buildErrorState(theme)
+              : _entries.isEmpty
+                  ? _buildEmptyState(theme)
+                  : RefreshIndicator(
                   onRefresh: _loadInitial,
                   child: ListView.builder(
                     controller: _scrollController,
@@ -309,6 +336,45 @@ class _TimelineScreenState extends State<TimelineScreen> {
               onPressed: _handleCreateEntry,
               icon: const Icon(Icons.add),
               label: const Text('Write Your First Entry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline_rounded,
+              size: 64,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to Load Diary',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'An unexpected error occurred while loading entries.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _loadInitial,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
             ),
           ],
         ),

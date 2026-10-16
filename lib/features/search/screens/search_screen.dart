@@ -78,26 +78,36 @@ class _SearchScreenState extends State<SearchScreen> {
       _hasSearched = true;
     });
 
-    final results = await widget.database.searchEntriesWithFilters(
-      query: query,
-      startDate: _filters.resolvedStartDate,
-      endDate: _filters.resolvedEndDate,
-      mood: _filters.mood,
-      weather: _filters.weather,
-      hasImage: _filters.hasImage,
-      weeklyReviewOnly: _filters.weeklyReviewOnly,
-      excludeSealedTimeCapsules: true, // Privacy invariant
-    );
+    try {
+      final results = await widget.database.searchEntriesWithFilters(
+        query: query,
+        startDate: _filters.resolvedStartDate,
+        endDate: _filters.resolvedEndDate,
+        mood: _filters.mood,
+        weather: _filters.weather,
+        hasImage: _filters.hasImage,
+        weeklyReviewOnly: _filters.weeklyReviewOnly,
+        excludeSealedTimeCapsules: true, // Privacy invariant
+      );
 
-    final ids = results.map((e) => e.id).toList();
-    final mediaMap = await widget.database.getPrimaryMediaForEntries(ids);
+      final ids = results.map((e) => e.id).toList();
+      final mediaMap = await widget.database.getPrimaryMediaForEntries(ids);
 
-    if (mounted) {
-      setState(() {
-        _results = results;
-        _mediaMap = mediaMap;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _results = results;
+          _mediaMap = mediaMap;
+          _isLoading = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('Error executing search: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _results = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 

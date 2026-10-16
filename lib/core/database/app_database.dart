@@ -1,12 +1,22 @@
 import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
+import 'package:sqlite3/open.dart';
 import 'tables/templates.dart';
 import 'tables/notebooks.dart';
 import 'tables/entries.dart';
 import 'tables/media_attachments.dart';
 
 part 'app_database.g.dart';
+
+/// Top-level isolate setup to ensure background isolates load SQLCipher on Android
+@pragma('vm:entry-point')
+void _isolateDatabaseSetup() {
+  if (Platform.isAndroid) {
+    open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+  }
+}
 
 /// MemoDiary core encrypted database with SQLCipher and FTS5 search.
 @DriftDatabase(tables: [Templates, Notebooks, Entries, MediaAttachments])
@@ -21,10 +31,16 @@ class AppDatabase extends _$AppDatabase {
     required File dbFile,
     required String encryptionKey,
   }) {
+    if (Platform.isAndroid) {
+      open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+    }
+
     final executor = NativeDatabase.createInBackground(
       dbFile,
+      isolateSetup: _isolateDatabaseSetup,
       setup: (rawDb) {
-        rawDb.execute("PRAGMA key = '$encryptionKey';");
+        final escapedKey = encryptionKey.replaceAll("'", "''");
+        rawDb.execute("PRAGMA key = '$escapedKey';");
       },
     );
     return AppDatabase(executor);

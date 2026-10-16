@@ -13,7 +13,6 @@ dependencies:
 
   # Local Encrypted Storage & Database
   drift: ^2.24.0
-  drift_flutter: ^0.2.4
   sqlcipher_flutter_libs: ^0.6.4
   sqlite3: ^2.5.0
 

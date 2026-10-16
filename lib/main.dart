@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
+import 'package:sqlite3/open.dart';
 import 'core/database/app_database.dart';
 import 'core/database/database_key_manager.dart';
 import 'core/services/media_sandbox_service.dart';
@@ -11,6 +13,16 @@ import 'features/timeline/screens/timeline_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 0. Ensure SQLCipher native libraries are properly loaded on Android
+  if (Platform.isAndroid) {
+    try {
+      await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
+    } catch (e) {
+      debugPrint('SQLCipher Android workaround note: $e');
+    }
+    open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+  }
 
   // 1. Initialize encrypted database with secure hardware key
   final keyManager = DatabaseKeyManager();

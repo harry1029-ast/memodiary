@@ -84,58 +84,66 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   Future<void> _loadEntryData() async {
-    final entry = await widget.database.getEntryById(widget.entryId);
-    if (entry == null) {
-      if (mounted) Navigator.pop(context);
-      return;
-    }
-
-    final templates = await widget.database.select(widget.database.templates).get();
-    final template = templates.firstWhere(
-      (t) => t.id == entry.templateId,
-      orElse: () => templates.first,
-    );
-
-    // Parse Quill Delta
-    Document document;
     try {
-      if (entry.contentDelta.trim().isEmpty) {
-        document = Document();
-      } else {
-        final decoded = jsonDecode(entry.contentDelta);
-        if (decoded is List) {
-          document = Document.fromJson(decoded);
-        } else {
-          document = Document();
-        }
+      final entry = await widget.database.getEntryById(widget.entryId);
+      if (entry == null) {
+        if (mounted) Navigator.pop(context);
+        return;
       }
-    } catch (_) {
-      document = Document();
-    }
 
-    final controller = QuillController(
-      document: document,
-      selection: const TextSelection.collapsed(offset: 0),
-    );
+      final templates = await widget.database.select(widget.database.templates).get();
+      final template = templates.firstWhere(
+        (t) => t.id == entry.templateId,
+        orElse: () => templates.first,
+      );
 
-    final autosave = EditorAutosaveManager(
-      database: widget.database,
-      entryId: widget.entryId,
-      controller: controller,
-    );
+      // Parse Quill Delta
+      Document document;
+      try {
+        if (entry.contentDelta.trim().isEmpty) {
+          document = Document();
+        } else {
+          final decoded = jsonDecode(entry.contentDelta);
+          if (decoded is List) {
+            document = Document.fromJson(decoded);
+          } else {
+            document = Document();
+          }
+        }
+      } catch (_) {
+        document = Document();
+      }
 
-    if (mounted) {
-      setState(() {
-        _currentTemplate = template;
-        _allTemplates = templates;
-        _controller = controller;
-        _autosaveManager = autosave;
-        _entryDate = entry.entryDate;
-        _mood = entry.mood;
-        _weather = entry.weather;
-        _unlockAt = entry.unlockAt;
-        _isLoading = false;
-      });
+      final controller = QuillController(
+        document: document,
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+
+      final autosave = EditorAutosaveManager(
+        database: widget.database,
+        entryId: widget.entryId,
+        controller: controller,
+      );
+
+      if (mounted) {
+        setState(() {
+          _currentTemplate = template;
+          _allTemplates = templates;
+          _controller = controller;
+          _autosaveManager = autosave;
+          _entryDate = entry.entryDate;
+          _mood = entry.mood;
+          _weather = entry.weather;
+          _unlockAt = entry.unlockAt;
+          _isLoading = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('Error loading entry editor data: $e\n$st');
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context);
+      }
     }
   }
 

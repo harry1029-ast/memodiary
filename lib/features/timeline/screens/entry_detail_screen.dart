@@ -60,43 +60,50 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
-    // Refresh entry from database if available
-    final freshEntry = await widget.database.getEntryById(_entry.id);
-    if (freshEntry != null) {
-      _entry = freshEntry;
-    }
-
-    // Load active template
-    _template = await widget.database.getTemplateById(_entry.templateId);
-    if (_template == null) {
-      final allTemplates = await widget.database.getAllTemplates();
-      if (allTemplates.isNotEmpty) {
-        _template = allTemplates.first;
+    try {
+      // Refresh entry from database if available
+      final freshEntry = await widget.database.getEntryById(_entry.id);
+      if (freshEntry != null) {
+        _entry = freshEntry;
       }
-    }
 
-    // Build read-only QuillController
-    quill.Document doc;
-    if (_entry.contentDelta.isNotEmpty) {
-      try {
-        final decoded = jsonDecode(_entry.contentDelta);
-        doc = quill.Document.fromJson(decoded);
-      } catch (_) {
+      // Load active template
+      _template = await widget.database.getTemplateById(_entry.templateId);
+      if (_template == null) {
+        final allTemplates = await widget.database.getAllTemplates();
+        if (allTemplates.isNotEmpty) {
+          _template = allTemplates.first;
+        }
+      }
+
+      // Build read-only QuillController
+      quill.Document doc;
+      if (_entry.contentDelta.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(_entry.contentDelta);
+          doc = quill.Document.fromJson(decoded);
+        } catch (_) {
+          doc = quill.Document()..insert(0, _entry.plainText);
+        }
+      } else {
         doc = quill.Document()..insert(0, _entry.plainText);
       }
-    } else {
-      doc = quill.Document()..insert(0, _entry.plainText);
-    }
 
-    _quillController?.dispose();
-    _quillController = quill.QuillController(
-      document: doc,
-      selection: const TextSelection.collapsed(offset: 0),
-      readOnly: true,
-    );
+      _quillController?.dispose();
+      _quillController = quill.QuillController(
+        document: doc,
+        selection: const TextSelection.collapsed(offset: 0),
+        readOnly: true,
+      );
 
-    if (mounted) {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e, st) {
+      debugPrint('Error loading entry detail: $e\n$st');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

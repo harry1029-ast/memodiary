@@ -1,8 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 /// Service managing device biometrics and encrypted PIN authentication.
 class AuthService {
@@ -12,6 +15,9 @@ class AuthService {
 
   final FlutterSecureStorage _storage;
   final LocalAuthentication _localAuth;
+
+  static bool _storageBackendFailed = false;
+  static final Map<String, String> _memoryFallback = {};
 
   AuthService({
     FlutterSecureStorage? storage,
@@ -23,9 +29,79 @@ class AuthService {
             ),
         _localAuth = localAuth ?? LocalAuthentication();
 
+  Future<File?> _getFallbackFile() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      return File(p.join(dir.path, '.memodiary_auth.json'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _loadFallbackIfNeeded() async {
+    if (_memoryFallback.isNotEmpty) return;
+    try {
+      final file = await _getFallbackFile();
+      if (file != null && await file.exists()) {
+        final content = await file.readAsString();
+        final map = jsonDecode(content) as Map<String, dynamic>;
+        map.forEach((k, v) => _memoryFallback[k] = v.toString());
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveFallback() async {
+    try {
+      final file = await _getFallbackFile();
+      if (file != null) {
+        await file.writeAsString(jsonEncode(_memoryFallback));
+      }
+    } catch (_) {}
+  }
+
+  Future<String?> _readSafe(String key) async {
+    if (_storageBackendFailed) {
+      await _loadFallbackIfNeeded();
+      return _memoryFallback[key];
+    }
+    try {
+      return await _storage.read(key: key);
+    } catch (_) {
+      _storageBackendFailed = true;
+      await _loadFallbackIfNeeded();
+      return _memoryFallback[key];
+    }
+  }
+
+  Future<void> _writeSafe(String key, String value) async {
+    if (_storageBackendFailed) {
+      _memoryFallback[key] = value;
+      await _saveFallback();
+      return;
+    }
+    try {
+      await _storage.write(key: key, value: value);
+    } catch (_) {
+      _storageBackendFailed = true;
+      _memoryFallback[key] = value;
+      await _saveFallback();
+    }
+  }
+
+  Future<void> _deleteSafe(String key) async {
+    _memoryFallback.remove(key);
+    await _saveFallback();
+    if (_storageBackendFailed) return;
+    try {
+      await _storage.delete(key: key);
+    } catch (_) {
+      _storageBackendFailed = true;
+    }
+  }
+
   /// Whether a PIN has been set and lock is active
   Future<bool> isLockEnabled() async {
-    final hash = await _storage.read(key: _pinHashKey);
+    final hash = await _readSafe(_pinHashKey);
     return hash != null && hash.isNotEmpty;
   }
 
@@ -33,14 +109,14 @@ class AuthService {
   Future<void> setPin(String pin) async {
     final salt = _generateSalt();
     final hash = _hashPin(pin, salt);
-    await _storage.write(key: _pinSaltKey, value: salt);
-    await _storage.write(key: _pinHashKey, value: hash);
+    await _writeSafe(_pinSaltKey, salt);
+    await _writeSafe(_pinHashKey, hash);
   }
 
   /// Verifies entered PIN against stored salt + SHA-256 hash
   Future<bool> verifyPin(String pin) async {
-    final salt = await _storage.read(key: _pinSaltKey);
-    final storedHash = await _storage.read(key: _pinHashKey);
+    final salt = await _readSafe(_pinSaltKey);
+    final storedHash = await _readSafe(_pinHashKey);
 
     if (salt == null || storedHash == null) {
       return false;
@@ -52,20 +128,20 @@ class AuthService {
 
   /// Disables lock by removing stored PIN and biometric settings
   Future<void> removePin() async {
-    await _storage.delete(key: _pinHashKey);
-    await _storage.delete(key: _pinSaltKey);
-    await _storage.delete(key: _biometricEnabledKey);
+    await _deleteSafe(_pinHashKey);
+    await _deleteSafe(_pinSaltKey);
+    await _deleteSafe(_biometricEnabledKey);
   }
 
   /// Whether biometric authentication is enabled by user
   Future<bool> isBiometricEnabled() async {
-    final enabled = await _storage.read(key: _biometricEnabledKey);
+    final enabled = await _readSafe(_biometricEnabledKey);
     return enabled == 'true';
   }
 
   /// Toggle biometric unlock preference
   Future<void> setBiometricEnabled(bool enabled) async {
-    await _storage.write(key: _biometricEnabledKey, value: enabled ? 'true' : 'false');
+    await _writeSafe(_biometricEnabledKey, enabled ? 'true' : 'false');
   }
 
   /// Checks if device hardware supports biometric authentication

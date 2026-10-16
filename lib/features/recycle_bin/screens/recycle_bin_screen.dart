@@ -32,12 +32,22 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
 
   Future<void> _loadDeletedEntries() async {
     setState(() => _isLoading = true);
-    final entries = await widget.database.getDeletedEntries();
-    if (mounted) {
-      setState(() {
-        _deletedEntries = entries;
-        _isLoading = false;
-      });
+    try {
+      final entries = await widget.database.getDeletedEntries();
+      if (mounted) {
+        setState(() {
+          _deletedEntries = entries;
+          _isLoading = false;
+        });
+      }
+    } catch (e, st) {
+      debugPrint('Error loading deleted entries: $e\n$st');
+      if (mounted) {
+        setState(() {
+          _deletedEntries = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 
