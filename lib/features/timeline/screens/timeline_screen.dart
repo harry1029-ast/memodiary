@@ -10,6 +10,7 @@ import 'package:memodiary/features/search/screens/search_screen.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
+import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
 
 /// Main screen displaying the reverse-chronological, lazy-paginated timeline feed of entries.
@@ -198,6 +199,23 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => RecycleBinScreen(
+                    database: widget.database,
+                    mediaService: widget.mediaService,
+                  ),
+                ),
+              ).then((_) {
+                if (mounted) _loadInitial();
+              });
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings & Privacy',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingsScreen(
                     database: widget.database,
                     mediaService: widget.mediaService,
                   ),

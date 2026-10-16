@@ -398,6 +398,38 @@ class AppDatabase extends _$AppDatabase {
 
     return queryBuilder.get();
   }
+
+  /// Atomically inserts multiple entries within a single transaction.
+  /// If any insertion fails, the entire batch is rolled back cleanly.
+  Future<int> batchImportEntries(List<EntriesCompanion> companions) {
+    return transaction(() async {
+      int count = 0;
+      for (final companion in companions) {
+        await into(entries).insert(companion);
+        count++;
+      }
+      return count;
+    });
+  }
+
+  /// Retrieves a set of all media relative paths currently referenced in media_attachments.
+  Future<Set<String>> getAllMediaRelativePaths() async {
+    final rows = await (selectOnly(mediaAttachments, distinct: true)
+          ..addColumns([mediaAttachments.relativePath]))
+        .get();
+    return rows
+        .map((r) => r.read(mediaAttachments.relativePath))
+        .whereType<String>()
+        .toSet();
+  }
+
+  /// Retrieves all non-deleted entries without pagination (for full backup export)
+  Future<List<Entry>> getAllActiveEntries() {
+    return (select(entries)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.entryDate)]))
+        .get();
+  }
 }
 
 

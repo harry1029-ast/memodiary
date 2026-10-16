@@ -29,6 +29,7 @@ dependencies:
   flutter_image_compress: ^2.4.0
   permission_handler: ^11.3.1
   image_picker: ^1.1.2
+  file_picker: ^11.0.3
 
   # Rich Text Editor & Multimodal Input
   flutter_quill: ^11.6.0

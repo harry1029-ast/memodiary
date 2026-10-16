@@ -11,6 +11,7 @@ import 'package:memodiary/features/editor/widgets/sandboxed_image_embed_builder.
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import 'package:memodiary/features/templates/widgets/template_switcher_sheet.dart';
+import 'package:memodiary/features/import_export/widgets/export_dialog.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 
 /// Read-only detail viewer displaying the entry inside its procedural canvas template
@@ -222,6 +223,17 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share',
             onPressed: _handleShare,
+          ),
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            tooltip: 'Export',
+            onPressed: () {
+              ExportDialog.show(
+                context: context,
+                database: widget.database,
+                singleEntry: _entry,
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
