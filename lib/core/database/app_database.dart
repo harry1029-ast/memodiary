@@ -77,7 +77,12 @@ class AppDatabase extends _$AppDatabase {
             END;
           ''');
 
-          // 4. Seed the 4 default templates
+          // 4. Create index for ultra-fast reverse-chronological timeline pagination
+          await customStatement('''
+            CREATE INDEX IF NOT EXISTS idx_entries_timeline ON entries(is_deleted, entry_date DESC);
+          ''');
+
+          // 5. Seed the 4 default templates
           await batch((b) {
             b.insertAll(templates, [
               TemplatesCompanion.insert(
