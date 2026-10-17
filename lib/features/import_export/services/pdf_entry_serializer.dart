@@ -131,6 +131,28 @@ class PdfEntrySerializer {
         continue;
       }
 
+      // 1b. Embedded Video Object (Graceful Poster Fallback)
+      if (insert is Map && insert.containsKey('video')) {
+        // Flush any pending text before the video
+        if (currentSpans.isNotEmpty) {
+          lineBlocks.add(_LineBlock(spans: List.from(currentSpans)));
+          currentSpans.clear();
+        }
+
+        // Flush line blocks collected so far into widgets
+        _flushLineBlocks(lineBlocks, widgets, fontResolver, style);
+        lineBlocks.clear();
+
+        final videoSource = insert['video']?.toString() ?? '';
+        final videoWidget = await _buildVideoWidget(
+          videoSource,
+          mediaService,
+          fontResolver,
+        );
+        widgets.add(videoWidget);
+        continue;
+      }
+
       // 2. Text String
       if (insert is String) {
         final isBold = attributes['bold'] == true;
@@ -445,6 +467,85 @@ class PdfEntrySerializer {
           fontSize: 9,
           color: PdfColors.grey600,
         ),
+      ),
+    );
+  }
+
+  static Future<pw.Widget> _buildVideoWidget(
+    String source,
+    MediaSandboxService mediaService,
+    PdfFontResolver fontResolver,
+  ) async {
+    pw.MemoryImage? memoryImage;
+
+    try {
+      String thumbPath = source;
+      if (source.endsWith('.mp4')) {
+        thumbPath = '${source.substring(0, source.length - 4)}_thumb.webp';
+      }
+      final file = await mediaService.getFileFromRelativePath(thumbPath);
+      if (await file.exists()) {
+        final rawBytes = await file.readAsBytes();
+        final pngBytes = await ImageFormatTranscoder.ensurePdfCompatibleBytes(rawBytes);
+        memoryImage = pw.MemoryImage(pngBytes);
+      }
+    } catch (_) {
+      // Fallback if poster thumbnail is missing or fails to transcode
+    }
+
+    return pw.Container(
+      margin: const pw.EdgeInsets.symmetric(vertical: 8),
+      alignment: pw.Alignment.center,
+      constraints: const pw.BoxConstraints(maxHeight: 220.0),
+      child: pw.Stack(
+        alignment: pw.Alignment.center,
+        children: [
+          if (memoryImage != null)
+            pw.ClipRRect(
+              horizontalRadius: 6,
+              verticalRadius: 6,
+              child: pw.Image(
+                memoryImage,
+                fit: pw.BoxFit.contain,
+              ),
+            )
+          else
+            pw.Container(
+              height: 120,
+              width: 220,
+              decoration: pw.BoxDecoration(
+                color: PdfColors.blueGrey800,
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              alignment: pw.Alignment.center,
+              child: pw.Text(
+                '[Video Attachment]',
+                style: pw.TextStyle(
+                  font: fontResolver.italicFont,
+                  fontSize: 10,
+                  color: PdfColors.grey300,
+                ),
+              ),
+            ),
+          pw.Positioned(
+            bottom: 8,
+            child: pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: pw.BoxDecoration(
+                color: const PdfColor(0, 0, 0, 0.75),
+                borderRadius: pw.BorderRadius.circular(4),
+              ),
+              child: pw.Text(
+                'Video: Local playback only',
+                style: pw.TextStyle(
+                  font: fontResolver.regularFont,
+                  fontSize: 8,
+                  color: PdfColors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -278,6 +278,14 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  /// Retrieves all video media attachments associated with a specific entry
+  Future<List<MediaAttachment>> getVideosForEntry(String entryId) {
+    return (select(mediaAttachments)
+          ..where((t) =>
+              t.entryId.equals(entryId) & t.mediaType.equals('video')))
+        .get();
+  }
+
   /// Batch retrieves the primary (first) media attachment for each given entry ID
   Future<Map<String, MediaAttachment>> getPrimaryMediaForEntries(
       List<String> entryIds) async {
@@ -435,15 +443,23 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  /// Retrieves a set of all media relative paths currently referenced in media_attachments.
+  /// Retrieves a set of all media relative paths currently referenced in media_attachments
+  /// (including both primary video/image relativePath and companion poster thumbnailPath).
   Future<Set<String>> getAllMediaRelativePaths() async {
     final rows = await (selectOnly(mediaAttachments, distinct: true)
-          ..addColumns([mediaAttachments.relativePath]))
+          ..addColumns([
+            mediaAttachments.relativePath,
+            mediaAttachments.thumbnailPath,
+          ]))
         .get();
-    return rows
-        .map((r) => r.read(mediaAttachments.relativePath))
-        .whereType<String>()
-        .toSet();
+    final paths = <String>{};
+    for (final r in rows) {
+      final rel = r.read(mediaAttachments.relativePath);
+      if (rel != null && rel.isNotEmpty) paths.add(rel);
+      final thumb = r.read(mediaAttachments.thumbnailPath);
+      if (thumb != null && thumb.isNotEmpty) paths.add(thumb);
+    }
+    return paths;
   }
 
   /// Retrieves all non-deleted entries without pagination (for full backup export)

@@ -5,6 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 class EditorToolbar extends StatelessWidget {
   final QuillController controller;
   final VoidCallback onPickImage;
+  final VoidCallback? onPickVideo;
   final VoidCallback onToggleDictation;
   final VoidCallback onOpenTypography;
   final VoidCallback onOpenTemplates;
@@ -14,6 +15,7 @@ class EditorToolbar extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onPickImage,
+    this.onPickVideo,
     required this.onToggleDictation,
     required this.onOpenTypography,
     required this.onOpenTemplates,
@@ -122,6 +124,15 @@ class EditorToolbar extends StatelessWidget {
                   tooltip: 'Insert Photo',
                   color: Colors.blue.shade700,
                 ),
+                // Multimodal: Short Video Pick
+                if (onPickVideo != null)
+                  _buildToolbarBtn(
+                    icon: Icons.videocam_outlined,
+                    isActive: false,
+                    onTap: onPickVideo!,
+                    tooltip: 'Insert Short Video (<=60s)',
+                    color: Colors.red.shade700,
+                  ),
                 // Multimodal: Speech to Text
                 _buildToolbarBtn(
                   icon: isDictating ? Icons.mic : Icons.mic_none,

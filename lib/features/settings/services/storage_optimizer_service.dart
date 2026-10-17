@@ -53,8 +53,15 @@ class StorageOptimizerService {
       final entities = mediaDir.listSync(followLinks: false);
       for (final entity in entities) {
         if (entity is File) {
-          final size = entity.lengthSync();
           final fileName = p.basename(entity.path);
+          if (fileName.startsWith('.')) continue;
+
+          final ext = p.extension(entity.path).toLowerCase();
+          if (ext != '.webp' && ext != '.mp4' && ext != '.png' && ext != '.jpg' && ext != '.jpeg') {
+            continue;
+          }
+
+          final size = entity.lengthSync();
           final relPath = 'media/$fileName';
 
           totalMediaCount++;
@@ -97,6 +104,13 @@ class StorageOptimizerService {
     for (final entity in entities) {
       if (entity is File) {
         final fileName = p.basename(entity.path);
+        if (fileName.startsWith('.')) continue;
+
+        final ext = p.extension(entity.path).toLowerCase();
+        if (ext != '.webp' && ext != '.mp4' && ext != '.png' && ext != '.jpg' && ext != '.jpeg') {
+          continue;
+        }
+
         final relPath = 'media/$fileName';
 
         if (!referencedPaths.contains(relPath)) {

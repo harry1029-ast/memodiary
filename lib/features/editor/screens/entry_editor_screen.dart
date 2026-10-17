@@ -18,6 +18,7 @@ import '../widgets/dictation_bar.dart';
 import '../widgets/editor_toolbar.dart';
 import '../widgets/entry_metadata_bar.dart';
 import '../widgets/sandboxed_image_embed_builder.dart';
+import '../widgets/sandboxed_video_embed_builder.dart';
 import '../widgets/thought_spark_banner.dart';
 import '../widgets/typography_sheet.dart';
 
@@ -243,6 +244,76 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     }
   }
 
+  Future<void> _handleVideoPick() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.videocam_outlined),
+              title: const Text('Record Video with Camera (≤60s)'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library_outlined),
+              title: const Text('Choose Video from Gallery (≤60s)'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    try {
+      final picked = await _imagePicker.pickVideo(
+        source: source,
+        maxDuration: const Duration(seconds: 60),
+      );
+      if (picked == null || _controller == null) return;
+
+      // Sandbox isolation: Copy to sandbox, validate duration <= 60s, generate poster
+      final result = await widget.mediaSandboxService.copyAndSandboxVideo(
+        File(picked.path),
+      );
+
+      // Insert into Quill Delta
+      final index = _controller!.selection.baseOffset.clamp(
+        0,
+        _controller!.document.length - 1,
+      );
+      _controller!.document.insert(index, BlockEmbed.video(result.relativePath));
+
+      // Record in media_attachments table
+      await widget.database.attachMediaToEntry(
+        id: const Uuid().v4(),
+        entryId: widget.entryId,
+        relativePath: result.relativePath,
+        mediaType: 'video',
+        thumbnailPath: result.thumbnailPath,
+      );
+
+      _autosaveManager?.saveDraft();
+    } on VideoDurationExceededException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to insert video: $e')),
+        );
+      }
+    }
+  }
+
   void _handleInsertPrompt(String prompt) {
     if (_controller == null) return;
     final index = _controller!.selection.baseOffset.clamp(
@@ -384,6 +455,10 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                       mediaSandboxService: widget.mediaSandboxService,
                       onImageRemoved: () => _autosaveManager?.saveDraft(),
                     ),
+                    SandboxedVideoEmbedBuilder(
+                      mediaSandboxService: widget.mediaSandboxService,
+                      onVideoRemoved: () => _autosaveManager?.saveDraft(),
+                    ),
                   ],
                   customStyles: DefaultStyles(
                     paragraph: DefaultTextBlockStyle(
@@ -412,6 +487,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             controller: _controller!,
             isDictating: _isDictating,
             onPickImage: _handleImagePick,
+            onPickVideo: _handleVideoPick,
             onToggleDictation: () => setState(() => _isDictating = !_isDictating),
             onOpenTypography: _handleTypographySettings,
             onOpenTemplates: _handleTemplateSwitch,

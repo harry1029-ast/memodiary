@@ -8,6 +8,7 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/widgets/sandboxed_image_embed_builder.dart';
+import 'package:memodiary/features/editor/widgets/sandboxed_video_embed_builder.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import 'package:memodiary/features/templates/widgets/template_switcher_sheet.dart';
@@ -361,6 +362,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                   padding: EdgeInsets.zero,
                   embedBuilders: [
                     SandboxedImageEmbedBuilder(
+                      mediaSandboxService: widget.mediaService,
+                    ),
+                    SandboxedVideoEmbedBuilder(
                       mediaSandboxService: widget.mediaService,
                     ),
                   ],
