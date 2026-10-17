@@ -6,6 +6,7 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
+import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
 
 void main() {
   late AppDatabase db;
@@ -126,6 +127,27 @@ void main() {
       // Editor screen should now be opened
       expect(find.byType(EntryEditorScreen), findsOneWidget);
       expect(find.byIcon(Icons.check), findsOneWidget);
+    });
+
+    testWidgets('AppBar Weekly Review shortcut navigates to WeeklyReviewScreen', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TimelineScreen(
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final weeklyBtn = find.byKey(const Key('timeline_weekly_review_button'));
+      expect(weeklyBtn, findsOneWidget);
+
+      await tester.tap(weeklyBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(WeeklyReviewScreen), findsOneWidget);
+      expect(find.text('Weekly Review'), findsOneWidget);
     });
   });
 }

@@ -22,6 +22,32 @@ enum TemplateBackgroundType {
         return TemplateBackgroundType.color;
     }
   }
+
+  String get toDbValue {
+    switch (this) {
+      case TemplateBackgroundType.color:
+        return 'color';
+      case TemplateBackgroundType.lined:
+        return 'lined';
+      case TemplateBackgroundType.grid:
+        return 'grid';
+      case TemplateBackgroundType.paperTexture:
+        return 'paper_texture';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case TemplateBackgroundType.color:
+        return 'Solid Color';
+      case TemplateBackgroundType.lined:
+        return 'Lined Paper';
+      case TemplateBackgroundType.grid:
+        return 'Grid Paper';
+      case TemplateBackgroundType.paperTexture:
+        return 'Kraft Paper';
+    }
+  }
 }
 
 /// Resolved presentation style model derived from Drift [Template] entity
@@ -64,6 +90,14 @@ class TemplateStyle {
     } catch (_) {
       return fallback;
     }
+  }
+
+  /// Formats a [Color] into a 6-character uppercase `#RRGGBB` string.
+  static String toHexString(Color color) {
+    final r = (color.r * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final g = (color.g * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    final b = (color.b * 255).round().clamp(0, 255).toRadixString(16).padLeft(2, '0');
+    return '#${r.toUpperCase()}${g.toUpperCase()}${b.toUpperCase()}';
   }
 }
 

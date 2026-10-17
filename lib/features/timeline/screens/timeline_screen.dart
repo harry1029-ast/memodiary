@@ -12,6 +12,7 @@ import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
+import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
 
 /// Main screen displaying the reverse-chronological, lazy-paginated timeline feed of entries.
 class TimelineScreen extends StatefulWidget {
@@ -199,6 +200,24 @@ class _TimelineScreenState extends State<TimelineScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            key: const Key('timeline_weekly_review_button'),
+            icon: const Icon(Icons.calendar_view_week_rounded),
+            tooltip: 'Weekly Review',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WeeklyReviewScreen(
+                    database: widget.database,
+                    mediaService: widget.mediaService,
+                  ),
+                ),
+              ).then((_) {
+                if (mounted) _loadInitial();
+              });
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             tooltip: 'Search',

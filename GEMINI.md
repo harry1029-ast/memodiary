@@ -30,8 +30,14 @@ Maintain the following 5 core tables in `lib/core/database/app_database.dart`[ci
 - Write unit tests for every data model, date-parsing regex rule, and repository method.
 
 ## Development Roadmap (Reference Only)
+Milestone 1 (Alpha):
 - Phase 0: Encrypted Drift DB, Media Sandbox & Launch Security
 - Phase 1: Decoupled Templates & Rich-Text Editor
 - Phase 2: Timeline View, CRUD & Offline FTS5 Search
 - Phase 3: Smart .txt/.md Date Ingestion & Export
 - Phase 4: Benchmarking & Hardening
+Milestone 2 (Beta):
+- Phase 5: Custom Template Builder & Dedicated Weekly Review Aggregated Grid
+- Phase 6: High-Fidelity Template-Preserving PDF Export Engine
+- Phase 7: Sandboxed Short Video Ingestion & Inline Playback
+- Phase 8: Retrospective Suite, Writing Sanctum, Local Reminders & Analytics

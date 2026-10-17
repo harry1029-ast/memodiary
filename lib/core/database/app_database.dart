@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'package:sqlite3/open.dart';
+import 'package:uuid/uuid.dart';
+import '../../features/weekly_review/services/calendar_week_utils.dart';
 import 'tables/templates.dart';
 import 'tables/notebooks.dart';
 import 'tables/entries.dart';
@@ -450,6 +452,165 @@ class AppDatabase extends _$AppDatabase {
           ..where((t) => t.isDeleted.equals(false))
           ..orderBy([(t) => OrderingTerm.desc(t.entryDate)]))
         .get();
+  }
+
+  /// Retrieves only user-defined custom templates (`isCustom = true`).
+  Future<List<Template>> getCustomTemplates() {
+    return (select(templates)..where((t) => t.isCustom.equals(true))).get();
+  }
+
+  /// Creates and persists a new user-defined custom template (strictly enforces `isCustom = true`).
+  Future<Template> createCustomTemplate({
+    String? id,
+    required String name,
+    required String backgroundType,
+    required String backgroundValue,
+    String? fontFamily = 'System',
+    double lineSpacing = 1.5,
+    double marginHorizontal = 16.0,
+  }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError('Template name cannot be empty.');
+    }
+
+    final templateId = id ?? 'template_custom_${const Uuid().v4()}';
+    await into(templates).insert(
+      TemplatesCompanion.insert(
+        id: templateId,
+        name: trimmedName,
+        backgroundType: backgroundType,
+        backgroundValue: backgroundValue,
+        fontFamily: Value(fontFamily),
+        lineSpacing: Value(lineSpacing),
+        marginHorizontal: Value(marginHorizontal),
+        isCustom: const Value(true),
+      ),
+    );
+
+    return (select(templates)..where((t) => t.id.equals(templateId))).getSingle();
+  }
+
+  /// Updates an existing custom template.
+  /// Throws [StateError] if attempting to modify a seeded system template (`isCustom = false`).
+  Future<int> updateCustomTemplate(
+    String id, {
+    String? name,
+    String? backgroundType,
+    String? backgroundValue,
+    String? fontFamily,
+    double? lineSpacing,
+    double? marginHorizontal,
+  }) async {
+    final existing = await getTemplateById(id);
+    if (existing == null) {
+      throw ArgumentError('Template not found: $id');
+    }
+    if (!existing.isCustom) {
+      throw StateError('Default system templates cannot be modified.');
+    }
+    if (name != null && name.trim().isEmpty) {
+      throw ArgumentError('Template name cannot be empty.');
+    }
+
+    return (update(templates)..where((t) => t.id.equals(id))).write(
+      TemplatesCompanion(
+        name: name != null ? Value(name.trim()) : const Value.absent(),
+        backgroundType: backgroundType != null
+            ? Value(backgroundType)
+            : const Value.absent(),
+        backgroundValue: backgroundValue != null
+            ? Value(backgroundValue)
+            : const Value.absent(),
+        fontFamily:
+            fontFamily != null ? Value(fontFamily) : const Value.absent(),
+        lineSpacing:
+            lineSpacing != null ? Value(lineSpacing) : const Value.absent(),
+        marginHorizontal: marginHorizontal != null
+            ? Value(marginHorizontal)
+            : const Value.absent(),
+      ),
+    );
+  }
+
+  /// Reassigns all entries referencing [fromTemplateId] to [toTemplateId]
+  /// without mutating entry contentDelta or plainText.
+  Future<int> reassignEntriesTemplate({
+    required String fromTemplateId,
+    required String toTemplateId,
+  }) {
+    return (update(entries)..where((t) => t.templateId.equals(fromTemplateId)))
+        .write(
+      EntriesCompanion(
+        templateId: Value(toTemplateId),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Safely deletes a user-defined custom template.
+  /// Throws [StateError] if attempting to delete a seeded system template (`isCustom = false`).
+  /// Executes an atomic transaction that first reassigns all dependent entries to [fallbackTemplateId]
+  /// prior to deleting the template row, preventing SQLite foreign key constraint violations.
+  Future<void> deleteCustomTemplate(
+    String templateId, {
+    String fallbackTemplateId = 'template_minimalist_white',
+  }) async {
+    final existing = await getTemplateById(templateId);
+    if (existing == null) {
+      throw ArgumentError('Template not found: $templateId');
+    }
+    if (!existing.isCustom) {
+      throw StateError('Default system templates cannot be deleted.');
+    }
+
+    await transaction(() async {
+      // 1. Reassign all entries pointing to this custom template before deleting
+      await reassignEntriesTemplate(
+        fromTemplateId: templateId,
+        toTemplateId: fallbackTemplateId,
+      );
+
+      // 2. Delete the custom template record
+      await (delete(templates)..where((t) => t.id.equals(templateId))).go();
+    });
+  }
+
+  /// Fetches all non-deleted entries falling within the given ISO 8601 calendar [year] and [weekNumber]
+  /// (Monday 00:00:00.000 through Sunday 23:59:59.999 inclusive), ordered chronologically.
+  Future<List<Entry>> getEntriesForCalendarWeek(int year, int weekNumber) {
+    final range = CalendarWeekUtils.getIsoWeekRange(year, weekNumber);
+    return (select(entries)
+          ..where((t) =>
+              t.isDeleted.equals(false) &
+              t.entryDate.isBiggerOrEqualValue(range.start) &
+              t.entryDate.isSmallerOrEqualValue(range.end))
+          ..orderBy([(t) => OrderingTerm.asc(t.entryDate)]))
+        .get();
+  }
+
+  /// Finds an existing weekly review entry (`isWeeklyReview = true`) for the given ISO [year] and [weekNumber].
+  Future<Entry?> getWeeklyReviewEntry(int year, int weekNumber) async {
+    final range = CalendarWeekUtils.getIsoWeekRange(year, weekNumber);
+    final candidates = await (select(entries)
+          ..where((t) =>
+              t.isDeleted.equals(false) &
+              t.isWeeklyReview.equals(true) &
+              (t.weekNumber.equals(weekNumber) |
+                  (t.entryDate.isBiggerOrEqualValue(range.start) &
+                      t.entryDate.isSmallerOrEqualValue(range.end))))
+          ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+        .get();
+
+    for (final entry in candidates) {
+      final entryWeekInfo = CalendarWeekUtils.getIsoWeekAndYear(entry.entryDate);
+      if (entryWeekInfo.year == year &&
+          (entry.weekNumber == weekNumber ||
+              entryWeekInfo.weekNumber == weekNumber)) {
+        return entry;
+      }
+    }
+    return null;
   }
 }
 

@@ -149,11 +149,17 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   Future<void> _handleTemplateSwitch() async {
     if (_currentTemplate == null) return;
+    final freshTemplates = await widget.database.getAllTemplates();
+    if (!mounted) return;
+    setState(() {
+      _allTemplates = freshTemplates;
+    });
 
     await TemplateSwitcherSheet.show(
       context: context,
       templates: _allTemplates,
       currentTemplateId: _currentTemplate!.id,
+      database: widget.database,
       onTemplateSelected: (newTemplate) async {
         setState(() {
           _currentTemplate = newTemplate;

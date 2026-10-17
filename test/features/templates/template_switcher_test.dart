@@ -97,5 +97,56 @@ void main() {
       // Bottom sheet is dismissed
       expect(find.text('Switch Template'), findsNothing);
     });
+
+    testWidgets('TemplateSwitcherSheet supports deleting a custom template and falls back safely', (tester) async {
+      final custom = await db.createCustomTemplate(
+        name: 'Sky Blue Custom',
+        backgroundType: 'lined',
+        backgroundValue: '#E3F2FD',
+      );
+      final templates = await db.getAllTemplates();
+      Template? activeSelection = custom;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () {
+                  TemplateSwitcherSheet.show(
+                    context: context,
+                    templates: templates,
+                    currentTemplateId: custom.id,
+                    database: db,
+                    onTemplateSelected: (t) => activeSelection = t,
+                  );
+                },
+                child: const Text('Open Switcher With DB'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Switcher With DB'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('new_custom_template_button')), findsOneWidget);
+      expect(find.text('Sky Blue Custom'), findsOneWidget);
+
+      // Scroll or locate delete icon for custom template
+      await tester.ensureVisible(find.byKey(Key('delete_template_${custom.id}')));
+      await tester.tap(find.byKey(Key('delete_template_${custom.id}')));
+      await tester.pumpAndSettle();
+
+      // Confirm dialog appears
+      expect(find.text('Delete Custom Template?'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('confirm_delete_custom_template_button')));
+      await tester.pumpAndSettle();
+
+      // Custom template is removed and activeSelection fell back to Minimalist White
+      expect(find.text('Sky Blue Custom'), findsNothing);
+      expect(activeSelection!.id, equals('template_minimalist_white'));
+    });
   });
 }

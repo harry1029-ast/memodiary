@@ -115,6 +115,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       context: context,
       templates: templates,
       currentTemplateId: _entry.templateId,
+      database: widget.database,
       onTemplateSelected: (newTemplate) async {
         await widget.database.updateEntryTemplate(_entry.id, newTemplate.id);
         setState(() {
