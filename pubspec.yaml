@@ -36,6 +36,10 @@ dependencies:
   intl: ^0.20.2
   share_plus: ^12.0.2
 
+  # PDF Generation & High-Fidelity Print Engine (100% FOSS)
+  pdf: ^3.11.1
+  printing: ^5.13.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

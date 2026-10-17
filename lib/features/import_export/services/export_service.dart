@@ -5,6 +5,7 @@ import 'file_selector_service.dart';
 enum ExportFormat {
   markdown,
   plainText,
+  pdf,
 }
 
 enum ExportScope {

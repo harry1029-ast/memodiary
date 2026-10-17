@@ -12,6 +12,7 @@ import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import 'package:memodiary/features/templates/widgets/template_switcher_sheet.dart';
 import 'package:memodiary/features/import_export/widgets/export_dialog.dart';
+import 'package:memodiary/features/import_export/widgets/pdf_preview_screen.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 
 /// Read-only detail viewer displaying the entry inside its procedural canvas template
@@ -233,6 +234,22 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             onPressed: _handleShare,
           ),
           IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Export PDF',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (ctx) => PdfPreviewScreen(
+                    singleEntry: _entry,
+                    database: widget.database,
+                    mediaService: widget.mediaService,
+                  ),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.file_download_outlined),
             tooltip: 'Export',
             onPressed: () {
@@ -240,6 +257,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 context: context,
                 database: widget.database,
                 singleEntry: _entry,
+                mediaService: widget.mediaService,
               );
             },
           ),

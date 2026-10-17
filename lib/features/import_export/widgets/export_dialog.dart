@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/services/media_sandbox_service.dart';
 import '../services/export_service.dart';
 import '../services/file_selector_service.dart';
+import 'pdf_preview_screen.dart';
 
 /// Modal dialog allowing users to choose export format and scope, saving in <= 3 taps.
 class ExportDialog extends StatefulWidget {
   final AppDatabase database;
   final Entry? singleEntry;
   final FileSelectorService fileSelector;
+  final MediaSandboxService? mediaService;
 
   const ExportDialog({
     super.key,
     required this.database,
     this.singleEntry,
     this.fileSelector = const NativeFileSelectorService(),
+    this.mediaService,
   });
 
   static Future<void> show({
@@ -21,6 +25,7 @@ class ExportDialog extends StatefulWidget {
     required AppDatabase database,
     Entry? singleEntry,
     FileSelectorService? fileSelector,
+    MediaSandboxService? mediaService,
   }) {
     return showDialog(
       context: context,
@@ -28,6 +33,7 @@ class ExportDialog extends StatefulWidget {
         database: database,
         singleEntry: singleEntry,
         fileSelector: fileSelector ?? const NativeFileSelectorService(),
+        mediaService: mediaService,
       ),
     );
   }
@@ -65,6 +71,23 @@ class _ExportDialogState extends State<ExportDialog> {
           const SnackBar(content: Text('No diary entries available to export.')),
         );
         Navigator.pop(context);
+        return;
+      }
+
+      if (_selectedFormat == ExportFormat.pdf) {
+        if (!mounted) return;
+        Navigator.pop(context);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) => PdfPreviewScreen(
+              singleEntry: _selectedScope == ExportScope.single ? widget.singleEntry : null,
+              entries: _selectedScope == ExportScope.single ? null : entriesToExport,
+              database: widget.database,
+              mediaService: widget.mediaService,
+            ),
+          ),
+        );
         return;
       }
 
@@ -150,6 +173,12 @@ class _ExportDialogState extends State<ExportDialog> {
                 children: [
                   RadioListTile<ExportFormat>(
                     contentPadding: EdgeInsets.zero,
+                    title: Text('High-Fidelity PDF (.pdf)'),
+                    subtitle: Text('Template-preserving vector layout with embedded photos & fonts.'),
+                    value: ExportFormat.pdf,
+                  ),
+                  RadioListTile<ExportFormat>(
+                    contentPadding: EdgeInsets.zero,
                     title: Text('Markdown (.md) with YAML Frontmatter'),
                     subtitle: Text('Best for Obsidian, Notion, Logseq, and preserving metadata tags.'),
                     value: ExportFormat.markdown,
@@ -179,8 +208,12 @@ class _ExportDialogState extends State<ExportDialog> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : const Icon(Icons.file_download_outlined),
-          label: Text(_isExporting ? 'Exporting...' : 'Save File'),
+              : Icon(_selectedFormat == ExportFormat.pdf
+                  ? Icons.picture_as_pdf_outlined
+                  : Icons.file_download_outlined),
+          label: Text(_selectedFormat == ExportFormat.pdf
+              ? 'Preview PDF'
+              : (_isExporting ? 'Exporting...' : 'Save File')),
         ),
       ],
     );

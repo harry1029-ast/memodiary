@@ -179,6 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       database: widget.database,
       fileSelector: widget.fileSelector,
+      mediaService: widget.mediaService,
     );
   }
 
