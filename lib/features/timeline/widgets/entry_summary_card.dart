@@ -44,9 +44,10 @@ class EntrySummaryCard extends StatelessWidget {
     final weatherIcon =
         entry.weather != null ? weatherIcons[entry.weather!] : null;
 
+    final isLocked = entry.isLocked;
     final titleText =
         (entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : 'Untitled';
-    final snippetText = entry.plainText.trim();
+    final snippetText = isLocked ? '🔒 This entry is locked' : entry.plainText.trim();
 
     return Card(
       elevation: 0,
@@ -80,6 +81,14 @@ class EntrySummaryCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (isLocked) ...[
+                    Icon(
+                      Icons.lock_rounded,
+                      size: 15,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   if (entry.isWeeklyReview) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -140,7 +149,11 @@ class EntrySummaryCard extends StatelessWidget {
                           Text(
                             snippetText,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color: isLocked
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurfaceVariant,
+                              fontStyle:
+                                  isLocked ? FontStyle.italic : FontStyle.normal,
                               height: 1.35,
                             ),
                             maxLines: 2,
@@ -150,7 +163,7 @@ class EntrySummaryCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (item.primaryMedia != null) ...[
+                  if (!isLocked && item.primaryMedia != null) ...[
                     const SizedBox(width: 12),
                     _buildThumbnail(item.primaryMedia!.relativePath),
                   ],

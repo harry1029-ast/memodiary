@@ -175,6 +175,24 @@ class AuthService {
     }
   }
 
+  /// Generates a salted SHA-256 hash formatted as `$salt:$hash` for single-entry PIN locking.
+  String hashEntryPin(String pin) {
+    final salt = _generateSalt();
+    final hash = _hashPin(pin, salt);
+    return '$salt:$hash';
+  }
+
+  /// Verifies an entered PIN against a stored `$salt:$hash` string on an entry.
+  bool verifyEntryPin(String pin, String storedSaltAndHash) {
+    final parts = storedSaltAndHash.split(':');
+    if (parts.length != 2) return false;
+    final salt = parts[0];
+    final expectedHash = parts[1];
+    if (salt.isEmpty || expectedHash.isEmpty) return false;
+    final computedHash = _hashPin(pin, salt);
+    return computedHash == expectedHash;
+  }
+
   String _generateSalt() {
     final random = Random.secure();
     final values = List<int>.generate(16, (_) => random.nextInt(256));

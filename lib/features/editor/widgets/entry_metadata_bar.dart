@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 /// Metadata controls for date backdating, mood, weather, and Time Capsule unlock
@@ -174,6 +175,7 @@ class EntryMetadataBar extends StatelessWidget {
     );
 
     if (pickedDate != null) {
+      HapticFeedback.lightImpact();
       onUnlockAtChanged(pickedDate);
     }
   }

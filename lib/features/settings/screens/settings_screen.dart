@@ -3,11 +3,13 @@ import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/analytics/screens/analytics_dashboard_screen.dart';
 import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
 import 'package:memodiary/features/import_export/services/date_parser_engine.dart';
 import 'package:memodiary/features/import_export/services/file_selector_service.dart';
 import 'package:memodiary/features/import_export/widgets/export_dialog.dart';
 import '../services/storage_optimizer_service.dart';
+import '../widgets/notification_settings_card.dart';
 
 /// Settings, Permissions Status, Storage Optimizer, and Offline Privacy screen.
 class SettingsScreen extends StatefulWidget {
@@ -199,17 +201,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildStorageCard(theme),
           const SizedBox(height: 20),
 
-          // 2. Data Portability Section
+          // 2. Writing Reminders Section
+          _buildSectionHeader('Writing Reminders', theme),
+          const NotificationSettingsCard(),
+          const SizedBox(height: 20),
+
+          // 3. Data Portability Section
           _buildSectionHeader('Data Portability', theme),
           _buildDataPortabilityCard(theme),
           const SizedBox(height: 20),
 
-          // 3. Permissions Dashboard
+          // 4. Permissions Dashboard
           _buildSectionHeader('Permissions Dashboard', theme),
           _buildPermissionsCard(theme),
           const SizedBox(height: 20),
 
-          // 4. Zero-Cloud Privacy Declaration
+          // 5. Zero-Cloud Privacy Declaration
           _buildPrivacyCard(theme),
           const SizedBox(height: 40),
         ],
@@ -334,6 +341,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       child: Column(
         children: [
+          ListTile(
+            key: const Key('settings_analytics_tile'),
+            leading: const Icon(Icons.insights_rounded),
+            title: const Text('Writing Analytics & Heatmap'),
+            subtitle: const Text('View 52-week contribution grid, streaks, and word counts.'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AnalyticsDashboardScreen(
+                    database: widget.database,
+                  ),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.file_upload_outlined),
             title: const Text('Import from .txt / .md'),

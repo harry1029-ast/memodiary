@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/analytics/screens/analytics_dashboard_screen.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
+import 'package:memodiary/features/retrospection/widgets/on_this_day_banner.dart';
+import 'package:memodiary/features/retrospection/widgets/serendipity_roulette_card.dart';
 import 'package:memodiary/features/search/screens/search_screen.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
@@ -34,6 +37,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   final ScrollController _scrollController = ScrollController();
   List<Entry> _entries = [];
+  List<Entry> _onThisDayEntries = [];
   Map<String, MediaAttachment> _mediaMap = {};
   bool _isLoading = true;
   bool _isLoadingMore = false;
@@ -77,10 +81,13 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
       final ids = entries.map((e) => e.id).toList();
       final mediaMap = await widget.database.getPrimaryMediaForEntries(ids);
+      final onThisDay =
+          await widget.database.getEntriesOnThisDay(DateTime.now());
 
       if (mounted) {
         setState(() {
           _entries = entries;
+          _onThisDayEntries = onThisDay;
           _mediaMap = mediaMap;
           _offset = entries.length;
           _hasMore = entries.length >= _pageSize;
@@ -189,6 +196,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
     });
   }
 
+  void _handleOpenSerendipity() {
+    SerendipityRouletteCard.show(
+      context: context,
+      database: widget.database,
+      onOpenEntry: _navigateToDetail,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -200,6 +215,21 @@ class _TimelineScreenState extends State<TimelineScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            key: const Key('timeline_analytics_button'),
+            icon: const Icon(Icons.insights_rounded),
+            tooltip: 'Writing Analytics',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AnalyticsDashboardScreen(
+                    database: widget.database,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             key: const Key('timeline_weekly_review_button'),
             icon: const Icon(Icons.calendar_view_week_rounded),
@@ -278,43 +308,53 @@ class _TimelineScreenState extends State<TimelineScreen> {
               : _entries.isEmpty
                   ? _buildEmptyState(theme)
                   : RefreshIndicator(
-                  onRefresh: _loadInitial,
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: _entries.length + (_hasMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _entries.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        );
-                      }
+                      onRefresh: _loadInitial,
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: 1 + _entries.length + (_hasMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == 0) {
+                            return OnThisDayBanner(
+                              entries: _onThisDayEntries,
+                              onEntryTap: _navigateToDetail,
+                              onOpenSerendipity: _handleOpenSerendipity,
+                            );
+                          }
 
-                      final entry = _entries[index];
-                      final item = TimelineEntryItem(
-                        entry: entry,
-                        primaryMedia: _mediaMap[entry.id],
-                      );
+                          final entryIndex = index - 1;
+                          if (entryIndex == _entries.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                            );
+                          }
 
-                      if (item.isSealedTimeCapsule) {
-                        return TimeCapsuleCard(item: item);
-                      }
+                          final entry = _entries[entryIndex];
+                          final item = TimelineEntryItem(
+                            entry: entry,
+                            primaryMedia: _mediaMap[entry.id],
+                          );
 
-                      return EntrySummaryCard(
-                        item: item,
-                        mediaService: widget.mediaService,
-                        onTap: () => _navigateToDetail(entry),
-                      );
-                    },
-                  ),
-                ),
+                          if (item.isSealedTimeCapsule) {
+                            return TimeCapsuleCard(item: item);
+                          }
+
+                          return EntrySummaryCard(
+                            item: item,
+                            mediaService: widget.mediaService,
+                            onTap: () => _navigateToDetail(entry),
+                          );
+                        },
+                      ),
+                    ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _handleCreateEntry,
         icon: const Icon(Icons.edit_note_rounded),

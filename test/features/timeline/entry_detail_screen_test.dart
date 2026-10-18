@@ -41,6 +41,7 @@ void main() {
         weekNumber: 42,
         createdAt: now,
         updatedAt: now,
+        isLocked: false,
         isDeleted: false,
       );
 

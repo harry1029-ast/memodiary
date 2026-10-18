@@ -9,7 +9,9 @@ class EditorToolbar extends StatelessWidget {
   final VoidCallback onToggleDictation;
   final VoidCallback onOpenTypography;
   final VoidCallback onOpenTemplates;
+  final VoidCallback? onOpenSoundscapes;
   final bool isDictating;
+  final bool isSoundscapePlaying;
 
   const EditorToolbar({
     super.key,
@@ -19,7 +21,9 @@ class EditorToolbar extends StatelessWidget {
     required this.onToggleDictation,
     required this.onOpenTypography,
     required this.onOpenTemplates,
+    this.onOpenSoundscapes,
     this.isDictating = false,
+    this.isSoundscapePlaying = false,
   });
 
   void _toggleFormat(Attribute attribute) {
@@ -156,6 +160,17 @@ class EditorToolbar extends StatelessWidget {
                   onTap: onOpenTemplates,
                   tooltip: 'Templates',
                 ),
+                // Writing Sanctum Soundscapes
+                if (onOpenSoundscapes != null)
+                  _buildToolbarBtn(
+                    icon: isSoundscapePlaying
+                        ? Icons.headphones_rounded
+                        : Icons.headphones_outlined,
+                    isActive: isSoundscapePlaying,
+                    onTap: onOpenSoundscapes!,
+                    tooltip: 'Writing Sanctum Soundscapes',
+                    color: isSoundscapePlaying ? Colors.teal.shade700 : null,
+                  ),
               ],
             ),
           );

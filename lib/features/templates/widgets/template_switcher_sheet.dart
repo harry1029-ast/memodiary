@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/database/app_database.dart';
 import '../models/template_style.dart';
 import '../screens/custom_template_editor_screen.dart';
@@ -208,6 +209,7 @@ class _TemplateSwitcherSheetState extends State<TemplateSwitcherSheet> {
 
                   return GestureDetector(
                     onTap: () {
+                      HapticFeedback.lightImpact();
                       widget.onTemplateSelected(template);
                       Navigator.pop(context);
                     },

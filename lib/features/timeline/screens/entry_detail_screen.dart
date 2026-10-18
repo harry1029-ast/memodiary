@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/services/auth_service.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
@@ -22,6 +24,7 @@ class EntryDetailScreen extends StatefulWidget {
   final Entry entry;
   final AppDatabase database;
   final MediaSandboxService mediaService;
+  final AuthService? authService;
   final Future<void> Function(String text, {String? subject})? shareHandler;
 
   const EntryDetailScreen({
@@ -29,6 +32,7 @@ class EntryDetailScreen extends StatefulWidget {
     required this.entry,
     required this.database,
     required this.mediaService,
+    this.authService,
     this.shareHandler,
   });
 
@@ -38,16 +42,21 @@ class EntryDetailScreen extends StatefulWidget {
 
 class _EntryDetailScreenState extends State<EntryDetailScreen> {
   late Entry _entry;
+  late final AuthService _authService;
   Template? _template;
   quill.QuillController? _quillController;
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _pinController = TextEditingController();
   bool _isLoading = true;
+  bool _isSessionUnlocked = false;
+  String? _pinError;
 
   @override
   void initState() {
     super.initState();
     _entry = widget.entry;
+    _authService = widget.authService ?? AuthService();
     _loadData();
   }
 
@@ -56,6 +65,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     _quillController?.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
@@ -106,6 +116,108 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  bool get _isCurrentlyBlocked => _entry.isLocked && !_isSessionUnlocked;
+
+  Future<void> _handleUnlockWithPin() async {
+    final enteredPin = _pinController.text.trim();
+    if (enteredPin.isEmpty) {
+      setState(() => _pinError = 'Please enter PIN');
+      return;
+    }
+
+    bool verified = false;
+    if (_entry.entryPinHash != null && _entry.entryPinHash!.isNotEmpty) {
+      verified = _authService.verifyEntryPin(enteredPin, _entry.entryPinHash!);
+    } else {
+      verified = await _authService.verifyPin(enteredPin);
+    }
+
+    if (verified) {
+      HapticFeedback.lightImpact();
+      setState(() {
+        _isSessionUnlocked = true;
+        _pinError = null;
+        _pinController.clear();
+      });
+    } else {
+      setState(() => _pinError = 'Incorrect PIN');
+    }
+  }
+
+  Future<void> _handleUnlockWithBiometrics() async {
+    final authenticated = await _authService.authenticateBiometric(
+      localizedReason: 'Unlock protected diary entry',
+    );
+    if (authenticated && mounted) {
+      HapticFeedback.lightImpact();
+      setState(() {
+        _isSessionUnlocked = true;
+        _pinError = null;
+      });
+    }
+  }
+
+  Future<void> _handleToggleLock() async {
+    if (_entry.isLocked) {
+      // Permanently remove lock
+      await widget.database.unlockEntryPermanently(_entry.id);
+      HapticFeedback.lightImpact();
+      await _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Entry lock removed')),
+        );
+      }
+      return;
+    }
+
+    // Prompt user to set a 4-6 digit PIN for this entry
+    final pinInputController = TextEditingController();
+    final pin = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Lock This Entry'),
+        content: TextField(
+          key: const Key('lock_entry_pin_input'),
+          controller: pinInputController,
+          keyboardType: TextInputType.number,
+          obscureText: true,
+          maxLength: 6,
+          decoration: const InputDecoration(
+            labelText: 'Enter 4-6 digit PIN',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('confirm_lock_entry_btn'),
+            onPressed: () {
+              final text = pinInputController.text.trim();
+              if (text.length >= 4) {
+                Navigator.pop(ctx, text);
+              }
+            },
+            child: const Text('Lock Entry'),
+          ),
+        ],
+      ),
+    );
+
+    if (pin != null && pin.length >= 4) {
+      final pinHash = _authService.hashEntryPin(pin);
+      await widget.database.lockEntry(_entry.id, pinHash: pinHash);
+      HapticFeedback.lightImpact();
+      setState(() {
+        _isSessionUnlocked = false;
+      });
+      await _loadData();
     }
   }
 
@@ -197,6 +309,81 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     }
   }
 
+  Widget _buildLockBarrier(ThemeData theme) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer.withAlpha(120),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.lock_outline_rounded,
+                size: 48,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'This Diary Entry is Locked',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Enter the entry PIN or use biometrics to view this memory.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 220,
+              child: TextField(
+                key: const Key('entry_unlock_pin_field'),
+                controller: _pinController,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                textAlign: TextAlign.center,
+                maxLength: 6,
+                onSubmitted: (_) => _handleUnlockWithPin(),
+                decoration: InputDecoration(
+                  hintText: 'PIN',
+                  errorText: _pinError,
+                  counterText: '',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              key: const Key('entry_unlock_submit_btn'),
+              onPressed: _handleUnlockWithPin,
+              icon: const Icon(Icons.key_rounded),
+              label: const Text('Unlock Entry'),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              key: const Key('entry_unlock_biometric_btn'),
+              onPressed: _handleUnlockWithBiometrics,
+              icon: const Icon(Icons.fingerprint_rounded),
+              label: const Text('Use Biometrics'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -204,6 +391,18 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     if (_isLoading || _template == null || _quillController == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_isCurrentlyBlocked) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            DateFormat('MMM d, y').format(_entry.entryDate),
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
+        body: _buildLockBarrier(theme),
       );
     }
 
@@ -224,6 +423,14 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           style: const TextStyle(fontSize: 16),
         ),
         actions: [
+          IconButton(
+            key: const Key('entry_detail_lock_toggle_btn'),
+            icon: Icon(
+              _entry.isLocked ? Icons.lock_open_outlined : Icons.lock_outline,
+            ),
+            tooltip: _entry.isLocked ? 'Remove Entry Lock' : 'Lock Entry',
+            onPressed: _handleToggleLock,
+          ),
           IconButton(
             icon: const Icon(Icons.style_outlined),
             tooltip: 'Switch Template',

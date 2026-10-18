@@ -52,6 +52,7 @@ void main() {
       mood: 5,
       weather: 'sunny',
       isWeeklyReview: false,
+      isLocked: false,
       createdAt: DateTime(2026, 10, 16, 14, 0),
       updatedAt: DateTime(2026, 10, 16, 14, 0),
       isDeleted: false,

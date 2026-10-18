@@ -41,6 +41,11 @@ dependencies:
   pdf: ^3.11.1
   printing: ^5.13.2
 
+  # Ambient Soundscapes & Local Reminders ($0 FOSS / 100% Offline)
+  audioplayers: ^6.1.0
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

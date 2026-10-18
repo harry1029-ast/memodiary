@@ -128,6 +128,7 @@ void main() {
         createdAt: now,
         updatedAt: now,
         isWeeklyReview: false,
+        isLocked: false,
         isDeleted: false,
       );
 
@@ -149,6 +150,7 @@ void main() {
         createdAt: now,
         updatedAt: now,
         isWeeklyReview: false,
+        isLocked: false,
         isDeleted: false,
       );
 

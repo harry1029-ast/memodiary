@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
@@ -54,7 +55,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -155,6 +156,12 @@ class AppDatabase extends _$AppDatabase {
               ),
             );
           });
+        },
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await m.addColumn(entries, entries.isLocked);
+            await m.addColumn(entries, entries.entryPinHash);
+          }
         },
       );
 
@@ -627,6 +634,102 @@ class AppDatabase extends _$AppDatabase {
       }
     }
     return null;
+  }
+
+  // ===========================================================================
+  // Phase 8: Single-Entry Password Lock & Retrospective Reflection Queries
+  // ===========================================================================
+
+  /// Locks a specific entry with an optional custom salted SHA-256 PIN hash.
+  /// If [pinHash] is null, the entry relies on the master application PIN or biometric gate.
+  Future<int> lockEntry(String entryId, {String? pinHash}) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        isLocked: const Value(true),
+        entryPinHash: Value(pinHash),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Permanently unlocks a specific entry and clears any custom entry PIN hash.
+  Future<int> unlockEntryPermanently(String entryId) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        isLocked: const Value(false),
+        entryPinHash: const Value(null),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Checks whether [year] is a Gregorian leap year.
+  static bool isLeapYear(int year) {
+    return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+  }
+
+  /// Fetches all active (non-deleted) entries written on the same month and day
+  /// in previous calendar years (`entryDate.year < date.year`), ordered newest year first.
+  ///
+  /// Leap Year Safeguard:
+  /// - When [date] is Feb 28 in a non-leap year, entries written on Feb 29 in past leap years
+  ///   are also included so leap-day memories are never orphaned.
+  /// - When [date] is Feb 29 in a leap year, entries written on Feb 29 in past leap years match.
+  Future<List<Entry>> getEntriesOnThisDay(DateTime date) async {
+    final allActive = await (select(entries)
+          ..where((t) => t.isDeleted.equals(false))
+          ..orderBy([(t) => OrderingTerm.desc(t.entryDate)]))
+        .get();
+
+    final includeLeapFeb29OnFeb28 =
+        date.month == 2 && date.day == 28 && !isLeapYear(date.year);
+
+    return allActive.where((entry) {
+      final d = entry.entryDate;
+      if (d.year >= date.year) return false;
+
+      // Exact month and day match
+      if (d.month == date.month && d.day == date.day) {
+        return true;
+      }
+
+      // Include Feb 29 historical memories on Feb 28 of non-leap years
+      if (includeLeapFeb29OnFeb28 && d.month == 2 && d.day == 29) {
+        return true;
+      }
+
+      return false;
+    }).toList();
+  }
+
+  /// Randomly draws a past active entry written at least [minDaysAgo] days prior to [referenceDate]
+  /// (defaults to 90 days ago from now). Excludes sealed time capsules.
+  Future<Entry?> getRandomOldEntry({
+    int minDaysAgo = 90,
+    DateTime? referenceDate,
+    Random? random,
+  }) async {
+    final now = referenceDate ?? DateTime.now();
+    final cutoff = now.subtract(Duration(days: minDaysAgo));
+
+    final candidates = await (select(entries)
+          ..where((t) =>
+              t.isDeleted.equals(false) &
+              t.entryDate.isSmallerOrEqualValue(cutoff)))
+        .get();
+
+    // Filter out sealed time capsules whose unlockAt is in the future
+    final eligible = candidates.where((e) {
+      if (e.unlockAt != null && e.unlockAt!.isAfter(now)) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    if (eligible.isEmpty) return null;
+
+    final rng = random ?? Random();
+    return eligible[rng.nextInt(eligible.length)];
   }
 }
 

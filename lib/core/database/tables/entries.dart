@@ -50,6 +50,12 @@ class Entries extends Table {
   /// Soft delete flag (0 = active, 1 = in 30-day trash bin)
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
+  /// Whether this specific entry is locked behind a PIN / biometric challenge
+  BoolColumn get isLocked => boolean().withDefault(const Constant(false))();
+
+  /// Salted SHA-256 PIN hash (format: "salt:hash") or null if protected by master app PIN
+  TextColumn get entryPinHash => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

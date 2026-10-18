@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
@@ -13,12 +14,14 @@ import '../../templates/widgets/template_canvas_container.dart';
 import '../../templates/widgets/template_switcher_sheet.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../models/typography_settings.dart';
+import '../services/audio_sanctum_service.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/editor_toolbar.dart';
 import '../widgets/entry_metadata_bar.dart';
 import '../widgets/sandboxed_image_embed_builder.dart';
 import '../widgets/sandboxed_video_embed_builder.dart';
+import '../widgets/soundscape_modal.dart';
 import '../widgets/thought_spark_banner.dart';
 import '../widgets/typography_sheet.dart';
 
@@ -30,6 +33,7 @@ class EntryEditorScreen extends StatefulWidget {
   final String entryId;
   final DictationService? dictationService;
   final ThoughtSparkService? thoughtSparkService;
+  final AudioSanctumService? audioSanctumService;
   final ImagePicker? imagePicker;
 
   const EntryEditorScreen({
@@ -39,6 +43,7 @@ class EntryEditorScreen extends StatefulWidget {
     required this.entryId,
     this.dictationService,
     this.thoughtSparkService,
+    this.audioSanctumService,
     this.imagePicker,
   });
 
@@ -49,6 +54,7 @@ class EntryEditorScreen extends StatefulWidget {
 class _EntryEditorScreenState extends State<EntryEditorScreen> {
   late final DictationService _dictationService;
   late final ThoughtSparkService _thoughtSparkService;
+  late final AudioSanctumService _audioSanctumService;
   late final ImagePicker _imagePicker;
 
   QuillController? _controller;
@@ -72,6 +78,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     super.initState();
     _dictationService = widget.dictationService ?? DictationService();
     _thoughtSparkService = widget.thoughtSparkService ?? ThoughtSparkService();
+    _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _imagePicker = widget.imagePicker ?? ImagePicker();
     _loadEntryData();
   }
@@ -81,6 +88,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _autosaveManager?.dispose();
     _controller?.dispose();
     _dictationService.dispose();
+    _audioSanctumService.dispose();
     super.dispose();
   }
 
@@ -328,7 +336,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _autosaveManager?.saveDraft(force: true);
   }
 
+  Future<void> _handleOpenSoundscapes() async {
+    await SoundscapeModal.show(
+      context: context,
+      sanctumService: _audioSanctumService,
+    );
+  }
+
   Future<void> _handleSaveAndExit() async {
+    HapticFeedback.lightImpact();
     await _autosaveManager?.saveDraft(force: true);
     if (mounted) Navigator.pop(context);
   }
@@ -383,6 +399,22 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           },
         ),
         actions: [
+          // Writing Sanctum Soundscapes
+          ListenableBuilder(
+            listenable: _audioSanctumService,
+            builder: (context, _) {
+              final playing = _audioSanctumService.isPlaying;
+              return IconButton(
+                key: const Key('editor_appbar_soundscape_btn'),
+                icon: Icon(
+                  playing ? Icons.headphones_rounded : Icons.headphones_outlined,
+                  color: playing ? Colors.teal.shade700 : Colors.black87,
+                ),
+                tooltip: 'Writing Sanctum Soundscapes',
+                onPressed: _handleOpenSoundscapes,
+              );
+            },
+          ),
           // Template switcher
           IconButton(
             icon: const Icon(Icons.style_outlined, color: Colors.black87),
@@ -483,14 +515,19 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             ),
 
           // Fixed Bottom Formatting Toolbar
-          EditorToolbar(
-            controller: _controller!,
-            isDictating: _isDictating,
-            onPickImage: _handleImagePick,
-            onPickVideo: _handleVideoPick,
-            onToggleDictation: () => setState(() => _isDictating = !_isDictating),
-            onOpenTypography: _handleTypographySettings,
-            onOpenTemplates: _handleTemplateSwitch,
+          ListenableBuilder(
+            listenable: _audioSanctumService,
+            builder: (context, _) => EditorToolbar(
+              controller: _controller!,
+              isDictating: _isDictating,
+              isSoundscapePlaying: _audioSanctumService.isPlaying,
+              onPickImage: _handleImagePick,
+              onPickVideo: _handleVideoPick,
+              onToggleDictation: () => setState(() => _isDictating = !_isDictating),
+              onOpenTypography: _handleTypographySettings,
+              onOpenTemplates: _handleTemplateSwitch,
+              onOpenSoundscapes: _handleOpenSoundscapes,
+            ),
           ),
         ],
       ),

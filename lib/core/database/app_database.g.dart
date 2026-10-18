@@ -852,6 +852,22 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _isLockedMeta =
+      const VerificationMeta('isLocked');
+  @override
+  late final GeneratedColumn<bool> isLocked = GeneratedColumn<bool>(
+      'is_locked', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_locked" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _entryPinHashMeta =
+      const VerificationMeta('entryPinHash');
+  @override
+  late final GeneratedColumn<String> entryPinHash = GeneratedColumn<String>(
+      'entry_pin_hash', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -868,7 +884,9 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         unlockAt,
         createdAt,
         updatedAt,
-        isDeleted
+        isDeleted,
+        isLocked,
+        entryPinHash
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -961,6 +979,16 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
       context.handle(_isDeletedMeta,
           isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
     }
+    if (data.containsKey('is_locked')) {
+      context.handle(_isLockedMeta,
+          isLocked.isAcceptableOrUnknown(data['is_locked']!, _isLockedMeta));
+    }
+    if (data.containsKey('entry_pin_hash')) {
+      context.handle(
+          _entryPinHashMeta,
+          entryPinHash.isAcceptableOrUnknown(
+              data['entry_pin_hash']!, _entryPinHashMeta));
+    }
     return context;
   }
 
@@ -1000,6 +1028,10 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       isDeleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
+      isLocked: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_locked'])!,
+      entryPinHash: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}entry_pin_hash']),
     );
   }
 
@@ -1054,6 +1086,12 @@ class Entry extends DataClass implements Insertable<Entry> {
 
   /// Soft delete flag (0 = active, 1 = in 30-day trash bin)
   final bool isDeleted;
+
+  /// Whether this specific entry is locked behind a PIN / biometric challenge
+  final bool isLocked;
+
+  /// Salted SHA-256 PIN hash (format: "salt:hash") or null if protected by master app PIN
+  final String? entryPinHash;
   const Entry(
       {required this.id,
       required this.notebookId,
@@ -1069,7 +1107,9 @@ class Entry extends DataClass implements Insertable<Entry> {
       this.unlockAt,
       required this.createdAt,
       required this.updatedAt,
-      required this.isDeleted});
+      required this.isDeleted,
+      required this.isLocked,
+      this.entryPinHash});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1098,6 +1138,10 @@ class Entry extends DataClass implements Insertable<Entry> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
+    map['is_locked'] = Variable<bool>(isLocked);
+    if (!nullToAbsent || entryPinHash != null) {
+      map['entry_pin_hash'] = Variable<String>(entryPinHash);
+    }
     return map;
   }
 
@@ -1125,6 +1169,10 @@ class Entry extends DataClass implements Insertable<Entry> {
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isDeleted: Value(isDeleted),
+      isLocked: Value(isLocked),
+      entryPinHash: entryPinHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(entryPinHash),
     );
   }
 
@@ -1147,6 +1195,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      isLocked: serializer.fromJson<bool>(json['isLocked']),
+      entryPinHash: serializer.fromJson<String?>(json['entryPinHash']),
     );
   }
   @override
@@ -1168,6 +1218,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
+      'isLocked': serializer.toJson<bool>(isLocked),
+      'entryPinHash': serializer.toJson<String?>(entryPinHash),
     };
   }
 
@@ -1186,7 +1238,9 @@ class Entry extends DataClass implements Insertable<Entry> {
           Value<DateTime?> unlockAt = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
-          bool? isDeleted}) =>
+          bool? isDeleted,
+          bool? isLocked,
+          Value<String?> entryPinHash = const Value.absent()}) =>
       Entry(
         id: id ?? this.id,
         notebookId: notebookId ?? this.notebookId,
@@ -1203,6 +1257,9 @@ class Entry extends DataClass implements Insertable<Entry> {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         isDeleted: isDeleted ?? this.isDeleted,
+        isLocked: isLocked ?? this.isLocked,
+        entryPinHash:
+            entryPinHash.present ? entryPinHash.value : this.entryPinHash,
       );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -1228,6 +1285,10 @@ class Entry extends DataClass implements Insertable<Entry> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      isLocked: data.isLocked.present ? data.isLocked.value : this.isLocked,
+      entryPinHash: data.entryPinHash.present
+          ? data.entryPinHash.value
+          : this.entryPinHash,
     );
   }
 
@@ -1248,7 +1309,9 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('unlockAt: $unlockAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('isDeleted: $isDeleted')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('isLocked: $isLocked, ')
+          ..write('entryPinHash: $entryPinHash')
           ..write(')'))
         .toString();
   }
@@ -1269,7 +1332,9 @@ class Entry extends DataClass implements Insertable<Entry> {
       unlockAt,
       createdAt,
       updatedAt,
-      isDeleted);
+      isDeleted,
+      isLocked,
+      entryPinHash);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1288,7 +1353,9 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.unlockAt == this.unlockAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.isDeleted == this.isDeleted);
+          other.isDeleted == this.isDeleted &&
+          other.isLocked == this.isLocked &&
+          other.entryPinHash == this.entryPinHash);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -1307,6 +1374,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<bool> isDeleted;
+  final Value<bool> isLocked;
+  final Value<String?> entryPinHash;
   final Value<int> rowid;
   const EntriesCompanion({
     this.id = const Value.absent(),
@@ -1324,6 +1393,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.isLocked = const Value.absent(),
+    this.entryPinHash = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   EntriesCompanion.insert({
@@ -1342,6 +1413,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.isLocked = const Value.absent(),
+    this.entryPinHash = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         notebookId = Value(notebookId),
@@ -1365,6 +1438,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<bool>? isDeleted,
+    Expression<bool>? isLocked,
+    Expression<String>? entryPinHash,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1383,6 +1458,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
+      if (isLocked != null) 'is_locked': isLocked,
+      if (entryPinHash != null) 'entry_pin_hash': entryPinHash,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1403,6 +1480,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<bool>? isDeleted,
+      Value<bool>? isLocked,
+      Value<String?>? entryPinHash,
       Value<int>? rowid}) {
     return EntriesCompanion(
       id: id ?? this.id,
@@ -1420,6 +1499,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
+      isLocked: isLocked ?? this.isLocked,
+      entryPinHash: entryPinHash ?? this.entryPinHash,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1472,6 +1553,12 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
+    if (isLocked.present) {
+      map['is_locked'] = Variable<bool>(isLocked.value);
+    }
+    if (entryPinHash.present) {
+      map['entry_pin_hash'] = Variable<String>(entryPinHash.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1496,6 +1583,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
+          ..write('isLocked: $isLocked, ')
+          ..write('entryPinHash: $entryPinHash, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2309,6 +2398,8 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<bool> isDeleted,
+  Value<bool> isLocked,
+  Value<String?> entryPinHash,
   Value<int> rowid,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
@@ -2327,6 +2418,8 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<bool> isDeleted,
+  Value<bool> isLocked,
+  Value<String?> entryPinHash,
   Value<int> rowid,
 });
 
@@ -2384,6 +2477,12 @@ class $$EntriesTableFilterComposer
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isLocked => $composableBuilder(
+      column: $table.isLocked, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get entryPinHash => $composableBuilder(
+      column: $table.entryPinHash, builder: (column) => ColumnFilters(column));
 }
 
 class $$EntriesTableOrderingComposer
@@ -2441,6 +2540,13 @@ class $$EntriesTableOrderingComposer
 
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isLocked => $composableBuilder(
+      column: $table.isLocked, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get entryPinHash => $composableBuilder(
+      column: $table.entryPinHash,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$EntriesTableAnnotationComposer
@@ -2496,6 +2602,12 @@ class $$EntriesTableAnnotationComposer
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get isLocked =>
+      $composableBuilder(column: $table.isLocked, builder: (column) => column);
+
+  GeneratedColumn<String> get entryPinHash => $composableBuilder(
+      column: $table.entryPinHash, builder: (column) => column);
 }
 
 class $$EntriesTableTableManager extends RootTableManager<
@@ -2536,6 +2648,8 @@ class $$EntriesTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
+            Value<bool> isLocked = const Value.absent(),
+            Value<String?> entryPinHash = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               EntriesCompanion(
@@ -2554,6 +2668,8 @@ class $$EntriesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             isDeleted: isDeleted,
+            isLocked: isLocked,
+            entryPinHash: entryPinHash,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -2572,6 +2688,8 @@ class $$EntriesTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
+            Value<bool> isLocked = const Value.absent(),
+            Value<String?> entryPinHash = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               EntriesCompanion.insert(
@@ -2590,6 +2708,8 @@ class $$EntriesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             isDeleted: isDeleted,
+            isLocked: isLocked,
+            entryPinHash: entryPinHash,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
