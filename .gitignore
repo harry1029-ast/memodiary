@@ -1,9 +1,16 @@
-# Miscellaneous
+# Miscellaneous & OS Ephemeral
 *.class
 *.log
 *.pyc
 *.swp
+*~
+*.bak
+*.tmp
 .DS_Store
+Thumbs.db
+.Spotlight-V100
+.Trashes
+.directory
 .atom/
 .build/
 .buildlog/
@@ -12,18 +19,14 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# IDE & Editor Configurations
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
+# Flutter / Dart / Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -33,36 +36,57 @@ migrate_working_dir/
 .pub/
 build/
 **/build/
-/coverage/
+coverage/
+**/coverage/
+lcov.info
 devtools_options.yaml
 
-# Desktop ephemeral build files
+# Ephemeral Platform Build Files
 linux/flutter/ephemeral/
 windows/flutter/ephemeral/
 macos/Flutter/ephemeral/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Runner/GeneratedPluginRegistrant.*
+**/Pods/
+**/DerivedData/
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio and Gradle build artifacts
+# Android Studio & Gradle Build Artifacts
 /android/app/debug
 /android/app/profile
 /android/app/release
 /android/build/
 .gradle/
 android/.gradle/
+.kotlin/
+android/.kotlin/
+local.properties
+**/android/local.properties
+*.hprof
+*.apk
+*.aab
+
+# Keystores & Signing Keys (Never commit)
+key.properties
+**/*.keystore
+**/*.jks
+
+# Symbolication & Obfuscation
+app.*.symbols
+app.*.map.json
 
 # Widget Preview related
 .widget_preview/
 
-# Local database, encryption keys, and runtime storage (never commit)
+# Local Database, Encryption Keys & Runtime Sandbox (Never commit)
 *.db
 *.db-shm
 *.db-wal
 *.sqlite
+*.sqlite-shm
+*.sqlite-wal
 .memodiary_key
 .memodiary_auth.json
-
+.memodiary*
+media/
