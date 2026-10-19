@@ -239,7 +239,14 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
 
           // Natural Language "Understood as" Removable Chips
-          if (_detectedConstraints.isNotEmpty) _buildUnderstoodAsBar(theme),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _detectedConstraints.isEmpty
+                ? const SizedBox.shrink()
+                : _buildUnderstoodAsBar(theme),
+          ),
 
           // Smart Event Association Suggestions
           if (_eventSuggestions.isNotEmpty)
@@ -272,41 +279,63 @@ class _SearchScreenState extends State<SearchScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.35),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            Icon(
-              Icons.psychology_outlined,
-              size: 16,
-              color: theme.colorScheme.secondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Understood as:',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.secondary,
-                fontWeight: FontWeight.w600,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 360;
+          return MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.3,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Tooltip(
+                    message: 'Understood as',
+                    child: Icon(
+                      Icons.psychology_outlined,
+                      size: 16,
+                      color: theme.colorScheme.secondary,
+                    ),
+                  ),
+                  if (!isNarrow) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      'Understood as:',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.secondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 8),
+                  ..._detectedConstraints.map((c) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Semantics(
+                        label: 'Remove ${c.label} filter',
+                        child: InputChip(
+                          key: Key('nl_constraint_chip_${c.kind.name}'),
+                          label: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 180),
+                            child: Text(
+                              c.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                          deleteIcon: const Icon(Icons.close, size: 16),
+                          visualDensity: VisualDensity.compact,
+                          onDeleted: () => _onDismissConstraint(c.kind),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            ..._detectedConstraints.map((c) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: InputChip(
-                  key: Key('nl_constraint_chip_${c.kind.name}'),
-                  label: Text(
-                    c.label,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  deleteIcon: const Icon(Icons.close, size: 16),
-                  visualDensity: VisualDensity.compact,
-                  onDeleted: () => _onDismissConstraint(c.kind),
-                ),
-              );
-            }),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

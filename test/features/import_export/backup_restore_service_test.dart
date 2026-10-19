@@ -439,6 +439,39 @@ void main() {
         throwsA(isA<BackupCorruptedException>()),
       );
     });
+
+    test('custom baseDirProvider redirects backup_meta.json storage', () async {
+      final customBaseDir =
+          Directory.systemTemp.createTempSync('custom_base_');
+      addTearDown(() {
+        if (customBaseDir.existsSync()) {
+          customBaseDir.deleteSync(recursive: true);
+        }
+      });
+
+      final customService = BackupRestoreService(
+        database: db,
+        mediaService: mediaService,
+        tempDirProvider: () async => tempDir,
+        baseDirProvider: () async => customBaseDir,
+      );
+
+      final destFile = File(p.join(tempDir.path, 'test_meta_redirect.mdbak'));
+      await customService.createBackup(
+        destination: destFile,
+        pbkdf2Iterations: 1000,
+      );
+
+      final customMetaFile =
+          File(p.join(customBaseDir.path, 'backup_meta.json'));
+      final defaultMetaFile = File(p.join(baseDir.path, 'backup_meta.json'));
+
+      expect(customMetaFile.existsSync(), isTrue);
+      expect(defaultMetaFile.existsSync(), isFalse);
+
+      final lastBackup = await customService.getLastBackupTimestamp();
+      expect(lastBackup, isNotNull);
+    });
   });
 }
 

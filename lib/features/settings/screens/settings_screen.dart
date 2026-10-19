@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:memodiary/core/database/app_database.dart';
@@ -71,6 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   StorageStats? _stats;
   bool _isLoadingStats = true;
   bool _isCleaningOrphans = false;
+  DateTime? _lastBackupAt;
 
   PermissionStatus? _cameraStatus;
   PermissionStatus? _micStatus;
@@ -83,6 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _stats = widget.initialStats;
       _isLoadingStats = false;
       _checkPermissions();
+      _loadLastBackupTimestamp();
     } else {
       _loadAll();
     }
@@ -92,7 +95,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await Future.wait([
       _loadStorageStats(),
       _checkPermissions(),
+      _loadLastBackupTimestamp(),
     ]);
+  }
+
+  Future<void> _loadLastBackupTimestamp() async {
+    try {
+      final ts = await _effectiveBackupService.getLastBackupTimestamp();
+      if (mounted) {
+        setState(() => _lastBackupAt = ts);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadStorageStats() async {
@@ -207,6 +220,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       pbkdf2Iterations: widget.backupPbkdf2Iterations,
     );
     if (result != null && mounted) {
+      await _loadLastBackupTimestamp();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -439,6 +454,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('Save to Markdown (with YAML frontmatter) or plain text.'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 14),
             onTap: _handleExportAll,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            key: const Key('settings_last_backup_tile'),
+            leading: const Icon(Icons.history_edu_outlined),
+            title: const Text('Last Successful Backup'),
+            subtitle: Text(
+              _lastBackupAt != null
+                  ? DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!.toLocal())
+                  : 'No backup created yet',
+            ),
+            dense: true,
           ),
           const Divider(height: 1),
           ListTile(

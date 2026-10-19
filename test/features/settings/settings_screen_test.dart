@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
@@ -87,6 +88,8 @@ void main() {
       // Verify Data Portability Actions
       expect(find.text('Import from .txt / .md'), findsOneWidget);
       expect(find.text('Export All Diaries'), findsOneWidget);
+      expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
+      expect(find.text('No backup created yet'), findsOneWidget);
       expect(find.byKey(const Key('settings_create_backup_tile')), findsOneWidget);
       expect(find.byKey(const Key('settings_restore_backup_tile')), findsOneWidget);
     });
@@ -217,6 +220,123 @@ Visiting Dotonbori in the evening.
       expect(find.text('Import Staging'), findsOneWidget);
       expect(find.text('Trip to Osaka'), findsOneWidget);
     });
+
+    testWidgets('displays formatted timestamp when last backup exists',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      // Write mock backup_meta.json in parent of media sandbox
+      final metaFile = File('${tempDir.path}/backup_meta.json');
+      metaFile.writeAsStringSync('{"lastBackupAt":"2026-10-19T10:30:00.000Z"}');
+
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(
+              database: db,
+              mediaService: mediaService,
+              fileSelector: mockFileSelector,
+              initialStats: const StorageStats(
+                activeEntriesCount: 0,
+                deletedEntriesCount: 0,
+                totalMediaFiles: 0,
+                totalMediaBytes: 0,
+                orphanMediaFiles: 0,
+                orphanMediaBytes: 0,
+              ),
+              permissionChecker: () async => {
+                'camera': PermissionStatus.granted,
+                'microphone': PermissionStatus.granted,
+                'photos': PermissionStatus.granted,
+              },
+            ),
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
+      expect(find.text('No backup created yet'), findsNothing);
+      expect(find.textContaining('2026-10-19'), findsOneWidget);
+    });
+
+    testWidgets('creating backup dynamically updates last backup tile timestamp on screen',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(
+              database: db,
+              mediaService: mediaService,
+              fileSelector: mockFileSelector,
+              backupPbkdf2Iterations: 100,
+              initialStats: const StorageStats(
+                activeEntriesCount: 0,
+                deletedEntriesCount: 0,
+                totalMediaFiles: 0,
+                totalMediaBytes: 0,
+                orphanMediaFiles: 0,
+                orphanMediaBytes: 0,
+              ),
+              permissionChecker: () async => {
+                'camera': PermissionStatus.granted,
+                'microphone': PermissionStatus.granted,
+                'photos': PermissionStatus.granted,
+              },
+            ),
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 50));
+      });
+
+      await tester.pumpAndSettle();
+
+      // Initially shows no backup created yet
+      expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
+      expect(find.text('No backup created yet'), findsOneWidget);
+
+      // Tap "Create Encrypted Backup" tile to open dialog
+      await tester.tap(find.byKey(const Key('settings_create_backup_tile')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create Full-Archive Backup'), findsOneWidget);
+
+      // Toggle off encryption to create an unencrypted backup instantly
+      await tester.tap(find.byKey(const Key('backup_encrypt_switch')));
+      await tester.pumpAndSettle();
+
+      // Tap "Save to Device" button and await disk write in runAsync
+      await tester.runAsync(() async {
+        await tester.tap(find.byKey(const Key('backup_save_button')));
+        for (var i = 0; i < 20; i++) {
+          await Future.delayed(const Duration(milliseconds: 50));
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+      });
+      await tester.pumpAndSettle();
+
+      // Dialog dismissed and tile dynamically refreshed with today's date
+      expect(find.text('Create Full-Archive Backup'), findsNothing);
+      expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
+      expect(find.text('No backup created yet'), findsNothing);
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      expect(find.textContaining(todayStr), findsOneWidget);
+    });
   });
 }
+
 

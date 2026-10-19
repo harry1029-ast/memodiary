@@ -193,5 +193,94 @@ void main() {
         );
       }
     });
+
+    group('v1.0.0 Release Metadata & Manifest Audit', () {
+      test('pubspec.yaml declares version 1.0.0+1', () {
+        final pubspec = File('pubspec.yaml').readAsStringSync();
+        expect(
+          pubspec.contains(RegExp(r'^version:\s*1\.0\.0\+1', multiLine: true)),
+          isTrue,
+          reason: 'pubspec.yaml must be bumped to 1.0.0+1 for release certification',
+        );
+      });
+
+      test('Android manifest references @string/app_name with zero INTERNET permission', () {
+        final manifest = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+        expect(
+          manifest.contains('android:label="@string/app_name"'),
+          isTrue,
+          reason: 'AndroidManifest.xml must reference localized @string/app_name',
+        );
+        expect(
+          manifest.contains('android.permission.INTERNET'),
+          isFalse,
+          reason: 'android.permission.INTERNET must never be present',
+        );
+      });
+
+      test('Android localized strings define English MemoDiary and Chinese 拾光日记', () {
+        final enStrings = File('android/app/src/main/res/values/strings.xml');
+        expect(enStrings.existsSync(), isTrue);
+        expect(
+          enStrings.readAsStringSync().contains('<string name="app_name">MemoDiary</string>'),
+          isTrue,
+        );
+
+        final zhStrings = File('android/app/src/main/res/values-zh/strings.xml');
+        expect(zhStrings.existsSync(), isTrue);
+        expect(
+          zhStrings.readAsStringSync().contains('<string name="app_name">拾光日记</string>'),
+          isTrue,
+        );
+      });
+
+      test('iOS Info.plist and InfoPlist.strings define localized branding and zero network permissions', () {
+        final infoPlist = File('ios/Runner/Info.plist').readAsStringSync();
+        expect(
+          infoPlist.contains('<key>CFBundleDisplayName</key>\n\t<string>MemoDiary</string>'),
+          isTrue,
+        );
+        expect(
+          infoPlist.contains('<key>CFBundleName</key>\n\t<string>MemoDiary</string>'),
+          isTrue,
+        );
+        expect(
+          infoPlist.contains('<key>CFBundleLocalizations</key>'),
+          isTrue,
+        );
+        expect(
+          infoPlist.contains('<string>en</string>'),
+          isTrue,
+        );
+        expect(
+          infoPlist.contains('<string>zh-Hans</string>'),
+          isTrue,
+        );
+
+        final zhStrings = File('ios/Runner/zh-Hans.lproj/InfoPlist.strings');
+        expect(zhStrings.existsSync(), isTrue);
+        final zhContent = zhStrings.readAsStringSync();
+        expect(zhContent.contains('"CFBundleDisplayName" = "拾光日记";'), isTrue);
+        expect(zhContent.contains('"CFBundleName" = "拾光日记";'), isTrue);
+      });
+
+      test('Release merged Android manifest (if generated) contains zero INTERNET permission', () {
+        final releaseManifestDir = Directory('build/app/intermediates/merged_manifests/release');
+        if (releaseManifestDir.existsSync()) {
+          final manifestFiles = releaseManifestDir
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((f) => f.path.endsWith('.xml'));
+          for (final file in manifestFiles) {
+            final content = file.readAsStringSync();
+            expect(
+              content.contains('android.permission.INTERNET'),
+              isFalse,
+              reason: 'Release merged manifest ${file.path} contains forbidden android.permission.INTERNET',
+            );
+          }
+        }
+      });
+    });
   });
 }

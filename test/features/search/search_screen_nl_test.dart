@@ -186,4 +186,91 @@ void main() {
     expect(find.text('秋日随笔'), findsOneWidget);
     expect(find.text('十月第二周复盘'), findsNothing);
   });
+
+  testWidgets('renders Understood as bar resiliently on narrow (320px) screens without RenderFlex overflow',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    FlutterErrorDetails? caughtDetails;
+    final oldHandler = FlutterError.onError;
+    FlutterError.onError = (details) {
+      caughtDetails = details;
+    };
+
+    // Multi-constraint query creating 4 constraint chips (dateRange, weather, hasImage, weeklyReview)
+    await tester.enterText(
+      find.byKey(const Key('search_text_field')),
+      '去年国庆 晴天 带图 所有周记',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    FlutterError.onError = oldHandler;
+
+    // Understood as bar is visible
+    expect(find.byKey(const Key('nl_understood_as_bar')), findsOneWidget);
+
+    // On narrow screen (< 360px), text 'Understood as:' is collapsed to icon tooltip
+    expect(find.text('Understood as:'), findsNothing);
+    expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
+
+    // All 4 constraint chips rendered
+    expect(
+      find.byKey(const Key('nl_constraint_chip_dateRange')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('nl_constraint_chip_weather')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('nl_constraint_chip_hasImage')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('nl_constraint_chip_weeklyReview')),
+      findsOneWidget,
+    );
+
+    // Verify chip deletion works on 320px screen without overflow or hit-test failure
+    final weeklyChip = find.byKey(const Key('nl_constraint_chip_weeklyReview'));
+    await tester.ensureVisible(weeklyChip);
+    await tester.pumpAndSettle();
+
+    final deleteIcon = find.descendant(
+      of: weeklyChip,
+      matching: find.byIcon(Icons.close),
+    );
+    expect(deleteIcon, findsOneWidget);
+    await tester.tap(deleteIcon);
+    await tester.pumpAndSettle();
+
+    // weeklyReview chip removed, remaining 3 chips intact
+    expect(
+      find.byKey(const Key('nl_constraint_chip_weeklyReview')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('nl_constraint_chip_dateRange')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('nl_constraint_chip_weather')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('nl_constraint_chip_hasImage')),
+      findsOneWidget,
+    );
+
+    expect(caughtDetails, isNull);
+  });
 }

@@ -38,11 +38,15 @@ class EventSuggestionChips extends StatelessWidget {
                 color: theme.colorScheme.primary,
               ),
               const SizedBox(width: 6),
-              Text(
-                'Smart Event Suggestions',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  'Smart Event Suggestions',
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],

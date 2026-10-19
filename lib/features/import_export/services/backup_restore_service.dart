@@ -23,13 +23,16 @@ class BackupRestoreService {
   final AppDatabase database;
   final MediaSandboxService mediaService;
   final Future<Directory> Function() _tempDirProvider;
+  final Future<Directory> Function() _baseDirProvider;
 
   BackupRestoreService({
     required this.database,
     required this.mediaService,
     Future<Directory> Function()? tempDirProvider,
-  }) : _tempDirProvider =
-            tempDirProvider ?? (() async => Directory.systemTemp);
+    Future<Directory> Function()? baseDirProvider,
+  })  : _tempDirProvider =
+            tempDirProvider ?? (() async => Directory.systemTemp),
+        _baseDirProvider = baseDirProvider ?? mediaService.getBaseDirectory;
 
   /// Inspects the `.mdbak` file header without decrypting or unpacking the archive.
   Future<BackupInspection> inspectBackup(File source) async {
@@ -41,6 +44,35 @@ class BackupRestoreService {
       pbkdf2Iterations: header.iterations,
       fileSizeBytes: fileSize,
     );
+  }
+
+  Future<File> _getMetadataFile() async {
+    final baseDir = await _baseDirProvider();
+    return File(p.join(baseDir.path, 'backup_meta.json'));
+  }
+
+  /// Returns the timestamp of the last successful backup, or null if no backup has occurred.
+  Future<DateTime?> getLastBackupTimestamp() async {
+    try {
+      final file = await _getMetadataFile();
+      if (!await file.exists()) return null;
+      final content = await file.readAsString();
+      final data = jsonDecode(content) as Map<String, dynamic>;
+      final raw = data['lastBackupAt'] as String?;
+      return raw != null ? DateTime.tryParse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _recordLastBackupTimestamp(DateTime timestamp) async {
+    try {
+      final file = await _getMetadataFile();
+      await file.writeAsString(
+        jsonEncode({'lastBackupAt': timestamp.toUtc().toIso8601String()}),
+        flush: true,
+      );
+    } catch (_) {}
   }
 
   /// Creates a portable `.mdbak` full-archive backup at [destination].
@@ -175,7 +207,7 @@ class BackupRestoreService {
       onProgress?.call(1.0);
       final totalBytes = await destination.length();
 
-      return BackupResult(
+      final result = BackupResult(
         file: destination,
         templatesCount: snapshot.templates.length,
         notebooksCount: snapshot.notebooks.length,
@@ -184,6 +216,10 @@ class BackupRestoreService {
         totalBytes: totalBytes,
         isEncrypted: isEncrypted,
       );
+
+      await _recordLastBackupTimestamp(manifest.createdAt);
+
+      return result;
     } finally {
       if (await workDir.exists()) {
         await workDir.delete(recursive: true);
