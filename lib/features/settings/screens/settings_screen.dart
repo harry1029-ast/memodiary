@@ -5,8 +5,11 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/analytics/screens/analytics_dashboard_screen.dart';
 import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
+import 'package:memodiary/features/import_export/services/backup_crypto.dart';
+import 'package:memodiary/features/import_export/services/backup_restore_service.dart';
 import 'package:memodiary/features/import_export/services/date_parser_engine.dart';
 import 'package:memodiary/features/import_export/services/file_selector_service.dart';
+import 'package:memodiary/features/import_export/widgets/backup_dialogs.dart';
 import 'package:memodiary/features/import_export/widgets/export_dialog.dart';
 import '../services/storage_optimizer_service.dart';
 import '../widgets/notification_settings_card.dart';
@@ -16,6 +19,8 @@ class SettingsScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
   final FileSelectorService fileSelector;
+  final BackupRestoreService? backupService;
+  final int backupPbkdf2Iterations;
   final Future<Map<String, PermissionStatus>> Function()? permissionChecker;
   final StorageStats? initialStats;
 
@@ -24,6 +29,8 @@ class SettingsScreen extends StatefulWidget {
     required this.database,
     required this.mediaService,
     this.fileSelector = const NativeFileSelectorService(),
+    this.backupService,
+    this.backupPbkdf2Iterations = BackupCrypto.defaultIterations,
     this.permissionChecker,
     this.initialStats,
   });
@@ -176,6 +183,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  BackupRestoreService get _effectiveBackupService =>
+      widget.backupService ??
+      BackupRestoreService(
+        database: widget.database,
+        mediaService: widget.mediaService,
+      );
+
   void _handleExportAll() {
     ExportDialog.show(
       context: context,
@@ -183,6 +197,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
       fileSelector: widget.fileSelector,
       mediaService: widget.mediaService,
     );
+  }
+
+  Future<void> _handleCreateBackup() async {
+    final result = await CreateBackupDialog.show(
+      context: context,
+      backupService: _effectiveBackupService,
+      fileSelector: widget.fileSelector,
+      pbkdf2Iterations: widget.backupPbkdf2Iterations,
+    );
+    if (result != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Backup created: ${result.entriesCount} entries, ${result.mediaFilesCount} media files',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRestoreBackup() async {
+    try {
+      final file = await widget.fileSelector.pickBackupFile();
+      if (file == null || !mounted) return;
+
+      final inspection = await _effectiveBackupService.inspectBackup(file);
+      if (!mounted) return;
+
+      final result = await RestoreBackupDialog.show(
+        context: context,
+        sourceFile: file,
+        inspection: inspection,
+        backupService: _effectiveBackupService,
+      );
+
+      if (result != null && mounted) {
+        await _loadStorageStats();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Restored ${result.entriesRestored} entries and ${result.mediaFilesRestored} media files',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Invalid backup file: $e')),
+      );
+    }
   }
 
   @override
@@ -373,6 +439,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('Save to Markdown (with YAML frontmatter) or plain text.'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 14),
             onTap: _handleExportAll,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            key: const Key('settings_create_backup_tile'),
+            leading: const Icon(Icons.enhanced_encryption_outlined),
+            title: const Text('Create Encrypted Backup'),
+            subtitle: const Text('Bundle all SQLite tables and sandboxed media into a .mdbak archive.'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+            onTap: _handleCreateBackup,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            key: const Key('settings_restore_backup_tile'),
+            leading: const Icon(Icons.restore_page_outlined),
+            title: const Text('Restore from Backup'),
+            subtitle: const Text('Atomically verify and restore a .mdbak full-archive backup.'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+            onTap: _handleRestoreBackup,
           ),
         ],
       ),

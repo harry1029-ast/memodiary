@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'package:sqlite3/open.dart';
 import 'package:uuid/uuid.dart';
+import '../../features/import_export/models/backup_manifest.dart';
 import '../../features/weekly_review/services/calendar_week_utils.dart';
 import 'tables/templates.dart';
 import 'tables/notebooks.dart';
@@ -165,7 +166,8 @@ class AppDatabase extends _$AppDatabase {
         },
       );
 
-  /// Performs full-text search across entry title and plain text using FTS5
+  /// Performs full-text search across entry title and plain text using FTS5,
+  /// supplemented with escaped substring matching for CJK characters.
   Future<List<Entry>> searchEntries(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return [];
@@ -179,6 +181,21 @@ class AppDatabase extends _$AppDatabase {
     ).get();
 
     final ids = ftsRows.map((r) => r.read<String>('id')).toSet();
+
+    if (RegExp(r'[\u4e00-\u9fff]').hasMatch(trimmed)) {
+      final escapedLike =
+          '%${trimmed.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+      final likeRows = await customSelect(
+        r"SELECT id FROM entries WHERE is_deleted = 0 AND (coalesce(title, '') LIKE ? ESCAPE '\' OR plain_text LIKE ? ESCAPE '\')",
+        variables: [
+          Variable.withString(escapedLike),
+          Variable.withString(escapedLike),
+        ],
+        readsFrom: {entries},
+      ).get();
+      ids.addAll(likeRows.map((r) => r.read<String>('id')));
+    }
+
     if (ids.isEmpty) return [];
 
     return (select(entries)
@@ -371,7 +388,7 @@ class AppDatabase extends _$AppDatabase {
     final trimmed = query.trim();
     Set<String>? ftsMatchedIds;
 
-    // 1. Clean query branching: only execute FTS5 MATCH if query is non-empty
+    // 1. Clean query branching: only execute FTS5 MATCH / CJK LIKE if query is non-empty
     if (trimmed.isNotEmpty) {
       final escaped = trimmed.replaceAll('"', '""');
       final ftsRows = await customSelect(
@@ -381,6 +398,21 @@ class AppDatabase extends _$AppDatabase {
       ).get();
 
       ftsMatchedIds = ftsRows.map((r) => r.read<String>('id')).toSet();
+
+      if (RegExp(r'[\u4e00-\u9fff]').hasMatch(trimmed)) {
+        final escapedLike =
+            '%${trimmed.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+        final likeRows = await customSelect(
+          r"SELECT id FROM entries WHERE is_deleted = 0 AND (coalesce(title, '') LIKE ? ESCAPE '\' OR plain_text LIKE ? ESCAPE '\')",
+          variables: [
+            Variable.withString(escapedLike),
+            Variable.withString(escapedLike),
+          ],
+          readsFrom: {entries},
+        ).get();
+        ftsMatchedIds.addAll(likeRows.map((r) => r.read<String>('id')));
+      }
+
       if (ftsMatchedIds.isEmpty) return [];
     }
 
@@ -730,6 +762,158 @@ class AppDatabase extends _$AppDatabase {
 
     final rng = random ?? Random();
     return eligible[rng.nextInt(eligible.length)];
+  }
+
+  // ===========================================================================
+  // Phase 9: Encrypted Full-Archive Backup & Atomic Restore Queries
+  // ===========================================================================
+
+  /// Exports a consistent snapshot of all 4 core SQLite tables (including soft-deleted,
+  /// locked, and time-capsule entries) inside a read transaction.
+  Future<BackupDatabaseSnapshot> exportAllTablesSnapshot() {
+    return transaction(() async {
+      final allTemplates = await select(templates).get();
+      final allNotebooks = await select(notebooks).get();
+      final allEntries = await select(entries).get();
+      final allMedia = await select(mediaAttachments).get();
+      return BackupDatabaseSnapshot(
+        templates: allTemplates,
+        notebooks: allNotebooks,
+        entries: allEntries,
+        mediaAttachments: allMedia,
+      );
+    });
+  }
+
+  /// Atomically replaces all database records with [snapshot] inside a single transaction.
+  ///
+  /// Watchpoint 1 Defense:
+  /// - Clears `entries_fts` alongside relational tables (`media_attachments`, `entries`, `notebooks`, `templates`).
+  /// - Inserts `templates` -> `notebooks` -> `entries` -> `media_attachments` in foreign-key dependency order.
+  /// - Because the `entries_ai` AFTER INSERT trigger automatically populates `entries_fts`
+  ///   as rows are inserted into `entries`, no duplicate manual `INSERT INTO entries_fts` is executed.
+  Future<void> replaceAllFromBackup(BackupDatabaseSnapshot snapshot) async {
+    await customStatement('PRAGMA foreign_keys = ON;');
+    await transaction(() async {
+      // 1. Delete existing rows in reverse foreign-key dependency order
+      await delete(mediaAttachments).go();
+      await delete(entries).go();
+      await customStatement('DELETE FROM entries_fts;');
+      await delete(notebooks).go();
+      await delete(templates).go();
+
+      // 2. Ensure the 4 default system templates are present if omitted in snapshot
+      final templateIds = snapshot.templates.map((t) => t.id).toSet();
+      final defaults = <TemplatesCompanion>[
+        if (!templateIds.contains('template_minimalist_white'))
+          TemplatesCompanion.insert(
+            id: 'template_minimalist_white',
+            name: 'Minimalist White',
+            backgroundType: 'color',
+            backgroundValue: '#FFFFFF',
+            fontFamily: const Value('System'),
+            lineSpacing: const Value(1.5),
+            marginHorizontal: const Value(20.0),
+            isCustom: const Value(false),
+          ),
+        if (!templateIds.contains('template_lined_paper'))
+          TemplatesCompanion.insert(
+            id: 'template_lined_paper',
+            name: 'Lined Paper',
+            backgroundType: 'lined',
+            backgroundValue: '#FDFBF7',
+            fontFamily: const Value('System'),
+            lineSpacing: const Value(1.8),
+            marginHorizontal: const Value(24.0),
+            isCustom: const Value(false),
+          ),
+        if (!templateIds.contains('template_retro_kraft'))
+          TemplatesCompanion.insert(
+            id: 'template_retro_kraft',
+            name: 'Retro Kraft Scrapbook',
+            backgroundType: 'paper_texture',
+            backgroundValue: '#EFE6D5',
+            fontFamily: const Value('System'),
+            lineSpacing: const Value(1.6),
+            marginHorizontal: const Value(20.0),
+            isCustom: const Value(false),
+          ),
+        if (!templateIds.contains('template_weekly_review'))
+          TemplatesCompanion.insert(
+            id: 'template_weekly_review',
+            name: 'Weekly Review',
+            backgroundType: 'grid',
+            backgroundValue: '#F4F5F7',
+            fontFamily: const Value('System'),
+            lineSpacing: const Value(1.5),
+            marginHorizontal: const Value(16.0),
+            isCustom: const Value(false),
+          ),
+      ];
+
+      // 3. Insert records in foreign-key dependency order with referential integrity checks
+      for (final d in defaults) {
+        await into(templates).insert(d);
+      }
+      for (final t in snapshot.templates) {
+        await into(templates).insert(t);
+      }
+
+      final validTemplateIds = <String>{
+        'template_minimalist_white',
+        'template_lined_paper',
+        'template_retro_kraft',
+        'template_weekly_review',
+        ...snapshot.templates.map((t) => t.id),
+      };
+
+      final validNotebookIds = <String>{};
+      if (snapshot.notebooks.isNotEmpty) {
+        for (final n in snapshot.notebooks) {
+          if (!validTemplateIds.contains(n.defaultTemplateId)) {
+            throw StateError(
+              'Foreign key violation: notebook ${n.id} references missing template ${n.defaultTemplateId}.',
+            );
+          }
+          await into(notebooks).insert(n);
+          validNotebookIds.add(n.id);
+        }
+      } else {
+        await into(notebooks).insert(
+          NotebooksCompanion.insert(
+            id: 'notebook_default',
+            title: 'My Diary',
+            defaultTemplateId: 'template_minimalist_white',
+          ),
+        );
+        validNotebookIds.add('notebook_default');
+      }
+
+      final validEntryIds = <String>{};
+      for (final e in snapshot.entries) {
+        if (!validNotebookIds.contains(e.notebookId)) {
+          throw StateError(
+            'Foreign key violation: entry ${e.id} references missing notebook ${e.notebookId}.',
+          );
+        }
+        if (!validTemplateIds.contains(e.templateId)) {
+          throw StateError(
+            'Foreign key violation: entry ${e.id} references missing template ${e.templateId}.',
+          );
+        }
+        await into(entries).insert(e);
+        validEntryIds.add(e.id);
+      }
+
+      for (final m in snapshot.mediaAttachments) {
+        if (!validEntryIds.contains(m.entryId)) {
+          throw StateError(
+            'Foreign key violation: mediaAttachment ${m.id} references missing entry ${m.entryId}.',
+          );
+        }
+        await into(mediaAttachments).insert(m);
+      }
+    });
   }
 }
 

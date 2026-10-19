@@ -3,8 +3,12 @@ import 'dart:io';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/import_export/services/backup_restore_service.dart';
 import 'package:memodiary/features/import_export/services/date_parser_engine.dart';
 import 'package:memodiary/features/import_export/services/export_service.dart';
+import 'package:memodiary/features/search/services/event_suggestion_service.dart';
+import 'package:memodiary/features/search/services/natural_language_search_parser.dart';
 
 /// Custom HttpOverrides firewall that intercepts and rejects any outbound network requests.
 class QuarantinedHttpOverrides extends HttpOverrides {
@@ -41,18 +45,21 @@ void main() {
 
     test('Core offline workflows operate without triggering network access', () async {
       final db = AppDatabase.memory();
+      final tempDir =
+          Directory.systemTemp.createTempSync('memodiary_quarantine_test_');
 
       try {
         // 1. Database CRUD & FTS5 search
         await db.createEntry(
           EntriesCompanion.insert(
             id: 'quarantine_entry_1',
-            notebookId: 'default',
+            notebookId: 'notebook_default',
             templateId: 'template_minimalist_white',
-            title: const Value('Offline Entry'),
+            title: const Value('Offline Entry 旅行'),
             contentDelta: jsonEncode([{'insert': 'Completely local notes.\n'}]),
             plainText: 'Completely local notes.',
             entryDate: DateTime(2026, 10, 16),
+            isWeeklyReview: const Value(true),
           ),
         );
 
@@ -68,8 +75,46 @@ void main() {
           text: '2026-10-16 10:00\nOffline parse test',
         );
         expect(candidates.length, equals(1));
+
+        // 4. Phase 9 Natural Language Search Parser & Event Suggestion Service (100% offline)
+        const parser = NaturalLanguageSearchParser();
+        final parsed = parser.parse(
+          '10月所有周记',
+          now: DateTime(2026, 10, 18),
+        );
+        expect(parsed.weeklyReviewOnly, isTrue);
+
+        final suggestionService = EventSuggestionService(db);
+        final suggestions = await suggestionService.getSuggestions(
+          now: DateTime(2026, 10, 18),
+        );
+        expect(suggestions.map((s) => s.term), contains('旅行'));
+
+        // 5. Phase 9 Encrypted Backup & Restore Round-Trip (100% offline)
+        final mediaService = MediaSandboxService(
+          baseDirProvider: () async => tempDir,
+        );
+        final backupService = BackupRestoreService(
+          database: db,
+          mediaService: mediaService,
+          tempDirProvider: () async => tempDir,
+        );
+        final mdbakFile = File('${tempDir.path}/quarantine.mdbak');
+        await backupService.createBackup(
+          destination: mdbakFile,
+          passphrase: 'offline-secret-pass',
+          pbkdf2Iterations: 1000,
+        );
+        final restored = await backupService.restoreBackup(
+          source: mdbakFile,
+          passphrase: 'offline-secret-pass',
+        );
+        expect(restored.entriesRestored, equals(1));
       } finally {
         await db.close();
+        if (tempDir.existsSync()) {
+          tempDir.deleteSync(recursive: true);
+        }
       }
     });
 

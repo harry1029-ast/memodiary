@@ -41,3 +41,6 @@ Milestone 2 (Beta):
 - Phase 6: High-Fidelity Template-Preserving PDF Export Engine
 - Phase 7: Sandboxed Short Video Ingestion & Inline Playback
 - Phase 8: Retrospective Suite, Writing Sanctum, Local Reminders & Analytics
+Milestone 3: Release Candidate (v1.0.0-rc.1)
+- Phase 9: Encrypted Full-Archive Backup/Restore & Smart Natural Language Search
+- Phase 10: Release Candidate Polish, Round-Trip Stress Audit & v1.0.0 Certification

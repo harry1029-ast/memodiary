@@ -87,6 +87,80 @@ void main() {
       // Verify Data Portability Actions
       expect(find.text('Import from .txt / .md'), findsOneWidget);
       expect(find.text('Export All Diaries'), findsOneWidget);
+      expect(find.byKey(const Key('settings_create_backup_tile')), findsOneWidget);
+      expect(find.byKey(const Key('settings_restore_backup_tile')), findsOneWidget);
+    });
+
+    testWidgets('tapping Create Encrypted Backup opens CreateBackupDialog and validates passphrase',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            mediaService: mediaService,
+            fileSelector: mockFileSelector,
+            backupPbkdf2Iterations: 1000,
+            initialStats: const StorageStats(
+              activeEntriesCount: 0,
+              deletedEntriesCount: 0,
+              totalMediaFiles: 0,
+              totalMediaBytes: 0,
+              orphanMediaFiles: 0,
+              orphanMediaBytes: 0,
+            ),
+            permissionChecker: () async => {
+              'camera': PermissionStatus.granted,
+              'microphone': PermissionStatus.granted,
+              'photos': PermissionStatus.granted,
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('settings_create_backup_tile')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create Full-Archive Backup'), findsOneWidget);
+      expect(find.byKey(const Key('backup_passphrase_field')), findsOneWidget);
+
+      // Save & Share buttons should be disabled when passphrase is empty
+      final saveBtnBefore = tester.widget<FilledButton>(
+        find.byKey(const Key('backup_save_button')),
+      );
+      expect(saveBtnBefore.onPressed, isNull);
+
+      // Enter valid matching passphrase (>= 8 chars)
+      await tester.enterText(
+        find.byKey(const Key('backup_passphrase_field')),
+        'strong-pass-2026',
+      );
+      await tester.enterText(
+        find.byKey(const Key('backup_confirm_passphrase_field')),
+        'strong-pass-2026',
+      );
+      await tester.pump();
+
+      final saveBtnAfter = tester.widget<FilledButton>(
+        find.byKey(const Key('backup_save_button')),
+      );
+      expect(saveBtnAfter.onPressed, isNotNull);
+
+      // Toggle encryption off -> shows warning banner
+      await tester.tap(find.byKey(const Key('backup_encrypt_switch')));
+      await tester.pump();
+      expect(
+        find.byKey(const Key('backup_unencrypted_warning')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('tapping import with picked file opens ImportStagingScreen', (WidgetTester tester) async {

@@ -3,21 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/search/models/search_filters.dart';
+import 'package:memodiary/features/search/services/event_suggestion_service.dart';
+import 'package:memodiary/features/search/services/natural_language_search_parser.dart';
+import 'package:memodiary/features/search/widgets/event_suggestion_chips.dart';
 import 'package:memodiary/features/search/widgets/search_filter_chips.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 
-/// Offline Full-Text Search (FTS5) & Multi-Condition Filter screen.
+/// Offline Full-Text Search (FTS5), Natural Language Event Search & Multi-Condition Filter screen.
 /// Branches queries cleanly and conceals sealed Time Capsules for strict privacy.
 class SearchScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
+  final NaturalLanguageSearchParser parser;
+  final EventSuggestionService? suggestionService;
+  final DateTime? referenceNow;
 
   const SearchScreen({
     super.key,
     required this.database,
     required this.mediaService,
+    this.parser = const NaturalLanguageSearchParser(),
+    this.suggestionService,
+    this.referenceNow,
   });
 
   @override
@@ -31,6 +40,10 @@ class _SearchScreenState extends State<SearchScreen> {
   SearchFilters _filters = const SearchFilters();
   List<Entry> _results = [];
   Map<String, MediaAttachment> _mediaMap = {};
+  List<EventSuggestion> _eventSuggestions = [];
+  List<DetectedConstraint> _detectedConstraints = [];
+  final Set<ConstraintKind> _dismissedKinds = {};
+  String _lastRawQuery = '';
   bool _isLoading = false;
   bool _hasSearched = false;
 
@@ -38,6 +51,24 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchInputChanged);
+    _loadEventSuggestions();
+  }
+
+  Future<void> _loadEventSuggestions() async {
+    try {
+      final service =
+          widget.suggestionService ?? EventSuggestionService(widget.database);
+      final suggestions = await service.getSuggestions(
+        now: widget.referenceNow,
+      );
+      if (mounted) {
+        setState(() {
+          _eventSuggestions = suggestions;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading event suggestions: $e');
+    }
   }
 
   @override
@@ -48,6 +79,11 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onSearchInputChanged() {
+    final currentText = _searchController.text.trim();
+    if (currentText != _lastRawQuery) {
+      _dismissedKinds.clear();
+      _lastRawQuery = currentText;
+    }
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       _executeSearch();
@@ -59,13 +95,37 @@ class _SearchScreenState extends State<SearchScreen> {
     _executeSearch();
   }
 
+  void _onSuggestionTapped(EventSuggestion suggestion) {
+    _debounceTimer?.cancel();
+    final currentText = _searchController.text.trim();
+    if (currentText.toLowerCase() == suggestion.term.toLowerCase()) {
+      _searchController.clear();
+    } else {
+      _searchController.text = suggestion.term;
+      _searchController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _searchController.text.length),
+      );
+    }
+    _dismissedKinds.clear();
+    _lastRawQuery = _searchController.text.trim();
+    _executeSearch();
+  }
+
+  void _onDismissConstraint(ConstraintKind kind) {
+    setState(() {
+      _dismissedKinds.add(kind);
+    });
+    _executeSearch();
+  }
+
   Future<void> _executeSearch() async {
-    final query = _searchController.text.trim();
-    if (query.isEmpty && !_filters.hasActiveFilters) {
+    final rawQuery = _searchController.text.trim();
+    if (rawQuery.isEmpty && !_filters.hasActiveFilters) {
       if (mounted) {
         setState(() {
           _results = [];
           _mediaMap = {};
+          _detectedConstraints = [];
           _isLoading = false;
           _hasSearched = false;
         });
@@ -73,20 +133,28 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
+    final parsed = widget.parser.parse(
+      rawQuery,
+      now: widget.referenceNow,
+      ignoredKinds: _dismissedKinds,
+    );
+    final effectiveFilters = parsed.applyTo(_filters);
+
     setState(() {
+      _detectedConstraints = parsed.detected;
       _isLoading = true;
       _hasSearched = true;
     });
 
     try {
       final results = await widget.database.searchEntriesWithFilters(
-        query: query,
-        startDate: _filters.resolvedStartDate,
-        endDate: _filters.resolvedEndDate,
-        mood: _filters.mood,
-        weather: _filters.weather,
-        hasImage: _filters.hasImage,
-        weeklyReviewOnly: _filters.weeklyReviewOnly,
+        query: parsed.keywords,
+        startDate: effectiveFilters.resolvedStartDate,
+        endDate: effectiveFilters.resolvedEndDate,
+        mood: effectiveFilters.mood,
+        weather: effectiveFilters.weather,
+        hasImage: effectiveFilters.hasImage,
+        weeklyReviewOnly: effectiveFilters.weeklyReviewOnly,
         excludeSealedTimeCapsules: true, // Privacy invariant
       );
 
@@ -121,7 +189,10 @@ class _SearchScreenState extends State<SearchScreen> {
           mediaService: widget.mediaService,
         ),
       ),
-    ).then((_) => _executeSearch());
+    ).then((_) {
+      _loadEventSuggestions();
+      _executeSearch();
+    });
   }
 
   @override
@@ -132,6 +203,7 @@ class _SearchScreenState extends State<SearchScreen> {
       appBar: AppBar(
         titleSpacing: 0,
         title: TextField(
+          key: const Key('search_text_field'),
           controller: _searchController,
           autofocus: true,
           textInputAction: TextInputAction.search,
@@ -143,13 +215,19 @@ class _SearchScreenState extends State<SearchScreen> {
                 ? IconButton(
                     icon: const Icon(Icons.clear),
                     onPressed: () {
+                      _debounceTimer?.cancel();
                       _searchController.clear();
+                      _dismissedKinds.clear();
+                      _lastRawQuery = '';
                       _executeSearch();
                     },
                   )
                 : null,
           ),
-          onSubmitted: (_) => _executeSearch(),
+          onSubmitted: (_) {
+            _debounceTimer?.cancel();
+            _executeSearch();
+          },
         ),
       ),
       body: Column(
@@ -159,6 +237,18 @@ class _SearchScreenState extends State<SearchScreen> {
             filters: _filters,
             onFiltersChanged: _onFiltersChanged,
           ),
+
+          // Natural Language "Understood as" Removable Chips
+          if (_detectedConstraints.isNotEmpty) _buildUnderstoodAsBar(theme),
+
+          // Smart Event Association Suggestions
+          if (_eventSuggestions.isNotEmpty)
+            EventSuggestionChips(
+              suggestions: _eventSuggestions,
+              activeTerm: _searchController.text.trim(),
+              onSuggestionTapped: _onSuggestionTapped,
+            ),
+
           const Divider(height: 1),
 
           // Main Search Results Feed
@@ -172,6 +262,51 @@ class _SearchScreenState extends State<SearchScreen> {
                         : _buildResultsList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUnderstoodAsBar(ThemeData theme) {
+    return Container(
+      key: const Key('nl_understood_as_bar'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.35),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            Icon(
+              Icons.psychology_outlined,
+              size: 16,
+              color: theme.colorScheme.secondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Understood as:',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.secondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 8),
+            ..._detectedConstraints.map((c) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: InputChip(
+                  key: Key('nl_constraint_chip_${c.kind.name}'),
+                  label: Text(
+                    c.label,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  deleteIcon: const Icon(Icons.close, size: 16),
+                  visualDensity: VisualDensity.compact,
+                  onDeleted: () => _onDismissConstraint(c.kind),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }

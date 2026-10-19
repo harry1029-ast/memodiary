@@ -297,6 +297,9 @@ class MediaSandboxService {
     );
   }
 
+  /// Returns the base directory containing the sandboxed `media/` folder.
+  Future<Directory> getBaseDirectory() => _getBaseDir();
+
   /// Resolves a sandboxed relative path (e.g. 'media/{uuid}.webp') into an absolute File
   Future<File> getFileFromRelativePath(String relativePath) async {
     final baseDir = await _getBaseDir();
@@ -314,10 +317,13 @@ class MediaSandboxService {
     return false;
   }
 
-  /// Validates that a path is strictly relative and does not leak system gallery roots
+  /// Validates that a path is strictly relative and does not leak system gallery roots or traverse directories
   static bool isStrictlyRelative(String path) {
+    if (path.isEmpty) return false;
     if (path.startsWith('/') || path.startsWith('\\')) return false;
     if (RegExp(r'^[a-zA-Z]:').hasMatch(path)) return false; // Windows drive letters
+    final segments = path.split(RegExp(r'[/\\]'));
+    if (segments.contains('..')) return false;
     return true;
   }
 }
