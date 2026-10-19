@@ -221,8 +221,11 @@ Visiting Dotonbori in the evening.
       expect(find.text('Trip to Osaka'), findsOneWidget);
     });
 
-    testWidgets('displays formatted timestamp when last backup exists',
-        (WidgetTester tester) async {
+    Future<void> pumpSettingsScreen(
+      WidgetTester tester, {
+      int backupPbkdf2Iterations = 200000,
+      Duration delay = const Duration(milliseconds: 50),
+    }) async {
       tester.view.physicalSize = const Size(800, 1600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -230,80 +233,59 @@ Visiting Dotonbori in the evening.
         tester.view.resetDevicePixelRatio();
       });
 
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: SettingsScreen(
+              database: db,
+              mediaService: mediaService,
+              fileSelector: mockFileSelector,
+              backupPbkdf2Iterations: backupPbkdf2Iterations,
+              initialStats: const StorageStats(
+                activeEntriesCount: 0,
+                deletedEntriesCount: 0,
+                totalMediaFiles: 0,
+                totalMediaBytes: 0,
+                orphanMediaFiles: 0,
+                orphanMediaBytes: 0,
+              ),
+              permissionChecker: () async => {
+                'camera': PermissionStatus.granted,
+                'microphone': PermissionStatus.granted,
+                'photos': PermissionStatus.granted,
+              },
+            ),
+          ),
+        );
+        await Future.delayed(delay);
+      });
+
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('displays formatted timestamp when last backup exists',
+        (WidgetTester tester) async {
       // Write mock backup_meta.json in parent of media sandbox
       final metaFile = File('${tempDir.path}/backup_meta.json');
       metaFile.writeAsStringSync('{"lastBackupAt":"2026-10-19T10:30:00.000Z"}');
 
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: SettingsScreen(
-              database: db,
-              mediaService: mediaService,
-              fileSelector: mockFileSelector,
-              initialStats: const StorageStats(
-                activeEntriesCount: 0,
-                deletedEntriesCount: 0,
-                totalMediaFiles: 0,
-                totalMediaBytes: 0,
-                orphanMediaFiles: 0,
-                orphanMediaBytes: 0,
-              ),
-              permissionChecker: () async => {
-                'camera': PermissionStatus.granted,
-                'microphone': PermissionStatus.granted,
-                'photos': PermissionStatus.granted,
-              },
-            ),
-          ),
-        );
-        await Future.delayed(const Duration(milliseconds: 100));
-      });
+      await pumpSettingsScreen(tester, delay: const Duration(milliseconds: 100));
 
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
+      final tileFinder = find.byKey(const Key('settings_last_backup_tile'));
+      expect(tileFinder, findsOneWidget);
       expect(find.text('No backup created yet'), findsNothing);
       expect(find.textContaining('2026-10-19'), findsOneWidget);
+
+      final listTile = tester.widget<ListTile>(tileFinder);
+      expect(listTile.leading, isA<Icon>());
+      final icon = listTile.leading as Icon;
+      expect(icon.icon, Icons.history_edu_outlined);
+      expect(icon.size, 20.0);
     });
 
     testWidgets('creating backup dynamically updates last backup tile timestamp on screen',
         (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: SettingsScreen(
-              database: db,
-              mediaService: mediaService,
-              fileSelector: mockFileSelector,
-              backupPbkdf2Iterations: 100,
-              initialStats: const StorageStats(
-                activeEntriesCount: 0,
-                deletedEntriesCount: 0,
-                totalMediaFiles: 0,
-                totalMediaBytes: 0,
-                orphanMediaFiles: 0,
-                orphanMediaBytes: 0,
-              ),
-              permissionChecker: () async => {
-                'camera': PermissionStatus.granted,
-                'microphone': PermissionStatus.granted,
-                'photos': PermissionStatus.granted,
-              },
-            ),
-          ),
-        );
-        await Future.delayed(const Duration(milliseconds: 50));
-      });
-
-      await tester.pumpAndSettle();
+      await pumpSettingsScreen(tester, backupPbkdf2Iterations: 100);
 
       // Initially shows no backup created yet
       expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);

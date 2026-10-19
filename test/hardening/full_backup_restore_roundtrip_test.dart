@@ -319,6 +319,41 @@ void main() {
       expect(restoredSnapshot.notebooks.length, 2);
       expect(restoredSnapshot.mediaAttachments.length, 2);
 
+      // Verify all 6 entries have 100% field parity against preBackupSnapshot
+      for (final preEntry in preBackupSnapshot.entries) {
+        final restoredEntry = restoredSnapshot.entries
+            .firstWhere((e) => e.id == preEntry.id);
+        expect(restoredEntry.notebookId, preEntry.notebookId);
+        expect(restoredEntry.templateId, preEntry.templateId);
+        expect(restoredEntry.title, preEntry.title);
+        expect(restoredEntry.contentDelta, preEntry.contentDelta);
+        expect(restoredEntry.plainText, preEntry.plainText);
+        expect(restoredEntry.entryDate.millisecondsSinceEpoch,
+            preEntry.entryDate.millisecondsSinceEpoch);
+        expect(restoredEntry.mood, preEntry.mood);
+        expect(restoredEntry.weather, preEntry.weather);
+        expect(restoredEntry.isWeeklyReview, preEntry.isWeeklyReview);
+        expect(restoredEntry.weekNumber, preEntry.weekNumber);
+        expect(restoredEntry.isDeleted, preEntry.isDeleted);
+        expect(restoredEntry.isLocked, preEntry.isLocked);
+        expect(restoredEntry.entryPinHash, preEntry.entryPinHash);
+        expect(
+          restoredEntry.unlockAt?.millisecondsSinceEpoch,
+          preEntry.unlockAt?.millisecondsSinceEpoch,
+        );
+      }
+
+      // Verify all media attachments have 100% field parity against preBackupSnapshot
+      for (final preMedia in preBackupSnapshot.mediaAttachments) {
+        final restoredMedia = restoredSnapshot.mediaAttachments
+            .firstWhere((m) => m.id == preMedia.id);
+        expect(restoredMedia.entryId, preMedia.entryId);
+        expect(restoredMedia.mediaType, preMedia.mediaType);
+        expect(restoredMedia.relativePath, preMedia.relativePath);
+        expect(restoredMedia.thumbnailPath, preMedia.thumbnailPath);
+        expect(restoredMedia.ocrText, preMedia.ocrText);
+      }
+
       // Verify custom template
       final customTpl =
           await db.getTemplateById('template_custom_rc_grid');
@@ -493,6 +528,10 @@ void main() {
           await freshDb.getTemplateById('template_custom_rc_grid');
       expect(freshCustomTpl, isNotNull);
       expect(freshCustomTpl!.name, 'RC Vintage Grid');
+
+      final freshTemplates = await freshDb.getAllTemplates();
+      expect(freshTemplates.length, 5,
+          reason: 'Must contain 4 default templates and 1 restored custom template without duplicates');
 
       // Assert restored notebooks count and custom notebook parity
       final freshNotebooks = await freshDb.select(freshDb.notebooks).get();

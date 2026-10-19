@@ -458,7 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(height: 1),
           ListTile(
             key: const Key('settings_last_backup_tile'),
-            leading: const Icon(Icons.history_edu_outlined),
+            leading: const Icon(Icons.history_edu_outlined, size: 20),
             title: const Text('Last Successful Backup'),
             subtitle: Text(
               _lastBackupAt != null

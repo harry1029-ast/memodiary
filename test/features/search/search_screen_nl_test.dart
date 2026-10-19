@@ -164,6 +164,27 @@ void main() {
     );
   });
 
+  testWidgets('scopes delete semantics strictly to deleteIcon rather than parent chip',
+      (tester) async {
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('search_text_field')),
+      '10月所有周记',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    final chipFinder = find.byKey(const Key('nl_constraint_chip_weeklyReview'));
+    expect(chipFinder, findsOneWidget);
+
+    final chipWidget = tester.widget<InputChip>(chipFinder);
+    expect(chipWidget.deleteIcon, isA<Semantics>());
+    final deleteSemantics = chipWidget.deleteIcon as Semantics;
+    expect(deleteSemantics.properties.label, 'Remove Weekly Review filter');
+  });
+
   testWidgets('renders Smart Event Suggestions chips and filters CJK substring entries on tap',
       (tester) async {
     await tester.pumpWidget(buildTestWidget());

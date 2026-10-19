@@ -262,6 +262,23 @@ void main() {
         final zhContent = zhStrings.readAsStringSync();
         expect(zhContent.contains('"CFBundleDisplayName" = "拾光日记";'), isTrue);
         expect(zhContent.contains('"CFBundleName" = "拾光日记";'), isTrue);
+
+        // Assert strict zero network declarations in iOS Info.plist
+        expect(
+          infoPlist.contains('NSAppTransportSecurity'),
+          isFalse,
+          reason: 'ios/Runner/Info.plist must not declare NSAppTransportSecurity',
+        );
+        expect(
+          infoPlist.contains('NSAllowsArbitraryLoads'),
+          isFalse,
+          reason: 'ios/Runner/Info.plist must not declare NSAllowsArbitraryLoads',
+        );
+        expect(
+          infoPlist.contains('NSAllowsLocalNetworking'),
+          isFalse,
+          reason: 'ios/Runner/Info.plist must not declare NSAllowsLocalNetworking',
+        );
       });
 
       test('Release merged Android manifest (if generated) contains zero INTERNET permission', () {

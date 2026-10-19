@@ -308,26 +308,26 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   ],
                   const SizedBox(width: 8),
-                  ..._detectedConstraints.map((c) {
+                  ..._detectedConstraints.map((constraint) {
                     return Padding(
                       padding: const EdgeInsets.only(right: 6),
-                      child: Semantics(
-                        label: 'Remove ${c.label} filter',
-                        child: InputChip(
-                          key: Key('nl_constraint_chip_${c.kind.name}'),
-                          label: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 180),
-                            child: Text(
-                              c.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12),
-                            ),
+                      child: InputChip(
+                        key: Key('nl_constraint_chip_${constraint.kind.name}'),
+                        label: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 180),
+                          child: Text(
+                            constraint.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12),
                           ),
-                          deleteIcon: const Icon(Icons.close, size: 16),
-                          visualDensity: VisualDensity.compact,
-                          onDeleted: () => _onDismissConstraint(c.kind),
                         ),
+                        deleteIcon: Semantics(
+                          label: 'Remove ${constraint.label} filter',
+                          child: const Icon(Icons.close, size: 16),
+                        ),
+                        visualDensity: VisualDensity.compact,
+                        onDeleted: () => _onDismissConstraint(constraint.kind),
                       ),
                     );
                   }),
