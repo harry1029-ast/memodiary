@@ -28,6 +28,7 @@ Maintain the following 5 core tables in `lib/core/database/app_database.dart`[ci
 - Keep UI widgets decoupled from SQLite queries using repository/provider layers.
 - Ensure all file imports and bulk SQLite writes run inside background `Isolate` workers or batched transactions so the UI thread maintains 60 FPS[cite: 1, 2].
 - Write unit tests for every data model, date-parsing regex rule, and repository method.
+- Detailed code shape, naming, a11y semantics, and test harness standards are specified in [CODING_STANDARDS.md](file:///home/harry1029/projects/memodiary/CODING_STANDARDS.md).
 
 ## Development Roadmap (Reference Only)
 Milestone 1 (Alpha):
