@@ -92,3 +92,4 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
   - `android/app/src/main/AndroidManifest.xml` and release merged manifests must strictly omit `android.permission.INTERNET`.
   - `ios/Runner/Info.plist` must strictly omit `NSAppTransportSecurity`, `NSAllowsArbitraryLoads`, and `NSAllowsLocalNetworking`.
 - Every release build must pass `network_quarantine_audit_test.dart` and `flutter analyze` with 0 issues before merge.
+
