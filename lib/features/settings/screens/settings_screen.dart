@@ -9,6 +9,7 @@ import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
 import '../../../core/theme/widgets/xuan_paper_card.dart';
 import '../../analytics/screens/analytics_dashboard_screen.dart';
+import '../../recycle_bin/screens/recycle_bin_screen.dart';
 import '../../import_export/screens/import_staging_screen.dart';
 import '../../import_export/services/backup_crypto.dart';
 import '../../import_export/services/backup_restore_service.dart';
@@ -485,6 +486,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : const Text('清理'),
                 ),
             ],
+          ),
+          Divider(height: 24, color: tokens.agedFiber),
+          ListTile(
+            key: const Key('settings_recycle_bin_tile'),
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.delete_outline_rounded, color: tokens.cinnabar),
+            title: Row(
+              children: [
+                Text(
+                  '纸篓残卷',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.jiaomo,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Recycle Bin (${stats.deletedEntriesCount})',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 12,
+                    color: tokens.danmo,
+                  ),
+                ),
+              ],
+            ),
+            subtitle: Text(
+              '查看并恢复或彻底销毁三十日内的已废墨卷',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontKaiti,
+                fontSize: 11.5,
+                color: tokens.danmo,
+              ),
+            ),
+            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RecycleBinScreen(
+                    database: widget.database,
+                    mediaService: widget.mediaService,
+                  ),
+                ),
+              ).then((_) {
+                _loadStorageStats();
+              });
+            },
           ),
         ],
       ),

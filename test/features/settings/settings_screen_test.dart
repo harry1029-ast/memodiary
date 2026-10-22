@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
+import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/settings/services/storage_optimizer_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -317,6 +318,18 @@ Visiting Dotonbori in the evening.
       expect(find.text('No backup created yet'), findsNothing);
       final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
       expect(find.textContaining(todayStr), findsOneWidget);
+    });
+
+    testWidgets('tapping recycle bin tile navigates to RecycleBinScreen', (WidgetTester tester) async {
+      await pumpSettingsScreen(tester);
+
+      final recycleTile = find.byKey(const Key('settings_recycle_bin_tile'));
+      expect(recycleTile, findsOneWidget);
+
+      await tester.tap(recycleTile);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RecycleBinScreen), findsOneWidget);
     });
   });
 }

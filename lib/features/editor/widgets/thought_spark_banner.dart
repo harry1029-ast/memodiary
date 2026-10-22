@@ -42,20 +42,21 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
   @override
   Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCF6E8),
+        color: isDark ? const Color(0xFF26221C) : const Color(0xFFFCF6E8),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0x73DEB366),
+          color: isDark ? const Color(0x66B08D57) : const Color(0x73DEB366),
           width: 1.0,
         ),
         boxShadow: [
           BoxShadow(
-            color: tokens.jiaomo.withValues(alpha: 0.04),
+            color: tokens.jiaomo.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -67,10 +68,10 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
           // Card Top Bar
           Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.lightbulb_outline,
                 size: 17,
-                color: Color(0xFF99601D),
+                color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF99601D),
               ),
               const SizedBox(width: 7),
               Text(
@@ -79,14 +80,14 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF7D4915),
+                  color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF7D4915),
                   letterSpacing: 0.5,
                 ),
               ),
               Text(
                 ' · ',
                 style: TextStyle(
-                  color: const Color(0xFF99601D).withValues(alpha: 0.8),
+                  color: (isDark ? const Color(0xFFD4A86A) : const Color(0xFF99601D)).withValues(alpha: 0.8),
                 ),
               ),
               Text(
@@ -95,7 +96,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                   fontFamily: InkDiaryTheme.fontKaiti,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF7D4915),
+                  color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF7D4915),
                   letterSpacing: 1.0,
                 ),
               ),
@@ -106,7 +107,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                 iconSize: 18,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                icon: const Icon(Icons.refresh, color: Color(0xFF99601D)),
+                icon: Icon(Icons.refresh, color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF99601D)),
                 tooltip: '换一则灵感',
                 onPressed: _shuffle,
               ),
@@ -117,7 +118,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                 iconSize: 18,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                icon: const Icon(Icons.close, color: Color(0xFF99601D)),
+                icon: Icon(Icons.close, color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF99601D)),
                 tooltip: '隐去灵感',
                 onPressed: widget.onDismiss,
               ),
@@ -134,7 +135,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                 fontFamily: InkDiaryTheme.fontKaiti,
                 fontSize: 14.5,
                 height: 1.45,
-                color: tokens.jiaomo,
+                color: isDark ? const Color(0xFFF0ECE3) : const Color(0xFF2C251D),
                 letterSpacing: 0.3,
               ),
             ),
@@ -155,10 +156,10 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.post_add,
                       size: 15,
-                      color: Color(0xFF7D4915),
+                      color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF7D4915),
                     ),
                     const SizedBox(width: 5),
                     Text(
@@ -167,7 +168,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                         fontFamily: InkDiaryTheme.fontKaiti,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7D4915),
+                        color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF7D4915),
                       ),
                     ),
                     Text(
@@ -176,7 +177,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7D4915),
+                        color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF7D4915),
                         letterSpacing: 0.4,
                       ),
                     ),

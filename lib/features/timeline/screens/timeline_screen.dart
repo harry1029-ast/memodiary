@@ -8,9 +8,7 @@ import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/core/theme/widgets/ink_metadata_pill.dart';
 import 'package:memodiary/core/theme/widgets/xuan_paper_card.dart';
-import 'package:memodiary/features/analytics/screens/analytics_dashboard_screen.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
-import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
 import 'package:memodiary/features/retrospection/widgets/on_this_day_banner.dart';
 import 'package:memodiary/features/retrospection/widgets/serendipity_roulette_card.dart';
 import 'package:memodiary/features/search/screens/search_screen.dart';
@@ -250,69 +248,62 @@ class _TimelineScreenState extends State<TimelineScreen> {
       appBar: AppBar(
         titleSpacing: 16,
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             CinnabarSealBadge.compact(
               text: '墨记',
               size: 28,
             ),
             const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'MemoDiary',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: tokens.jiaomo,
-                        letterSpacing: 1.0,
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'MemoDiary',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontNotoSerif,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: tokens.jiaomo,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '拾光日记',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 12,
-                        color: tokens.danmo,
-                        letterSpacing: 0.5,
+                      const SizedBox(width: 6),
+                      Text(
+                        '拾光日记',
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 12,
+                          color: tokens.danmo,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                Text(
-                  'INK DIARY · TIMELINE',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 9,
-                    letterSpacing: 1.2,
-                    color: tokens.danmo,
+                    ],
                   ),
-                ),
-              ],
+                  Text(
+                    'INK DIARY · TIMELINE',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 9,
+                      letterSpacing: 1.2,
+                      color: tokens.danmo,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            key: const Key('timeline_analytics_button'),
-            icon: const Icon(Icons.insights_rounded),
-            tooltip: '研墨统计',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AnalyticsDashboardScreen(
-                    database: widget.database,
-                  ),
-                ),
-              );
-            },
-          ),
           IconButton(
             key: const Key('timeline_weekly_review_button'),
             icon: const Icon(Icons.calendar_view_week_rounded),
@@ -339,23 +330,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => SearchScreen(
-                    database: widget.database,
-                    mediaService: widget.mediaService,
-                  ),
-                ),
-              ).then((_) {
-                if (mounted) _loadInitial();
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded),
-            tooltip: '纸篓残卷',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RecycleBinScreen(
                     database: widget.database,
                     mediaService: widget.mediaService,
                   ),
@@ -493,54 +467,58 @@ class _TimelineScreenState extends State<TimelineScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Seasonal solar term & lunar calendar
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        '岁月微澜',
-                        style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontNotoSerif,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: tokens.jiaomo,
-                          letterSpacing: 0.8,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          '岁月微澜',
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontNotoSerif,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: tokens.jiaomo,
+                            letterSpacing: 0.8,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: tokens.cinnabar,
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: tokens.cinnabar,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '研墨静思',
-                        style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontNotoSerif,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: tokens.cinnabar,
+                        const SizedBox(width: 6),
+                        Text(
+                          '研墨静思',
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontNotoSerif,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: tokens.cinnabar,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '「纸寿千年，墨润万境。心迹随笔安放。」',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontLiterata,
-                      fontSize: 11.5,
-                      fontStyle: FontStyle.italic,
-                      color: tokens.danmo,
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      '「纸寿千年，墨润万境。心迹随笔安放。」',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontLiterata,
+                        fontSize: 11.5,
+                        fontStyle: FontStyle.italic,
+                        color: tokens.danmo,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
 
               // Active Volume pill
               InkMetadataPill(
@@ -664,8 +642,10 @@ class _TimelineScreenState extends State<TimelineScreen> {
             size: 64,
           ),
           const SizedBox(height: 20),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
             children: [
               Text(
                 '素宣待书',
@@ -677,7 +657,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(width: 8),
               Text(
                 'No Diary Entries Yet',
                 style: TextStyle(
@@ -704,11 +683,12 @@ class _TimelineScreenState extends State<TimelineScreen> {
           FilledButton.icon(
             onPressed: () => _handleCreateEntry(),
             icon: const Icon(Icons.brush_rounded, size: 16),
-            label: Row(
-              mainAxisSize: MainAxisSize.min,
+            label: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 4,
               children: const [
                 Text('写下第一卷'),
-                SizedBox(width: 4),
                 Text('Write Your First Entry'),
               ],
             ),

@@ -59,6 +59,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   late final ImagePicker _imagePicker;
 
   QuillController? _controller;
+  final FocusNode _editorFocusNode = FocusNode();
+  final ScrollController _editorScrollController = ScrollController();
   EditorAutosaveManager? _autosaveManager;
 
   Template? _currentTemplate;
@@ -88,6 +90,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   void dispose() {
     _autosaveManager?.dispose();
     _controller?.dispose();
+    _editorFocusNode.dispose();
+    _editorScrollController.dispose();
     _dictationService.dispose();
     _audioSanctumService.dispose();
     super.dispose();
@@ -384,6 +388,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     }
 
     final templateStyle = TemplateStyle.fromTemplate(_currentTemplate!);
+    final isPaperDark =
+        ThemeData.estimateBrightnessForColor(templateStyle.backgroundColor) == Brightness.dark;
+    final paperBaseTheme = isPaperDark ? ThemeData.dark() : ThemeData.light();
 
     return Scaffold(
       backgroundColor: tokens.xuanGround,
@@ -552,32 +559,103 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           // Procedural Canvas Container wrapping Quill Editor with traditional watermark seal
           Expanded(
             child: Stack(
+              fit: StackFit.expand,
               children: [
-                TemplateCanvasContainer(
-                  style: templateStyle,
-                  child: QuillEditor(
-                    controller: _controller!,
-                    focusNode: FocusNode(),
-                    scrollController: ScrollController(),
-                    config: QuillEditorConfig(
-                      placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
-                      embedBuilders: [
-                        SandboxedImageEmbedBuilder(
-                          mediaSandboxService: widget.mediaSandboxService,
-                          onImageRemoved: () => _autosaveManager?.saveDraft(),
+                Positioned.fill(
+                  child: TemplateCanvasContainer(
+                    style: templateStyle,
+                    child: Theme(
+                      data: paperBaseTheme.copyWith(
+                        textTheme: paperBaseTheme.textTheme.apply(
+                          bodyColor: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF212121),
+                          displayColor: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF212121),
                         ),
-                        SandboxedVideoEmbedBuilder(
-                          mediaSandboxService: widget.mediaSandboxService,
-                          onVideoRemoved: () => _autosaveManager?.saveDraft(),
-                        ),
-                      ],
-                      customStyles: DefaultStyles(
-                        paragraph: DefaultTextBlockStyle(
-                          _typography.toTextStyle(),
-                          const HorizontalSpacing(0, 0),
-                          const VerticalSpacing(0, 0),
-                          const VerticalSpacing(0, 0),
-                          null,
+                      ),
+                      child: QuillEditor(
+                        controller: _controller!,
+                        focusNode: _editorFocusNode,
+                        scrollController: _editorScrollController,
+                        config: QuillEditorConfig(
+                          placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
+                          expands: true,
+                          scrollable: true,
+                          embedBuilders: [
+                            SandboxedImageEmbedBuilder(
+                              mediaSandboxService: widget.mediaSandboxService,
+                              onImageRemoved: () => _autosaveManager?.saveDraft(),
+                            ),
+                            SandboxedVideoEmbedBuilder(
+                              mediaSandboxService: widget.mediaSandboxService,
+                              onVideoRemoved: () => _autosaveManager?.saveDraft(),
+                            ),
+                          ],
+                          customStyles: DefaultStyles(
+                            placeHolder: DefaultTextBlockStyle(
+                              _typography.toTextStyle(
+                                color: isPaperDark ? const Color(0xFFA69F93) : const Color(0x7F212121),
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(0, 0),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                            paragraph: DefaultTextBlockStyle(
+                              _typography.toTextStyle(
+                                color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF212121),
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(0, 0),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                            h1: DefaultTextBlockStyle(
+                              _typography.toTextStyle(
+                                color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
+                              ).copyWith(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(8, 4),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                            h2: DefaultTextBlockStyle(
+                              _typography.toTextStyle(
+                                color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
+                              ).copyWith(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(6, 3),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                            h3: DefaultTextBlockStyle(
+                              _typography.toTextStyle(
+                                color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
+                              ).copyWith(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(4, 2),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                            quote: DefaultTextBlockStyle(
+                              _typography.toTextStyle(
+                                color: isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF424242),
+                              ).copyWith(
+                                fontStyle: FontStyle.italic,
+                              ),
+                              const HorizontalSpacing(0, 0),
+                              const VerticalSpacing(4, 4),
+                              const VerticalSpacing(0, 0),
+                              null,
+                            ),
+                          ),
                         ),
                       ),
                     ),

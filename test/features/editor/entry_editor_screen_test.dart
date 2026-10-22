@@ -144,5 +144,36 @@ void main() {
       expect(find.text('Font Size'), findsOneWidget);
       expect(find.text('Line Spacing'), findsOneWidget);
     });
+
+    testWidgets('renders cleanly in dark mode without canvas collapse', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: EntryEditorScreen(
+            database: db,
+            mediaSandboxService: sandboxService,
+            entryId: 'editor_test_entry',
+            dictationService: dictationService,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify canvas container fills the screen vertically
+      final canvasFinder = find.byType(Positioned);
+      expect(canvasFinder, findsWidgets);
+
+      // Verify thought spark banner renders legible prompt in dark mode
+      expect(find.byType(ThoughtSparkBanner), findsOneWidget);
+      final textWidgets = tester.widgetList<Text>(find.byType(Text));
+      final promptWidget = textWidgets.firstWhere(
+        (t) => (t.data ?? '').startsWith('“'),
+      );
+      expect(promptWidget.style?.color, const Color(0xFFF0ECE3));
+
+      // Verify seal watermark is present
+      expect(find.text('澄心\n寄墨'), findsOneWidget);
+    });
   });
 }

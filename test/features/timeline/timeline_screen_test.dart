@@ -149,5 +149,37 @@ void main() {
       expect(find.byType(WeeklyReviewScreen), findsOneWidget);
       expect(find.text('Weekly Review'), findsOneWidget);
     });
+
+    testWidgets('AppBar renders streamlined actions without overflow on mobile screen width', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TimelineScreen(
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Top bar actions: exactly 3 actions (Weekly Review, Search, Settings)
+      expect(find.byKey(const Key('timeline_weekly_review_button')), findsOneWidget);
+      expect(find.byIcon(Icons.search), findsOneWidget);
+      expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+
+      // Infrequent maintenance actions are no longer cluttering the top bar
+      expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
+      expect(find.byIcon(Icons.insights_rounded), findsNothing);
+
+      // Verify title is rendered cleanly without overflow
+      expect(find.text('MemoDiary'), findsOneWidget);
+      expect(find.text('拾光日记'), findsOneWidget);
+    });
   });
 }
