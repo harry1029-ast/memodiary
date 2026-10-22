@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
+import 'package:memodiary/core/theme/widgets/xuan_paper_card.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 
 /// Sealed countdown card for Time Capsule entries where DateTime.now() < unlockAt.
+/// Styled according to the Ink & Paper Journal aesthetic (*“时光胶囊 · 封缄书”*).
 /// Strictly conceals plain-text snippets, content delta, and images until unlock date.
 class TimeCapsuleCard extends StatelessWidget {
   final TimelineEntryItem item;
@@ -16,177 +20,154 @@ class TimeCapsuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final unlockDateStr = item.entry.unlockAt != null
-        ? DateFormat('MMMM d, y · h:mm a').format(item.entry.unlockAt!)
-        : 'Future Date';
+    final tokens = context.inkTokens;
+    final unlockDate = item.entry.unlockAt;
+    String unlockDateStr;
+    try {
+      unlockDateStr = unlockDate != null
+          ? DateFormat('yyyy年M月d日 HH:mm', 'zh_CN').format(unlockDate)
+          : '未指定时日';
+    } catch (_) {
+      unlockDateStr = unlockDate != null
+          ? DateFormat('yyyy-MM-dd HH:mm').format(unlockDate)
+          : '未指定时日';
+    }
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.primary.withAlpha(50),
-          width: 1.5,
-        ),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          if (onTap != null) {
-            onTap!();
-          } else {
-            _showSealedDialog(context, unlockDateStr);
-          }
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                theme.colorScheme.primaryContainer.withAlpha(120),
-                theme.colorScheme.surface,
-              ],
+    final now = DateTime.now();
+    final remainingDays = unlockDate != null
+        ? unlockDate.difference(now).inDays.clamp(0, 9999)
+        : 0;
+
+    return XuanPaperCard(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.all(14),
+      backgroundColor: tokens.agedFiber.withValues(alpha: 0.5),
+      onTap: () {
+        if (onTap != null) {
+          onTap!();
+        } else {
+          _showSealedDialog(context, unlockDateStr);
+        }
+      },
+      child: Row(
+        children: [
+          // Padlock in cinnabar wash container
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: tokens.cinnabarWash,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: tokens.cinnabar.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Icon(
+              Icons.lock_rounded,
+              size: 20,
+              color: tokens.cinnabar,
             ),
           ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top row: Padlock icon & Countdown badge
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withAlpha(30),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.lock_rounded,
-                      size: 20,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'TIME CAPSULE',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                        Text(
-                          'Created on ${DateFormat("MMM d, y").format(item.entry.entryDate)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Unlocks in ${item.remainingUnlockTimeFormatted}',
+          const SizedBox(width: 12),
+
+          // Titles & Countdown Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'TIME CAPSULE',
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onPrimary,
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.cinnabar,
+                        letterSpacing: 1.0,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              // Title or placeholder
-              Text(
-                (item.entry.title?.trim().isNotEmpty ?? false)
-                    ? item.entry.title!.trim()
-                    : 'A Message to the Future',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.2,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-
-              // Obscured sealed barrier notice
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant.withAlpha(80),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.visibility_off_outlined,
-                      size: 16,
-                      color: theme.colorScheme.onSurfaceVariant,
+                    const SizedBox(width: 6),
+                    Text(
+                      '时光胶囊 · 封缄书',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 11,
+                        color: tokens.danmo,
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Content is securely sealed until $unlockDateStr',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                    CinnabarSealBadge.compact(
+                      text: '封存中',
+                      size: 20,
+                      isWashVariant: false,
                     ),
                   ],
                 ),
-              ),
-            ],
+                if (item.entry.title != null && item.entry.title!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    item.entry.title!,
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                      color: tokens.jiaomo,
+                      letterSpacing: 0.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 3),
+                Text(
+                  '封存至 $unlockDateStr · Unlocks in $remainingDays days (距启缄尚有 $remainingDays 天)',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 11,
+                    color: tokens.danmo,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
-        ),
+
+          Icon(
+            Icons.visibility_off_outlined,
+            size: 18,
+            color: tokens.qingmo,
+          ),
+        ],
       ),
     );
   }
 
   void _showSealedDialog(BuildContext context, String unlockDateStr) {
+    final tokens = context.inkTokens;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        icon: const Icon(Icons.lock_clock_rounded, size: 40),
-        title: const Text('Time Capsule Sealed'),
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.lock_rounded, color: tokens.cinnabar, size: 20),
+            const SizedBox(width: 8),
+            const Text('Time Capsule Sealed'),
+          ],
+        ),
         content: Text(
-          'This memory is sealed and waiting for the right moment.\n\n'
-          'It will automatically unlock on:\n$unlockDateStr\n\n'
-          'Until then, the thoughts inside remain safe and private.',
+          '此墨稿已被时光密缄，需静候至 $unlockDateStr 方能启卷阅览。在此之前，笔墨均处于硬件级密匣封存，不可窥看。',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontLiterata,
+            height: 1.6,
+            color: tokens.nongmo,
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Keep Waiting'),
           ),
         ],

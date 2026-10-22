@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html lang="zh-Hans"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&amp;family=Noto+Serif+SC:wght@300;400;500;600;700&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#fcf9f2;}body{overscroll-behavior:none;-webkit-font-smoothing:antialiased;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { 'colors': { 'inverse-primary': '#c8c6c5', 'secondary-fixed-dim': '#ffb4a9', 'on-secondary': '#ffffff', 'primary-container': '#1e1e1e', 'tertiary-fixed': '#ece1d2', 'inverse-surface': '#31312c', 'on-tertiary-fixed-variant': '#4c463b', 'on-primary': '#ffffff', 'secondary-container': '#fe6d5c', 'on-secondary-fixed': '#410000', 'primary-fixed-dim': '#c8c6c5', 'surface-container-lowest': '#ffffff', 'surface-container-highest': '#e5e2db', 'surface': '#fcf9f2', 'secondary-fixed': '#ffdad5', 'on-background': '#1c1c18', 'tertiary-fixed-dim': '#cfc5b7', 'on-error-container': '#93000a', 'inverse-on-surface': '#f3f0e9', 'tertiary-container': '#231e14', 'tertiary': '#070501', 'on-secondary-fixed-variant': '#8b1a12', 'error-container': '#ffdad6', 'background': '#fcf9f2', 'on-tertiary': '#ffffff', 'surface-dim': '#dcdad3', 'primary-fixed': '#e5e2e1', 'surface-container-high': '#ebe8e1', 'on-primary-fixed-variant': '#474746', 'on-tertiary-fixed': '#201b12', 'on-primary-container': '#878585', 'surface-container': '#f1eee7', 'on-secondary-container': '#6d0002', 'outline-variant': '#c4c7c7', 'on-tertiary-container': '#8d8578', 'outline': '#747878', 'on-primary-fixed': '#1b1b1c', 'surface-container-low': '#f6f3ec', 'on-surface-variant': '#444748', 'surface-bright': '#fcf9f2', 'on-error': '#ffffff', 'primary': '#040505', 'surface-tint': '#5f5e5e', 'error': '#ba1a1a', 'surface-variant': '#e5e2db', 'on-surface': '#1c1c18', 'secondary': '#ac3227' }, 'borderRadius': { 'DEFAULT': '0.125rem', 'lg': '0.25rem', 'xl': '0.5rem', 'full': '0.75rem' }, 'spacing': { 'space-md': '1rem', 'margin': '1.5rem', 'space-xs': '0.25rem', 'gutter': '1rem', 'space-sm': '0.5rem', 'space-xl': '2.5rem', 'space-lg': '1.5rem' }, 'fontFamily': { 'display': ['Noto Serif'], 'label-sm': ['Noto Serif'], 'headline-lg': ['Noto Serif'], 'body-sm': ['Literata'], 'label-md': ['Noto Serif'], 'body-lg': ['Literata'], 'headline-lg-mobile': ['Noto Serif'], 'body-md': ['Literata'], 'headline-md': ['Noto Serif'], 'label-lg': ['Noto Serif'], 'headline-sm': ['Noto Serif'] }, 'fontSize': { 'display': ['32px', { 'lineHeight': '44px', 'letterSpacing': '0.04em', 'fontWeight': '400' }], 'label-sm': ['10px', { 'lineHeight': '14px', 'letterSpacing': '0.14em', 'fontWeight': '600' }], 'headline-lg': ['26px', { 'lineHeight': '36px', 'letterSpacing': '0.02em', 'fontWeight': '500' }], 'body-sm': ['14px', { 'lineHeight': '24px', 'letterSpacing': '0.005em', 'fontWeight': '400' }], 'label-md': ['12px', { 'lineHeight': '18px', 'letterSpacing': '0.1em', 'fontWeight': '500' }], 'body-lg': ['18px', { 'lineHeight': '32px', 'letterSpacing': '0.015em', 'fontWeight': '400' }], 'headline-lg-mobile': ['22px', { 'lineHeight': '32px', 'letterSpacing': '0.02em', 'fontWeight': '500' }], 'body-md': ['16px', { 'lineHeight': '28px', 'letterSpacing': '0.01em', 'fontWeight': '400' }], 'headline-md': ['20px', { 'lineHeight': '30px', 'letterSpacing': '0.015em', 'fontWeight': '500' }], 'label-lg': ['14px', { 'lineHeight': '20px', 'letterSpacing': '0.08em', 'fontWeight': '500' }], 'headline-sm': ['17px', { 'lineHeight': '26px', 'letterSpacing': '0.01em', 'fontWeight': '600' }] } } } }</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen selection:bg-secondary-fixed selection:text-on-secondary-fixed"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_12px_rgba(30,30,30,0.03)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="Ink Diary Seal Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1-6Tny38J9XySfhMaWGb3YTun6p2pyG5ovPZdzTKTHoT3T8P3PSWytOVMe-ydPMudcFPxYTTNdYYbIJu4jJv2NJiR_g_mKkPC4hFooHfkp8FRIy5sYHfS7cUsbVfRM9c6llo1jfNjq2LLS0MfFauNtx4GVo2fl-eeFq-iw9fmQD4M8cLPE2_2cs15SYM2Jkagjqwd7fK9Ks88UjsnzHewHlyYjlfFh0EPEhTbUnt_VA2GwIq74Za65g"/><div class="flex flex-col"><div class="flex items-baseline gap-space-xs"><span class="font-headline-sm text-headline-sm tracking-widest text-primary">墨记</span><span class="font-label-sm text-label-sm text-outline tracking-wider uppercase">Ink Diary</span></div><span class="font-label-sm text-[9px] leading-none text-outline-variant">Reader</span></div></div><div class="flex items-center gap-space-xs"><button aria-label="Search" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[20px]">search</span></button><button aria-label="Backup" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[20px]">cloud_done</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-24 bg-surface max-w-xl mx-auto min-h-screen"><div class="flex flex-col w-full px-margin pb-16 relative select-none">
+<!-- Top Reading Utility Bar -->
+<aside aria-label="阅读工具栏" class="flex items-center justify-between py-space-sm mb-space-md">
+<div class="flex items-center gap-space-sm">
+<button aria-label="返回上一页" class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:text-primary transition-opacity active:opacity-60" type="button">
+<span class="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
+</button>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline tracking-widest uppercase">Volume II</span>
+<span class="font-headline-sm text-headline-sm text-primary tracking-wider font-medium">卷二 · 浮生微澜</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<!-- Rain Ambience Audio Capsule -->
+<button class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface-variant hover:text-primary transition-all active:scale-95 shadow-sm" id="ambience-btn" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">water_drop</span>
+<span class="font-label-md text-label-md tracking-wider">听雨</span>
+<!-- Animated audio micro-bars -->
+<span class="flex items-end gap-0.5 h-3 ml-0.5">
+<span class="w-0.5 h-2 bg-secondary/80 rounded-full animate-pulse"></span>
+<span class="w-0.5 h-3 bg-secondary rounded-full animate-pulse" style="animation-delay: 150ms"></span>
+<span class="w-0.5 h-1.5 bg-secondary/60 rounded-full animate-pulse" style="animation-delay: 300ms"></span>
+</span>
+</button>
+<!-- Typography Settings Aa Trigger -->
+<button aria-label="排版设置" class="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant hover:text-primary active:scale-90 transition-transform" id="typo-settings-btn" type="button">
+<span class="material-symbols-outlined text-[19px]">format_size</span>
+</button>
+<!-- Bookmark Cinnabar Seal -->
+<button aria-label="书签收藏" class="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container-low text-secondary hover:opacity-85 active:scale-90 transition-transform" id="bookmark-btn" type="button">
+<span class="material-symbols-outlined text-[19px]" style="font-variation-settings: 'FILL' 1;">bookmark</span>
+</button>
+</div>
+</aside>
+<!-- Reading Sanctuary Card: Pure Deckle Xuan Paper Ground -->
+<article class="relative flex flex-col w-full bg-surface-container-lowest rounded-xl p-space-lg shadow-[0_12px_40px_-16px_rgba(30,30,30,0.06)] overflow-hidden">
+<!-- Subtle Ink Wash Decorative Background Bleed -->
+<div class="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-gradient-to-br from-secondary-fixed/30 via-tertiary-fixed/20 to-transparent blur-3xl pointer-events-none opacity-60"></div>
+<div class="absolute bottom-10 -left-12 w-48 h-48 rounded-full bg-gradient-to-tr from-surface-variant/40 via-surface-container-low to-transparent blur-2xl pointer-events-none opacity-50"></div>
+<!-- Entry Editorial Header -->
+<header class="relative z-10 flex flex-col mb-space-lg">
+<!-- Solar Term & Seasonal Markers -->
+<div class="flex items-center flex-wrap gap-x-2 gap-y-1 text-outline mb-space-xs">
+<span class="inline-flex items-center gap-1 font-label-md text-label-md text-secondary tracking-widest bg-secondary-fixed/40 px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[13px]">cyclone</span>
+          霜降 · 阴有小雨
+        </span>
+<span class="font-label-md text-label-md text-outline tracking-wider">二〇二六年十月廿日</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-label-md text-label-md text-outline tracking-wider">暮夜申时</span>
+</div>
+<!-- Main Title -->
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-medium tracking-wide leading-relaxed mt-1 mb-2">
+        窗前听雨，秋山入墨
+      </h1>
+<!-- Metadata & Privacy Tagline -->
+<div class="flex items-center justify-between text-on-surface-variant/80 font-label-sm text-label-sm tracking-widest pt-2">
+<div class="flex items-center gap-2">
+<span>680 字</span>
+<span class="text-outline-variant">·</span>
+<span>读需 3 分钟</span>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+<span>手稿私藏</span>
+</div>
+</div>
+</header>
+<!-- Literary Body Prose -->
+<div class="relative z-10 flex flex-col gap-space-md text-on-surface font-body-lg text-body-lg leading-loose selection:bg-secondary-fixed selection:text-on-secondary-fixed">
+<!-- Paragraph 1 with Traditional Vermilion Drop Initial -->
+<p class="relative text-justify tracking-wide indent-0">
+<span class="float-left mr-2.5 mt-1 flex items-center justify-center w-9 h-9 rounded bg-secondary text-on-secondary font-headline-sm text-headline-sm shadow-sm select-none">
+          暮
+        </span>
+        色渐浓，窗外的寒意裹着微雨扑向檐角，残荷衰草在昏蒙的暮霭中渐渐淡出轮廓。合上案头的杂务，研起半锭油烟松墨。青石砚台微润，随着墨条沉缓均匀的旋转，细密研磨声与檐溜击石的清脆音律互为唱和，恍惚间，躁动了一整日的思绪，在墨香氤氲中复归澄澈。
+      </p>
+<!-- Paragraph 2 -->
+<p class="text-justify tracking-wide indent-8">
+        泡上一盏初冬的蒙顶黄芽，水汽蒸腾而上，将眼前的书案蒙上一层朦胧的雾气。执起狼毫，笔尖触碰在生宣的刹那，微涩的阻尼感从指尖直抵心坎。每日落笔数语，原本不过是随心而为的习惯，历经寒暑，却成了浮躁尘寰中安顿自我的唯一清幽客栈。
+      </p>
+<!-- Inline Traditional Chinese Ink Artwork Showcase -->
+<figure class="my-space-sm flex flex-col items-center">
+<div class="relative w-full rounded-xl overflow-hidden bg-surface-container shadow-md">
+<img alt="秋山听雨意境图" class="w-full h-52 object-cover" data-alt="Delicate Chinese traditional ink wash landscape painting of layered misty mountain ranges in dilute charcoal tones, an antique pavilion nestled beside a quiet lake, gentle rain ripples on water, painted on warm aged raw Xuan paper texture with soft vermilion leaf accents, serene Zen literati aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZ4aOvGHsTyFgTbmldWBF-8Qs-bqux43pB6v2gMakDKvCoKe7xd_1M6EnKDl0bqi5M7zGY-REy_w-n66h65D_Pffj_Zbj_5UimykoaISMX7Fyu6ZtHhsOZ4tJ-nFKvd1E2XstohT4D2Z7kDAiVAzW3vK3by2inNPycc2cfzzmhg3VlXrqADpql5YCcTdIAiQ31BppFMNMQwA4wCG8u-cN8U1qz_Qgdel4f3Ck-m7TwFpeNn7umXGWzfA"/>
+<div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-primary/70 via-primary/20 to-transparent p-space-sm flex items-end justify-between">
+<span class="font-label-md text-label-md text-surface tracking-widest drop-shadow-sm">《秋山晚眺 · 听雨小品》</span>
+<span class="font-label-sm text-label-sm text-surface-container-high tracking-wider uppercase">Ink on Xuan</span>
+</div>
+</div>
+<figcaption class="mt-2 font-label-sm text-label-sm text-outline tracking-widest text-center">
+          —— 随笔插绘 · 纸本水墨
+        </figcaption>
+</figure>
+<!-- Indented Quote / Reflective Callout Slip -->
+<blockquote class="my-2 p-space-md bg-surface-container-low rounded-lg relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary rounded-r"></div>
+<p class="pl-3 italic text-primary font-display text-headline-sm tracking-widest leading-relaxed">
+          “非淡泊无以明志，非宁静无以致远。”
+        </p>
+<div class="pl-3 mt-1.5 flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span>诸葛孔明《诫子书》</span>
+<span class="text-secondary font-medium tracking-widest">书案沉吟</span>
+</div>
+</blockquote>
+<!-- Paragraph 3 -->
+<p class="text-justify tracking-wide indent-8">
+        天地不语，四时自成节律。春生夏长，秋收冬藏，秋之将尽，草木零落并非衰败，而是蓄力以待初春的蓄势与自守。人生漫漫，何尝不是如此？与其在喧嚣名利场中逐流疲奔，不如借这一窗冷雨，煮沸一壶清澈的泉水，以墨为友，将浮生琐碎化作几行淡泊素雅的文字。
+      </p>
+<!-- Paragraph 4 Closing Reflection -->
+<p class="text-justify tracking-wide indent-8">
+        此时雨势微敛，只余残滴敲瓦。夜深忽觉心境轻盈如絮，天地辽阔，皆纳于这寸砚方宣之间。熄灭灯烛前，愿此夜长眠无梦，来朝晨起，晴光满径。
+      </p>
+<!-- Authentic Vermilion Cinnabar Seal Stamp (印章) End Sign-off -->
+<div class="flex items-center justify-end mt-space-md pt-space-xs gap-3">
+<div class="flex flex-col items-end">
+<span class="font-label-sm text-label-sm text-outline tracking-widest">岁在丙午 · 霜降夜草</span>
+<span class="font-label-md text-label-md text-on-surface font-medium tracking-widest">山中隐客 顿首</span>
+</div>
+<!-- Soapstone Carved Cinnabar Seal Square -->
+<div class="relative w-12 h-12 bg-secondary rounded-DEFAULT flex items-center justify-center p-1 shadow-sm select-none active:rotate-3 transition-transform cursor-pointer" title="作者私印">
+<div class="w-full h-full flex flex-wrap items-center justify-center text-on-secondary font-display font-bold leading-none tracking-tighter text-[14px] p-0.5">
+<span class="w-1/2 text-center">静</span>
+<span class="w-1/2 text-center">好</span>
+<span class="w-1/2 text-center">岁</span>
+<span class="w-1/2 text-center">月</span>
+</div>
+<!-- Tiny relief edge texture simulation -->
+<div class="absolute inset-0 rounded-DEFAULT bg-gradient-to-br from-white/10 to-black/10 pointer-events-none"></div>
+</div>
+</div>
+</div>
+</article>
+<!-- Interactive Literary Reading Ribbon Floating Sheet -->
+<section aria-label="阅读交互栏" class="mt-space-lg mb-space-xs flex flex-col gap-space-sm">
+<!-- Ambient Soundscape Selector Strip -->
+<div class="bg-surface-container-low rounded-xl p-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">headphones</span>
+<span class="font-label-md text-label-md text-on-surface-variant tracking-wider">氛围琴音:</span>
+</div>
+<div class="flex items-center gap-1.5 overflow-x-auto py-0.5">
+<button class="px-2.5 py-1 rounded bg-secondary text-on-secondary font-label-sm text-label-sm tracking-wider flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[13px]">rainy</span>
+          檐下疏雨
+        </button>
+<button class="px-2.5 py-1 rounded bg-surface text-on-surface-variant hover:text-primary font-label-sm text-label-sm tracking-wider flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[13px]">fireplace</span>
+          围炉松炭
+        </button>
+<button class="px-2.5 py-1 rounded bg-surface text-on-surface-variant hover:text-primary font-label-sm text-label-sm tracking-wider flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[13px]">local_library</span>
+          古刹晚钟
+        </button>
+</div>
+</div>
+<!-- Article Navigation & Stamp Complete Actions -->
+<div class="grid grid-cols-2 gap-space-sm">
+<!-- Previous Chapter Slip -->
+<button class="flex items-center gap-2 p-space-sm rounded-lg bg-surface-container text-left hover:bg-surface-container-high transition-colors active:scale-[0.99]" type="button">
+<span class="material-symbols-outlined text-[18px] text-outline">west</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-outline tracking-wider">前篇</span>
+<span class="font-label-md text-label-md text-on-surface truncate">寒露收砚记</span>
+</div>
+</button>
+<!-- Next Chapter Slip -->
+<button class="flex items-center justify-end text-right gap-2 p-space-sm rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors active:scale-[0.99]" type="button">
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-outline tracking-wider">后篇</span>
+<span class="font-label-md text-label-md text-on-surface truncate">立冬煮雪茶</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-outline">east</span>
+</button>
+</div>
+<!-- Complete Reading Stamp Action Banner -->
+<div class="flex items-center justify-between p-space-md rounded-xl bg-surface-container-high">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[22px]">history_edu</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-primary font-medium tracking-wide">阅毕钤印</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">标记为今日已研读并收纳入册</span>
+</div>
+</div>
+<button class="px-4 py-2 rounded bg-secondary text-on-secondary font-label-md text-label-md tracking-widest flex items-center gap-1.5 shadow-sm active:scale-95 transition-all" id="stamp-complete-btn" type="button">
+<span class="material-symbols-outlined text-[16px]">verified</span>
+<span>钤印</span>
+</button>
+</div>
+</section>
+</div>
+<script>
+  // Simple interactive feedbacks for reader view delights
+  (function() {
+    const ambienceBtn = document.getElementById('ambience-btn');
+    const bookmarkBtn = document.getElementById('bookmark-btn');
+    const stampBtn = document.getElementById('stamp-complete-btn');
+
+    if (ambienceBtn) {
+      let isPlaying = true;
+      ambienceBtn.addEventListener('click', function() {
+        isPlaying = !isPlaying;
+        const bars = ambienceBtn.querySelectorAll('span.bg-secondary');
+        bars.forEach(bar => {
+          bar.style.animationPlayState = isPlaying ? 'running' : 'paused';
+        });
+        ambienceBtn.classList.toggle('opacity-70', !isPlaying);
+      });
+    }
+
+    if (bookmarkBtn) {
+      let bookmarked = true;
+      bookmarkBtn.addEventListener('click', function() {
+        bookmarked = !bookmarked;
+        const icon = bookmarkBtn.querySelector('.material-symbols-outlined');
+        if (icon) {
+          icon.style.fontVariationSettings = bookmarked ? "'FILL' 1" : "'FILL' 0";
+          bookmarkBtn.classList.toggle('text-secondary', bookmarked);
+          bookmarkBtn.classList.toggle('text-outline', !bookmarked);
+        }
+      });
+    }
+
+    if (stampBtn) {
+      stampBtn.addEventListener('click', function() {
+        stampBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">check</span> 已钤印';
+        stampBtn.classList.replace('bg-secondary', 'bg-primary-container');
+        stampBtn.classList.replace('text-on-secondary', 'text-on-primary-container');
+      });
+    }
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-low/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(30,30,30,0.04)]" data-active-classes="text-primary font-semibold [&amp;_.cinnabar-dot]:opacity-100"><div class="flex justify-around items-center h-20 max-w-xl mx-auto px-gutter"><a class="flex flex-col items-center justify-center gap-1 w-16 h-14 text-on-surface-variant hover:text-primary transition-all group" data-path="bookshelf" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">auto_stories</span><span class="font-label-md text-label-md tracking-widest">册集</span><span class="cinnabar-dot w-1 h-1 rounded-full bg-secondary opacity-0 transition-opacity duration-300"></span></a><a class="flex flex-col items-center justify-center gap-1 w-16 h-14 text-on-surface-variant hover:text-primary transition-all group" data-path="timeline" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">history_edu</span><span class="font-label-md text-label-md tracking-widest">拾光</span><span class="cinnabar-dot w-1 h-1 rounded-full bg-secondary opacity-0 transition-opacity duration-300"></span></a><a aria-current="page" class="flex flex-col items-center justify-center gap-1 w-16 h-14 transition-all group text-primary font-semibold [&amp;_.cinnabar-dot]:opacity-100" data-path="reader" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">menu_book</span><span class="font-label-md text-label-md tracking-widest">阅章</span><span class="cinnabar-dot w-1 h-1 rounded-full bg-secondary opacity-0 transition-opacity duration-300"></span></a></div></nav></body></html>

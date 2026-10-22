@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
+import 'package:memodiary/core/theme/widgets/xuan_paper_card.dart';
 
 /// Retrospective banner displayed at the top of the Timeline when past years
 /// contain diary entries written on the same calendar month and day.
@@ -22,46 +25,51 @@ class OnThisDayBanner extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final theme = Theme.of(context);
+    final tokens = context.inkTokens;
     final currentYear = DateTime.now().year;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+    return XuanPaperCard(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 6),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            theme.colorScheme.primaryContainer.withAlpha(140),
-            theme.colorScheme.secondaryContainer.withAlpha(110),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.primary.withAlpha(50),
-        ),
-      ),
+      backgroundColor: tokens.agedFiber.withValues(alpha: 0.35),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.history_edu_rounded,
-                size: 18,
-                color: theme.colorScheme.primary,
+              CinnabarSealBadge.compact(
+                text: '忆昔',
+                size: 22,
+                isWashVariant: true,
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  entries.isNotEmpty
-                      ? 'On This Day · ${entries.length} ${entries.length == 1 ? 'Memory' : 'Memories'}'
-                      : 'Memory Retrospection',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onPrimaryContainer,
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      entries.isNotEmpty
+                          ? '岁时忆昔 · 往年今日存留 ${entries.length} 篇'
+                          : '岁时忆昔 · 岁月吉光',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.jiaomo,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    if (entries.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        'On This Day · ${entries.length} ${entries.length == 1 ? "Memory" : "Memories"}',
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 11,
+                          color: tokens.danmo,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (onOpenSerendipity != null)
@@ -70,90 +78,79 @@ class OnThisDayBanner extends StatelessWidget {
                   onPressed: onOpenSerendipity,
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    foregroundColor: tokens.cinnabar,
                   ),
-                  icon: const Icon(Icons.casino_outlined, size: 16),
+                  icon: const Icon(Icons.casino_outlined, size: 15),
                   label: const Text(
-                    'Memory Roulette',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    '漫步偶遇',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
             ],
           ),
           if (entries.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 92,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: entries.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final entry = entries[index];
-                  final yearsAgo = (currentYear - entry.entryDate.year).clamp(1, 99);
-                  final yearBadge =
-                      '$yearsAgo ${yearsAgo == 1 ? 'Year' : 'Years'} Ago · ${entry.entryDate.year}';
-                  final titleText = (entry.title?.trim().isNotEmpty ?? false)
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: entries.map((entry) {
+                  final yearsAgo = currentYear - entry.entryDate.year;
+                  final title = (entry.title?.trim().isNotEmpty ?? false)
                       ? entry.title!.trim()
-                      : DateFormat('MMM d, y').format(entry.entryDate);
-                  final preview = entry.isLocked
-                      ? '🔒 Locked memory'
-                      : entry.plainText.trim().isEmpty
-                          ? 'No text preview'
-                          : entry.plainText.trim();
+                      : DateFormat('h:mm a').format(entry.entryDate);
 
-                  return InkWell(
-                    key: Key('on_this_day_card_${entry.id}'),
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => onEntryTap(entry),
-                    child: Container(
-                      width: 220,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface.withAlpha(235),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withAlpha(100),
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ActionChip(
+                      backgroundColor: tokens.xuanPureLeaf,
+                      side: BorderSide(color: tokens.deckleBorder, width: 1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      avatar: CircleAvatar(
+                        radius: 9,
+                        backgroundColor: tokens.cinnabarWash,
+                        child: Text(
+                          '$yearsAgo',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: tokens.cinnabar,
+                          ),
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            yearBadge,
+                            title,
                             style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.primary,
+                              fontFamily: InkDiaryTheme.fontNotoSerif,
+                              fontSize: 11,
+                              color: tokens.nongmo,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(width: 4),
                           Text(
-                            titleText,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Expanded(
-                            child: Text(
-                              preview,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                            '(${yearsAgo == 1 ? '1年前' : '$yearsAgo年前'})',
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontNotoSerif,
+                              fontSize: 10,
+                              color: tokens.danmo,
                             ),
                           ),
                         ],
                       ),
+                      onPressed: () => onEntryTap(entry),
                     ),
                   );
-                },
+                }).toList(),
               ),
             ),
           ],
@@ -162,4 +159,3 @@ class OnThisDayBanner extends StatelessWidget {
     );
   }
 }
-

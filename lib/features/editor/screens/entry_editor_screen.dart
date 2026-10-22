@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/dictation_service.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../../templates/widgets/template_canvas_container.dart';
 import '../../templates/widgets/template_switcher_sheet.dart';
@@ -25,8 +26,8 @@ import '../widgets/soundscape_modal.dart';
 import '../widgets/thought_spark_banner.dart';
 import '../widgets/typography_sheet.dart';
 
-/// Full rich-text multimodal diary editor screen.
-/// Decouples content (Quill Delta JSON) from presentation (Procedural Templates & Typography).
+/// Full rich-text multimodal diary editor screen in classical Ink & Paper aesthetic.
+/// Strictly decouples content (Quill Delta JSON) from presentation (Procedural Templates & Typography).
 class EntryEditorScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaSandboxService;
@@ -192,23 +193,31 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   Future<void> _handleImagePick() async {
+    final tokens = InkDiaryTheme.tokensOf(context);
+
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: tokens.xuanGround,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => SafeArea(
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Take Photo with Camera'),
+              leading: Icon(Icons.camera_alt_outlined, color: tokens.jiaomo),
+              title: Text(
+                '即时拓影 · Take Photo',
+                style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
+              ),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Choose from Photo Gallery'),
+              leading: Icon(Icons.photo_library_outlined, color: tokens.jiaomo),
+              title: Text(
+                '相册选撷 · Photo Gallery',
+                style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
+              ),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
           ],
@@ -253,19 +262,31 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   Future<void> _handleVideoPick() async {
+    final tokens = InkDiaryTheme.tokensOf(context);
+
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
+      backgroundColor: tokens.xuanGround,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => SafeArea(
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.videocam_outlined),
-              title: const Text('Record Video with Camera (≤60s)'),
+              leading: Icon(Icons.videocam_outlined, color: tokens.jiaomo),
+              title: Text(
+                '录制短影 · Record Video (≤60s)',
+                style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
+              ),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.video_library_outlined),
-              title: const Text('Choose Video from Gallery (≤60s)'),
+              leading: Icon(Icons.video_library_outlined, color: tokens.jiaomo),
+              title: Text(
+                '相册选取短影 · Video Gallery (≤60s)',
+                style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
+              ),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
           ],
@@ -328,8 +349,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       0,
       _controller!.document.length - 1,
     );
-    _controller!.document.insert(index, '$prompt\n');
-    _controller!.formatText(index, prompt.length, Attribute.blockQuote);
+    _controller!.document.insert(index, '【灵感拾遗】$prompt\n');
+    _controller!.formatText(index, prompt.length + 6, Attribute.blockQuote);
     setState(() {
       _showThoughtSpark = false;
     });
@@ -351,55 +372,95 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = InkDiaryTheme.tokensOf(context);
+
     if (_isLoading || _controller == null || _currentTemplate == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: tokens.xuanGround,
+        body: Center(
+          child: CircularProgressIndicator(color: tokens.cinnabar),
+        ),
       );
     }
 
     final templateStyle = TemplateStyle.fromTemplate(_currentTemplate!);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: tokens.xuanGround,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
+        backgroundColor: tokens.xuanGround,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shape: Border(
+          bottom: BorderSide(
+            color: tokens.agedFiber,
+            width: 1.0,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: Icon(Icons.arrow_back, color: tokens.jiaomo),
+          tooltip: '返回',
           onPressed: _handleSaveAndExit,
         ),
         title: ValueListenableBuilder<AutosaveStatus>(
           valueListenable: _autosaveManager!.statusNotifier,
           builder: (context, status, _) {
             String label = 'Saved';
-            Color color = Colors.green;
+            Color dotColor = const Color(0xFF059669);
             if (status == AutosaveStatus.saving) {
               label = 'Saving...';
-              color = Colors.orange;
+              dotColor = const Color(0xFFD97706);
             } else if (status == AutosaveStatus.unsaved) {
               label = 'Unsaved';
-              color = Colors.grey;
+              dotColor = tokens.danmo;
             }
 
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+              decoration: BoxDecoration(
+                color: tokens.ricePaper,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: tokens.agedFiber,
+                  width: 0.8,
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                ),
-              ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: dotColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: dotColor.withValues(alpha: 0.4),
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontKaiti,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: tokens.nongmo,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
             );
           },
         ),
         actions: [
-          // Writing Sanctum Soundscapes
+          // 1. Writing Sanctum Soundscapes
           ListenableBuilder(
             listenable: _audioSanctumService,
             builder: (context, _) {
@@ -408,63 +469,79 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 key: const Key('editor_appbar_soundscape_btn'),
                 icon: Icon(
                   playing ? Icons.headphones_rounded : Icons.headphones_outlined,
-                  color: playing ? Colors.teal.shade700 : Colors.black87,
+                  color: playing ? tokens.cinnabar : tokens.nongmo,
                 ),
-                tooltip: 'Writing Sanctum Soundscapes',
+                tooltip: '沉浸琴音·檐雨',
                 onPressed: _handleOpenSoundscapes,
               );
             },
           ),
-          // Template switcher
+          // 2. Paper & Template Switcher
           IconButton(
-            icon: const Icon(Icons.style_outlined, color: Colors.black87),
+            icon: Icon(Icons.style_outlined, color: tokens.nongmo),
             tooltip: 'Switch Template',
             onPressed: _handleTemplateSwitch,
           ),
-          // Typography
+          // 3. Typography Styles ('A')
           IconButton(
-            icon: const Icon(Icons.font_download_outlined, color: Colors.black87),
+            icon: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                border: Border.all(color: tokens.nongmo, width: 1.4),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Center(
+                child: Text(
+                  'A',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.jiaomo,
+                    height: 1.0,
+                  ),
+                ),
+              ),
+            ),
             tooltip: 'Typography',
             onPressed: _handleTypographySettings,
           ),
-          // Save and Done
+          // 4. Seal & Complete Save (Cinnabar Checkmark)
           IconButton(
-            icon: const Icon(Icons.check, color: Colors.deepPurple),
-            tooltip: 'Done',
+            icon: Icon(Icons.check, color: tokens.cinnabar),
+            tooltip: '完成归卷',
             onPressed: _handleSaveAndExit,
           ),
         ],
       ),
       body: Column(
         children: [
-          // Metadata bar (Date, Mood, Weather, Time Capsule)
-          Container(
-            color: Colors.white,
-            child: EntryMetadataBar(
-              entryDate: _entryDate,
-              mood: _mood,
-              weather: _weather,
-              unlockAt: _unlockAt,
-              onDateChanged: (val) {
-                setState(() => _entryDate = val);
-                widget.database.updateEntryMetadata(widget.entryId, entryDate: val);
-              },
-              onMoodChanged: (val) {
-                setState(() => _mood = val);
-                widget.database.updateEntryMetadata(widget.entryId, mood: val);
-              },
-              onWeatherChanged: (val) {
-                setState(() => _weather = val);
-                widget.database.updateEntryMetadata(widget.entryId, weather: val);
-              },
-              onUnlockAtChanged: (val) {
-                setState(() => _unlockAt = val);
-                widget.database.updateEntryMetadata(widget.entryId, unlockAt: val);
-              },
-            ),
+          // Metadata Bar (Date, Mood, Weather, Time Capsule)
+          EntryMetadataBar(
+            entryDate: _entryDate,
+            mood: _mood,
+            weather: _weather,
+            unlockAt: _unlockAt,
+            onDateChanged: (val) {
+              setState(() => _entryDate = val);
+              widget.database.updateEntryMetadata(widget.entryId, entryDate: val);
+            },
+            onMoodChanged: (val) {
+              setState(() => _mood = val);
+              widget.database.updateEntryMetadata(widget.entryId, mood: val);
+            },
+            onWeatherChanged: (val) {
+              setState(() => _weather = val);
+              widget.database.updateEntryMetadata(widget.entryId, weather: val);
+            },
+            onUnlockAtChanged: (val) {
+              setState(() => _unlockAt = val);
+              widget.database.updateEntryMetadata(widget.entryId, unlockAt: val);
+            },
           ),
 
-          // Thought Spark Banner
+          // Thought Spark Inspiration Banner
           if (_showThoughtSpark)
             ThoughtSparkBanner(
               sparkService: _thoughtSparkService,
@@ -472,37 +549,73 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               onDismiss: () => setState(() => _showThoughtSpark = false),
             ),
 
-          // Procedural Canvas Container wrapping Quill Editor
+          // Procedural Canvas Container wrapping Quill Editor with traditional watermark seal
           Expanded(
-            child: TemplateCanvasContainer(
-              style: templateStyle,
-              child: QuillEditor(
-                controller: _controller!,
-                focusNode: FocusNode(),
-                scrollController: ScrollController(),
-                config: QuillEditorConfig(
-                  placeholder: 'Write your heart out today...',
-                  embedBuilders: [
-                    SandboxedImageEmbedBuilder(
-                      mediaSandboxService: widget.mediaSandboxService,
-                      onImageRemoved: () => _autosaveManager?.saveDraft(),
-                    ),
-                    SandboxedVideoEmbedBuilder(
-                      mediaSandboxService: widget.mediaSandboxService,
-                      onVideoRemoved: () => _autosaveManager?.saveDraft(),
-                    ),
-                  ],
-                  customStyles: DefaultStyles(
-                    paragraph: DefaultTextBlockStyle(
-                      _typography.toTextStyle(),
-                      const HorizontalSpacing(0, 0),
-                      const VerticalSpacing(0, 0),
-                      const VerticalSpacing(0, 0),
-                      null,
+            child: Stack(
+              children: [
+                TemplateCanvasContainer(
+                  style: templateStyle,
+                  child: QuillEditor(
+                    controller: _controller!,
+                    focusNode: FocusNode(),
+                    scrollController: ScrollController(),
+                    config: QuillEditorConfig(
+                      placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
+                      embedBuilders: [
+                        SandboxedImageEmbedBuilder(
+                          mediaSandboxService: widget.mediaSandboxService,
+                          onImageRemoved: () => _autosaveManager?.saveDraft(),
+                        ),
+                        SandboxedVideoEmbedBuilder(
+                          mediaSandboxService: widget.mediaSandboxService,
+                          onVideoRemoved: () => _autosaveManager?.saveDraft(),
+                        ),
+                      ],
+                      customStyles: DefaultStyles(
+                        paragraph: DefaultTextBlockStyle(
+                          _typography.toTextStyle(),
+                          const HorizontalSpacing(0, 0),
+                          const VerticalSpacing(0, 0),
+                          const VerticalSpacing(0, 0),
+                          null,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+
+                // Traditional watermark seal at lower right corner
+                Positioned(
+                  bottom: 24,
+                  right: 20,
+                  child: IgnorePointer(
+                    child: Opacity(
+                      opacity: 0.16,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: tokens.cinnabar, width: 1.6),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '澄心\n寄墨',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontNotoSerif,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: tokens.cinnabar,
+                              height: 1.15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 

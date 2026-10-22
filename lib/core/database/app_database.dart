@@ -214,6 +214,9 @@ class AppDatabase extends _$AppDatabase {
   /// Retrieves all notebooks
   Future<List<Notebook>> getAllNotebooks() => select(notebooks).get();
 
+  /// Inserts a new notebook into the database
+  Future<int> createNotebook(NotebooksCompanion notebook) => into(notebooks).insert(notebook);
+
   /// Inserts a new entry into the database
   Future<int> createEntry(EntriesCompanion entry) => into(entries).insert(entry);
 

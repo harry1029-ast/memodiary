@@ -1,18 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/features/search/models/search_filters.dart';
-import 'package:memodiary/features/search/services/event_suggestion_service.dart';
-import 'package:memodiary/features/search/services/natural_language_search_parser.dart';
-import 'package:memodiary/features/search/widgets/event_suggestion_chips.dart';
-import 'package:memodiary/features/search/widgets/search_filter_chips.dart';
-import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
-import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
-import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
+import 'package:flutter/services.dart';
 
-/// Offline Full-Text Search (FTS5), Natural Language Event Search & Multi-Condition Filter screen.
-/// Branches queries cleanly and conceals sealed Time Capsules for strict privacy.
+import '../../../core/database/app_database.dart';
+import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
+import '../../timeline/models/timeline_entry_item.dart';
+import '../../timeline/screens/entry_detail_screen.dart';
+import '../../timeline/widgets/entry_summary_card.dart';
+import '../models/search_filters.dart';
+import '../services/event_suggestion_service.dart';
+import '../services/natural_language_search_parser.dart';
+import '../widgets/event_suggestion_chips.dart';
+import '../widgets/search_filter_chips.dart';
+
+/// Offline Full-Text Search (FTS5), Natural Language Event Search & Multi-Condition Filter screen
+/// crafted in literati Ink & Paper aesthetic.
 class SearchScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
@@ -46,6 +50,14 @@ class _SearchScreenState extends State<SearchScreen> {
   String _lastRawQuery = '';
   bool _isLoading = false;
   bool _hasSearched = false;
+
+  static const List<String> _quickInspirations = [
+    '听雨',
+    '霜降手札',
+    '案头偶得',
+    '静心随笔',
+    '旧友煮茶',
+  ];
 
   @override
   void initState() {
@@ -158,7 +170,7 @@ class _SearchScreenState extends State<SearchScreen> {
         excludeSealedTimeCapsules: true, // Privacy invariant
       );
 
-      final ids = results.map((e) => e.id).toList();
+      final ids = results.map((entry) => entry.id).toList();
       final mediaMap = await widget.database.getPrimaryMediaForEntries(ids);
 
       if (mounted) {
@@ -197,37 +209,80 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = InkDiaryTheme.tokensOf(context);
 
     return Scaffold(
+      backgroundColor: tokens.xuanGround,
       appBar: AppBar(
-        titleSpacing: 0,
-        title: TextField(
-          key: const Key('search_text_field'),
-          controller: _searchController,
-          autofocus: true,
-          textInputAction: TextInputAction.search,
-          decoration: InputDecoration(
-            hintText: 'Search diaries, memories, keywords...',
-            border: InputBorder.none,
-            hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _debounceTimer?.cancel();
-                      _searchController.clear();
-                      _dismissedKinds.clear();
-                      _lastRawQuery = '';
-                      _executeSearch();
-                    },
-                  )
-                : null,
+        backgroundColor: tokens.xuanGround,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shape: Border(
+          bottom: BorderSide(
+            color: tokens.agedFiber,
+            width: 1.0,
           ),
-          onSubmitted: (_) {
-            _debounceTimer?.cancel();
-            _executeSearch();
-          },
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: tokens.jiaomo),
+          tooltip: '返回',
+          onPressed: () => Navigator.pop(context),
+        ),
+        titleSpacing: 0,
+        title: Container(
+          height: 40,
+          margin: const EdgeInsets.only(right: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: tokens.ricePaper,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: tokens.agedFiber),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.search, size: 18, color: tokens.danmo),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  key: const Key('search_text_field'),
+                  controller: _searchController,
+                  autofocus: true,
+                  textInputAction: TextInputAction.search,
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 14,
+                    color: tokens.jiaomo,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: '搜寻手札、心境、旧忆...',
+                    hintStyle: TextStyle(
+                      fontFamily: InkDiaryTheme.fontKaiti,
+                      fontSize: 13,
+                      color: tokens.danmo,
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  onSubmitted: (_) {
+                    _debounceTimer?.cancel();
+                    _executeSearch();
+                  },
+                ),
+              ),
+              if (_searchController.text.isNotEmpty)
+                GestureDetector(
+                  onTap: () {
+                    _debounceTimer?.cancel();
+                    _searchController.clear();
+                    _dismissedKinds.clear();
+                    _lastRawQuery = '';
+                    _executeSearch();
+                  },
+                  child: Icon(Icons.close, size: 16, color: tokens.danmo),
+                ),
+            ],
+          ),
         ),
       ),
       body: Column(
@@ -245,7 +300,7 @@ class _SearchScreenState extends State<SearchScreen> {
             alignment: Alignment.topCenter,
             child: _detectedConstraints.isEmpty
                 ? const SizedBox.shrink()
-                : _buildUnderstoodAsBar(theme),
+                : _buildUnderstoodAsBar(tokens),
           ),
 
           // Smart Event Association Suggestions
@@ -256,16 +311,65 @@ class _SearchScreenState extends State<SearchScreen> {
               onSuggestionTapped: _onSuggestionTapped,
             ),
 
-          const Divider(height: 1),
+          // Search Results Counter Banner (when results available)
+          if (_hasSearched && !_isLoading && _results.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 3,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: tokens.jiaomo,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '检索录存',
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: tokens.jiaomo,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: tokens.ricePaper,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: tokens.agedFiber),
+                        ),
+                        child: Text(
+                          '寻得 ${_results.length} 篇墨卷',
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontKaiti,
+                            fontSize: 11,
+                            color: tokens.danmo,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const CinnabarSealBadge(text: '澄心印记', isRound: true),
+                ],
+              ),
+            ),
 
-          // Main Search Results Feed
+          // Main Search Results Feed or Poetic Empty State
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator(color: tokens.cinnabar))
                 : !_hasSearched
-                    ? _buildInitialPrompt(theme)
+                    ? _buildInitialPrompt(tokens)
                     : _results.isEmpty
-                        ? _buildNoResults(theme)
+                        ? _buildNoResults(tokens)
                         : _buildResultsList(),
           ),
         ],
@@ -273,12 +377,12 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildUnderstoodAsBar(ThemeData theme) {
+  Widget _buildUnderstoodAsBar(InkDiaryTokens tokens) {
     return Container(
       key: const Key('nl_understood_as_bar'),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.35),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      color: tokens.cinnabarWash,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isNarrow = constraints.maxWidth < 360;
@@ -289,21 +393,20 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Tooltip(
-                    message: 'Understood as',
-                    child: Icon(
-                      Icons.psychology_outlined,
-                      size: 16,
-                      color: theme.colorScheme.secondary,
-                    ),
+                  Icon(
+                    Icons.psychology_outlined,
+                    size: 16,
+                    color: tokens.cinnabar,
                   ),
                   if (!isNarrow) ...[
                     const SizedBox(width: 6),
                     Text(
-                      'Understood as:',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.secondary,
-                        fontWeight: FontWeight.w600,
+                      '笔意解析:',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.cinnabar,
                       ),
                     ),
                   ],
@@ -319,13 +422,18 @@ class _SearchScreenState extends State<SearchScreen> {
                             constraint.label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12),
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontKaiti,
+                              fontSize: 12,
+                              color: tokens.cinnabar,
+                            ),
                           ),
                         ),
                         deleteIcon: Semantics(
                           label: 'Remove ${constraint.label} filter',
-                          child: const Icon(Icons.close, size: 16),
+                          child: Icon(Icons.close, size: 14, color: tokens.cinnabar),
                         ),
+                        backgroundColor: tokens.ricePaper,
                         visualDensity: VisualDensity.compact,
                         onDeleted: () => _onDismissConstraint(constraint.kind),
                       ),
@@ -340,36 +448,154 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildInitialPrompt(ThemeData theme) {
-    return Center(
+  Widget _buildInitialPrompt(InkDiaryTokens tokens) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search_rounded,
-            size: 64,
-            color: theme.colorScheme.outlineVariant,
+          // Literati Loupe Graphic with Seal
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: tokens.ricePaper,
+                  border: Border.all(color: tokens.agedFiber),
+                  boxShadow: [
+                    BoxShadow(
+                      color: tokens.jiaomo.withValues(alpha: 0.04),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.pageview_outlined,
+                  size: 44,
+                  color: tokens.nongmo,
+                ),
+              ),
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: tokens.cinnabarWash,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: tokens.cinnabar.withValues(alpha: 0.4), width: 0.5),
+                  ),
+                  child: Text(
+                    '印',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: tokens.cinnabar,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
+
           Text(
-            'Search Your Diary',
-            style: theme.textTheme.titleMedium?.copyWith(
+            '墨海探微 · 静候落字',
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: tokens.jiaomo,
+              letterSpacing: 0.8,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
-            'Type a keyword or select filters above to find entries.',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            '输入字句、年份或叩问心境，\n在泛黄宣纸深处翻寻旧日回响。',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontKaiti,
+              fontSize: 13,
+              height: 1.45,
+              color: tokens.danmo,
             ),
+          ),
+          const SizedBox(height: 28),
+
+          // Quick Inspiration Cloud
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(width: 4, height: 4, decoration: BoxDecoration(shape: BoxShape.circle, color: tokens.cinnabar)),
+              const SizedBox(width: 6),
+              Text(
+                '案头灵犀 · 快捷索引',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.nongmo,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(width: 4, height: 4, decoration: BoxDecoration(shape: BoxShape.circle, color: tokens.cinnabar)),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: _quickInspirations.map((inspiration) {
+              return InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _searchController.text = inspiration;
+                  _searchController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: inspiration.length),
+                  );
+                  _executeSearch();
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: tokens.ricePaper,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: tokens.agedFiber),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('「', style: TextStyle(color: tokens.cinnabar, fontSize: 11)),
+                      Text(
+                        inspiration,
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontKaiti,
+                          fontSize: 12,
+                          color: tokens.jiaomo,
+                        ),
+                      ),
+                      Text('」', style: TextStyle(color: tokens.cinnabar, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNoResults(ThemeData theme) {
+  Widget _buildNoResults(InkDiaryTokens tokens) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -378,22 +604,28 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             Icon(
               Icons.find_in_page_outlined,
-              size: 56,
-              color: theme.colorScheme.outlineVariant,
+              size: 52,
+              color: tokens.danmo.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 16),
             Text(
-              'No matching entries found',
-              style: theme.textTheme.titleMedium?.copyWith(
+              '墨痕杳然 · 暂无匹配记录',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
+                color: tokens.jiaomo,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Try checking for spelling, broadening your date range, or resetting filters.',
+              '试探更换关键词、放宽时日范围，或重置筛选条件重新翻阅。',
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontKaiti,
+                fontSize: 13,
+                color: tokens.danmo,
+                height: 1.4,
               ),
             ),
           ],
@@ -422,4 +654,3 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 }
-

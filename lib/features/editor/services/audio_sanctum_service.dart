@@ -19,6 +19,11 @@ enum SoundscapePreset {
     id: 'mechanical_keyboard',
     label: 'Mechanical Study',
     subtitle: 'Subtle study room ambience with soft rhythmic ticks',
+  ),
+  bambooBreeze(
+    id: 'bamboo_breeze',
+    label: 'Bamboo Breeze',
+    subtitle: 'Gentle mountain wind swaying through pine and bamboo',
   );
 
   final String id;
@@ -93,6 +98,13 @@ class ProceduralAudioSynthesizer {
             click = white * decay * 0.28;
           }
           sample = lpState1 * 0.16 + click;
+          break;
+
+        case SoundscapePreset.bambooBreeze:
+          // Gentle modulated wind noise through bamboo grove
+          lpState1 = 0.94 * lpState1 + 0.06 * white;
+          final windWave = 0.65 + 0.35 * sin(2 * pi * i / (sampleRate * 3.5));
+          sample = lpState1 * 0.36 * windWave;
           break;
       }
 
@@ -181,6 +193,9 @@ class AudioSanctumService extends ChangeNotifier {
   SoundscapePreset? get activePreset => _activePreset;
   bool get isPlaying => _isPlaying;
   double get volume => _volume;
+
+  /// Plays or switches to [preset].
+  Future<void> play(SoundscapePreset preset) => selectPreset(preset);
 
   /// Starts or switches to [preset] in seamless loop mode.
   Future<void> selectPreset(SoundscapePreset? preset) async {

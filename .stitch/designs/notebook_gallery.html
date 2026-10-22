@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html lang="zh-Hans"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&amp;family=Noto+Serif+SC:wght@300;400;500;600;700&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;background-color:#fcf9f2;}body{overscroll-behavior:none;-webkit-font-smoothing:antialiased;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { 'colors': { 'inverse-primary': '#c8c6c5', 'secondary-fixed-dim': '#ffb4a9', 'on-secondary': '#ffffff', 'primary-container': '#1e1e1e', 'tertiary-fixed': '#ece1d2', 'inverse-surface': '#31312c', 'on-tertiary-fixed-variant': '#4c463b', 'on-primary': '#ffffff', 'secondary-container': '#fe6d5c', 'on-secondary-fixed': '#410000', 'primary-fixed-dim': '#c8c6c5', 'surface-container-lowest': '#ffffff', 'surface-container-highest': '#e5e2db', 'surface': '#fcf9f2', 'secondary-fixed': '#ffdad5', 'on-background': '#1c1c18', 'tertiary-fixed-dim': '#cfc5b7', 'on-error-container': '#93000a', 'inverse-on-surface': '#f3f0e9', 'tertiary-container': '#231e14', 'tertiary': '#070501', 'on-secondary-fixed-variant': '#8b1a12', 'error-container': '#ffdad6', 'background': '#fcf9f2', 'on-tertiary': '#ffffff', 'surface-dim': '#dcdad3', 'primary-fixed': '#e5e2e1', 'surface-container-high': '#ebe8e1', 'on-primary-fixed-variant': '#474746', 'on-tertiary-fixed': '#201b12', 'on-primary-container': '#878585', 'surface-container': '#f1eee7', 'on-secondary-container': '#6d0002', 'outline-variant': '#c4c7c7', 'on-tertiary-container': '#8d8578', 'outline': '#747878', 'on-primary-fixed': '#1b1b1c', 'surface-container-low': '#f6f3ec', 'on-surface-variant': '#444748', 'surface-bright': '#fcf9f2', 'on-error': '#ffffff', 'primary': '#040505', 'surface-tint': '#5f5e5e', 'error': '#ba1a1a', 'surface-variant': '#e5e2db', 'on-surface': '#1c1c18', 'secondary': '#ac3227' }, 'borderRadius': { 'DEFAULT': '0.125rem', 'lg': '0.25rem', 'xl': '0.5rem', 'full': '0.75rem' }, 'spacing': { 'space-md': '1rem', 'margin': '1.5rem', 'space-xs': '0.25rem', 'gutter': '1rem', 'space-sm': '0.5rem', 'space-xl': '2.5rem', 'space-lg': '1.5rem' }, 'fontFamily': { 'display': ['Noto Serif'], 'label-sm': ['Noto Serif'], 'headline-lg': ['Noto Serif'], 'body-sm': ['Literata'], 'label-md': ['Noto Serif'], 'body-lg': ['Literata'], 'headline-lg-mobile': ['Noto Serif'], 'body-md': ['Literata'], 'headline-md': ['Noto Serif'], 'label-lg': ['Noto Serif'], 'headline-sm': ['Noto Serif'] }, 'fontSize': { 'display': ['32px', { 'lineHeight': '44px', 'letterSpacing': '0.04em', 'fontWeight': '400' }], 'label-sm': ['10px', { 'lineHeight': '14px', 'letterSpacing': '0.14em', 'fontWeight': '600' }], 'headline-lg': ['26px', { 'lineHeight': '36px', 'letterSpacing': '0.02em', 'fontWeight': '500' }], 'body-sm': ['14px', { 'lineHeight': '24px', 'letterSpacing': '0.005em', 'fontWeight': '400' }], 'label-md': ['12px', { 'lineHeight': '18px', 'letterSpacing': '0.1em', 'fontWeight': '500' }], 'body-lg': ['18px', { 'lineHeight': '32px', 'letterSpacing': '0.015em', 'fontWeight': '400' }], 'headline-lg-mobile': ['22px', { 'lineHeight': '32px', 'letterSpacing': '0.02em', 'fontWeight': '500' }], 'body-md': ['16px', { 'lineHeight': '28px', 'letterSpacing': '0.01em', 'fontWeight': '400' }], 'headline-md': ['20px', { 'lineHeight': '30px', 'letterSpacing': '0.015em', 'fontWeight': '500' }], 'label-lg': ['14px', { 'lineHeight': '20px', 'letterSpacing': '0.08em', 'fontWeight': '500' }], 'headline-sm': ['17px', { 'lineHeight': '26px', 'letterSpacing': '0.01em', 'fontWeight': '600' }] } } } }</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen selection:bg-secondary-fixed selection:text-on-secondary-fixed"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_12px_rgba(30,30,30,0.03)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="Ink Diary Seal Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1-6Tny38J9XySfhMaWGb3YTun6p2pyG5ovPZdzTKTHoT3T8P3PSWytOVMe-ydPMudcFPxYTTNdYYbIJu4jJv2NJiR_g_mKkPC4hFooHfkp8FRIy5sYHfS7cUsbVfRM9c6llo1jfNjq2LLS0MfFauNtx4GVo2fl-eeFq-iw9fmQD4M8cLPE2_2cs15SYM2Jkagjqwd7fK9Ks88UjsnzHewHlyYjlfFh0EPEhTbUnt_VA2GwIq74Za65g"/><div class="flex flex-col"><div class="flex items-baseline gap-space-xs"><span class="font-headline-sm text-headline-sm tracking-widest text-primary">墨记</span><span class="font-label-sm text-label-sm text-outline tracking-wider uppercase">Ink Diary</span></div><span class="font-label-sm text-[9px] leading-none text-outline-variant">Bookshelf</span></div></div><div class="flex items-center gap-space-xs"><button aria-label="Search" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[20px]">search</span></button><button aria-label="Backup" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-[20px]">cloud_done</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-24 bg-surface max-w-xl mx-auto min-h-screen"><div class="flex flex-col w-full px-margin pb-12 select-none">
+<!-- Subtle Atmospheric Banner -->
+<div class="flex flex-col gap-space-xs mt-space-sm mb-space-lg">
+<div class="flex items-center justify-between">
+<div class="flex items-baseline gap-space-sm">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary tracking-widest">册集</h2>
+<span class="font-label-sm text-label-sm text-outline tracking-widest uppercase">Volumes &amp; Scrolls</span>
+</div>
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-high/70 shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant tracking-wider">3 册 · 128 篇</span>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant italic">「纸寿千年，墨润万境。随心录下微澜日常。」</p>
+</div>
+<!-- Filter Ribbon (Horizontal Scrollable) -->
+<div class="flex items-center gap-space-sm overflow-x-auto no-scrollbar pb-space-sm -mx-margin px-margin mb-space-lg">
+<button class="relative px-3.5 py-1.5 rounded-lg bg-secondary-fixed/50 text-secondary font-label-md text-label-md tracking-wider flex items-center gap-1.5 transition-all">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span>全部 (All)</span>
+</button>
+<button class="px-3.5 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-primary font-label-md text-label-md tracking-wider transition-all">
+      线装 (Thread-bound)
+    </button>
+<button class="px-3.5 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-primary font-label-md text-label-md tracking-wider transition-all">
+      岁时 (Seasonal)
+    </button>
+<button class="px-3.5 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-primary font-label-md text-label-md tracking-wider flex items-center gap-1 transition-all">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>私密 (Vault)</span>
+</button>
+</div>
+<!-- Notebook Bookshelf 2-Column Grid -->
+<div class="grid grid-cols-2 gap-gutter mb-space-xl">
+<!-- Volume 1: 丙午年 · 墨痕春序 -->
+<div class="group relative flex flex-col cursor-pointer active:scale-[0.98] transition-transform duration-200">
+<div class="relative w-full aspect-[3/4.2] rounded-lg overflow-hidden bg-primary shadow-[0_8px_20px_rgba(4,5,5,0.14)] flex flex-col justify-between p-3">
+<!-- Silk Cloth Texture Overlay -->
+<img class="absolute inset-0 w-full h-full object-cover opacity-65 mix-blend-overlay pointer-events-none" data-alt="Deep rich indigo blue Chinese raw silk cloth texture, close-up macro weave, vintage bookbinding fabric with tactile textile sheen and organic slub threads." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2PcICHVloINfvGKfx-rFMX6X0xxwaYE9U6Z49kgUJ0-ET7yqrAknLBlYMRitIQ8GPq4nfhabVZ0IG_SIWEEo-giLP-iP1ekjBb14U1brpB_GrWtL7mzfJE70ySMHqlXSNY7mslxxhOmnNIhVY61r4wLEeMosrb_cC_COIC6QEGj5EdwRwJrRiRqSrXTW8B563M5S2nrtWVaLcykT6YZ5hmYx0xQ1dr-vq51HKYvYoBVTi6QA_8XjgCQ"/>
+<!-- Thread Binding Holes and White Stitches along the left spine -->
+<div class="absolute left-0 top-0 bottom-0 w-6 flex flex-col justify-around items-center py-4 pointer-events-none z-10">
+<div class="w-1.5 h-1.5 rounded-full bg-surface-container-high/40 shadow-inner"></div>
+<div class="w-0.5 h-full bg-surface/30 my-0.5"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-surface-container-high/40 shadow-inner"></div>
+<div class="w-0.5 h-full bg-surface/30 my-0.5"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-surface-container-high/40 shadow-inner"></div>
+<div class="w-0.5 h-full bg-surface/30 my-0.5"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-surface-container-high/40 shadow-inner"></div>
+</div>
+<!-- Vertical Paper Title Slip (Traditional Tiqian 题签) -->
+<div class="relative ml-8 mt-1 self-start w-7 bg-surface-container-lowest/95 shadow-sm rounded-DEFAULT py-2 px-1 flex flex-col items-center gap-1.5 z-10">
+<span class="font-headline-sm text-headline-sm text-primary tracking-widest writing-vertical-rl select-none" style="writing-mode: vertical-rl;">墨痕春序</span>
+<span class="w-3.5 h-px bg-outline-variant/60"></span>
+<span class="font-label-sm text-[9px] text-outline tracking-tighter" style="writing-mode: vertical-rl;">丙午</span>
+</div>
+<!-- Book Spine Decorative Tag / Cinnabar Seal -->
+<div class="relative self-end mt-auto flex items-end justify-between w-full pl-7 z-10">
+<span class="w-5 h-5 rounded-DEFAULT bg-secondary text-on-secondary font-label-sm text-[9px] flex items-center justify-center font-bold shadow-sm">藏</span>
+<span class="material-symbols-outlined text-surface-variant/40 text-[18px]">bookmark_heart</span>
+</div>
+</div>
+<!-- Volume Meta Info -->
+<div class="mt-2.5 flex flex-col px-1">
+<h3 class="font-headline-sm text-headline-sm text-primary truncate">丙午年 · 墨痕春序</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">48 篇 · 昨夜新墨</p>
+</div>
+</div>
+<!-- Volume 2: 浮生微澜 -->
+<div class="group relative flex flex-col cursor-pointer active:scale-[0.98] transition-transform duration-200">
+<div class="relative w-full aspect-[3/4.2] rounded-lg overflow-hidden bg-surface-container-high shadow-[0_8px_18px_rgba(30,30,30,0.08)] flex flex-col justify-between p-3">
+<!-- Xuan Paper & Mountain Mist Ink Wash -->
+<img class="absolute inset-0 w-full h-full object-cover opacity-80 pointer-events-none" data-alt="Traditional Chinese monochrome ink wash painting of distant gentle misty mountains and soft water ripples on raw handmade beige xuan rice paper, minimalist literati aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7iwzd5_hMbgTZGwZnamRPsFvTOQoDbvBCSk_h-UCNw3wkTmXopoPTPeMz6jNdQqt_3TUcSckjGwMhS6B2v83UjEiA21pdoWTxkC72iZtr7u8PmdOBWM0IRYsbqnamWzn1XX-mZrXzTRINzE2eTvamwgoFzuK1eNcf39wcX4QKFkWPZxcZRhwBoXhVijJsZ7LdcDIBrhpxnQQEW89sZzoO1r87XfBZ2fqDeVwZrL70S-SFv2lQpGhrPw"/>
+<!-- Thread Binding Stitch (Left) -->
+<div class="absolute left-0 top-0 bottom-0 w-5 flex flex-col justify-around items-center py-4 pointer-events-none z-10">
+<div class="w-1 h-1 rounded-full bg-primary/20"></div>
+<div class="w-0.5 h-full bg-outline-variant/40 my-0.5"></div>
+<div class="w-1 h-1 rounded-full bg-primary/20"></div>
+<div class="w-0.5 h-full bg-outline-variant/40 my-0.5"></div>
+<div class="w-1 h-1 rounded-full bg-primary/20"></div>
+</div>
+<!-- Vertical Title Slip -->
+<div class="relative ml-7 mt-1 self-start w-7 bg-surface-container-lowest/90 shadow-sm rounded-DEFAULT py-2.5 px-1 flex flex-col items-center gap-1 z-10">
+<span class="font-headline-sm text-headline-sm text-primary tracking-widest select-none" style="writing-mode: vertical-rl;">浮生微澜</span>
+</div>
+<!-- Bottom Red Seal -->
+<div class="relative self-end mt-auto flex items-end justify-between w-full pl-6 z-10">
+<span class="w-5 h-5 rounded-DEFAULT bg-secondary text-on-secondary font-label-sm text-[8px] flex items-center justify-center font-semibold shadow-sm">心记</span>
+<span class="font-label-sm text-[9px] text-on-surface-variant tracking-wider bg-surface/80 px-1 rounded">岁末</span>
+</div>
+</div>
+<!-- Volume Meta Info -->
+<div class="mt-2.5 flex flex-col px-1">
+<h3 class="font-headline-sm text-headline-sm text-primary truncate">浮生微澜</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">52 篇 · 霜降</p>
+</div>
+</div>
+<!-- Volume 3: 雨水与茶 -->
+<div class="group relative flex flex-col cursor-pointer active:scale-[0.98] transition-transform duration-200">
+<div class="relative w-full aspect-[3/4.2] rounded-lg overflow-hidden bg-tertiary-fixed shadow-[0_8px_18px_rgba(30,30,30,0.08)] flex flex-col justify-between p-3">
+<!-- Celadon Tea-Tinted Paper Texture & Bamboo Silhouette -->
+<img class="absolute inset-0 w-full h-full object-cover opacity-75 pointer-events-none" data-alt="Delicate pale celadon green handmade washi paper background with light brush silhouette of quiet bamboo leaves and watercolor tea wash droplets, serene minimalist Chinese art." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5TE0py3z8-scU1pp6bFAa1S6deRlV-ynzcKu_lDOrzKpzzczs5AC0Av1bmBh1A6fIeNb1vSiNBXbNePkoDN5EUEIsLTTM7iuo5lPi1Zn9LPS2tT4-uR76r6Mt2kXr9ANgrOkBqwUJaulAf0wvrr4HOE_0QOrREWC4FfeiOEX-xRS-HGW9YoOzHYBMXtxP8kVjEKM_KI0aYN2I-dTmXEZrMAyhkAhYz_J_co5G_xlfffPTGmTzuGE83Q"/>
+<!-- Stitch Spine Left -->
+<div class="absolute left-0 top-0 bottom-0 w-5 flex flex-col justify-around items-center py-4 pointer-events-none z-10">
+<div class="w-1 h-1 rounded-full bg-primary/20"></div>
+<div class="w-0.5 h-full bg-outline-variant/50 my-0.5"></div>
+<div class="w-1 h-1 rounded-full bg-primary/20"></div>
+<div class="w-0.5 h-full bg-outline-variant/50 my-0.5"></div>
+<div class="w-1 h-1 rounded-full bg-primary/20"></div>
+</div>
+<!-- Title Slip -->
+<div class="relative ml-7 mt-1 self-start w-7 bg-surface-container-lowest/95 shadow-sm rounded-DEFAULT py-2.5 px-1 flex flex-col items-center gap-1 z-10">
+<span class="font-headline-sm text-headline-sm text-primary tracking-widest select-none" style="writing-mode: vertical-rl;">雨水与茶</span>
+</div>
+<!-- Bottom Indicators -->
+<div class="relative self-end mt-auto flex items-end justify-between w-full pl-6 z-10">
+<span class="w-5 h-5 rounded-DEFAULT bg-secondary text-on-secondary font-label-sm text-[8px] flex items-center justify-center font-semibold shadow-sm">清欢</span>
+<span class="font-label-sm text-[9px] text-on-surface-variant tracking-wider bg-surface/80 px-1 rounded">连载中</span>
+</div>
+</div>
+<!-- Volume Meta Info -->
+<div class="mt-2.5 flex flex-col px-1">
+<h3 class="font-headline-sm text-headline-sm text-primary truncate">雨水与茶</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">28 篇 · 随录</p>
+</div>
+</div>
+<!-- Create New Notebook Card (启新册) -->
+<div class="group relative flex flex-col cursor-pointer active:scale-[0.98] transition-transform duration-200">
+<div class="relative w-full aspect-[3/4.2] rounded-lg bg-surface-container-low/80 hover:bg-surface-container shadow-sm flex flex-col items-center justify-center p-4 text-center transition-colors">
+<!-- Calligraphic Brush Circle Icon -->
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center mb-space-sm group-hover:scale-105 transition-transform shadow-inner">
+<span class="material-symbols-outlined text-primary text-[26px]">edit_note</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-primary mb-1 tracking-wider">启新册</span>
+<span class="font-label-sm text-[10px] text-outline uppercase tracking-widest">Bind New Volume</span>
+<!-- Traditional Corner Details -->
+<div class="absolute top-2.5 left-2.5 w-2 h-2 bg-outline-variant/30 rounded-DEFAULT"></div>
+<div class="absolute top-2.5 right-2.5 w-2 h-2 bg-outline-variant/30 rounded-DEFAULT"></div>
+<div class="absolute bottom-2.5 left-2.5 w-2 h-2 bg-outline-variant/30 rounded-DEFAULT"></div>
+<div class="absolute bottom-2.5 right-2.5 w-2 h-2 bg-outline-variant/30 rounded-DEFAULT"></div>
+</div>
+<div class="mt-2.5 flex flex-col px-1">
+<h3 class="font-headline-sm text-headline-sm text-on-surface-variant group-hover:text-primary transition-colors">装订册籍</h3>
+<p class="font-label-md text-label-md text-outline">自定义纸张与封皮</p>
+</div>
+</div>
+</div>
+<!-- Seasonal Memory Card -->
+<div class="w-full rounded-xl bg-surface-container-low p-space-md shadow-sm mb-space-lg flex items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-md">
+<div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary font-headline-sm text-headline-sm">
+        春
+      </div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-headline-sm text-primary">雨水 · 墨气氤氲</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">立春已过十四日，宜检阅旧卷。</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline hover:text-primary transition-colors">arrow_forward</span>
+</div>
+<!-- Local-First Privacy Paper Slip Banner -->
+<div class="w-full rounded-lg bg-surface-container-high/60 px-space-md py-space-sm flex items-center justify-between gap-space-sm shadow-sm">
+<div class="flex items-center gap-2">
+<span class="w-4 h-4 rounded-DEFAULT bg-secondary text-on-secondary font-label-sm text-[9px] flex items-center justify-center font-bold">密</span>
+<span class="font-label-md text-label-md text-on-surface-variant tracking-wider">纯粹本地存储 · 数据沙盒完整 · 无云端追踪</span>
+</div>
+<span class="material-symbols-outlined text-outline text-[16px]">verified_user</span>
+</div>
+<!-- Floating Calligraphy Brush Action Button -->
+<div class="fixed right-6 bottom-24 z-40">
+<button aria-label="New Entry" class="w-13 h-13 px-4 py-3.5 rounded-full bg-primary text-on-primary shadow-[0_10px_25px_rgba(4,5,5,0.28)] flex items-center gap-2 hover:bg-primary-container active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[20px] text-secondary-container">draw</span>
+<span class="font-headline-sm text-headline-sm tracking-wider pr-1">开砚</span>
+</button>
+</div>
+</div>
+<script>
+  // Simple micro-interaction for filter tabs
+  document.querySelectorAll('.no-scrollbar button').forEach(button => {
+    button.addEventListener('click', function() {
+      document.querySelectorAll('.no-scrollbar button').forEach(b => {
+        b.className = 'px-3.5 py-1.5 rounded-lg bg-surface-container-low text-on-surface-variant hover:text-primary font-label-md text-label-md tracking-wider transition-all flex items-center gap-1';
+      });
+      this.className = 'relative px-3.5 py-1.5 rounded-lg bg-secondary-fixed/50 text-secondary font-label-md text-label-md tracking-wider flex items-center gap-1.5 transition-all';
+    });
+  });
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-low/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(30,30,30,0.04)]" data-active-classes="text-primary font-semibold [&amp;_.cinnabar-dot]:opacity-100"><div class="flex justify-around items-center h-20 max-w-xl mx-auto px-gutter"><a aria-current="page" class="flex flex-col items-center justify-center gap-1 w-16 h-14 transition-all group text-primary font-semibold [&amp;_.cinnabar-dot]:opacity-100" data-path="bookshelf" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">auto_stories</span><span class="font-label-md text-label-md tracking-widest">册集</span><span class="cinnabar-dot w-1 h-1 rounded-full bg-secondary opacity-0 transition-opacity duration-300"></span></a><a class="flex flex-col items-center justify-center gap-1 w-16 h-14 text-on-surface-variant hover:text-primary transition-all group" data-path="timeline" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">history_edu</span><span class="font-label-md text-label-md tracking-widest">拾光</span><span class="cinnabar-dot w-1 h-1 rounded-full bg-secondary opacity-0 transition-opacity duration-300"></span></a><a class="flex flex-col items-center justify-center gap-1 w-16 h-14 text-on-surface-variant hover:text-primary transition-all group" data-path="reader" href="#"><span class="material-symbols-outlined text-[22px] group-hover:scale-105 transition-transform">menu_book</span><span class="font-label-md text-label-md tracking-widest">阅章</span><span class="cinnabar-dot w-1 h-1 rounded-full bg-secondary opacity-0 transition-opacity duration-300"></span></a></div></nav></body></html>

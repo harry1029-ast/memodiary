@@ -1,18 +1,24 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
+import '../../../core/theme/widgets/xuan_paper_card.dart';
 import '../../editor/screens/entry_editor_screen.dart';
 import '../../timeline/models/timeline_entry_item.dart';
 import '../../timeline/screens/entry_detail_screen.dart';
 import '../../timeline/widgets/entry_summary_card.dart';
 import '../services/calendar_week_utils.dart';
+import 'weekly_debrief_detail_screen.dart';
 
-/// Dedicated Weekly Review aggregation dashboard displaying Monday-to-Sunday daily cards
-/// (supporting multiple entries per day), mood summaries, and weekly debrief drafting.
+/// Dedicated Weekly Review aggregation dashboard displaying Monday-to-Sunday daily cards,
+/// mood summaries, and weekly debrief drafting in classical Ink & Paper literati aesthetic.
 class WeeklyReviewScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
@@ -73,6 +79,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
   }
 
   void _stepWeek(int delta) {
+    HapticFeedback.lightImpact();
     final next = CalendarWeekUtils.getAdjacentWeek(_year, _weekNumber, delta);
     setState(() {
       _year = next.year;
@@ -82,6 +89,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
   }
 
   void _jumpToCurrentWeek() {
+    HapticFeedback.lightImpact();
     final nowInfo = CalendarWeekUtils.getIsoWeekAndYear(DateTime.now());
     setState(() {
       _year = nowInfo.year;
@@ -95,8 +103,11 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => EntryDetailScreen(
-            entry: _weeklyDebrief!,
+          builder: (_) => WeeklyDebriefDetailScreen(
+            debriefEntry: _weeklyDebrief!,
+            weekEntries: _weekEntries,
+            year: _year,
+            weekNumber: _weekNumber,
             database: widget.database,
             mediaService: widget.mediaService,
           ),
@@ -126,7 +137,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
         id: newId,
         notebookId: notebookId,
         templateId: 'template_weekly_review',
-        title: Value('Week $_weekNumber Review'),
+        title: Value('第$_weekNumber周 · 周志复盘'),
         contentDelta: jsonEncode([
           {'insert': '\n'}
         ]),
@@ -215,7 +226,8 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = InkDiaryTheme.tokensOf(context);
+
     final groupedByDay = CalendarWeekUtils.groupEntriesByWeekday(
       _weekEntries,
       _year,
@@ -235,109 +247,219 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
     }
 
     return Scaffold(
+      backgroundColor: tokens.xuanGround,
       appBar: AppBar(
-        title: const Text(
-          'Weekly Review',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        backgroundColor: tokens.xuanGround,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shape: Border(
+          bottom: BorderSide(color: tokens.agedFiber, width: 1.0),
         ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: tokens.jiaomo),
+          tooltip: '返回',
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '周志复盘',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.jiaomo,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Weekly Review',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 12,
+                    color: tokens.danmo,
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              'WEEKLY RETROSPECTIVE',
+              style: TextStyle(
+                fontSize: 9,
+                color: tokens.danmo,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
         actions: [
-          TextButton.icon(
-            key: const Key('jump_current_week_button'),
-            onPressed: _jumpToCurrentWeek,
-            icon: const Icon(Icons.today, size: 18),
-            label: const Text('This Week'),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              key: const Key('jump_current_week_button'),
+              onTap: _jumpToCurrentWeek,
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: tokens.ricePaper,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: tokens.agedFiber),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.calendar_today, size: 13, color: tokens.cinnabar),
+                    const SizedBox(width: 4),
+                    Text(
+                      '本周',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontKaiti,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.jiaomo,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // 1. Week Stepper Header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerLow,
-              border: Border(
-                bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+          // 1. Week Horizon Navigator Card
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: XuanPaperCard(
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    key: const Key('prev_week_button'),
+                    icon: Icon(Icons.chevron_left, color: tokens.jiaomo),
+                    tooltip: '上一周',
+                    onPressed: () => _stepWeek(-1),
+                  ),
+                  Column(
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Week $_weekNumber, $_year',
+                            key: const Key('week_header_title'),
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontNotoSerif,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: tokens.jiaomo,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '(第$_weekNumber周)',
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontKaiti,
+                              fontSize: 12,
+                              color: tokens.danmo,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        CalendarWeekUtils.formatWeekRange(_year, _weekNumber),
+                        key: const Key('week_header_range'),
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontKaiti,
+                          fontSize: 11,
+                          color: tokens.danmo,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    key: const Key('next_week_button'),
+                    icon: Icon(Icons.chevron_right, color: tokens.jiaomo),
+                    tooltip: '下一周',
+                    onPressed: () => _stepWeek(1),
+                  ),
+                ],
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  key: const Key('prev_week_button'),
-                  icon: const Icon(Icons.chevron_left),
-                  tooltip: 'Previous Week',
-                  onPressed: () => _stepWeek(-1),
-                ),
-                Column(
-                  children: [
-                    Text(
-                      'Week $_weekNumber, $_year',
-                      key: const Key('week_header_title'),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      CalendarWeekUtils.formatWeekRange(_year, _weekNumber),
-                      key: const Key('week_header_range'),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  key: const Key('next_week_button'),
-                  icon: const Icon(Icons.chevron_right),
-                  tooltip: 'Next Week',
-                  onPressed: () => _stepWeek(1),
-                ),
-              ],
             ),
           ),
 
           // 2. Main Scrollable Dashboard
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: CircularProgressIndicator(color: tokens.cinnabar))
                 : RefreshIndicator(
+                    color: tokens.cinnabar,
                     onRefresh: _loadWeekData,
                     child: ListView(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
                       children: [
-                        // Weekly Highlights Bar
-                        _buildSummaryBanner(
-                          theme,
-                          dailyEntriesCount,
-                          moodCounts,
-                        ),
-                        const SizedBox(height: 16),
+                        // Weekly Inscription & Mood Status Bar
+                        _buildStatusRibbon(tokens, dailyEntriesCount, moodCounts),
+                        const SizedBox(height: 14),
 
-                        // Weekly Debrief Card
-                        _buildWeeklyDebriefSection(theme),
+                        // Weekly Debrief Feature Card
+                        _buildWeeklyDebriefSection(tokens, dailyEntriesCount),
                         const SizedBox(height: 20),
 
-                        Text(
-                          'MONDAY – SUNDAY DAILY LOGS',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.1,
-                            color: theme.colorScheme.primary,
-                          ),
+                        // Section Title: Daily Logs Flow
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 3.5,
+                                  height: 15,
+                                  decoration: BoxDecoration(
+                                    color: tokens.cinnabar,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                                Text(
+                                  '一候七日 · 每日随笔',
+                                  style: TextStyle(
+                                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: tokens.jiaomo,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              'MONDAY – SUNDAY',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: tokens.danmo,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 10),
 
-                        // 7-Day Aggregated Cards (Multi-Entry per Day Safe)
+                        // 7-Day Aggregated Cards
                         ...groupedByDay.entries.map(
-                          (entry) => _buildDaySection(
-                            theme,
-                            entry.key,
-                            entry.value,
-                          ),
+                          (entry) => _buildDaySection(tokens, entry.key, entry.value),
                         ),
-                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -347,207 +469,252 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
     );
   }
 
-  Widget _buildSummaryBanner(
-    ThemeData theme,
+  Widget _buildStatusRibbon(
+    InkDiaryTokens tokens,
     int dailyEntriesCount,
     Map<int, int> moodCounts,
   ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withAlpha(90),
+        color: tokens.ricePaper,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tokens.agedFiber),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.insights_rounded,
-            color: theme.colorScheme.primary,
-            size: 22,
+          Icon(Icons.edit_note, color: tokens.cinnabar, size: 20),
+          const SizedBox(width: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$dailyEntriesCount 卷墨稿',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.jiaomo,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '$dailyEntriesCount ${dailyEntriesCount == 1 ? "Entry" : "Entries"}',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 11,
+                  color: tokens.danmo,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Text(
-            '$dailyEntriesCount ${dailyEntriesCount == 1 ? 'Entry' : 'Entries'}',
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+            dailyEntriesCount > 0 ? '· 秋思已成章' : '· 暂无录存',
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontKaiti,
+              fontSize: 12,
+              color: tokens.danmo,
             ),
           ),
           const Spacer(),
           if (moodCounts.isNotEmpty)
             Wrap(
-              spacing: 8,
+              spacing: 6,
               children: moodCounts.entries.map((m) {
                 final emoji = EntrySummaryCard.moodEmojis[m.key] ?? '🙂';
                 return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    color: tokens.xuanGround,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: tokens.agedFiber),
                   ),
                   child: Text(
                     '$emoji ${m.value}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                   ),
                 );
               }).toList(),
-            )
-          else
-            Text(
-              'No moods logged yet',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildWeeklyDebriefSection(ThemeData theme) {
+  Widget _buildWeeklyDebriefSection(InkDiaryTokens tokens, int dailyEntriesCount) {
     final hasDebrief = _weeklyDebrief != null;
+    final progress = (dailyEntriesCount / 7.0).clamp(0.0, 1.0);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: hasDebrief
-              ? theme.colorScheme.primary
-              : theme.colorScheme.outlineVariant,
-          width: hasDebrief ? 1.5 : 1.0,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: hasDebrief
-                        ? theme.colorScheme.primaryContainer
-                        : theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(6),
+    return XuanPaperCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CinnabarSealBadge(
+                    text: hasDebrief ? 'W$_weekNumber 复盘已毕' : 'W$_weekNumber 待复盘',
+                    isRound: false,
                   ),
-                  child: Text(
-                    hasDebrief
-                        ? 'W$_weekNumber Debrief Completed'
-                        : 'W$_weekNumber Debrief Pending',
+                  const SizedBox(width: 6),
+                  Text(
+                    hasDebrief ? 'W$_weekNumber Debrief Completed' : 'W$_weekNumber Debrief Pending',
                     style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
                       fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: hasDebrief
-                          ? theme.colorScheme.onPrimaryContainer
-                          : theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w600,
+                      color: tokens.danmo,
                     ),
                   ),
+                ],
+              ),
+              FilledButton.icon(
+                key: const Key('weekly_debrief_action_button'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: tokens.jiaomo,
+                  foregroundColor: tokens.xuanGround,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                const Spacer(),
-                FilledButton.tonalIcon(
-                  key: const Key('weekly_debrief_action_button'),
-                  onPressed: _handleStartOrOpenDebrief,
-                  icon: Icon(
-                    hasDebrief
-                        ? Icons.menu_book_outlined
-                        : Icons.rate_review_outlined,
-                    size: 16,
-                  ),
-                  label: Text(hasDebrief ? 'Open Debrief' : 'Start Review'),
+                onPressed: _handleStartOrOpenDebrief,
+                icon: Icon(
+                  hasDebrief ? Icons.auto_stories : Icons.rate_review_outlined,
+                  size: 15,
                 ),
-              ],
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      hasDebrief ? '阅览周述' : '落墨启撰',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      hasDebrief ? 'View Review' : 'Start Review',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            hasDebrief && (_weeklyDebrief!.title?.trim().isNotEmpty ?? false)
+                ? _weeklyDebrief!.title!.trim()
+                : '第$_weekNumber周 · 凝思复盘录',
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: tokens.jiaomo,
             ),
-            const SizedBox(height: 10),
-            if (hasDebrief) ...[
-              Text(
-                (_weeklyDebrief!.title?.trim().isNotEmpty ?? false)
-                    ? _weeklyDebrief!.title!.trim()
-                    : 'Week $_weekNumber Review',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (_weeklyDebrief!.plainText.trim().isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _weeklyDebrief!.plainText.trim(),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            hasDebrief && _weeklyDebrief!.plainText.trim().isNotEmpty
+                ? _weeklyDebrief!.plainText.trim()
+                : '草木渐深，砚池微凉。提炼本周要事、心境起伏与所获体悟，以墨凝思。',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontKaiti,
+              fontSize: 12.5,
+              height: 1.45,
+              color: tokens.danmo,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Metaphor gauge progress
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 4,
+                    backgroundColor: tokens.agedFiber,
+                    valueColor: AlwaysStoppedAnimation<Color>(tokens.cinnabar),
                   ),
                 ),
-              ],
-            ] else
+              ),
+              const SizedBox(width: 10),
               Text(
-                'Synthesize this week\'s key moments, lessons, and gratitude in a dedicated weekly review entry.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+                '节候律动 $dailyEntriesCount/7',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontKaiti,
+                  fontSize: 11,
+                  color: tokens.danmo,
                 ),
               ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDaySection(
-    ThemeData theme,
-    DateTime day,
-    List<Entry> dayEntries,
-  ) {
-    final dayLabel = DateFormat('EEEE, MMM d').format(day);
+  Widget _buildDaySection(InkDiaryTokens tokens, DateTime day, List<Entry> dayEntries) {
+    final dayLabel = DateFormat('M月d日 · EEEE').format(day);
 
     return Container(
       key: Key('weekday_card_${day.weekday}'),
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        color: tokens.ricePaper,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: tokens.agedFiber),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                dayLabel,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              if (dayEntries.isNotEmpty)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    '${dayEntries.length}',
+              Row(
+                children: [
+                  Text(
+                    dayLabel,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSecondaryContainer,
+                      color: tokens.jiaomo,
                     ),
                   ),
-                ),
-              const Spacer(),
+                  if (dayEntries.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: tokens.cinnabarWash,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${dayEntries.length} 篇',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: tokens.cinnabar,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
               IconButton(
                 key: Key('add_entry_day_${day.weekday}'),
-                icon: const Icon(Icons.add_circle_outline, size: 20),
-                tooltip: 'Add entry for $dayLabel',
+                icon: Icon(Icons.add_circle_outline, size: 18, color: tokens.danmo),
+                tooltip: '添笔本日日志',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => _handleAddEntryForDate(day),
               ),
@@ -555,42 +722,36 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
           ),
           if (dayEntries.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(
-                'No entry recorded',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
+                '今日虚白，未有染毫',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontKaiti,
+                  fontSize: 12,
+                  color: tokens.danmo.withValues(alpha: 0.6),
                   fontStyle: FontStyle.italic,
                 ),
               ),
             )
           else
-            // Watchpoint 1: Render stacked cards for all entries logged on this day
             Column(
               children: dayEntries.map((entry) {
                 final item = TimelineEntryItem(entry: entry);
                 final isSealed = item.isSealedTimeCapsule;
-                final moodEmoji = entry.mood != null
-                    ? EntrySummaryCard.moodEmojis[entry.mood!]
-                    : null;
-                final weatherIcon = entry.weather != null
-                    ? EntrySummaryCard.weatherIcons[entry.weather!]
-                    : null;
-                final timeLabel = DateFormat('h:mm a').format(entry.entryDate);
+                final moodEmoji = entry.mood != null ? EntrySummaryCard.moodEmojis[entry.mood!] : null;
+                final timeLabel = DateFormat('HH:mm').format(entry.entryDate);
 
                 return InkWell(
                   key: Key('weekly_entry_item_${entry.id}'),
                   onTap: isSealed ? null : () => _navigateToDetail(entry),
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.all(10),
+                    margin: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerLowest,
+                      color: tokens.xuanGround,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant.withAlpha(120),
-                      ),
+                      border: Border.all(color: tokens.agedFiber),
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,19 +764,26 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                                 children: [
                                   Text(
                                     timeLabel,
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
+                                    style: TextStyle(
+                                      fontFamily: InkDiaryTheme.fontKaiti,
+                                      fontSize: 11,
+                                      color: tokens.danmo,
                                     ),
                                   ),
+                                  if (moodEmoji != null) ...[
+                                    const SizedBox(width: 6),
+                                    Text(moodEmoji, style: const TextStyle(fontSize: 13)),
+                                  ],
                                   if (isSealed) ...[
                                     const SizedBox(width: 6),
-                                    const Icon(Icons.lock_outline, size: 14),
+                                    Icon(Icons.lock_clock, size: 12, color: tokens.cinnabar),
                                     const SizedBox(width: 4),
-                                    const Text(
-                                      'Sealed Time Capsule',
+                                    Text(
+                                      '封缄胶囊',
                                       style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: tokens.cinnabar,
                                       ),
                                     ),
                                   ],
@@ -623,11 +791,16 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                               ),
                               if (!isSealed) ...[
                                 if (entry.title?.trim().isNotEmpty ?? false) ...[
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 2),
                                   Text(
                                     entry.title!.trim(),
-                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.bold,
+                                      color: tokens.jiaomo,
                                     ),
                                   ),
                                 ],
@@ -637,8 +810,10 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                                     entry.plainText.trim(),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
+                                    style: TextStyle(
+                                      fontFamily: InkDiaryTheme.fontKaiti,
+                                      fontSize: 11.5,
+                                      color: tokens.nongmo,
                                     ),
                                   ),
                                 ],
@@ -646,25 +821,27 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                             ],
                           ),
                         ),
-                        if (moodEmoji != null || weatherIcon != null)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (moodEmoji != null)
-                                Text(
-                                  moodEmoji,
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                              if (weatherIcon != null) ...[
-                                const SizedBox(width: 4),
-                                Icon(
-                                  weatherIcon,
-                                  size: 16,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ],
-                            ],
+                        const SizedBox(width: 8),
+                        // Right Seal Stamp "印"
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: tokens.cinnabar,
+                            borderRadius: BorderRadius.circular(3),
                           ),
+                          child: Center(
+                            child: Text(
+                              '印',
+                              style: TextStyle(
+                                fontFamily: InkDiaryTheme.fontNotoSerif,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: tokens.xuanGround,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),

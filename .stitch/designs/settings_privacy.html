@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&amp;family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "surface-variant": "#e5e2db", "on-secondary-container": "#6d0002", "primary-fixed": "#e5e2e1", "on-tertiary-container": "#8d8578", "surface-bright": "#fcf9f2", "on-secondary-fixed-variant": "#8b1a12", "outline": "#747878", "primary-container": "#1e1e1e", "surface-container": "#f1eee7", "tertiary": "#070501", "on-error": "#ffffff", "secondary-fixed-dim": "#ffb4a9", "on-error-container": "#93000a", "secondary-container": "#fe6d5c", "surface-container-high": "#ebe8e1", "secondary": "#ac3227", "on-surface": "#1c1c18", "on-primary-container": "#878585", "background": "#fcf9f2", "secondary-fixed": "#ffdad5", "surface": "#fcf9f2", "on-primary-fixed-variant": "#474746", "primary": "#040505", "on-background": "#1c1c18", "on-tertiary": "#ffffff", "surface-container-low": "#f6f3ec", "error-container": "#ffdad6", "error": "#ba1a1a", "outline-variant": "#c4c7c7", "inverse-on-surface": "#f3f0e9", "on-tertiary-fixed-variant": "#4c463b", "on-tertiary-fixed": "#201b12", "inverse-primary": "#c8c6c5", "on-secondary": "#ffffff", "surface-container-highest": "#e5e2db", "on-surface-variant": "#444748", "inverse-surface": "#31312c", "surface-dim": "#dcdad3", "on-primary": "#ffffff", "tertiary-container": "#231e14", "primary-fixed-dim": "#c8c6c5", "tertiary-fixed-dim": "#cfc5b7", "on-primary-fixed": "#1b1b1c", "surface-container-lowest": "#ffffff", "surface-tint": "#5f5e5e", "tertiary-fixed": "#ece1d2", "on-secondary-fixed": "#410000" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "margin": "1.5rem", "space-lg": "1.5rem", "space-xs": "0.25rem", "space-sm": "0.5rem", "gutter": "1rem", "space-xl": "2.5rem", "space-md": "1rem" }, "fontFamily": { "label-lg": ["Noto Serif"], "label-sm": ["Noto Serif"], "display": ["Noto Serif"], "headline-sm": ["Noto Serif"], "body-sm": ["Literata"], "body-md": ["Literata"], "body-lg": ["Literata"], "headline-lg-mobile": ["Noto Serif"], "headline-lg": ["Noto Serif"], "headline-md": ["Noto Serif"], "label-md": ["Noto Serif"] }, "fontSize": { "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.08em", "fontWeight": "500" }], "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.14em", "fontWeight": "600" }], "display": ["32px", { "lineHeight": "44px", "letterSpacing": "0.04em", "fontWeight": "400" }], "headline-sm": ["17px", { "lineHeight": "26px", "letterSpacing": "0.01em", "fontWeight": "600" }], "body-sm": ["14px", { "lineHeight": "24px", "letterSpacing": "0.005em", "fontWeight": "400" }], "body-md": ["16px", { "lineHeight": "28px", "letterSpacing": "0.01em", "fontWeight": "400" }], "body-lg": ["18px", { "lineHeight": "32px", "letterSpacing": "0.015em", "fontWeight": "400" }], "headline-lg-mobile": ["22px", { "lineHeight": "32px", "letterSpacing": "0.02em", "fontWeight": "500" }], "headline-lg": ["26px", { "lineHeight": "36px", "letterSpacing": "0.02em", "fontWeight": "500" }], "headline-md": ["20px", { "lineHeight": "30px", "letterSpacing": "0.015em", "fontWeight": "500" }], "label-md": ["12px", { "lineHeight": "18px", "letterSpacing": "0.1em", "fontWeight": "500" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.03)]"><div class="h-16 px-margin flex items-center justify-between"><button aria-label="返回" class="w-11 h-11 -ml-2 flex items-center justify-center text-on-surface hover:text-secondary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-headline-sm text-headline-sm text-on-surface tracking-wide text-center flex-1">Settings And Privacy</h1><div class="flex items-center gap-space-xs"><button aria-label="帮助与雅藏" class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[22px]">help_outline</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-16 pb-safe bg-surface"><div class="flex flex-col w-full pb-10">
+<!-- Aesthetic Sub-banner: Studio Motto & Safe Room Atmosphere -->
+<div class="px-margin pt-3 pb-2 flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-sm text-label-sm uppercase text-on-surface-variant tracking-widest">墨室守拙 · 恪纯无垢</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-tertiary-container tracking-wider">立约 · 独处</span>
+</div>
+<div class="flex flex-col gap-space-lg px-margin mt-1">
+<!-- Section 1: 纸墨存蓄 · 存储与空间 (Storage & Optimization) -->
+<section class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between px-1">
+<h2 class="font-label-lg text-label-lg text-on-surface tracking-wider font-semibold">纸墨存蓄 · 存储与空间</h2>
+<span class="font-label-sm text-label-sm text-outline">STORAGE &amp; MEDIA</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-4 flex flex-col gap-4">
+<!-- 3 Metric Columns -->
+<div class="grid grid-cols-3 divide-x divide-surface-container-high text-center">
+<div class="flex flex-col items-center px-1">
+<span class="font-display text-display text-primary leading-none">4</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1.5">现存墨卷</span>
+<span class="font-body-sm text-[11px] text-outline mt-0.5">Active Entries</span>
+</div>
+<div class="flex flex-col items-center px-1">
+<div class="flex items-baseline gap-0.5">
+<span class="font-headline-md text-headline-md text-primary leading-none font-semibold">2</span>
+<span class="font-body-sm text-[12px] text-on-surface-variant font-medium">(3.7M)</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1.5">画影附件</span>
+<span class="font-body-sm text-[11px] text-outline mt-0.5">Media Assets</span>
+</div>
+<div class="flex flex-col items-center px-1">
+<span class="font-display text-display text-on-surface-variant leading-none">10</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1.5">纸篓残卷</span>
+<span class="font-body-sm text-[11px] text-outline mt-0.5">In Bin</span>
+</div>
+</div>
+<!-- Sandbox Status Banner -->
+<div class="bg-surface-container-low rounded-lg p-3.5 flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between gap-2">
+<span class="font-headline-sm text-[14px] text-on-surface font-semibold">沙盒纯净 · 无遗留废墨</span>
+<span class="bg-surface-container-highest text-on-surface-variant font-label-sm text-[10px] px-2 py-0.5 rounded-full font-medium">相契 · Clean</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-relaxed">
+              所有影音图卷均与在册日记相契，未检得孤立残片，卷匣清爽整洁。
+            </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 2: 砚边晨昏 · 鸣钟提醒 (Writing Reminders) -->
+<section class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between px-1">
+<h2 class="font-label-lg text-label-lg text-on-surface tracking-wider font-semibold">砚边晨昏 · 鸣钟提醒</h2>
+<span class="font-label-sm text-label-sm text-outline">REMINDERS</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm divide-y divide-surface-container-high overflow-hidden">
+<!-- Daily Writing Reminder -->
+<div class="p-4 flex items-center justify-between gap-3 active:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-start gap-3 flex-1 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px] mt-0.5 shrink-0">notifications_active</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">日课砚思 · 每日提醒</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">每日 21:00 <span class="text-outline text-[12px]">(夜阑提笔时 · 点击更改)</span></span>
+</div>
+</div>
+<!-- Cinnabar Toggle Switch (Active) -->
+<button aria-checked="true" class="w-12 h-7 rounded-full bg-secondary p-1 flex items-center justify-end shrink-0 transition-colors shadow-inner" onclick="this.classList.toggle('bg-secondary'); this.classList.toggle('bg-surface-container-highest'); this.children[0].classList.toggle('translate-x-0'); this.children[0].classList.toggle('-translate-x-5');" role="switch" type="button">
+<span class="w-5 h-5 rounded-full bg-surface-container-lowest shadow-sm transition-transform duration-200"></span>
+</button>
+</div>
+<!-- Sunday Weekly Review -->
+<div class="p-4 flex items-center justify-between gap-3 active:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-start gap-3 flex-1 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px] mt-0.5 shrink-0">calendar_month</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">周末复盘 · 岁时周结</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">每周日 20:00 <span class="text-outline text-[12px]">(结卷温故时 · 点击更改)</span></span>
+</div>
+</div>
+<!-- Toggle Switch (Inactive) -->
+<button aria-checked="false" class="w-12 h-7 rounded-full bg-surface-container-highest p-1 flex items-center justify-start shrink-0 transition-colors shadow-inner" onclick="this.classList.toggle('bg-secondary'); this.classList.toggle('bg-surface-container-highest'); this.children[0].classList.toggle('translate-x-5');" role="switch" type="button">
+<span class="w-5 h-5 rounded-full bg-surface-container-lowest shadow-sm transition-transform duration-200"></span>
+</button>
+</div>
+</div>
+</section>
+<!-- Section 3: 文墨迁徙 · 归档与备份 (Data Portability) -->
+<section class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between px-1">
+<h2 class="font-label-lg text-label-lg text-on-surface tracking-wider font-semibold">文墨迁徙 · 数据流转</h2>
+<span class="font-label-sm text-label-sm text-outline">PORTABILITY</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm divide-y divide-surface-container-high overflow-hidden">
+<!-- Analytics & Heatmap -->
+<div class="p-4 flex items-center justify-between gap-3 hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-start gap-3 flex-1 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px] mt-0.5 shrink-0">insights</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">研墨统计与岁时墨痕</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">浏览五十二周墨痕长卷、持砚连贯与心境印迹</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0">chevron_right</span>
+</div>
+<!-- Import -->
+<div class="p-4 flex items-center justify-between gap-3 hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-start gap-3 flex-1 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px] mt-0.5 shrink-0">file_upload</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">自素笺文本汇入 · .txt / .md</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">批量识别解析旧日卷宗，智能萃取日期时间</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0">chevron_right</span>
+</div>
+<!-- Export -->
+<div class="p-4 flex items-center justify-between gap-3 hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-start gap-3 flex-1 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px] mt-0.5 shrink-0">download_for_offline</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">全帙墨卷打包导出</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">导出为典籍 Markdown 格式 (含 YAML 词头) 或纯文本</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Section 4: 金石密匣 · 离线全量备份 (Encrypted Backup & Recovery) -->
+<section class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between px-1">
+<h2 class="font-label-lg text-label-lg text-on-surface tracking-wider font-semibold">金石密匣 · 离线备份</h2>
+<span class="font-label-sm text-label-sm text-outline">ENCRYPTED ARCHIVES</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm divide-y divide-surface-container-high overflow-hidden">
+<!-- Last Successful Backup Status -->
+<div class="p-4 flex items-start gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px] mt-0.5 shrink-0">history_edu</span>
+<div class="flex flex-col min-w-0 flex-1">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">最近成功归档</span>
+<span class="font-label-sm text-label-sm text-outline">未见刻石</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">尚无本地加密归档记录 (No backup created yet)</span>
+</div>
+</div>
+<!-- Create Encrypted Backup -->
+<div class="p-4 flex items-center justify-between gap-3 hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-start gap-3 flex-1 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px] mt-0.5 shrink-0">lock</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">创建金石加密归档</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">打包 SQLite 卷宗与沙盒画影为 .mdbak 密匣文件</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0">chevron_right</span>
+</div>
+<!-- Restore from Backup -->
+<div class="p-4 flex items-center justify-between gap-3 hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="flex items-start gap-3 flex-1 min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[22px] mt-0.5 shrink-0">restore_page</span>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">自密匣恢复墨卷</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">原子化校验并完整回溯 .mdbak 全量卷宗</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline text-[20px] shrink-0">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Section 5: 权限看板 · 守拙自律 (Permissions Dashboard) -->
+<section class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between px-1">
+<h2 class="font-label-lg text-label-lg text-on-surface tracking-wider font-semibold">权限看板 · 守拙自律</h2>
+<span class="font-label-sm text-label-sm text-outline">PERMISSIONS</span>
+</div>
+<div class="bg-surface-container-lowest rounded-xl shadow-sm divide-y divide-surface-container-high overflow-hidden">
+<!-- Camera -->
+<div class="p-4 flex flex-col gap-1.5">
+<div class="flex items-center justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">photo_camera</span>
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">照相与取景 <span class="font-body-sm text-[12px] text-outline font-normal">Camera</span></span>
+</div>
+<span class="bg-surface-container-high text-on-surface-variant font-label-sm text-[10px] px-2 py-0.5 rounded-full font-medium">未授予</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pl-7">仅用于采撷日记画影，严守沙盒目录隔离，不入公卷。</p>
+</div>
+<!-- Microphone -->
+<div class="p-4 flex flex-col gap-1.5">
+<div class="flex items-center justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-secondary text-[20px]">mic</span>
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">听语记言 <span class="font-body-sm text-[12px] text-outline font-normal">Microphone</span></span>
+</div>
+<span class="bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-[10px] px-2 py-0.5 rounded-full font-medium">已授准</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pl-7">仅供设备端零成本离线语音转写使用，声息不出端侧。</p>
+</div>
+<!-- Photos & Files -->
+<div class="p-4 flex flex-col gap-1.5">
+<div class="flex items-center justify-between gap-2">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">photo_library</span>
+<span class="font-headline-sm text-[15px] text-on-surface font-semibold">图卷与外存 <span class="font-body-sm text-[12px] text-outline font-normal">Storage</span></span>
+</div>
+<span class="bg-surface-container-high text-on-surface-variant font-label-sm text-[10px] px-2 py-0.5 rounded-full font-medium">未授予</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pl-7">用于导入外部相片与导出备份档案至本地存储空间。</p>
+</div>
+<!-- Open System App Settings Button -->
+<button class="w-full py-3.5 px-4 bg-surface-container-low hover:bg-surface-container transition-colors flex items-center justify-center gap-2 text-on-surface" type="button">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span class="font-label-lg text-[13px] font-medium tracking-wide">前往系统应用权限设置</span>
+</button>
+</div>
+</section>
+<!-- Section 6: 本地沙盒承诺与文人信约 (100% Offline & Private Security Architecture Card) -->
+<div class="bg-primary-container text-on-surface-variant rounded-xl p-5 shadow-sm relative overflow-hidden flex flex-col gap-3.5">
+<!-- Top Title with Shield -->
+<div class="flex items-center justify-between z-10">
+<div class="flex items-center gap-2 text-surface-container-lowest">
+<span class="material-symbols-outlined text-[22px] text-secondary-fixed" style="font-variation-settings: 'FILL' 1;">shield</span>
+<h3 class="font-headline-sm text-[16px] text-primary-fixed tracking-wide font-semibold">100% 离线与私隐固守</h3>
+</div>
+<span class="font-label-sm text-label-sm text-on-primary-container tracking-widest">端侧绝缘</span>
+</div>
+<!-- Manifest Text -->
+<p class="font-body-sm text-body-sm text-primary-fixed-dim leading-relaxed tracking-wide z-10">
+        墨记恪守『不着云端、绝无窃听』之文人信条。全应用零外部网络服务器、零数据追踪 SDK、零使用行为遥测。所有日记卷宗均通过 SQLCipher AES-256 硬件级安全密钥在设备端本地加密，影音孤本严守沙盒隔离，唯君执印亲启。
+      </p>
+<!-- Signature Footer with Vermilion Seal Stamp -->
+<div class="pt-2 flex items-center justify-between z-10 border-t border-surface-tint/20">
+<span class="font-label-sm text-label-sm text-on-primary-container tracking-wider">墨记 · v2.4 私隐立约</span>
+<!-- Vermilion Seal / Yinzhang -->
+<div class="px-2 py-0.5 bg-secondary text-surface-container-lowest rounded font-display text-[11px] tracking-widest uppercase flex items-center gap-1 shadow-sm font-semibold select-none">
+<span>清平固守</span>
+</div>
+</div>
+</div>
+</div>
+</div></main></body></html>

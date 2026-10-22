@@ -2,9 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
+import 'package:memodiary/core/theme/widgets/xuan_paper_card.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 
-/// Card summarizing an active entry on the timeline feed.
+/// Card summarizing an active entry on the timeline feed,
+/// styled with the Ink & Paper Journal Xuan paper slip aesthetic.
 class EntrySummaryCard extends StatelessWidget {
   final TimelineEntryItem item;
   final MediaSandboxService mediaService;
@@ -35,177 +39,186 @@ class EntrySummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = context.inkTokens;
     final entry = item.entry;
-    final dateFormatted = DateFormat('MMM d, y · EEE').format(entry.entryDate);
-    final timeFormatted = DateFormat('h:mm a').format(entry.entryDate);
+
+    String dateFormatted;
+    try {
+      dateFormatted = DateFormat('yyyy年M月d日 · EEE', 'zh_CN').format(entry.entryDate);
+    } catch (_) {
+      dateFormatted = DateFormat('yyyy-MM-dd').format(entry.entryDate);
+    }
+    final timeFormatted = DateFormat('HH:mm').format(entry.entryDate);
 
     final moodEmoji = entry.mood != null ? moodEmojis[entry.mood!] : null;
     final weatherIcon =
         entry.weather != null ? weatherIcons[entry.weather!] : null;
 
     final isLocked = entry.isLocked;
-    final titleText =
-        (entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : 'Untitled';
+    final titleText = isLocked
+        ? ((entry.title?.trim().isNotEmpty ?? false)
+            ? entry.title!.trim()
+            : 'Private Reflection')
+        : ((entry.title?.trim().isNotEmpty ?? false)
+            ? entry.title!.trim()
+            : '无题 · 偶感');
     final snippetText = isLocked ? '🔒 This entry is locked' : entry.plainText.trim();
 
-    return Card(
-      elevation: 0,
+    return XuanPaperCard(
+      onTap: onTap,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withAlpha(120),
-          width: 1,
-        ),
-      ),
-      color: theme.colorScheme.surface,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Header: Date, Time, Mood & Weather Badges
+          Row(
             children: [
-              // 1. Header: Date, Time, Mood & Weather Badges
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '$dateFormatted  $timeFormatted',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  if (isLocked) ...[
-                    Icon(
-                      Icons.lock_rounded,
-                      size: 15,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  if (entry.isWeeklyReview) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        entry.weekNumber != null
-                            ? 'W${entry.weekNumber} Review'
-                            : 'Weekly Review',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSecondaryContainer,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  if (moodEmoji != null) ...[
-                    Text(moodEmoji, style: const TextStyle(fontSize: 16)),
-                    const SizedBox(width: 4),
-                  ],
-                  if (weatherIcon != null) ...[
-                    Icon(
-                      weatherIcon,
-                      size: 16,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ],
+              // Red dot indicator on date
+              Container(
+                width: 5,
+                height: 5,
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: tokens.cinnabar,
+                ),
               ),
-              const SizedBox(height: 10),
-
-              // 2. Middle Row: Title + Snippet on left, Thumbnail on right
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          titleText,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            height: 1.2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (snippetText.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            snippetText,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isLocked
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurfaceVariant,
-                              fontStyle:
-                                  isLocked ? FontStyle.italic : FontStyle.normal,
-                              height: 1.35,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    ),
+              Expanded(
+                child: Text(
+                  '$dateFormatted  $timeFormatted',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.3,
+                    color: tokens.danmo,
                   ),
-                  if (!isLocked && item.primaryMedia != null) ...[
-                    const SizedBox(width: 12),
-                    _buildThumbnail(item.primaryMedia!.relativePath),
-                  ],
-                ],
+                ),
               ),
+              if (isLocked) ...[
+                Icon(
+                  Icons.lock_outline_rounded,
+                  size: 15,
+                  color: tokens.cinnabar,
+                ),
+                const SizedBox(width: 6),
+              ],
+              if (entry.isWeeklyReview) ...[
+                CinnabarSealBadge.compact(
+                  text: entry.weekNumber != null
+                      ? 'W${entry.weekNumber}'
+                      : '复盘',
+                  size: 22,
+                  isWashVariant: true,
+                ),
+                const SizedBox(width: 6),
+              ],
+              if (moodEmoji != null) ...[
+                Text(moodEmoji, style: const TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+              ],
+              if (weatherIcon != null) ...[
+                Icon(
+                  weatherIcon,
+                  size: 15,
+                  color: tokens.danmo,
+                ),
+              ],
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+
+          // 2. Middle Row: Title + Snippet on left, Thumbnail on right
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      titleText,
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: tokens.jiaomo,
+                        letterSpacing: 0.2,
+                        height: 1.3,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (snippetText.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        snippetText,
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontLiterata,
+                          fontSize: 13.5,
+                          color: isLocked
+                              ? tokens.cinnabar
+                              : tokens.danmo,
+                          fontStyle:
+                              isLocked ? FontStyle.italic : FontStyle.normal,
+                          height: 1.55,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (!isLocked && item.primaryMedia != null) ...[
+                const SizedBox(width: 12),
+                _buildThumbnail(item.primaryMedia!.relativePath, tokens),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildThumbnail(String relativePath) {
+  Widget _buildThumbnail(String relativePath, InkDiaryTokens tokens) {
     return FutureBuilder<File>(
       future: mediaService.getFileFromRelativePath(relativePath),
       builder: (context, snapshot) {
         if (snapshot.hasData && snapshot.data!.existsSync()) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.file(
-              snapshot.data!,
-              width: 64,
-              height: 64,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildPlaceholder(),
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: tokens.deckleBorder, width: 1),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(7),
+              child: Image.file(
+                snapshot.data!,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildPlaceholder(tokens),
+              ),
             ),
           );
         }
-        return _buildPlaceholder();
+        return _buildPlaceholder(tokens);
       },
     );
   }
 
-  Widget _buildPlaceholder() {
+  Widget _buildPlaceholder(InkDiaryTokens tokens) {
     return Container(
-      width: 64,
-      height: 64,
+      width: 60,
+      height: 60,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(10),
+        color: tokens.agedFiber,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: tokens.deckleBorder, width: 1),
       ),
-      child: const Icon(Icons.image_outlined, color: Colors.grey, size: 24),
+      child: Icon(Icons.image_outlined, color: tokens.qingmo, size: 22),
     );
   }
 }

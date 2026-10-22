@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/features/analytics/screens/analytics_dashboard_screen.dart';
-import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
-import 'package:memodiary/features/import_export/services/backup_crypto.dart';
-import 'package:memodiary/features/import_export/services/backup_restore_service.dart';
-import 'package:memodiary/features/import_export/services/date_parser_engine.dart';
-import 'package:memodiary/features/import_export/services/file_selector_service.dart';
-import 'package:memodiary/features/import_export/widgets/backup_dialogs.dart';
-import 'package:memodiary/features/import_export/widgets/export_dialog.dart';
+
+import '../../../core/database/app_database.dart';
+import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
+import '../../../core/theme/widgets/xuan_paper_card.dart';
+import '../../analytics/screens/analytics_dashboard_screen.dart';
+import '../../import_export/screens/import_staging_screen.dart';
+import '../../import_export/services/backup_crypto.dart';
+import '../../import_export/services/backup_restore_service.dart';
+import '../../import_export/services/date_parser_engine.dart';
+import '../../import_export/services/file_selector_service.dart';
+import '../../import_export/widgets/backup_dialogs.dart';
+import '../../import_export/widgets/export_dialog.dart';
 import '../services/storage_optimizer_service.dart';
 import '../widgets/notification_settings_card.dart';
 
-/// Settings, Permissions Status, Storage Optimizer, and Offline Privacy screen.
+/// Settings, Permissions Status, Storage Optimizer, and Offline Privacy screen
+/// elevated into classical Ink & Paper literati aesthetic.
 class SettingsScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
@@ -145,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Cleaned up $purged orphan media files')),
+      SnackBar(content: Text('已释清 $purged 份孤立残卷')),
     );
     await _loadStorageStats();
     if (mounted) {
@@ -161,7 +166,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final text = file.readAsStringSync();
       if (!mounted) return;
 
-      // Parse in background Isolate worker to maintain 60 FPS
       final candidates = await DateParserEngine.parseDocumentInIsolate(
         text: text,
       );
@@ -170,7 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (candidates.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selected file contains no readable text.')),
+          const SnackBar(content: Text('所选文件无有效字句')),
         );
         return;
       }
@@ -191,7 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to import file: $e')),
+        SnackBar(content: Text('导入失败: $e')),
       );
     }
   }
@@ -225,7 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Backup created: ${result.entriesCount} entries, ${result.mediaFilesCount} media files',
+            '已成全量加密备份：${result.entriesCount} 篇墨卷，${result.mediaFilesCount} 份画卷附件',
           ),
         ),
       );
@@ -253,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Restored ${result.entriesRestored} entries and ${result.mediaFilesRestored} media files',
+              '已完好还原：${result.entriesRestored} 篇墨卷与 ${result.mediaFilesRestored} 份画卷',
             ),
           ),
         );
@@ -261,173 +265,275 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Invalid backup file: $e')),
+        SnackBar(content: Text('备份解析无效: $e')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = InkDiaryTheme.tokensOf(context);
 
     return Scaffold(
+      backgroundColor: tokens.xuanGround,
       appBar: AppBar(
-        title: const Text('Settings & Privacy'),
+        backgroundColor: tokens.xuanGround,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shape: Border(
+          bottom: BorderSide(color: tokens.agedFiber, width: 1.0),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: tokens.jiaomo),
+          tooltip: '返回',
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Text(
+              '设置与守拙',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: tokens.jiaomo,
+                letterSpacing: 2.0,
+              ),
+            ),
+            Text(
+              'Settings & Privacy',
+              style: TextStyle(
+                fontSize: 9,
+                color: tokens.danmo,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
       ),
       body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
         children: [
+          // Studio Motto Banner
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: tokens.cinnabar),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '墨室守拙 · 恪纯无垢',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.nongmo,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '立约 · 独处',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontKaiti,
+                    fontSize: 11,
+                    color: tokens.danmo,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // 1. Storage & Optimizer Section
-          _buildSectionHeader('Storage & Optimization', theme),
-          _buildStorageCard(theme),
+          _buildSectionHeader('纸墨存蓄 · 存储与空间', 'Storage & Optimization', tokens),
+          _buildStorageCard(tokens),
           const SizedBox(height: 20),
 
           // 2. Writing Reminders Section
-          _buildSectionHeader('Writing Reminders', theme),
+          _buildSectionHeader('砚边晨昏 · 鸣钟提醒', 'REMINDERS', tokens),
           const NotificationSettingsCard(),
           const SizedBox(height: 20),
 
           // 3. Data Portability Section
-          _buildSectionHeader('Data Portability', theme),
-          _buildDataPortabilityCard(theme),
+          _buildSectionHeader('文墨迁徙 · 数据流转', 'Data Portability', tokens),
+          _buildDataPortabilityCard(tokens),
           const SizedBox(height: 20),
 
           // 4. Permissions Dashboard
-          _buildSectionHeader('Permissions Dashboard', theme),
-          _buildPermissionsCard(theme),
+          _buildSectionHeader('权限看板 · 硬件调用', 'Permissions Dashboard', tokens),
+          _buildPermissionsCard(tokens),
           const SizedBox(height: 20),
 
           // 5. Zero-Cloud Privacy Declaration
-          _buildPrivacyCard(theme),
-          const SizedBox(height: 40),
+          _buildPrivacyCard(tokens),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, ThemeData theme) {
+  Widget _buildSectionHeader(String title, String tag, InkDiaryTokens tokens) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.8,
-          color: theme.colorScheme.primary,
-        ),
+      padding: const EdgeInsets.only(left: 2, bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: tokens.jiaomo,
+              letterSpacing: 0.5,
+            ),
+          ),
+          Text(
+            tag,
+            style: TextStyle(fontSize: 10, color: tokens.danmo, letterSpacing: 0.5),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStorageCard(ThemeData theme) {
+  Widget _buildStorageCard(InkDiaryTokens tokens) {
     if (_isLoadingStats || _stats == null) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Center(child: CircularProgressIndicator()),
-        ),
+      return XuanPaperCard(
+        margin: EdgeInsets.zero,
+        padding: const EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator(color: tokens.cinnabar)),
       );
     }
 
     final stats = _stats!;
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(100)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatColumn('Active Entries', '${stats.activeEntriesCount}', theme),
-                _buildStatColumn('Media Files', '${stats.totalMediaFiles} (${stats.totalMediaFormatted})', theme),
-                _buildStatColumn('In Bin', '${stats.deletedEntriesCount}', theme),
-              ],
-            ),
-            const Divider(height: 24),
-            Row(
-              children: [
-                Icon(
-                  stats.orphanMediaFiles > 0
-                      ? Icons.cleaning_services_outlined
-                      : Icons.verified_outlined,
-                  color: stats.orphanMediaFiles > 0 ? Colors.amber.shade800 : Colors.green,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        stats.orphanMediaFiles > 0
-                            ? '${stats.orphanMediaFiles} Orphan Media Files'
-                            : 'Media Sandbox Clean',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+    return XuanPaperCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatColumn('现存墨卷', '${stats.activeEntriesCount}', tokens),
+              _buildStatColumn('画影附件', '${stats.totalMediaFiles} (${stats.totalMediaFormatted})', tokens),
+              _buildStatColumn('纸篓残卷', '${stats.deletedEntriesCount}', tokens),
+            ],
+          ),
+          Divider(height: 24, color: tokens.agedFiber),
+          Row(
+            children: [
+              Icon(
+                stats.orphanMediaFiles > 0
+                    ? Icons.cleaning_services_outlined
+                    : Icons.verified_user_outlined,
+                color: stats.orphanMediaFiles > 0 ? tokens.cinnabar : Colors.green.shade700,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      stats.orphanMediaFiles > 0
+                          ? '${stats.orphanMediaFiles} 份孤立残卷可释清'
+                          : '沙盒纯净 · 无遗留废墨',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.jiaomo,
                       ),
-                      Text(
-                        stats.orphanMediaFiles > 0
-                            ? '${stats.orphanMediaFormatted} can be safely reclaimed.'
-                            : 'All files correspond to active diary entries.',
-                        style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      stats.orphanMediaFiles > 0
+                          ? '可安全释清 ${stats.orphanMediaFormatted} 存储空间。'
+                          : '所有影音图卷均与在册日记相契，未检得孤立残片。',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontKaiti,
+                        fontSize: 11.5,
+                        color: tokens.danmo,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                if (stats.orphanMediaFiles > 0)
-                  FilledButton.tonal(
-                    onPressed: _isCleaningOrphans ? null : _handleCleanOrphans,
-                    child: _isCleaningOrphans
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Clean'),
+              ),
+              if (stats.orphanMediaFiles > 0)
+                FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: tokens.cinnabarWash,
+                    foregroundColor: tokens.cinnabar,
                   ),
-              ],
-            ),
-          ],
-        ),
+                  onPressed: _isCleaningOrphans ? null : _handleCleanOrphans,
+                  child: _isCleaningOrphans
+                      ? SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: tokens.cinnabar),
+                        )
+                      : const Text('清理'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildStatColumn(String label, String value, ThemeData theme) {
+  Widget _buildStatColumn(String label, String value, InkDiaryTokens tokens) {
     return Column(
       children: [
         Text(
           value,
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: tokens.jiaomo,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant),
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontKaiti,
+            fontSize: 11,
+            color: tokens.danmo,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildDataPortabilityCard(ThemeData theme) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(100)),
-      ),
+  Widget _buildDataPortabilityCard(InkDiaryTokens tokens) {
+    return XuanPaperCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           ListTile(
             key: const Key('settings_analytics_tile'),
-            leading: const Icon(Icons.insights_rounded),
-            title: const Text('Writing Analytics & Heatmap'),
-            subtitle: const Text('View 52-week contribution grid, streaks, and word counts.'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+            leading: Icon(Icons.insights_rounded, color: tokens.nongmo),
+            title: Text(
+              '研墨统计与岁时墨痕',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
+            ),
+            subtitle: Text(
+              '浏览五十二周墨痕长卷、持砚连贯与心境印迹',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
             onTap: () {
               Navigator.push(
                 context,
@@ -439,50 +545,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: tokens.agedFiber),
           ListTile(
-            leading: const Icon(Icons.file_upload_outlined),
-            title: const Text('Import from .txt / .md'),
-            subtitle: const Text('Batch parse diary archives with intelligent date detection.'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+            leading: Icon(Icons.file_upload_outlined, color: tokens.nongmo),
+            title: Row(
+              children: [
+                Text(
+                  '文本汇入',
+                  style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Import from .txt / .md',
+                  style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 12, color: tokens.danmo),
+                ),
+              ],
+            ),
+            subtitle: Text(
+              '批量识别解析旧日卷宗，智能萃取日期时间',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
             onTap: _handleImportFile,
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: tokens.agedFiber),
           ListTile(
-            leading: const Icon(Icons.file_download_outlined),
-            title: const Text('Export All Diaries'),
-            subtitle: const Text('Save to Markdown (with YAML frontmatter) or plain text.'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+            leading: Icon(Icons.file_download_outlined, color: tokens.nongmo),
+            title: Row(
+              children: [
+                Text(
+                  '导出全册墨卷',
+                  style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Export All Diaries',
+                  style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 12, color: tokens.danmo),
+                ),
+              ],
+            ),
+            subtitle: Text(
+              '存为 Markdown (带元数据标签) 或纯文本',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
             onTap: _handleExportAll,
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: tokens.agedFiber),
           ListTile(
             key: const Key('settings_last_backup_tile'),
-            leading: const Icon(Icons.history_edu_outlined, size: 20),
-            title: const Text('Last Successful Backup'),
+            leading: Icon(Icons.history_edu_outlined, size: 20, color: tokens.danmo),
+            title: Text(
+              '最后全量刻印时间',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 13, color: tokens.jiaomo),
+            ),
             subtitle: Text(
               _lastBackupAt != null
                   ? DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!.toLocal())
                   : 'No backup created yet',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
             ),
             dense: true,
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: tokens.agedFiber),
           ListTile(
             key: const Key('settings_create_backup_tile'),
-            leading: const Icon(Icons.enhanced_encryption_outlined),
-            title: const Text('Create Encrypted Backup'),
-            subtitle: const Text('Bundle all SQLite tables and sandboxed media into a .mdbak archive.'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+            leading: Icon(Icons.enhanced_encryption_outlined, color: tokens.cinnabar),
+            title: Text(
+              '创制加密全量卷宗 (.mdbak)',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
+            ),
+            subtitle: Text(
+              '打包全量 SQLite 数据库与沙盒影音，采用 AES-256 加密封装',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
             onTap: _handleCreateBackup,
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: tokens.agedFiber),
           ListTile(
             key: const Key('settings_restore_backup_tile'),
-            leading: const Icon(Icons.restore_page_outlined),
-            title: const Text('Restore from Backup'),
-            subtitle: const Text('Atomically verify and restore a .mdbak full-archive backup.'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+            leading: Icon(Icons.restore_page_outlined, color: tokens.nongmo),
+            title: Text(
+              '自加密卷宗还原备份',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
+            ),
+            subtitle: Text(
+              '原子化验证并完好复苏 .mdbak 全档案',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
             onTap: _handleRestoreBackup,
           ),
         ],
@@ -490,42 +642,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildPermissionsCard(ThemeData theme) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(100)),
-      ),
+  Widget _buildPermissionsCard(InkDiaryTokens tokens) {
+    return XuanPaperCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           _buildPermissionTile(
             icon: Icons.camera_alt_outlined,
-            title: 'Camera',
-            description: 'Used strictly to capture diary photos stored in the sandboxed directory.',
+            title: '即时拓影',
+            englishTitle: 'Camera',
+            description: '仅用于拍摄日记配图，且悉数隔离存入私密沙盒目录。',
             status: _cameraStatus,
+            tokens: tokens,
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: tokens.agedFiber),
           _buildPermissionTile(
             icon: Icons.mic_none_outlined,
-            title: 'Microphone & Speech',
-            description: 'Used strictly for zero-cost on-device speech-to-text dictation.',
+            title: '原声听写',
+            englishTitle: 'Microphone & Speech',
+            description: '仅用于触发系统内置端侧原声听写，零费用且永不上送音频。',
             status: _micStatus,
+            tokens: tokens,
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: tokens.agedFiber),
           _buildPermissionTile(
             icon: Icons.photo_library_outlined,
-            title: 'Photos & Files',
-            description: 'Used to import images and save backup export files to local storage.',
+            title: '画影选撷',
+            englishTitle: 'Photos & Files',
+            description: '用于导入画卷及归档导出备份至本地文件存储。',
             status: _storageStatus,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextButton.icon(
-              onPressed: () => openAppSettings(),
-              icon: const Icon(Icons.settings_outlined, size: 16),
-              label: const Text('Open System App Settings'),
-            ),
+            tokens: tokens,
           ),
         ],
       ),
@@ -535,72 +682,130 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildPermissionTile({
     required IconData icon,
     required String title,
+    required String englishTitle,
     required String description,
     required PermissionStatus? status,
+    required InkDiaryTokens tokens,
   }) {
-    final isGranted = status?.isGranted ?? false;
-    return ListTile(
-      leading: Icon(icon),
-      title: Row(
+    final isGranted = status == PermissionStatus.granted;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const Spacer(),
+          Icon(icon, size: 22, color: tokens.nongmo),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.jiaomo,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      englishTitle,
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 11,
+                        color: tokens.danmo,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontKaiti,
+                    fontSize: 11,
+                    color: tokens.danmo,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
-              color: isGranted ? Colors.green.shade50 : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(12),
+              color: isGranted ? Colors.green.shade50 : tokens.ricePaper,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isGranted ? Colors.green.shade600 : tokens.agedFiber,
+                width: 0.8,
+              ),
             ),
             child: Text(
-              isGranted ? 'Allowed' : 'Not Granted',
+              isGranted ? '已获准' : '未授权',
               style: TextStyle(
-                fontSize: 10,
+                fontFamily: InkDiaryTheme.fontKaiti,
+                fontSize: 10.5,
                 fontWeight: FontWeight.bold,
-                color: isGranted ? Colors.green.shade800 : Colors.grey.shade700,
+                color: isGranted ? Colors.green.shade800 : tokens.danmo,
               ),
             ),
           ),
         ],
       ),
-      subtitle: Text(description, style: const TextStyle(fontSize: 12)),
     );
   }
 
-  Widget _buildPrivacyCard(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withAlpha(90),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.primary.withAlpha(40),
-        ),
-      ),
+  Widget _buildPrivacyCard(InkDiaryTokens tokens) {
+    return XuanPaperCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
+      backgroundColor: tokens.ricePaper,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.shield_outlined, color: theme.colorScheme.primary, size: 24),
-              const SizedBox(width: 10),
-              Text(
-                '100% Offline & Private',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
+              const CinnabarSealBadge(text: '零云上送', isRound: true),
+              const SizedBox(width: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '守拙清规',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: tokens.jiaomo,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '100% Offline & Private',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: tokens.cinnabar,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            'MemoDiary operates with zero cloud servers, zero external tracking SDKs, and zero telemetry. '
-            'All diary entries are protected at rest with SQLCipher AES-256 encryption using hardware-backed '
-            'keys, and all photos remain isolated in the app sandbox on your device.',
+            '拾光日记 (MemoDiary) 秉持 100% 离线优先架构 (MemoDiary operates with zero cloud servers)。所有日记文字、Delta JSON 排版与沙盒影音仅驻留于您手中这方屏幕，无任何后台上送、无第三方追踪。配合 SQLCipher AES-256 全库加密，守护案头字句的安宁幽独。',
             style: TextStyle(
+              fontFamily: InkDiaryTheme.fontKaiti,
               fontSize: 12,
-              height: 1.45,
-              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.5,
+              color: tokens.nongmo,
             ),
           ),
         ],

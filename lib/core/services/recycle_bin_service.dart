@@ -58,5 +58,16 @@ class RecycleBinService {
     }
     return deletedEntries.length;
   }
-}
 
+  /// Calculates the remaining days before a soft-deleted [entry] is permanently purged.
+  static int getDaysUntilPermanentDelete(
+    Entry entry, {
+    Duration retention = const Duration(days: 30),
+    DateTime? referenceNow,
+  }) {
+    final now = referenceNow ?? DateTime.now();
+    final expiryDate = entry.updatedAt.add(retention);
+    final remaining = expiryDate.difference(now).inDays;
+    return remaining > 0 ? remaining : 0;
+  }
+}

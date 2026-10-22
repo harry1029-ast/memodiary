@@ -4,27 +4,35 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/services/auth_service.dart';
-import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/features/editor/models/typography_settings.dart';
-import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
-import 'package:memodiary/features/editor/widgets/sandboxed_image_embed_builder.dart';
-import 'package:memodiary/features/editor/widgets/sandboxed_video_embed_builder.dart';
-import 'package:memodiary/features/templates/models/template_style.dart';
-import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
-import 'package:memodiary/features/templates/widgets/template_switcher_sheet.dart';
-import 'package:memodiary/features/import_export/widgets/export_dialog.dart';
-import 'package:memodiary/features/import_export/widgets/pdf_preview_screen.dart';
-import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 
-/// Read-only detail viewer displaying the entry inside its procedural canvas template
-/// with rich-text styling, sandboxed media embeds, and quick management actions.
+import '../../../core/database/app_database.dart';
+import '../../../core/services/auth_service.dart';
+import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
+import '../../../core/theme/widgets/xuan_paper_card.dart';
+import '../../editor/models/typography_settings.dart';
+import '../../editor/screens/entry_editor_screen.dart';
+import '../../editor/services/audio_sanctum_service.dart';
+import '../../editor/widgets/sandboxed_image_embed_builder.dart';
+import '../../editor/widgets/sandboxed_video_embed_builder.dart';
+import '../../editor/widgets/soundscape_modal.dart';
+import '../../editor/widgets/typography_sheet.dart';
+import '../../templates/models/template_style.dart';
+import '../../templates/widgets/template_canvas_container.dart';
+import '../../templates/widgets/template_switcher_sheet.dart';
+import '../../import_export/widgets/export_dialog.dart';
+import '../../import_export/widgets/pdf_preview_screen.dart';
+import '../widgets/entry_summary_card.dart';
+
+/// Read-only literati detail viewer displaying the entry inside its procedural canvas template
+/// with rich-text styling, sandboxed media embeds, and traditional reader aesthetics.
 class EntryDetailScreen extends StatefulWidget {
   final Entry entry;
   final AppDatabase database;
   final MediaSandboxService mediaService;
   final AuthService? authService;
+  final AudioSanctumService? audioSanctumService;
   final Future<void> Function(String text, {String? subject})? shareHandler;
 
   const EntryDetailScreen({
@@ -33,6 +41,7 @@ class EntryDetailScreen extends StatefulWidget {
     required this.database,
     required this.mediaService,
     this.authService,
+    this.audioSanctumService,
     this.shareHandler,
   });
 
@@ -43,6 +52,7 @@ class EntryDetailScreen extends StatefulWidget {
 class _EntryDetailScreenState extends State<EntryDetailScreen> {
   late Entry _entry;
   late final AuthService _authService;
+  late final AudioSanctumService _audioSanctumService;
   Template? _template;
   quill.QuillController? _quillController;
   final FocusNode _focusNode = FocusNode();
@@ -51,12 +61,14 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   bool _isLoading = true;
   bool _isSessionUnlocked = false;
   String? _pinError;
+  TypographySettings _typography = const TypographySettings();
 
   @override
   void initState() {
     super.initState();
     _entry = widget.entry;
     _authService = widget.authService ?? AuthService();
+    _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _loadData();
   }
 
@@ -86,6 +98,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         if (allTemplates.isNotEmpty) {
           _template = allTemplates.first;
         }
+      }
+
+      if (_template != null) {
+        _typography = TypographySettings.fromTemplate(_template!);
       }
 
       // Build read-only QuillController
@@ -124,7 +140,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Future<void> _handleUnlockWithPin() async {
     final enteredPin = _pinController.text.trim();
     if (enteredPin.isEmpty) {
-      setState(() => _pinError = 'Please enter PIN');
+      setState(() => _pinError = '请输入印匣密码');
       return;
     }
 
@@ -149,7 +165,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
   Future<void> _handleUnlockWithBiometrics() async {
     final authenticated = await _authService.authenticateBiometric(
-      localizedReason: 'Unlock protected diary entry',
+      localizedReason: '解锁私密手稿',
     );
     if (authenticated && mounted) {
       HapticFeedback.lightImpact();
@@ -168,7 +184,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       await _loadData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Entry lock removed')),
+          const SnackBar(content: Text('已解除私密封缄')),
         );
       }
       return;
@@ -178,8 +194,8 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     final pinInputController = TextEditingController();
     final pin = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Lock This Entry'),
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('私密封缄 · Lock Entry'),
         content: TextField(
           key: const Key('lock_entry_pin_input'),
           controller: pinInputController,
@@ -187,24 +203,24 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           obscureText: true,
           maxLength: 6,
           decoration: const InputDecoration(
-            labelText: 'Enter 4-6 digit PIN',
+            labelText: '设定 4-6 位密码',
             border: OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
           ),
           FilledButton(
             key: const Key('confirm_lock_entry_btn'),
             onPressed: () {
               final text = pinInputController.text.trim();
               if (text.length >= 4) {
-                Navigator.pop(ctx, text);
+                Navigator.pop(dialogContext, text);
               }
             },
-            child: const Text('Lock Entry'),
+            child: const Text('落锁封存'),
           ),
         ],
       ),
@@ -235,8 +251,28 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         setState(() {
           _template = newTemplate;
           _entry = _entry.copyWith(templateId: newTemplate.id);
+          _typography = TypographySettings.fromTemplate(newTemplate);
         });
       },
+    );
+  }
+
+  Future<void> _handleOpenTypography() async {
+    await TypographySheet.show(
+      context: context,
+      settings: _typography,
+      onChanged: (newSettings) {
+        setState(() {
+          _typography = newSettings;
+        });
+      },
+    );
+  }
+
+  Future<void> _handleOpenSoundscapes() async {
+    await SoundscapeModal.show(
+      context: context,
+      sanctumService: _audioSanctumService,
     );
   }
 
@@ -280,18 +316,18 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Future<void> _handleSoftDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Move to Recycle Bin?'),
         content: const Text(
-          'This entry will be moved to the Recycle Bin and permanently deleted after 30 days.',
+          '此手稿将移入回收站，30 天内仍可完好还原，逾期将彻底化作飞灰。',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('保留手稿'),
           ),
           FilledButton.tonal(
-            onPressed: () => Navigator.pop(ctx, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(
               foregroundColor: Colors.red.shade700,
             ),
@@ -309,76 +345,105 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     }
   }
 
-  Widget _buildLockBarrier(ThemeData theme) {
+  Widget _buildLockBarrier(InkDiaryTokens tokens) {
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer.withAlpha(120),
-                shape: BoxShape.circle,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: XuanPaperCard(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: tokens.cinnabarWash,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: tokens.cinnabar.withValues(alpha: 0.3)),
+                ),
+                child: Icon(
+                  Icons.lock_outline_rounded,
+                  size: 32,
+                  color: tokens.cinnabar,
+                ),
               ),
-              child: Icon(
-                Icons.lock_outline_rounded,
-                size: 48,
-                color: theme.colorScheme.primary,
+              const SizedBox(height: 18),
+              Text(
+                'This Diary Entry is Locked',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.jiaomo,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'This Diary Entry is Locked',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+              const SizedBox(height: 4),
+              Text(
+                '此卷已落锁封存',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontKaiti,
+                  fontSize: 13,
+                  color: tokens.danmo,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Enter the entry PIN or use biometrics to view this memory.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: 220,
-              child: TextField(
-                key: const Key('entry_unlock_pin_field'),
-                controller: _pinController,
-                keyboardType: TextInputType.number,
-                obscureText: true,
+              const SizedBox(height: 6),
+              Text(
+                '请输入印匣密码或验证指纹，方可展卷阅览。',
                 textAlign: TextAlign.center,
-                maxLength: 6,
-                onSubmitted: (_) => _handleUnlockWithPin(),
-                decoration: InputDecoration(
-                  hintText: 'PIN',
-                  errorText: _pinError,
-                  counterText: '',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontKaiti,
+                  fontSize: 13,
+                  color: tokens.danmo,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: 200,
+                child: TextField(
+                  key: const Key('entry_unlock_pin_field'),
+                  controller: _pinController,
+                  keyboardType: TextInputType.number,
+                  obscureText: true,
+                  textAlign: TextAlign.center,
+                  maxLength: 6,
+                  onSubmitted: (_) => _handleUnlockWithPin(),
+                  decoration: InputDecoration(
+                    hintText: '输入印匣密码',
+                    errorText: _pinError,
+                    counterText: '',
+                    filled: true,
+                    fillColor: tokens.ricePaper,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: tokens.agedFiber),
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              key: const Key('entry_unlock_submit_btn'),
-              onPressed: _handleUnlockWithPin,
-              icon: const Icon(Icons.key_rounded),
-              label: const Text('Unlock Entry'),
-            ),
-            const SizedBox(height: 8),
-            TextButton.icon(
-              key: const Key('entry_unlock_biometric_btn'),
-              onPressed: _handleUnlockWithBiometrics,
-              icon: const Icon(Icons.fingerprint_rounded),
-              label: const Text('Use Biometrics'),
-            ),
-          ],
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                key: const Key('entry_unlock_submit_btn'),
+                onPressed: _handleUnlockWithPin,
+                style: FilledButton.styleFrom(
+                  backgroundColor: tokens.jiaomo,
+                  foregroundColor: tokens.xuanGround,
+                ),
+                icon: const Icon(Icons.key_rounded, size: 16),
+                label: const Text('启封展卷'),
+              ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                key: const Key('entry_unlock_biometric_btn'),
+                onPressed: _handleUnlockWithBiometrics,
+                icon: Icon(Icons.fingerprint_rounded, color: tokens.cinnabar),
+                label: Text(
+                  '生物指纹解印',
+                  style: TextStyle(color: tokens.cinnabar),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -386,61 +451,109 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = InkDiaryTheme.tokensOf(context);
 
     if (_isLoading || _template == null || _quillController == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: tokens.xuanGround,
+        body: Center(
+          child: CircularProgressIndicator(color: tokens.cinnabar),
+        ),
       );
     }
 
     if (_isCurrentlyBlocked) {
       return Scaffold(
+        backgroundColor: tokens.xuanGround,
         appBar: AppBar(
+          backgroundColor: tokens.xuanGround,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: tokens.jiaomo),
+            onPressed: () => Navigator.pop(context),
+          ),
           title: Text(
-            DateFormat('MMM d, y').format(_entry.entryDate),
-            style: const TextStyle(fontSize: 16),
+            DateFormat('yyyy年M月d日').format(_entry.entryDate),
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+              fontSize: 16,
+              color: tokens.jiaomo,
+            ),
           ),
         ),
-        body: _buildLockBarrier(theme),
+        body: _buildLockBarrier(tokens),
       );
     }
 
     final templateStyle = TemplateStyle.fromTemplate(_template!);
-    final typography = TypographySettings.fromTemplate(_template!);
-    final dateFormatted =
-        DateFormat('EEEE, MMMM d, y · h:mm a').format(_entry.entryDate);
-    final moodEmoji =
-        _entry.mood != null ? EntrySummaryCard.moodEmojis[_entry.mood!] : null;
-    final weatherIcon = _entry.weather != null
-        ? EntrySummaryCard.weatherIcons[_entry.weather!]
-        : null;
+    final dateFormatted = DateFormat('yyyy年M月d日 · EEEE').format(_entry.entryDate);
+    final moodEmoji = _entry.mood != null ? EntrySummaryCard.moodEmojis[_entry.mood!] : null;
+    final weatherIcon = _entry.weather != null ? EntrySummaryCard.weatherIcons[_entry.weather!] : null;
+    final wordCount = _entry.plainText.trim().length;
+    final readMinutes = (wordCount / 200).ceil().clamp(1, 60);
 
     return Scaffold(
+      backgroundColor: tokens.xuanGround,
       appBar: AppBar(
-        title: Text(
-          DateFormat('MMM d, y').format(_entry.entryDate),
-          style: const TextStyle(fontSize: 16),
+        backgroundColor: tokens.xuanGround,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shape: Border(
+          bottom: BorderSide(
+            color: tokens.agedFiber,
+            width: 1.0,
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: tokens.jiaomo),
+          tooltip: '返回',
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '墨记 · 抚卷',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: tokens.jiaomo,
+              ),
+            ),
+            Text(
+              dateFormatted,
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontKaiti,
+                fontSize: 11,
+                color: tokens.danmo,
+              ),
+            ),
+          ],
         ),
         actions: [
-          IconButton(
-            key: const Key('entry_detail_lock_toggle_btn'),
-            icon: Icon(
-              _entry.isLocked ? Icons.lock_open_outlined : Icons.lock_outline,
-            ),
-            tooltip: _entry.isLocked ? 'Remove Entry Lock' : 'Lock Entry',
-            onPressed: _handleToggleLock,
+          // Ambient Soundscape capsule
+          ListenableBuilder(
+            listenable: _audioSanctumService,
+            builder: (context, _) {
+              final isPlaying = _audioSanctumService.isPlaying;
+              return IconButton(
+                icon: Icon(
+                  isPlaying ? Icons.headphones_rounded : Icons.headphones_outlined,
+                  color: isPlaying ? tokens.cinnabar : tokens.nongmo,
+                ),
+                tooltip: '砚边琴韵',
+                onPressed: _handleOpenSoundscapes,
+              );
+            },
           ),
+          // Typography Settings
           IconButton(
-            icon: const Icon(Icons.style_outlined),
-            tooltip: 'Switch Template',
-            onPressed: _handleSwitchTemplate,
+            icon: Icon(Icons.format_size_rounded, color: tokens.nongmo),
+            tooltip: '字法排印',
+            onPressed: _handleOpenTypography,
           ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: 'Share',
-            onPressed: _handleShare,
-          ),
+          // PDF Export
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
             tooltip: 'Export PDF',
@@ -457,27 +570,76 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.file_download_outlined),
-            tooltip: 'Export',
-            onPressed: () {
-              ExportDialog.show(
-                context: context,
-                database: widget.database,
-                singleEntry: _entry,
-                mediaService: widget.mediaService,
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Edit',
-            onPressed: _handleEdit,
-          ),
+          // Delete icon button
           IconButton(
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Delete',
             onPressed: _handleSoftDelete,
+          ),
+          // Lock Entry toggle
+          IconButton(
+            key: const Key('entry_detail_lock_toggle_btn'),
+            icon: Icon(
+              _entry.isLocked ? Icons.lock : Icons.lock_outline,
+              color: _entry.entryPinHash != null ? tokens.cinnabar : tokens.nongmo,
+            ),
+            tooltip: _entry.isLocked ? '解除私密封缄' : '私密封存',
+            onPressed: _handleToggleLock,
+          ),
+          // More Menu
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: tokens.nongmo),
+            onSelected: (val) {
+              switch (val) {
+                case 'template':
+                  _handleSwitchTemplate();
+                  break;
+                case 'pdf':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) => PdfPreviewScreen(
+                        singleEntry: _entry,
+                        database: widget.database,
+                        mediaService: widget.mediaService,
+                      ),
+                    ),
+                  );
+                  break;
+                case 'export':
+                  ExportDialog.show(
+                    context: context,
+                    database: widget.database,
+                    singleEntry: _entry,
+                    mediaService: widget.mediaService,
+                  );
+                  break;
+                case 'delete':
+                  _handleSoftDelete();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'template',
+                child: Text('更换素笺模板'),
+              ),
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Text('导出宣纸 PDF'),
+              ),
+              const PopupMenuItem(
+                value: 'export',
+                child: Text('纯文归档导出'),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text(
+                  '移入岁暮拾遗',
+                  style: TextStyle(color: Colors.red.shade700),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -489,101 +651,188 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Metadata Header
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      dateFormatted,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
+              // Sanctuary Reading Card Ground
+              XuanPaperCard(
+                margin: EdgeInsets.zero,
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Solar term & seasonal markers ribbon
+                    Row(
+                      children: [
+                        if (_entry.isWeeklyReview) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: tokens.agedFiber,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: tokens.deckleBorder),
+                            ),
+                            child: Text(
+                              _entry.weekNumber != null ? 'W${_entry.weekNumber} Review' : 'Weekly Review',
+                              style: TextStyle(
+                                fontFamily: InkDiaryTheme.fontNotoSerif,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: tokens.jiaomo,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        CinnabarSealBadge(
+                          text: _entry.isWeeklyReview ? '周录' : '岁在此时',
+                          isRound: false,
+                        ),
+                        const SizedBox(width: 8),
+                        if (moodEmoji != null) ...[
+                          Text(moodEmoji, style: const TextStyle(fontSize: 16)),
+                          const SizedBox(width: 6),
+                        ],
+                        if (weatherIcon != null) ...[
+                          Icon(
+                            weatherIcon,
+                            size: 16,
+                            color: tokens.danmo,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Expanded(
+                          child: Text(
+                            '$wordCount 字 · 读需 $readMinutes 分钟',
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontKaiti,
+                              fontSize: 12,
+                              color: tokens.danmo,
+                            ),
+                          ),
+                        ),
+                        if (_entry.isLocked)
+                          Icon(
+                            Icons.lock,
+                            size: 14,
+                            color: tokens.cinnabar,
+                          ),
+                      ],
                     ),
-                  ),
-                  if (_entry.isWeeklyReview) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        _entry.weekNumber != null
-                            ? 'W${_entry.weekNumber} Review'
-                            : 'Weekly Review',
+                    const SizedBox(height: 14),
+
+                    // Main Title
+                    if (_entry.title?.trim().isNotEmpty ?? false) ...[
+                      Text(
+                        _entry.title!.trim(),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSecondaryContainer,
+                          color: tokens.jiaomo,
+                          letterSpacing: 0.8,
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 1,
+                        color: tokens.agedFiber,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Read-Only Quill Rich Text Editor
+                    quill.QuillEditor(
+                      controller: _quillController!,
+                      focusNode: _focusNode,
+                      scrollController: ScrollController(),
+                      config: quill.QuillEditorConfig(
+                        checkBoxReadOnly: true,
+                        autoFocus: false,
+                        expands: false,
+                        scrollable: false,
+                        padding: EdgeInsets.zero,
+                        embedBuilders: [
+                          SandboxedImageEmbedBuilder(
+                            mediaSandboxService: widget.mediaService,
+                          ),
+                          SandboxedVideoEmbedBuilder(
+                            mediaSandboxService: widget.mediaService,
+                          ),
+                        ],
+                        customStyles: quill.DefaultStyles(
+                          paragraph: quill.DefaultTextBlockStyle(
+                            _typography.toTextStyle(),
+                            const quill.HorizontalSpacing(0, 0),
+                            const quill.VerticalSpacing(0, 0),
+                            const quill.VerticalSpacing(0, 0),
+                            null,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                  ],
-                  if (moodEmoji != null) ...[
-                    Text(moodEmoji, style: const TextStyle(fontSize: 20)),
-                    const SizedBox(width: 6),
-                  ],
-                  if (weatherIcon != null) ...[
-                    Icon(
-                      weatherIcon,
-                      size: 20,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 14),
 
-              // Title
-              if (_entry.title?.trim().isNotEmpty ?? false) ...[
-                Text(
-                  _entry.title!.trim(),
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.2,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Divider(
-                  color: theme.colorScheme.outlineVariant.withAlpha(100),
-                  thickness: 1,
-                ),
-                const SizedBox(height: 12),
-              ],
+                    const SizedBox(height: 24),
 
-              // Read-Only Quill Rich Text Editor
-              quill.QuillEditor(
-                controller: _quillController!,
-                focusNode: _focusNode,
-                scrollController: ScrollController(),
-                config: quill.QuillEditorConfig(
-                  checkBoxReadOnly: true,
-                  autoFocus: false,
-                  expands: false,
-                  scrollable: false,
-                  padding: EdgeInsets.zero,
-                  embedBuilders: [
-                    SandboxedImageEmbedBuilder(
-                      mediaSandboxService: widget.mediaService,
-                    ),
-                    SandboxedVideoEmbedBuilder(
-                      mediaSandboxService: widget.mediaService,
+                    // Authentic Cinnabar Seal Stamp Sign-off
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              DateFormat('yyyy年M月d日 记').format(_entry.entryDate),
+                              style: TextStyle(
+                                fontFamily: InkDiaryTheme.fontKaiti,
+                                fontSize: 11,
+                                color: tokens.danmo,
+                              ),
+                            ),
+                            Text(
+                              '拾光微澜 · 顿首',
+                              style: TextStyle(
+                                fontFamily: InkDiaryTheme.fontKaiti,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: tokens.nongmo,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 10),
+                        // Soapstone Carved Cinnabar Seal Square
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: tokens.cinnabar,
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: tokens.cinnabar.withValues(alpha: 0.3),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              '静好\n岁月',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: InkDiaryTheme.fontNotoSerif,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: tokens.ricePaper,
+                                height: 1.1,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                  customStyles: quill.DefaultStyles(
-                    paragraph: quill.DefaultTextBlockStyle(
-                      typography.toTextStyle(),
-                      const quill.HorizontalSpacing(0, 0),
-                      const quill.VerticalSpacing(0, 0),
-                      const quill.VerticalSpacing(0, 0),
-                      null,
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(height: 80),
@@ -591,27 +840,42 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
-        elevation: 2,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            TextButton.icon(
-              icon: const Icon(Icons.style_outlined),
-              label: const Text('Template'),
-              onPressed: _handleSwitchTemplate,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: tokens.xuanGround.withValues(alpha: 0.95),
+          border: Border(
+            top: BorderSide(color: tokens.agedFiber, width: 1.0),
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                TextButton.icon(
+                  icon: Icon(Icons.style_outlined, color: tokens.nongmo, size: 18),
+                  label: Text('Template', style: TextStyle(color: tokens.jiaomo)),
+                  onPressed: _handleSwitchTemplate,
+                ),
+                TextButton.icon(
+                  icon: Icon(Icons.share_outlined, color: tokens.nongmo, size: 18),
+                  label: Text('Share', style: TextStyle(color: tokens.jiaomo)),
+                  onPressed: _handleShare,
+                ),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: tokens.jiaomo,
+                    foregroundColor: tokens.xuanGround,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Edit Entry'),
+                  onPressed: _handleEdit,
+                ),
+              ],
             ),
-            TextButton.icon(
-              icon: const Icon(Icons.share_outlined),
-              label: const Text('Share'),
-              onPressed: _handleShare,
-            ),
-            FilledButton.icon(
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Edit Entry'),
-              onPressed: _handleEdit,
-            ),
-          ],
+          ),
         ),
       ),
     );

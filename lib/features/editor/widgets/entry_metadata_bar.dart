@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
-/// Metadata controls for date backdating, mood, weather, and Time Capsule unlock
+import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/widgets/ink_metadata_pill.dart';
+
+/// Classical Ink & Paper metadata bar providing date backdating,
+/// mood selection, weather logging, and Time Capsule sealing.
 class EntryMetadataBar extends StatelessWidget {
   final DateTime entryDate;
   final int? mood;
@@ -26,19 +30,19 @@ class EntryMetadataBar extends StatelessWidget {
   });
 
   static const List<Map<String, dynamic>> moodOptions = [
-    {'value': 1, 'emoji': '😢', 'label': 'Down'},
-    {'value': 2, 'emoji': '🙁', 'label': 'Tired'},
-    {'value': 3, 'emoji': '😐', 'label': 'Calm'},
-    {'value': 4, 'emoji': '🙂', 'label': 'Happy'},
-    {'value': 5, 'emoji': '😄', 'label': 'Great'},
+    {'value': 1, 'emoji': '😢', 'label': '沉郁', 'subtitle': 'Down'},
+    {'value': 2, 'emoji': '🙁', 'label': '倦怠', 'subtitle': 'Tired'},
+    {'value': 3, 'emoji': '😐', 'label': '静穆', 'subtitle': 'Calm'},
+    {'value': 4, 'emoji': '🙂', 'label': '怡然', 'subtitle': 'Happy'},
+    {'value': 5, 'emoji': '😄', 'label': '欢欣', 'subtitle': 'Great'},
   ];
 
   static const List<Map<String, dynamic>> weatherOptions = [
-    {'value': 'sunny', 'icon': Icons.wb_sunny_outlined, 'label': 'Sunny'},
-    {'value': 'cloudy', 'icon': Icons.cloud_outlined, 'label': 'Cloudy'},
-    {'value': 'rainy', 'icon': Icons.water_drop_outlined, 'label': 'Rainy'},
-    {'value': 'windy', 'icon': Icons.air_outlined, 'label': 'Windy'},
-    {'value': 'snowy', 'icon': Icons.ac_unit_outlined, 'label': 'Snowy'},
+    {'value': 'sunny', 'icon': Icons.wb_sunny_outlined, 'label': '晴明', 'subtitle': 'Sunny'},
+    {'value': 'cloudy', 'icon': Icons.cloud_outlined, 'label': '阴翳', 'subtitle': 'Cloudy'},
+    {'value': 'rainy', 'icon': Icons.water_drop_outlined, 'label': '润雨', 'subtitle': 'Rainy'},
+    {'value': 'windy', 'icon': Icons.air_outlined, 'label': '朔风', 'subtitle': 'Windy'},
+    {'value': 'snowy', 'icon': Icons.ac_unit_outlined, 'label': '凝雪', 'subtitle': 'Snowy'},
   ];
 
   Future<void> _pickDate(BuildContext context) async {
@@ -75,43 +79,104 @@ class EntryMetadataBar extends StatelessWidget {
   }
 
   void _showMoodPicker(BuildContext context) {
-    showModalBottomSheet(
+    final tokens = InkDiaryTheme.tokensOf(context);
+
+    showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: tokens.xuanGround,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => SafeArea(
+      builder: (bottomSheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Select Mood', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: tokens.danmo.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: tokens.cinnabar,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '心境感怀 · Select Mood',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: tokens.jiaomo,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: moodOptions.map((opt) {
-                  final isSelected = mood == opt['value'];
+                children: moodOptions.map((moodOption) {
+                  final isSelected = mood == moodOption['value'];
                   return GestureDetector(
                     onTap: () {
-                      onMoodChanged(opt['value'] as int);
-                      Navigator.pop(ctx);
+                      HapticFeedback.lightImpact();
+                      onMoodChanged(moodOption['value'] as int);
+                      Navigator.pop(bottomSheetContext);
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.amber.shade100 : Colors.transparent,
-                        shape: BoxShape.circle,
-                        border: isSelected ? Border.all(color: Colors.amber.shade700, width: 2) : null,
+                        color: isSelected
+                            ? tokens.cinnabarWash
+                            : tokens.ricePaper,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected
+                              ? tokens.cinnabar
+                              : tokens.agedFiber,
+                          width: isSelected ? 1.5 : 1.0,
+                        ),
                       ),
-                      child: Text(opt['emoji'] as String, style: const TextStyle(fontSize: 32)),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            moodOption['emoji'] as String,
+                            style: const TextStyle(fontSize: 26),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            moodOption['label'] as String,
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontKaiti,
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? tokens.cinnabar : tokens.nongmo,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -120,43 +185,105 @@ class EntryMetadataBar extends StatelessWidget {
   }
 
   void _showWeatherPicker(BuildContext context) {
-    showModalBottomSheet(
+    final tokens = InkDiaryTheme.tokensOf(context);
+
+    showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: tokens.xuanGround,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => SafeArea(
+      builder: (bottomSheetContext) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Select Weather', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: tokens.danmo.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: tokens.cinnabar,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '天候气象 · Select Weather',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: tokens.jiaomo,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: weatherOptions.map((opt) {
-                  final isSelected = weather == opt['value'];
+                children: weatherOptions.map((weatherOption) {
+                  final isSelected = weather == weatherOption['value'];
                   return GestureDetector(
                     onTap: () {
-                      onWeatherChanged(opt['value'] as String);
-                      Navigator.pop(ctx);
+                      HapticFeedback.lightImpact();
+                      onWeatherChanged(weatherOption['value'] as String);
+                      Navigator.pop(bottomSheetContext);
                     },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.blue.shade100 : Colors.transparent,
-                        shape: BoxShape.circle,
-                        border: isSelected ? Border.all(color: Colors.blue.shade700, width: 2) : null,
+                        color: isSelected
+                            ? tokens.cinnabarWash
+                            : tokens.ricePaper,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isSelected
+                              ? tokens.cinnabar
+                              : tokens.agedFiber,
+                          width: isSelected ? 1.5 : 1.0,
+                        ),
                       ),
-                      child: Icon(opt['icon'] as IconData, size: 28, color: Colors.blueGrey),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            weatherOption['icon'] as IconData,
+                            size: 24,
+                            color: isSelected ? tokens.cinnabar : tokens.nongmo,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            weatherOption['label'] as String,
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontKaiti,
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? tokens.cinnabar : tokens.nongmo,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
             ],
           ),
         ),
@@ -168,10 +295,10 @@ class EntryMetadataBar extends StatelessWidget {
     final now = DateTime.now();
     final pickedDate = await showDatePicker(
       context: context,
-      helpText: 'Select Time Capsule Unlock Date',
       initialDate: unlockAt ?? now.add(const Duration(days: 30)),
       firstDate: now.add(const Duration(days: 1)),
-      lastDate: DateTime(2050),
+      lastDate: DateTime(2100),
+      helpText: '时光胶囊封缄至 · Seal Until Date',
     );
 
     if (pickedDate != null) {
@@ -182,84 +309,72 @@ class EntryMetadataBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('yyyy-MM-dd HH:mm');
-    final formattedDate = dateFormat.format(entryDate);
+    final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(entryDate);
 
-    final currentMoodOpt = moodOptions.cast<Map<String, dynamic>?>().firstWhere(
-          (m) => m?['value'] == mood,
+    final currentMoodOption = moodOptions.cast<Map<String, dynamic>?>().firstWhere(
+          (option) => option?['value'] == mood,
           orElse: () => null,
         );
 
-    final currentWeatherOpt = weatherOptions.cast<Map<String, dynamic>?>().firstWhere(
-          (w) => w?['value'] == weather,
+    final currentWeatherOption = weatherOptions.cast<Map<String, dynamic>?>().firstWhere(
+          (option) => option?['value'] == weather,
           orElse: () => null,
         );
+
+    final moodLabel = currentMoodOption != null
+        ? '心境 · ${currentMoodOption['label']}'
+        : '心境';
+
+    final weatherLabel = currentWeatherOption != null
+        ? '天候 · ${currentWeatherOption['label']}'
+        : '天候';
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // Date & Time Chip
-          ActionChip(
-            avatar: const Icon(Icons.calendar_today_outlined, size: 16),
-            label: Text(formattedDate, style: const TextStyle(fontSize: 12)),
-            onPressed: () => _pickDate(context),
-            backgroundColor: Colors.grey.shade100,
+          // Date & Time Capsule Pill
+          InkMetadataPill(
+            icon: Icons.calendar_today_outlined,
+            label: formattedDate,
+            onTap: () => _pickDate(context),
+            semanticLabel: '日记日期 $formattedDate',
           ),
           const SizedBox(width: 8),
 
-          // Mood Chip
-          ActionChip(
-            avatar: Text(
-              currentMoodOpt != null ? (currentMoodOpt['emoji'] as String) : '🙂',
-              style: const TextStyle(fontSize: 14),
-            ),
-            label: Text(
-              currentMoodOpt != null ? (currentMoodOpt['label'] as String) : 'Mood',
-              style: const TextStyle(fontSize: 12),
-            ),
-            onPressed: () => _showMoodPicker(context),
-            backgroundColor: Colors.grey.shade100,
+          // Mood Pill
+          InkMetadataPill(
+            emoji: currentMoodOption != null ? (currentMoodOption['emoji'] as String) : '🙂',
+            label: moodLabel,
+            onTap: () => _showMoodPicker(context),
+            semanticLabel: '选择心境 $moodLabel',
           ),
           const SizedBox(width: 8),
 
-          // Weather Chip
-          ActionChip(
-            avatar: Icon(
-              currentWeatherOpt != null ? (currentWeatherOpt['icon'] as IconData) : Icons.wb_sunny_outlined,
-              size: 16,
-              color: Colors.blueGrey,
-            ),
-            label: Text(
-              currentWeatherOpt != null ? (currentWeatherOpt['label'] as String) : 'Weather',
-              style: const TextStyle(fontSize: 12),
-            ),
-            onPressed: () => _showWeatherPicker(context),
-            backgroundColor: Colors.grey.shade100,
+          // Weather Pill
+          InkMetadataPill(
+            icon: currentWeatherOption != null
+                ? (currentWeatherOption['icon'] as IconData)
+                : Icons.wb_sunny_outlined,
+            label: weatherLabel,
+            onTap: () => _showWeatherPicker(context),
+            semanticLabel: '选择天候 $weatherLabel',
           ),
           const SizedBox(width: 8),
 
-          // Time Capsule Chip
-          ActionChip(
-            avatar: Icon(
-              unlockAt != null ? Icons.lock_clock : Icons.hourglass_empty,
-              size: 16,
-              color: unlockAt != null ? Colors.purple : Colors.grey,
-            ),
-            label: Text(
-              unlockAt != null ? 'Unlocks ${DateFormat('MM-dd').format(unlockAt!)}' : 'Time Capsule',
-              style: TextStyle(
-                fontSize: 12,
-                color: unlockAt != null ? Colors.purple : Colors.black87,
-              ),
-            ),
-            onPressed: () => _pickTimeCapsule(context),
-            backgroundColor: unlockAt != null ? Colors.purple.shade50 : Colors.grey.shade100,
+          // Time Capsule Pill
+          InkMetadataPill(
+            icon: unlockAt != null ? Icons.lock_clock : Icons.hourglass_empty,
+            label: unlockAt != null
+                ? '封缄 · ${DateFormat('MM-dd').format(unlockAt!)}'
+                : '时光胶囊',
+            isAccent: unlockAt != null,
+            onTap: () => _pickTimeCapsule(context),
+            semanticLabel: unlockAt != null ? '时光胶囊已设定' : '设定时光胶囊',
           ),
         ],
       ),
     );
   }
 }
-

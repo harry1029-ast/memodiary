@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:memodiary/features/notifications/services/notification_reminder_service.dart';
+
+import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/widgets/ink_switch.dart';
+import '../../../core/theme/widgets/xuan_paper_card.dart';
+import '../../notifications/services/notification_reminder_service.dart';
 
 /// Card widget embedded in SettingsScreen allowing users to toggle and customize
-/// offline Daily Writing Reminders and Sunday Weekly Review Reminders.
+/// offline Daily Writing Reminders and Sunday Weekly Review Reminders in Ink aesthetic.
 class NotificationSettingsCard extends StatefulWidget {
   final NotificationReminderService? reminderService;
 
@@ -76,78 +80,131 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = InkDiaryTheme.tokensOf(context);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(100)),
-      ),
+    return XuanPaperCard(
+      margin: EdgeInsets.zero,
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
-          SwitchListTile(
-            key: const Key('daily_reminder_switch'),
-            secondary: const Icon(Icons.notifications_active_outlined),
-            title: const Text(
-              'Daily Writing Reminder',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: GestureDetector(
-              key: const Key('daily_reminder_time_btn'),
-              onTap: _pickDailyTime,
-              child: Text(
-                'Every day at ${_formatTime(_prefs.dailyHour, _prefs.dailyMinute)} (Tap to change)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.primary,
+          // Daily Writing Reminder
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.notifications_active_outlined,
+                  size: 22,
+                  color: tokens.cinnabar,
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Daily Writing Reminder',
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: tokens.jiaomo,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      GestureDetector(
+                        key: const Key('daily_reminder_time_btn'),
+                        onTap: _pickDailyTime,
+                        child: Text(
+                          '每日 ${_formatTime(_prefs.dailyHour, _prefs.dailyMinute)} (夜阑提笔时 · 点击更改)',
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontKaiti,
+                            fontSize: 11.5,
+                            color: tokens.danmo,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                InkSwitch(
+                  key: const Key('daily_reminder_switch'),
+                  value: _prefs.dailyEnabled,
+                  onChanged: (val) async {
+                    HapticFeedback.lightImpact();
+                    await _service.setDailyReminder(
+                      enabled: val,
+                      hour: _prefs.dailyHour,
+                      minute: _prefs.dailyMinute,
+                    );
+                    await _loadPrefs();
+                  },
+                  semanticLabel: '每日日记提醒开关',
+                ),
+              ],
             ),
-            value: _prefs.dailyEnabled,
-            onChanged: (enabled) async {
-              HapticFeedback.lightImpact();
-              await _service.setDailyReminder(
-                enabled: enabled,
-                hour: _prefs.dailyHour,
-                minute: _prefs.dailyMinute,
-              );
-              await _loadPrefs();
-            },
           ),
-          const Divider(height: 1),
-          SwitchListTile(
-            key: const Key('weekly_reminder_switch'),
-            secondary: const Icon(Icons.event_repeat_outlined),
-            title: const Text(
-              'Sunday Weekly Review',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            subtitle: GestureDetector(
-              key: const Key('weekly_reminder_time_btn'),
-              onTap: _pickWeeklyTime,
-              child: Text(
-                'Sundays at ${_formatTime(_prefs.weeklyHour, _prefs.weeklyMinute)} (Tap to change)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.primary,
+          Divider(height: 1, color: tokens.agedFiber),
+
+          // Sunday Weekly Review Reminder
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_month_outlined,
+                  size: 22,
+                  color: tokens.danmo,
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sunday Weekly Review',
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: tokens.jiaomo,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      GestureDetector(
+                        key: const Key('weekly_reminder_time_btn'),
+                        onTap: _pickWeeklyTime,
+                        child: Text(
+                          '每周日 ${_formatTime(_prefs.weeklyHour, _prefs.weeklyMinute)} (结卷温故时 · 点击更改)',
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontKaiti,
+                            fontSize: 11.5,
+                            color: tokens.danmo,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                InkSwitch(
+                  key: const Key('weekly_reminder_switch'),
+                  value: _prefs.weeklyEnabled,
+                  onChanged: (val) async {
+                    HapticFeedback.lightImpact();
+                    await _service.setWeeklyReviewReminder(
+                      enabled: val,
+                      hour: _prefs.weeklyHour,
+                      minute: _prefs.weeklyMinute,
+                    );
+                    await _loadPrefs();
+                  },
+                  semanticLabel: '周末复盘提醒开关',
+                ),
+              ],
             ),
-            value: _prefs.weeklyEnabled,
-            onChanged: (enabled) async {
-              HapticFeedback.lightImpact();
-              await _service.setWeeklyReviewReminder(
-                enabled: enabled,
-                hour: _prefs.weeklyHour,
-                minute: _prefs.weeklyMinute,
-              );
-              await _loadPrefs();
-            },
           ),
         ],
       ),
     );
   }
 }
-

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../../core/theme/ink_diary_theme.dart';
 import '../services/event_suggestion_service.dart';
 
-/// Interactive 1-tap "Smart Event Suggestions" association chips displayed in SearchScreen.
+/// Interactive 1-tap "Smart Event Suggestions" association chips displayed in SearchScreen
+/// styled with authentic literati slip tags.
 class EventSuggestionChips extends StatelessWidget {
   final List<EventSuggestion> suggestions;
   final String? activeTerm;
@@ -20,12 +24,12 @@ class EventSuggestionChips extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final theme = Theme.of(context);
+    final tokens = InkDiaryTheme.tokensOf(context);
 
     return Container(
       key: const Key('smart_event_suggestions_bar'),
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -33,20 +37,27 @@ class EventSuggestionChips extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Icons.auto_awesome_outlined,
+                Icons.auto_awesome_rounded,
                 size: 14,
-                color: theme.colorScheme.primary,
+                color: tokens.cinnabar,
               ),
               const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Smart Event Suggestions',
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
+              Text(
+                '灵犀物候联想',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.cinnabar,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              Text(
+                ' · 依笔意析出',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontKaiti,
+                  fontSize: 11,
+                  color: tokens.danmo,
                 ),
               ),
             ],
@@ -59,34 +70,47 @@ class EventSuggestionChips extends StatelessWidget {
                 final isSelected = activeTerm != null &&
                     activeTerm!.trim().toLowerCase() ==
                         s.term.trim().toLowerCase();
+
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: ActionChip(
+                  child: InkWell(
                     key: Key('event_chip_${s.term}'),
-                    avatar: Icon(
-                      s.isCurated
-                          ? Icons.bookmark_border_rounded
-                          : Icons.tag_rounded,
-                      size: 15,
-                      color: isSelected
-                          ? theme.colorScheme.onPrimaryContainer
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
-                    backgroundColor: isSelected
-                        ? theme.colorScheme.primaryContainer
-                        : null,
-                    label: Text(
-                      '${s.label} · ${s.count}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight:
-                            isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected
-                            ? theme.colorScheme.onPrimaryContainer
-                            : null,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      onSuggestionTapped(s);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected ? tokens.cinnabarWash : tokens.ricePaper,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? tokens.cinnabar : tokens.agedFiber,
+                          width: isSelected ? 1.4 : 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            s.isCurated ? Icons.bookmark_border_rounded : Icons.tag_rounded,
+                            size: 13,
+                            color: isSelected ? tokens.cinnabar : tokens.danmo,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${s.label} · ${s.count}',
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontKaiti,
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected ? tokens.cinnabar : tokens.jiaomo,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    onPressed: () => onSuggestionTapped(s),
                   ),
                 );
               }).toList(),
@@ -97,4 +121,3 @@ class EventSuggestionChips extends StatelessWidget {
     );
   }
 }
-

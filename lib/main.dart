@@ -8,6 +8,7 @@ import 'core/database/app_database.dart';
 import 'core/database/database_key_manager.dart';
 import 'core/services/media_sandbox_service.dart';
 import 'core/services/recycle_bin_service.dart';
+import 'core/theme/ink_diary_theme.dart';
 import 'features/auth/app_lock_gate.dart';
 import 'features/timeline/screens/timeline_screen.dart';
 
@@ -72,20 +73,8 @@ class MemoDiaryApp extends StatelessWidget {
     return MaterialApp(
       title: 'MemoDiary',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
-          brightness: Brightness.light,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6750A4),
-          brightness: Brightness.dark,
-        ),
-      ),
+      theme: InkDiaryTheme.light,
+      darkTheme: InkDiaryTheme.dark,
       home: TimelineScreen(
         database: database,
         mediaService: mediaService,

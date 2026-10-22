@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/core/services/recycle_bin_service.dart';
+
+import '../../../core/database/app_database.dart';
+import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/services/recycle_bin_service.dart';
+import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
+import '../../../core/theme/widgets/xuan_paper_card.dart';
 
 /// Screen displaying soft-deleted entries with 30-day countdowns,
-/// restore capability, and permanent purge actions.
+/// restore capability, and permanent purge actions in literati aesthetic.
 class RecycleBinScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
@@ -52,12 +57,13 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
   }
 
   Future<void> _handleRestore(Entry entry) async {
+    HapticFeedback.lightImpact();
     await widget.database.restoreEntry(entry.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Restored "${(entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : "Untitled"}"',
+          '已复墨还案：${(entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : "无题"}',
         ),
       ),
     );
@@ -68,27 +74,28 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Permanently?'),
+        title: const Text('焚稿归尘 · 彻底抹去？'),
         content: const Text(
-          'This will permanently delete this diary entry and its photos. This action cannot be undone.',
+          '此操作将彻底焚化本篇日记及一切附载画卷，墨迹成灰，永不可溯。',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Text('留存残卷'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red.shade700,
             ),
-            child: const Text('Delete Forever'),
+            child: const Text('焚为灰烬'),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
+      HapticFeedback.lightImpact();
       await RecycleBinService.permanentDeleteEntry(
         entryId: entry.id,
         database: widget.database,
@@ -96,7 +103,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Entry permanently deleted')),
+        const SnackBar(content: Text('已彻底焚化抹去')),
       );
       await _loadDeletedEntries();
     }
@@ -108,197 +115,274 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Empty Recycle Bin?'),
+        title: const Text('焚稿净匣 · 清空纸篓？'),
         content: Text(
-          'Permanently remove all ${_deletedEntries.length} items and reclaim device storage? This cannot be undone.',
+          '确定焚化全部 ${_deletedEntries.length} 篇残章？磁盘空间将被彻底释清，此去无从追寻。',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Text('取消'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red.shade700,
             ),
-            child: const Text('Empty All'),
+            child: const Text('悉数焚净'),
           ),
         ],
       ),
     );
 
     if (confirmed == true) {
+      HapticFeedback.lightImpact();
       await RecycleBinService.emptyRecycleBin(
         database: widget.database,
         mediaService: widget.mediaService,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Recycle bin emptied')),
+        const SnackBar(content: Text('纸篓已焚稿净匣')),
       );
       await _loadDeletedEntries();
     }
   }
 
-  int _calculateDaysRemaining(DateTime updatedAt) {
-    final elapsedDays = DateTime.now().difference(updatedAt).inDays;
-    final remaining = 30 - elapsedDays;
-    return remaining.clamp(0, 30);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tokens = InkDiaryTheme.tokensOf(context);
 
     return Scaffold(
+      backgroundColor: tokens.xuanGround,
       appBar: AppBar(
-        title: const Text('Recycle Bin'),
-        actions: [
-          if (_deletedEntries.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: 'Empty Bin',
-              onPressed: _handleEmptyBin,
-            ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _deletedEntries.isEmpty
-              ? _buildEmptyState(theme)
-              : _buildList(theme),
-    );
-  }
-
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        backgroundColor: tokens.xuanGround,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shape: Border(
+          bottom: BorderSide(color: tokens.agedFiber, width: 1.0),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: tokens.jiaomo),
+          tooltip: '返回',
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(
-              Icons.delete_outline_rounded,
-              size: 64,
-              color: theme.colorScheme.outlineVariant,
-            ),
-            const SizedBox(height: 16),
             Text(
-              'Recycle Bin is Empty',
-              style: theme.textTheme.titleMedium?.copyWith(
+              '岁暮拾遗',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
+                color: tokens.jiaomo,
+                letterSpacing: 2.0,
               ),
             ),
-            const SizedBox(height: 8),
             Text(
-              'Entries moved to the trash are stored here for 30 days before being permanently purged.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+              'RECYCLE BIN',
+              style: TextStyle(
+                fontSize: 9,
+                color: tokens.danmo,
+                letterSpacing: 1.0,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildList(ThemeData theme) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _deletedEntries.length,
-      itemBuilder: (context, index) {
-        final entry = _deletedEntries[index];
-        final daysLeft = _calculateDaysRemaining(entry.updatedAt);
-        final titleText =
-            (entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : 'Untitled';
-        final deletedDateStr =
-            DateFormat('MMM d, y · h:mm a').format(entry.updatedAt);
-
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: BorderSide(
-              color: theme.colorScheme.outlineVariant.withAlpha(100),
+        centerTitle: true,
+        actions: [
+          if (_deletedEntries.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: tokens.cinnabar),
+                icon: const Icon(Icons.delete_sweep, size: 18),
+                label: const Text('焚稿净匣'),
+                onPressed: _handleEmptyBin,
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              titleText,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
+        ],
+      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: tokens.cinnabar))
+          : RefreshIndicator(
+              color: tokens.cinnabar,
+              onRefresh: _loadDeletedEntries,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                children: [
+                  // Top Context Banner
+                  XuanPaperCard(
+                    margin: EdgeInsets.zero,
+                    padding: const EdgeInsets.all(16),
+                    backgroundColor: tokens.ricePaper,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.hourglass_empty,
+                          size: 22,
+                          color: tokens.cinnabar,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '卷底残章 · 尘匣安歇',
+                                style: TextStyle(
+                                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: tokens.jiaomo,
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '移入纸篓之文稿，存席三十日后墨迹自散归虚。',
+                                style: TextStyle(
+                                  fontFamily: InkDiaryTheme.fontKaiti,
+                                  fontSize: 12,
+                                  color: tokens.danmo,
+                                ),
+                              ),
+                            ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
+                        ),
+                        const SizedBox(width: 8),
+                        CinnabarSealBadge(
+                          text: '存留 ${_deletedEntries.length} 卷',
+                          isRound: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  if (_deletedEntries.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 60),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.auto_delete_outlined,
+                              size: 48,
+                              color: tokens.danmo.withValues(alpha: 0.5),
                             ),
-                            decoration: BoxDecoration(
-                              color: daysLeft <= 3
-                                  ? Colors.red.shade50
-                                  : theme.colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              daysLeft == 0 ? 'Purges soon' : '$daysLeft days left',
+                            const SizedBox(height: 12),
+                            Text(
+                              '尘匣空明 · 暂无残卷',
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: daysLeft <= 3
-                                    ? Colors.red.shade700
-                                    : theme.colorScheme.onSurfaceVariant,
+                                fontFamily: InkDiaryTheme.fontNotoSerif,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: tokens.jiaomo,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Deleted $deletedDateStr',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurfaceVariant,
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.restore_rounded),
-                  tooltip: 'Restore',
-                  onPressed: () => _handleRestore(entry),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.delete_forever_rounded,
-                    color: Colors.red.shade600,
-                  ),
-                  tooltip: 'Delete Forever',
-                  onPressed: () => _handlePermanentDelete(entry),
-                ),
-              ],
+                    )
+                  else
+                    ..._deletedEntries.map((entry) {
+                      final daysRemaining =
+                          RecycleBinService.getDaysUntilPermanentDelete(entry);
+                      final title = (entry.title?.trim().isNotEmpty ?? false)
+                          ? entry.title!.trim()
+                          : '无题 · 虚白初草';
+                      final updatedStr =
+                          DateFormat('yyyy年M月d日 · HH:mm').format(entry.updatedAt);
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: XuanPaperCard(
+                          margin: EdgeInsets.zero,
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontFamily: InkDiaryTheme.fontNotoSerif,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: tokens.jiaomo,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 1.5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: tokens.cinnabarWash,
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: tokens.cinnabar.withValues(alpha: 0.3),
+                                              width: 0.5,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '$daysRemaining 日后化散',
+                                            style: TextStyle(
+                                              fontFamily: InkDiaryTheme.fontKaiti,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: tokens.cinnabar,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '抹于 $updatedStr',
+                                      style: TextStyle(
+                                        fontFamily: InkDiaryTheme.fontKaiti,
+                                        fontSize: 11,
+                                        color: tokens.danmo,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.history, size: 20, color: tokens.nongmo),
+                                    tooltip: '复墨还案',
+                                    onPressed: () => _handleRestore(entry),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.delete_forever, size: 20, color: tokens.cinnabar),
+                                    tooltip: '焚稿归尘',
+                                    onPressed: () => _handlePermanentDelete(entry),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              ),
             ),
-          ),
-        );
-      },
     );
   }
 }
