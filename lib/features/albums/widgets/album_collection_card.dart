@@ -54,6 +54,85 @@ class AlbumCollectionCard extends StatelessWidget {
     return '未设行程日期';
   }
 
+  static List<PopupMenuEntry<AlbumCardAction>> _buildMenuItems(
+    InkDiaryTokens tokens,
+  ) =>
+      [
+        PopupMenuItem<AlbumCardAction>(
+          value: AlbumCardAction.edit,
+          child: Row(
+            children: [
+              Icon(
+                Icons.edit_outlined,
+                size: 20,
+                color: tokens.nongmo,
+              ),
+              const SizedBox(width: 10),
+              const Text('编辑影集信息'),
+            ],
+          ),
+        ),
+        PopupMenuItem<AlbumCardAction>(
+          value: AlbumCardAction.setCover,
+          child: Row(
+            children: [
+              Icon(
+                Icons.photo_library_outlined,
+                size: 20,
+                color: tokens.nongmo,
+              ),
+              const SizedBox(width: 10),
+              const Text('更换封面照片'),
+            ],
+          ),
+        ),
+        PopupMenuItem<AlbumCardAction>(
+          value: AlbumCardAction.delete,
+          child: Row(
+            children: [
+              Icon(
+                Icons.delete_outline,
+                size: 20,
+                color: tokens.cinnabar,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '删除影集',
+                style: TextStyle(color: tokens.cinnabar),
+              ),
+            ],
+          ),
+        ),
+      ];
+
+  void _showContextMenu(BuildContext context, InkDiaryTokens tokens) {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        renderBox?.localToGlobal(Offset.zero, ancestor: overlay) ??
+            Offset.zero,
+        renderBox?.localToGlobal(
+              renderBox.size.bottomRight(Offset.zero),
+              ancestor: overlay,
+            ) ??
+            Offset.zero,
+      ),
+      Offset.zero & (overlay?.size ?? Size.zero),
+    );
+
+    showMenu<AlbumCardAction>(
+      context: context,
+      position: position,
+      items: _buildMenuItems(tokens),
+    ).then((action) {
+      if (action != null && onActionSelected != null) {
+        onActionSelected!(action);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
@@ -62,107 +141,68 @@ class AlbumCollectionCard extends StatelessWidget {
     final description = collection.description?.trim();
     final route = collection.routeSummary?.trim();
 
-    return XuanPaperCard(
-      key: Key('album_card_${collection.id}'),
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      borderRadius: 12,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 1. Header row: Title + Cinnabar Destination Seal + Contextual Menu
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+    return Builder(
+      builder: (cardContext) => Semantics(
+        label: '${collection.title}，$dateLabel，$photoCount 张影像',
+        button: true,
+        child: XuanPaperCard(
+          key: Key('album_card_${collection.id}'),
+          onTap: onTap,
+          onLongPress: onActionSelected != null
+              ? () => _showContextMenu(cardContext, tokens)
+              : null,
+          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          borderRadius: 12,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Text(
-                  collection.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: tokens.jiaomo,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-              ),
-              if (destination != null && destination.isNotEmpty) ...[
-                const SizedBox(width: 8),
-                CinnabarSealBadge.compact(
-                  text: destination,
-                  size: 28,
-                ),
-              ],
-              if (onActionSelected != null) ...[
-                const SizedBox(width: 4),
-                Semantics(
-                  label: '更多操作：${collection.title}',
-                  button: true,
-                  child: PopupMenuButton<AlbumCardAction>(
-                    key: Key('album_card_menu_${collection.id}'),
-                    tooltip: '更多操作',
-                    icon: Icon(
-                      Icons.more_horiz,
-                      size: 20,
-                      color: tokens.danmo,
+              // 1. Header row: Title + Cinnabar Destination Seal + Contextual Menu
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      collection.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: tokens.jiaomo,
+                        letterSpacing: 0.4,
+                      ),
                     ),
-                    onSelected: onActionSelected,
-                    itemBuilder: (context) => [
-                      PopupMenuItem<AlbumCardAction>(
-                        value: AlbumCardAction.edit,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.edit_outlined,
-                              size: 20,
-                              color: tokens.nongmo,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text('编辑影集信息'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<AlbumCardAction>(
-                        value: AlbumCardAction.setCover,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.photo_library_outlined,
-                              size: 20,
-                              color: tokens.nongmo,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text('更换封面照片'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<AlbumCardAction>(
-                        value: AlbumCardAction.delete,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outline,
-                              size: 20,
-                              color: tokens.cinnabar,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              '删除影集',
-                              style: TextStyle(color: tokens.cinnabar),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ),
-                ),
-              ],
-            ],
-          ),
+                  if (destination != null && destination.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    CinnabarSealBadge.compact(
+                      text: destination,
+                      size: 28,
+                    ),
+                  ],
+                  if (onActionSelected != null) ...[
+                    const SizedBox(width: 4),
+                    Semantics(
+                      label: '更多操作：${collection.title}',
+                      button: true,
+                      child: PopupMenuButton<AlbumCardAction>(
+                        key: Key('album_card_menu_${collection.id}'),
+                        tooltip: '更多操作',
+                        icon: Icon(
+                          Icons.more_horiz,
+                          size: 20,
+                          color: tokens.danmo,
+                        ),
+                        onSelected: onActionSelected,
+                        itemBuilder: (context) => _buildMenuItems(tokens),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
 
           // 2. Subtitle / Prologue
           const SizedBox(height: 4),
@@ -247,6 +287,8 @@ class AlbumCollectionCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 }

@@ -10,6 +10,7 @@ class XuanPaperCard extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final bool hasShadow;
 
   const XuanPaperCard({
@@ -21,6 +22,7 @@ class XuanPaperCard extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.onTap,
+    this.onLongPress,
     this.hasShadow = true,
   });
 
@@ -58,13 +60,14 @@ class XuanPaperCard extends StatelessWidget {
       ),
     );
 
-    if (onTap != null) {
+    if (onTap != null || onLongPress != null) {
       return Container(
         margin: margin,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
+            onLongPress: onLongPress,
             borderRadius: BorderRadius.circular(borderRadius),
             child: cardContent,
           ),

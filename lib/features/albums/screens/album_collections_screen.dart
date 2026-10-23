@@ -281,7 +281,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
 
               return LayoutBuilder(
                 builder: (context, constraints) {
-                  if (constraints.maxWidth >= 640) {
+                  if (constraints.maxWidth >= 600) {
                     return Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 960),
@@ -360,7 +360,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
                 border: Border.all(color: tokens.deckleBorder),
               ),
               child: Icon(
-                Icons.collections_bookmark_outlined,
+                Icons.brush_outlined,
                 size: 32,
                 color: tokens.danmo,
               ),

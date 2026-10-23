@@ -232,19 +232,27 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
                 ),
                 const SizedBox(height: 12),
 
-                // 2. High-Resolution Image Preview with pinch-zoom
+                // 2. High-Resolution Image Preview with pinch-zoom & cached aspectRatio
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 280),
-                  child: InteractiveViewer(
-                    minScale: 1.0,
-                    maxScale: 3.0,
-                    child: SandboxedAlbumImage(
-                      relativePath: widget.photo.relativeImagePath,
-                      mediaService: widget.mediaService,
-                      cacheWidth: 1200,
-                      borderRadius: 10,
-                      height: 240,
-                      width: double.infinity,
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: (widget.photo.aspectRatio > 0.2 &&
+                              widget.photo.aspectRatio < 5.0)
+                          ? widget.photo.aspectRatio
+                          : 1.0,
+                      child: InteractiveViewer(
+                        minScale: 1.0,
+                        maxScale: 3.0,
+                        child: SandboxedAlbumImage(
+                          relativePath: widget.photo.relativeImagePath,
+                          mediaService: widget.mediaService,
+                          cacheWidth: 1200,
+                          borderRadius: 10,
+                          fit: BoxFit.contain,
+                          width: double.infinity,
+                        ),
+                      ),
                     ),
                   ),
                 ),

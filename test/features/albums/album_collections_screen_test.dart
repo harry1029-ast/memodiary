@@ -131,5 +131,43 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(milliseconds: 100));
     });
+
+    testWidgets(
+        'long-pressing album collection card opens contextual menu and card exposes combined semantics',
+        (tester) async {
+      final collection = await harness.repository.createCollection(
+        title: '雁荡山居集',
+        destinationTag: '雁荡',
+        startDate: DateTime(2026, 5, 1),
+        endDate: DateTime(2026, 5, 3),
+      );
+
+      await pumpAlbumScreen(
+        tester,
+        AlbumCollectionsScreen(
+          database: harness.database,
+          mediaService: harness.mediaService,
+          repository: harness.repository,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cardFinder = find.byKey(Key('album_card_${collection.id}'));
+      expect(cardFinder, findsOneWidget);
+
+      // Long press card to open menu
+      await tester.longPress(cardFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('编辑影集信息'), findsOneWidget);
+      expect(find.text('更换封面照片'), findsOneWidget);
+      expect(find.text('删除影集'), findsOneWidget);
+
+      // Dismiss menu
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      await tearDownAlbumScreen(tester);
+    });
   });
 }

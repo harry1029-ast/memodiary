@@ -203,10 +203,11 @@ class AlbumLayoutEngine {
     List<AlbumPhoto> orderedPhotos,
   ) {
     final stops = <String>[];
+    final seen = <String>{};
     for (final photo in orderedPhotos) {
       final tag = photo.locationTag?.trim();
       if (tag == null || tag.isEmpty) continue;
-      if (stops.isEmpty || stops.last != tag) {
+      if (seen.add(tag)) {
         stops.add(tag);
       }
     }

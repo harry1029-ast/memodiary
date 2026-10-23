@@ -225,6 +225,28 @@ void main() {
       expect((spreads[1] as SingleHeroSpread).photo.id, 'e1');
       expect(spreads[2], isA<DuoSpread>());
     });
+
+    test(
+        'EpilogueSpread deduplicates revisited locations in route trajectory and totalLocations count',
+        () {
+      final collection = _buildCollection();
+      final photos = [
+        _buildPhoto(id: 'r1', sortOrder: 0, locationTag: '杭州'),
+        _buildPhoto(id: 'r2', sortOrder: 1, locationTag: '乌镇'),
+        _buildPhoto(id: 'r3', sortOrder: 2, locationTag: '杭州'),
+        _buildPhoto(id: 'r4', sortOrder: 3, locationTag: '苏州'),
+      ];
+
+      final spreads = AlbumLayoutEngine.synthesize(
+        collection: collection,
+        photos: photos,
+      );
+
+      final epilogue = spreads.last as EpilogueSpread;
+      expect(epilogue.routeSummary, '杭州 → 乌镇 → 苏州');
+      expect(epilogue.totalLocations, 3);
+      expect(epilogue.totalPhotos, 4);
+    });
   });
 }
 
