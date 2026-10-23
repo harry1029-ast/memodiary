@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:video_player/video_player.dart';
+import '../database/app_database.dart';
 
 typedef ImageCompressor = Future<File?> Function(
   String sourcePath,
@@ -49,6 +51,20 @@ class VideoSandboxResult {
     required this.relativePath,
     required this.thumbnailPath,
     required this.durationSeconds,
+  });
+}
+
+/// Result of sandboxing a travel album photo with its 1600px full-res WebP,
+/// 300px preview thumbnail WebP, and cached width/height aspect ratio.
+class AlbumPhotoSandboxResult {
+  final String relativeImagePath;
+  final String relativeThumbnailPath;
+  final double aspectRatio;
+
+  const AlbumPhotoSandboxResult({
+    required this.relativeImagePath,
+    required this.relativeThumbnailPath,
+    required this.aspectRatio,
   });
 }
 
@@ -238,6 +254,218 @@ class MediaSandboxService {
 
     // Always normalize to forward slashes for cross-platform relative path consistency
     return relativePath.replaceAll('\\', '/');
+  }
+
+  /// Copies an album photo from [sourceFile] into the sandboxed `media/` directory,
+  /// generating both a 1600px full-res WebP (`media/{uuid}.webp`, 80% quality) and
+  /// a 300px preview thumbnail WebP (`media/{uuid}_thumb.webp`, 75% quality),
+  /// plus extracting its width/height aspect ratio (defaulting to 1.0 if undecodable).
+  Future<AlbumPhotoSandboxResult> copyAndProcessAlbumPhoto(
+    File sourceFile,
+  ) async {
+    if (!await sourceFile.exists()) {
+      throw FileSystemException('Source image does not exist', sourceFile.path);
+    }
+
+    final baseDir = await _getBaseDir();
+    final mediaDir = Directory(p.join(baseDir.path, 'media'));
+    if (!await mediaDir.exists()) {
+      await mediaDir.create(recursive: true);
+    }
+
+    final id = _uuid.v4();
+    final imageRelPath = p.join('media', '$id.webp');
+    final thumbRelPath = p.join('media', '${id}_thumb.webp');
+    final imageTargetPath = p.join(baseDir.path, imageRelPath);
+    final thumbTargetPath = p.join(baseDir.path, thumbRelPath);
+
+    final fullResResult = await _compressor(
+      sourceFile.path,
+      imageTargetPath,
+      minWidth: 1600,
+      minHeight: 1600,
+      quality: 80,
+    );
+
+    if (fullResResult == null || !await fullResResult.exists()) {
+      throw const FileSystemException(
+        'Failed to compress and save full-res album photo to sandbox',
+      );
+    }
+
+    final thumbResult = await _compressor(
+      sourceFile.path,
+      thumbTargetPath,
+      minWidth: 300,
+      minHeight: 300,
+      quality: 75,
+    );
+
+    if (thumbResult == null || !await thumbResult.exists()) {
+      await fullResResult.copy(thumbTargetPath);
+    }
+
+    final aspectRatio = await _extractAspectRatio(fullResResult);
+
+    return AlbumPhotoSandboxResult(
+      relativeImagePath: imageRelPath.replaceAll('\\', '/'),
+      relativeThumbnailPath: thumbRelPath.replaceAll('\\', '/'),
+      aspectRatio: aspectRatio,
+    );
+  }
+
+  static Future<double> _extractAspectRatio(File imageFile) async {
+    try {
+      final bytes = await imageFile.readAsBytes();
+      if (bytes.isEmpty) return 1.0;
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final width = frame.image.width;
+      final height = frame.image.height;
+      frame.image.dispose();
+      if (width > 0 && height > 0) {
+        return width / height;
+      }
+    } catch (_) {
+      // Fallback to 1.0 in headless tests or non-image mock bytes
+    }
+    return 1.0;
+  }
+
+  /// Removes all physical `.webp` full-res, thumbnail, and cover files associated with
+  /// [collectionId] from the `media/` sandbox directory (unless referenced by another
+  /// collection or photo) before deleting the collection and its photos from [database].
+  Future<void> deleteCollectionAndMedia({
+    required String collectionId,
+    required AppDatabase database,
+  }) async {
+    final collection = await (database.select(database.albumCollections)
+          ..where((tbl) => tbl.id.equals(collectionId)))
+        .getSingleOrNull();
+    final photos = await (database.select(database.albumPhotos)
+          ..where((tbl) => tbl.collectionId.equals(collectionId)))
+        .get();
+
+    final candidatePaths = <String>{};
+    if (collection?.coverImagePath != null &&
+        collection!.coverImagePath!.isNotEmpty) {
+      candidatePaths.add(collection.coverImagePath!);
+    }
+    for (final photo in photos) {
+      if (photo.relativeImagePath.isNotEmpty) {
+        candidatePaths.add(photo.relativeImagePath);
+      }
+      if (photo.relativeThumbnailPath.isNotEmpty) {
+        candidatePaths.add(photo.relativeThumbnailPath);
+      }
+    }
+
+    // Check if any candidate path is still referenced outside this collection
+    final otherCollections = await (database.select(database.albumCollections)
+          ..where((tbl) => tbl.id.isNotValue(collectionId)))
+        .get();
+    final otherPhotos = await (database.select(database.albumPhotos)
+          ..where((tbl) => tbl.collectionId.isNotValue(collectionId)))
+        .get();
+
+    final externallyReferenced = <String>{
+      for (final otherCol in otherCollections)
+        if (otherCol.coverImagePath != null) otherCol.coverImagePath!,
+      for (final otherPhoto in otherPhotos) ...[
+        otherPhoto.relativeImagePath,
+        otherPhoto.relativeThumbnailPath,
+      ],
+    };
+
+    for (final relPath in candidatePaths) {
+      if (!externallyReferenced.contains(relPath) &&
+          isStrictlyRelative(relPath)) {
+        await deleteMedia(relPath);
+      }
+    }
+
+    await database.transaction(() async {
+      await (database.delete(database.albumPhotos)
+            ..where((tbl) => tbl.collectionId.equals(collectionId)))
+          .go();
+      await (database.delete(database.albumCollections)
+            ..where((tbl) => tbl.id.equals(collectionId)))
+          .go();
+    });
+  }
+
+  /// Removes the physical `.webp` full-res and thumbnail files for a single [photoId]
+  /// (and clears `coverImagePath` on its parent collection if it pointed to this photo)
+  /// before deleting the photo record from [database].
+  Future<void> deletePhotoAndMedia({
+    required String photoId,
+    required AppDatabase database,
+  }) async {
+    final photo = await (database.select(database.albumPhotos)
+          ..where((tbl) => tbl.id.equals(photoId)))
+        .getSingleOrNull();
+    if (photo == null) return;
+
+    final candidatePaths = <String>{
+      if (photo.relativeImagePath.isNotEmpty) photo.relativeImagePath,
+      if (photo.relativeThumbnailPath.isNotEmpty) photo.relativeThumbnailPath,
+    };
+
+    // If parent collection's coverImagePath matches this photo, clear or reassign it
+    final parentCollection = await (database.select(database.albumCollections)
+          ..where((tbl) => tbl.id.equals(photo.collectionId)))
+        .getSingleOrNull();
+
+    final otherPhotos = await (database.select(database.albumPhotos)
+          ..where((tbl) => tbl.id.isNotValue(photoId)))
+        .get();
+    final otherCollections = await (database.select(database.albumCollections)
+          ..where((tbl) => tbl.id.isNotValue(photo.collectionId)))
+        .get();
+
+    final externallyReferenced = <String>{
+      for (final otherCol in otherCollections)
+        if (otherCol.coverImagePath != null) otherCol.coverImagePath!,
+      for (final otherPhoto in otherPhotos) ...[
+        otherPhoto.relativeImagePath,
+        otherPhoto.relativeThumbnailPath,
+      ],
+      if (parentCollection?.coverImagePath != null &&
+          !candidatePaths.contains(parentCollection!.coverImagePath))
+        parentCollection.coverImagePath!,
+    };
+
+    for (final relPath in candidatePaths) {
+      if (!externallyReferenced.contains(relPath) &&
+          isStrictlyRelative(relPath)) {
+        await deleteMedia(relPath);
+      }
+    }
+
+    await database.transaction(() async {
+      await (database.delete(database.albumPhotos)
+            ..where((tbl) => tbl.id.equals(photoId)))
+          .go();
+
+      if (parentCollection?.coverImagePath != null &&
+          candidatePaths.contains(parentCollection!.coverImagePath)) {
+        final remainingPhotos = await (database.select(database.albumPhotos)
+              ..where((tbl) => tbl.collectionId.equals(photo.collectionId))
+              ..orderBy([(tbl) => OrderingTerm.asc(tbl.sortOrder)]))
+            .get();
+        final nextCover = remainingPhotos.isNotEmpty
+            ? remainingPhotos.first.relativeImagePath
+            : null;
+        await (database.update(database.albumCollections)
+              ..where((tbl) => tbl.id.equals(photo.collectionId)))
+            .write(
+          AlbumCollectionsCompanion(
+            coverImagePath: Value(nextCover),
+            updatedAt: Value(DateTime.now()),
+          ),
+        );
+      }
+    });
   }
 
   /// Copies a short video (<=60s) into the sandboxed `media/` directory as `media/{uuid}.mp4`,

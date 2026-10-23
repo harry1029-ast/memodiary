@@ -472,6 +472,95 @@ void main() {
       final lastBackup = await customService.getLastBackupTimestamp();
       expect(lastBackup, isNotNull);
     });
+
+    test(
+      'creates and atomically restores schema v3 album_collections, album_photos, and physical album WebP files',
+      () async {
+        await seedRichDatabaseAndMedia();
+
+        final mediaDir = Directory(p.join(baseDir.path, 'media'))
+          ..createSync(recursive: true);
+        File(p.join(mediaDir.path, 'album_img_1.webp'))
+            .writeAsBytesSync([0x52, 0x49, 0x46, 0x46, 10, 20, 30]);
+        File(p.join(mediaDir.path, 'album_img_1_thumb.webp'))
+            .writeAsBytesSync([0x52, 0x49, 0x46, 0x46, 40, 50]);
+
+        final tripDate = DateTime(2026, 4, 10, 8, 0);
+        await db.into(db.albumCollections).insert(
+              AlbumCollectionsCompanion.insert(
+                id: 'album_col_1',
+                title: '江南春行纪',
+                description: const Value('山河沿路，笔底留痕'),
+                destinationTag: const Value('江南'),
+                routeSummary: const Value('杭州 → 乌镇 → 苏州'),
+                coverImagePath: const Value('media/album_img_1.webp'),
+                startDate: Value(tripDate),
+                endDate: Value(tripDate.add(const Duration(days: 3))),
+                sortIndex: const Value(0),
+              ),
+            );
+        await db.into(db.albumPhotos).insert(
+              AlbumPhotosCompanion.insert(
+                id: 'album_photo_1',
+                collectionId: 'album_col_1',
+                relativeImagePath: 'media/album_img_1.webp',
+                relativeThumbnailPath: 'media/album_img_1_thumb.webp',
+                caption: const Value('烟雨长廊'),
+                locationTag: const Value('乌镇'),
+                shotAt: Value(tripDate),
+                sortOrder: const Value(0),
+                aspectRatio: const Value(1.33),
+              ),
+            );
+
+        final backupFile = File(p.join(tempDir.path, 'v3_albums.mdbak'));
+        final createRes = await backupService.createBackup(
+          destination: backupFile,
+          passphrase: 'album-vault-passphrase',
+          pbkdf2Iterations: 1000,
+        );
+
+        expect(createRes.albumCollectionsCount, equals(1));
+        expect(createRes.albumPhotosCount, equals(1));
+        expect(createRes.mediaFilesCount, equals(5));
+
+        // Wipe live tables and media directory
+        await db.delete(db.albumPhotos).go();
+        await db.delete(db.albumCollections).go();
+        mediaDir.deleteSync(recursive: true);
+
+        final restoreRes = await backupService.restoreBackup(
+          source: backupFile,
+          passphrase: 'album-vault-passphrase',
+        );
+
+        expect(restoreRes.albumCollectionsRestored, equals(1));
+        expect(restoreRes.albumPhotosRestored, equals(1));
+        expect(restoreRes.mediaFilesRestored, equals(5));
+
+        final restoredCols = await db.select(db.albumCollections).get();
+        expect(restoredCols.single.id, equals('album_col_1'));
+        expect(restoredCols.single.title, equals('江南春行纪'));
+        expect(restoredCols.single.destinationTag, equals('江南'));
+        expect(restoredCols.single.routeSummary, equals('杭州 → 乌镇 → 苏州'));
+
+        final restoredPhotos = await db.select(db.albumPhotos).get();
+        expect(restoredPhotos.single.id, equals('album_photo_1'));
+        expect(restoredPhotos.single.caption, equals('烟雨长廊'));
+        expect(restoredPhotos.single.locationTag, equals('乌镇'));
+        expect(restoredPhotos.single.aspectRatio, equals(1.33));
+
+        expect(
+          File(p.join(baseDir.path, 'media', 'album_img_1.webp')).existsSync(),
+          isTrue,
+        );
+        expect(
+          File(p.join(baseDir.path, 'media', 'album_img_1_thumb.webp'))
+              .existsSync(),
+          isTrue,
+        );
+      },
+    );
   });
 }
 

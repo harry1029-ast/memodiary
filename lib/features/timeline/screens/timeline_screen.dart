@@ -18,6 +18,7 @@ import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 import 'package:memodiary/features/timeline/widgets/notebook_selector_sheet.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
+import 'package:memodiary/features/timeline/widgets/timeline_date_spine_item.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
 
 /// Main screen displaying the reverse-chronological, lazy-paginated timeline feed of entries
@@ -404,21 +405,35 @@ class _TimelineScreenState extends State<TimelineScreen> {
                         );
                       }
 
-                      // 5. Timeline Entry Item
+                      // 5. Timeline Entry Item with Continuous Date Spine
                       final entry = _entries[entryIndex];
                       final item = TimelineEntryItem(
                         entry: entry,
                         primaryMedia: _mediaMap[entry.id],
                       );
 
-                      if (item.isSealedTimeCapsule) {
-                        return TimeCapsuleCard(item: item);
-                      }
+                      final isFirst = entryIndex == 0;
+                      final isLast = entryIndex == _entries.length - 1 && !_hasMore;
+                      final isHighlighted = isFirst || entry.isWeeklyReview;
 
-                      return EntrySummaryCard(
-                        item: item,
-                        mediaService: widget.mediaService,
-                        onTap: () => _navigateToDetail(entry),
+                      final Widget card = item.isSealedTimeCapsule
+                          ? TimeCapsuleCard(
+                              item: item,
+                              customMargin: EdgeInsets.zero,
+                            )
+                          : EntrySummaryCard(
+                              item: item,
+                              mediaService: widget.mediaService,
+                              onTap: () => _navigateToDetail(entry),
+                              customMargin: EdgeInsets.zero,
+                            );
+
+                      return TimelineDateSpineItem(
+                        date: entry.entryDate,
+                        isFirst: isFirst,
+                        isLast: isLast,
+                        isHighlighted: isHighlighted,
+                        child: card,
                       );
                     },
                   ),

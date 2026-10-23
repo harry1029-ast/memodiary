@@ -68,18 +68,22 @@ class BackupMediaRecord {
   }
 }
 
-/// Complete snapshot of all four core SQLite tables.
+/// Complete snapshot of all SQLite tables (core diary tables + travel memory albums).
 class BackupDatabaseSnapshot {
   final List<Template> templates;
   final List<Notebook> notebooks;
   final List<Entry> entries;
   final List<MediaAttachment> mediaAttachments;
+  final List<AlbumCollection> albumCollections;
+  final List<AlbumPhoto> albumPhotos;
 
   const BackupDatabaseSnapshot({
     required this.templates,
     required this.notebooks,
     required this.entries,
     required this.mediaAttachments,
+    this.albumCollections = const [],
+    this.albumPhotos = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -87,6 +91,8 @@ class BackupDatabaseSnapshot {
         'notebooks': notebooks.map((n) => n.toJson()).toList(),
         'entries': entries.map((e) => e.toJson()).toList(),
         'mediaAttachments': mediaAttachments.map((m) => m.toJson()).toList(),
+        'albumCollections': albumCollections.map((c) => c.toJson()).toList(),
+        'albumPhotos': albumPhotos.map((p) => p.toJson()).toList(),
       };
 
   factory BackupDatabaseSnapshot.fromJson(Map<String, dynamic> json) {
@@ -104,12 +110,22 @@ class BackupDatabaseSnapshot {
           .map((e) =>
               MediaAttachment.fromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
+      final rawAlbumCollections =
+          (json['albumCollections'] as List<dynamic>? ?? [])
+              .map((e) =>
+                  AlbumCollection.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList();
+      final rawAlbumPhotos = (json['albumPhotos'] as List<dynamic>? ?? [])
+          .map((e) => AlbumPhoto.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
 
       return BackupDatabaseSnapshot(
         templates: rawTemplates,
         notebooks: rawNotebooks,
         entries: rawEntries,
         mediaAttachments: rawMedia,
+        albumCollections: rawAlbumCollections,
+        albumPhotos: rawAlbumPhotos,
       );
     } catch (e) {
       throw BackupCorruptedException(
@@ -123,7 +139,7 @@ class BackupDatabaseSnapshot {
 class BackupManifest {
   static const String expectedFormat = 'memodiary-backup';
   static const int currentFormatVersion = 1;
-  static const int maxSupportedSchemaVersion = 2;
+  static const int maxSupportedSchemaVersion = 3;
 
   final String format;
   final int formatVersion;
@@ -151,6 +167,8 @@ class BackupManifest {
           'notebooks': snapshot.notebooks.length,
           'entries': snapshot.entries.length,
           'mediaAttachments': snapshot.mediaAttachments.length,
+          'albumCollections': snapshot.albumCollections.length,
+          'albumPhotos': snapshot.albumPhotos.length,
         },
         'tables': snapshot.toJson(),
         'mediaFiles': mediaFiles.map((m) => m.toJson()).toList(),
@@ -263,6 +281,8 @@ class BackupResult {
   final int notebooksCount;
   final int entriesCount;
   final int mediaFilesCount;
+  final int albumCollectionsCount;
+  final int albumPhotosCount;
   final int totalBytes;
   final bool isEncrypted;
 
@@ -272,6 +292,8 @@ class BackupResult {
     required this.notebooksCount,
     required this.entriesCount,
     required this.mediaFilesCount,
+    this.albumCollectionsCount = 0,
+    this.albumPhotosCount = 0,
     required this.totalBytes,
     required this.isEncrypted,
   });
@@ -283,12 +305,16 @@ class RestoreResult {
   final int notebooksRestored;
   final int entriesRestored;
   final int mediaFilesRestored;
+  final int albumCollectionsRestored;
+  final int albumPhotosRestored;
 
   const RestoreResult({
     required this.templatesRestored,
     required this.notebooksRestored,
     required this.entriesRestored,
     required this.mediaFilesRestored,
+    this.albumCollectionsRestored = 0,
+    this.albumPhotosRestored = 0,
   });
 }
 

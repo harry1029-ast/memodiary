@@ -115,6 +115,80 @@ void main() {
       expect(restoredMedia.relativePath, 'media/clip.mp4');
       expect(restoredMedia.thumbnailPath, 'media/clip_thumb.webp');
       expect(restoredMedia.ocrText, 'mountain sign');
+      expect(decoded.snapshot.albumCollections, isEmpty);
+      expect(decoded.snapshot.albumPhotos, isEmpty);
+    });
+
+    test('round-trips schema v3 albumCollections and albumPhotos and supports legacy v2 manifests missing album keys', () {
+      final now = DateTime.utc(2026, 10, 23, 15, 0);
+
+      final snapshot = BackupDatabaseSnapshot(
+        templates: const [],
+        notebooks: const [],
+        entries: const [],
+        mediaAttachments: const [],
+        albumCollections: [
+          AlbumCollection(
+            id: 'col_1',
+            title: '江南春行纪',
+            description: '山河沿路，笔底留痕',
+            destinationTag: '江南',
+            routeSummary: '杭州 → 乌镇 → 苏州',
+            coverImagePath: 'media/album_1.webp',
+            startDate: now,
+            endDate: now,
+            layoutPreset: 'classic_photobook',
+            sortIndex: 0,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        ],
+        albumPhotos: [
+          AlbumPhoto(
+            id: 'photo_1',
+            collectionId: 'col_1',
+            relativeImagePath: 'media/album_1.webp',
+            relativeThumbnailPath: 'media/album_1_thumb.webp',
+            caption: '西湖春晓',
+            locationTag: '杭州 · 西湖',
+            shotAt: now,
+            sortOrder: 0,
+            aspectRatio: 1.5,
+            createdAt: now,
+          ),
+        ],
+      );
+
+      final manifest = BackupManifest(
+        appSchemaVersion: 3,
+        createdAt: now,
+        snapshot: snapshot,
+        mediaFiles: const [],
+      );
+
+      final decoded = BackupManifest.fromJsonString(manifest.toJsonString());
+      expect(decoded.appSchemaVersion, equals(3));
+      expect(decoded.snapshot.albumCollections.single.title, equals('江南春行纪'));
+      expect(decoded.snapshot.albumCollections.single.destinationTag, equals('江南'));
+      expect(decoded.snapshot.albumCollections.single.routeSummary, equals('杭州 → 乌镇 → 苏州'));
+      expect(decoded.snapshot.albumPhotos.single.caption, equals('西湖春晓'));
+      expect(decoded.snapshot.albumPhotos.single.aspectRatio, equals(1.5));
+
+      // Verify legacy v2 manifest JSON with no albumCollections / albumPhotos keys deserializes cleanly
+      final legacyV2 = BackupManifest.fromJson({
+        'format': 'memodiary-backup',
+        'formatVersion': 1,
+        'appSchemaVersion': 2,
+        'tables': {
+          'templates': [],
+          'notebooks': [],
+          'entries': [],
+          'mediaAttachments': [],
+        },
+        'mediaFiles': [],
+      });
+      expect(legacyV2.snapshot.albumCollections, isEmpty);
+      expect(legacyV2.snapshot.albumPhotos, isEmpty);
     });
 
     test('rejects unsupported future formatVersion or appSchemaVersion', () {

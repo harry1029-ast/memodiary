@@ -11,6 +11,8 @@ import 'tables/templates.dart';
 import 'tables/notebooks.dart';
 import 'tables/entries.dart';
 import 'tables/media_attachments.dart';
+import 'tables/album_collections.dart';
+import 'tables/album_photos.dart';
 
 part 'app_database.g.dart';
 
@@ -23,7 +25,14 @@ void _isolateDatabaseSetup() {
 }
 
 /// MemoDiary core encrypted database with SQLCipher and FTS5 search.
-@DriftDatabase(tables: [Templates, Notebooks, Entries, MediaAttachments])
+@DriftDatabase(tables: [
+  Templates,
+  Notebooks,
+  Entries,
+  MediaAttachments,
+  AlbumCollections,
+  AlbumPhotos,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -56,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -100,6 +109,12 @@ class AppDatabase extends _$AppDatabase {
           // 4. Create index for ultra-fast reverse-chronological timeline pagination
           await customStatement('''
             CREATE INDEX IF NOT EXISTS idx_entries_timeline ON entries(is_deleted, entry_date DESC);
+          ''');
+
+          // 4b. Create composite index for album photos ordered by narrative sequence
+          await customStatement('''
+            CREATE INDEX IF NOT EXISTS idx_album_photos_collection_order
+            ON album_photos(collection_id, sort_order ASC);
           ''');
 
           // 5. Seed the 4 default templates
@@ -163,6 +178,17 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(entries, entries.isLocked);
             await m.addColumn(entries, entries.entryPinHash);
           }
+          if (from < 3) {
+            await m.createTable(albumCollections);
+            await m.createTable(albumPhotos);
+            await customStatement('''
+              CREATE INDEX IF NOT EXISTS idx_album_photos_collection_order
+              ON album_photos(collection_id, sort_order ASC);
+            ''');
+          }
+        },
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON;');
         },
       );
 
@@ -771,19 +797,23 @@ class AppDatabase extends _$AppDatabase {
   // Phase 9: Encrypted Full-Archive Backup & Atomic Restore Queries
   // ===========================================================================
 
-  /// Exports a consistent snapshot of all 4 core SQLite tables (including soft-deleted,
-  /// locked, and time-capsule entries) inside a read transaction.
+  /// Exports a consistent snapshot of all SQLite tables (including soft-deleted,
+  /// locked, time-capsule entries, and travel memory albums) inside a read transaction.
   Future<BackupDatabaseSnapshot> exportAllTablesSnapshot() {
     return transaction(() async {
       final allTemplates = await select(templates).get();
       final allNotebooks = await select(notebooks).get();
       final allEntries = await select(entries).get();
       final allMedia = await select(mediaAttachments).get();
+      final allAlbumCollections = await select(albumCollections).get();
+      final allAlbumPhotos = await select(albumPhotos).get();
       return BackupDatabaseSnapshot(
         templates: allTemplates,
         notebooks: allNotebooks,
         entries: allEntries,
         mediaAttachments: allMedia,
+        albumCollections: allAlbumCollections,
+        albumPhotos: allAlbumPhotos,
       );
     });
   }
@@ -791,14 +821,18 @@ class AppDatabase extends _$AppDatabase {
   /// Atomically replaces all database records with [snapshot] inside a single transaction.
   ///
   /// Watchpoint 1 Defense:
-  /// - Clears `entries_fts` alongside relational tables (`media_attachments`, `entries`, `notebooks`, `templates`).
-  /// - Inserts `templates` -> `notebooks` -> `entries` -> `media_attachments` in foreign-key dependency order.
+  /// - Clears `entries_fts` alongside relational tables (`album_photos`, `album_collections`,
+  ///   `media_attachments`, `entries`, `notebooks`, `templates`).
+  /// - Inserts `templates` -> `notebooks` -> `entries` -> `media_attachments` ->
+  ///   `album_collections` -> `album_photos` in foreign-key dependency order.
   /// - Because the `entries_ai` AFTER INSERT trigger automatically populates `entries_fts`
   ///   as rows are inserted into `entries`, no duplicate manual `INSERT INTO entries_fts` is executed.
   Future<void> replaceAllFromBackup(BackupDatabaseSnapshot snapshot) async {
     await customStatement('PRAGMA foreign_keys = ON;');
     await transaction(() async {
       // 1. Delete existing rows in reverse foreign-key dependency order
+      await delete(albumPhotos).go();
+      await delete(albumCollections).go();
       await delete(mediaAttachments).go();
       await delete(entries).go();
       await customStatement('DELETE FROM entries_fts;');
@@ -915,6 +949,21 @@ class AppDatabase extends _$AppDatabase {
           );
         }
         await into(mediaAttachments).insert(m);
+      }
+
+      final validCollectionIds = <String>{};
+      for (final col in snapshot.albumCollections) {
+        await into(albumCollections).insert(col);
+        validCollectionIds.add(col.id);
+      }
+
+      for (final photo in snapshot.albumPhotos) {
+        if (!validCollectionIds.contains(photo.collectionId)) {
+          throw StateError(
+            'Foreign key violation: albumPhoto ${photo.id} references missing albumCollection ${photo.collectionId}.',
+          );
+        }
+        await into(albumPhotos).insert(photo);
       }
     });
   }

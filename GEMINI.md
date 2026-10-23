@@ -45,3 +45,7 @@ Milestone 2 (Beta):
 Milestone 3: Release Candidate (v1.0.0-rc.1)
 - Phase 9: Encrypted Full-Archive Backup/Restore & Smart Natural Language Search
 - Phase 10: Release Candidate Polish, Round-Trip Stress Audit & v1.0.0 Certification
+Milestone 3.5: Travel Memory Album (v1.1.0-alpha)
+- Phase 11: Drift Schema v3 Migration, Media Pipeline & Album Repository
+- Phase 12: Collection Management, Batch Ingestion & Photo Annotation Workspace
+- Phase 13: Keepsake Synthesis Engine, Interactive In-App Viewer & PDF Photobook Export

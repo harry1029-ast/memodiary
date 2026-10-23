@@ -11,11 +11,13 @@ import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 class TimeCapsuleCard extends StatelessWidget {
   final TimelineEntryItem item;
   final VoidCallback? onTap;
+  final EdgeInsetsGeometry? customMargin;
 
   const TimeCapsuleCard({
     super.key,
     required this.item,
     this.onTap,
+    this.customMargin,
   });
 
   @override
@@ -39,7 +41,7 @@ class TimeCapsuleCard extends StatelessWidget {
         : 0;
 
     return XuanPaperCard(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: customMargin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(14),
       backgroundColor: tokens.agedFiber.withValues(alpha: 0.5),
       onTap: () {

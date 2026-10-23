@@ -108,6 +108,27 @@ class BackupRestoreService {
       }
     }
 
+    for (final col in snapshot.albumCollections) {
+      if (col.coverImagePath != null &&
+          col.coverImagePath!.isNotEmpty &&
+          MediaSandboxService.isStrictlyRelative(col.coverImagePath!)) {
+        candidateRelPaths.add(col.coverImagePath!.replaceAll('\\', '/'));
+      }
+    }
+
+    for (final photo in snapshot.albumPhotos) {
+      if (photo.relativeImagePath.isNotEmpty &&
+          MediaSandboxService.isStrictlyRelative(photo.relativeImagePath)) {
+        candidateRelPaths.add(photo.relativeImagePath.replaceAll('\\', '/'));
+      }
+      if (photo.relativeThumbnailPath.isNotEmpty &&
+          MediaSandboxService.isStrictlyRelative(photo.relativeThumbnailPath)) {
+        candidateRelPaths.add(
+          photo.relativeThumbnailPath.replaceAll('\\', '/'),
+        );
+      }
+    }
+
     if (await mediaDir.exists()) {
       await for (final entity in mediaDir.list(recursive: false, followLinks: false)) {
         if (entity is File) {
@@ -213,6 +234,8 @@ class BackupRestoreService {
         notebooksCount: snapshot.notebooks.length,
         entriesCount: snapshot.entries.length,
         mediaFilesCount: mediaRecords.length,
+        albumCollectionsCount: snapshot.albumCollections.length,
+        albumPhotosCount: snapshot.albumPhotos.length,
         totalBytes: totalBytes,
         isEncrypted: isEncrypted,
       );
@@ -331,7 +354,7 @@ class BackupRestoreService {
           final manifestStr = utf8.decode(manifestBytes);
           final manifest = BackupManifest.fromJsonString(manifestStr);
 
-          // Validate all DB media attachment paths are strictly relative
+          // Validate all DB media attachment and album paths are strictly relative
           for (final att in manifest.snapshot.mediaAttachments) {
             if (!MediaSandboxService.isStrictlyRelative(att.relativePath)) {
               throw BackupCorruptedException(
@@ -343,6 +366,33 @@ class BackupRestoreService {
                 !MediaSandboxService.isStrictlyRelative(att.thumbnailPath!)) {
               throw BackupCorruptedException(
                 'Invalid media attachment thumbnailPath in manifest: ${att.thumbnailPath}',
+              );
+            }
+          }
+
+          for (final col in manifest.snapshot.albumCollections) {
+            if (col.coverImagePath != null &&
+                col.coverImagePath!.isNotEmpty &&
+                !MediaSandboxService.isStrictlyRelative(col.coverImagePath!)) {
+              throw BackupCorruptedException(
+                'Invalid album collection coverImagePath in manifest: ${col.coverImagePath}',
+              );
+            }
+          }
+
+          for (final photo in manifest.snapshot.albumPhotos) {
+            if (!MediaSandboxService.isStrictlyRelative(
+              photo.relativeImagePath,
+            )) {
+              throw BackupCorruptedException(
+                'Invalid album photo relativeImagePath in manifest: ${photo.relativeImagePath}',
+              );
+            }
+            if (!MediaSandboxService.isStrictlyRelative(
+              photo.relativeThumbnailPath,
+            )) {
+              throw BackupCorruptedException(
+                'Invalid album photo relativeThumbnailPath in manifest: ${photo.relativeThumbnailPath}',
               );
             }
           }
@@ -449,6 +499,8 @@ class BackupRestoreService {
         notebooksRestored: manifest.snapshot.notebooks.length,
         entriesRestored: manifest.snapshot.entries.length,
         mediaFilesRestored: manifest.mediaFiles.length,
+        albumCollectionsRestored: manifest.snapshot.albumCollections.length,
+        albumPhotosRestored: manifest.snapshot.albumPhotos.length,
       );
     } finally {
       if (await workDir.exists()) {

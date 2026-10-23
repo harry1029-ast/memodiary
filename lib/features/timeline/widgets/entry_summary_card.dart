@@ -13,12 +13,14 @@ class EntrySummaryCard extends StatelessWidget {
   final TimelineEntryItem item;
   final MediaSandboxService mediaService;
   final VoidCallback onTap;
+  final EdgeInsetsGeometry? customMargin;
 
   const EntrySummaryCard({
     super.key,
     required this.item,
     required this.mediaService,
     required this.onTap,
+    this.customMargin,
   });
 
   static const Map<int, String> moodEmojis = {
@@ -66,7 +68,7 @@ class EntrySummaryCard extends StatelessWidget {
 
     return XuanPaperCard(
       onTap: onTap,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: customMargin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
