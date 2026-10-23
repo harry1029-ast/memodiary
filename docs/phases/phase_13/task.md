@@ -1,0 +1,22 @@
+# Milestone 3.5 — Phase 13 Task Checklist
+
+- [x] **Task 13.1: Album Layout Synthesis Engine (`models/album_spread.dart` & `services/album_layout_engine.dart`)**
+  - [x] Define sealed `AlbumSpread` hierarchy (`CoverSpread`, `SingleHeroSpread`, `DuoSpread`, `QuadSpread`, `EpilogueSpread`) and `DuoLayoutOrientation` (`sideBySide`, `stacked`).
+  - [x] Implement `AlbumLayoutEngine.synthesize(collection, photos)` with deterministic clustering rules based on `aspectRatio`, caption length (`>= 60` chars hero promotion, `< 25` chars quad eligibility), and `layoutPreset`.
+  - [x] Synthesize route summary fallback and location count in `EpilogueSpread`.
+- [x] **Task 13.2: Interactive In-App Flipbook Viewer (`screens/album_flipbook_screen.dart` & `widgets/album_spread_card.dart`)**
+  - [x] Build `AlbumSpreadCard` rendering all 5 spread types using `XuanPaperCard`, double-hairline borders, `agedFiber` tints, `CinnabarSealBadge`, and `SandboxedAlbumImage`.
+  - [x] Build `AlbumFlipbookScreen` with horizontal `PageView.builder`, `"第 X / Y 页"` indicator, `HapticFeedback.selectionClick()` on page transitions, single-tap fullscreen chrome toggle, and proper `PageController` disposal in `dispose()`.
+  - [x] Wire `"生成影卷 / 浏览画册"` entry button in `AlbumWorkspaceScreen` header and AppBar.
+- [x] **Task 13.3: High-Fidelity Vector PDF Photobook Exporter (`services/album_pdf_exporter.dart` & `widgets/album_pdf_preview_sheet.dart`)**
+  - [x] Implement `AlbumPdfExporter.generatePhotobookPdf` supporting `AlbumPdfPageFormat.a4Landscape` and `AlbumPdfPageFormat.square`.
+  - [x] Guard against `TooManyPagesException`: enforce single-page hard bounds with fixed-height flex containers and capped caption lengths (`pw.Text(..., maxLines: 4, overflow: pw.TextOverflow.clip)`).
+  - [x] Guard against photo distortion: preserve aspect ratios in Duo/Quad spreads using `pw.BoxFit.cover` with `pw.ClipRect` / `pw.ClipRRect` or `pw.BoxFit.contain` with neutral letterbox background.
+  - [x] Transcode sandboxed `.webp` images via `ImageFormatTranscoder.ensurePdfCompatibleBytes` (injectable `imageTranscoder` for fast tests).
+  - [x] Render vector Xuan paper background, double-hairline literati borders, Cinnabar seals, and CJK-safe typography via `PdfFontResolver`.
+  - [x] Build `AlbumPdfPreviewSheet` for format selection (`A4 横版画册` / `方册画幅`), 1-tap local PDF save, and native OS print/share via `Printing.sharePdf`.
+- [x] **Task 13.4: Hardening & Verification Suite (`test/features/albums/`)**
+  - [x] Create `test/features/albums/album_layout_engine_test.dart` testing all clustering heuristics and edge cases (0, 1, 2, 4, and mixed photo sets).
+  - [x] Create `test/features/albums/album_flipbook_screen_test.dart` testing workspace entry navigation, page swiping/stepping, `"第 X / Y 页"` indicator, fullscreen toggle, settling page fling animations with `pumpAndSettle()`, and stream cleanup via `tearDownAlbumScreen(tester)`.
+  - [x] Create `test/features/albums/album_pdf_exporter_test.dart` verifying non-empty `%PDF-` output, single-page hard boundary compliance without `TooManyPagesException`, aspect ratio preservation, and WebP transcoding.
+  - [x] Run `flutter analyze` (0 issues), full `flutter test` regression suite (254/254 passed), and `test/hardening/network_quarantine_audit_test.dart` (10/10 passed).

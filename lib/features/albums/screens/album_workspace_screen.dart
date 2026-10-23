@@ -14,6 +14,7 @@ import '../widgets/create_edit_collection_sheet.dart';
 import '../widgets/ingestion_progress_dialog.dart';
 import '../widgets/photo_annotation_sheet.dart';
 import '../widgets/sandboxed_album_image.dart';
+import 'album_flipbook_screen.dart';
 
 /// Dedicated workspace screen for an open [AlbumCollection].
 ///
@@ -196,6 +197,21 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
     }
   }
 
+  void _handleOpenFlipbook(
+    AlbumCollection collection,
+    List<AlbumPhoto> photos,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AlbumFlipbookScreen(
+          collection: collection,
+          photos: photos,
+          mediaService: widget.mediaService,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
@@ -233,6 +249,16 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                   ),
                 ),
                 actions: [
+                  IconButton(
+                    key: const Key('workspace_flipbook_icon_button'),
+                    icon: Icon(
+                      Icons.auto_stories_outlined,
+                      size: 20,
+                      color: tokens.cinnabar,
+                    ),
+                    tooltip: '浏览画册',
+                    onPressed: () => _handleOpenFlipbook(collection, photos),
+                  ),
                   IconButton(
                     key: const Key('workspace_edit_collection_button'),
                     icon: Icon(
@@ -278,7 +304,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
               body: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildCollectionHeader(tokens, collection, photos.length),
+                  _buildCollectionHeader(tokens, collection, photos),
                   Expanded(
                     child: photos.isEmpty
                         ? _buildEmptyPhotosState(tokens)
@@ -298,8 +324,9 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
   Widget _buildCollectionHeader(
     InkDiaryTokens tokens,
     AlbumCollection collection,
-    int photoCount,
+    List<AlbumPhoto> photos,
   ) {
+    final photoCount = photos.length;
     final destination = collection.destinationTag?.trim();
     final description = collection.description?.trim();
     final route = collection.routeSummary?.trim();
@@ -403,6 +430,30 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const Key('workspace_open_flipbook_button'),
+              onPressed: () => _handleOpenFlipbook(collection, photos),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: tokens.cinnabar,
+                side: BorderSide(color: tokens.cinnabar.withValues(alpha: 0.6)),
+                backgroundColor: tokens.cinnabarWash.withValues(alpha: 0.35),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              ),
+              icon: const Icon(Icons.auto_stories_outlined, size: 18),
+              label: const Text(
+                '生成影卷 / 浏览画册',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
