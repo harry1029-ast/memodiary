@@ -87,36 +87,41 @@ class BackupDatabaseSnapshot {
   });
 
   Map<String, dynamic> toJson() => {
-        'templates': templates.map((t) => t.toJson()).toList(),
-        'notebooks': notebooks.map((n) => n.toJson()).toList(),
-        'entries': entries.map((e) => e.toJson()).toList(),
-        'mediaAttachments': mediaAttachments.map((m) => m.toJson()).toList(),
-        'albumCollections': albumCollections.map((c) => c.toJson()).toList(),
-        'albumPhotos': albumPhotos.map((p) => p.toJson()).toList(),
+        'templates': templates.map((template) => template.toJson()).toList(),
+        'notebooks': notebooks.map((notebook) => notebook.toJson()).toList(),
+        'entries': entries.map((entry) => entry.toJson()).toList(),
+        'mediaAttachments':
+            mediaAttachments.map((attachment) => attachment.toJson()).toList(),
+        'albumCollections':
+            albumCollections.map((collection) => collection.toJson()).toList(),
+        'albumPhotos': albumPhotos.map((photo) => photo.toJson()).toList(),
       };
 
   factory BackupDatabaseSnapshot.fromJson(Map<String, dynamic> json) {
     try {
       final rawTemplates = (json['templates'] as List<dynamic>? ?? [])
-          .map((e) => Template.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map((item) =>
+              Template.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
       final rawNotebooks = (json['notebooks'] as List<dynamic>? ?? [])
-          .map((e) => Notebook.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map((item) =>
+              Notebook.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
       final rawEntries = (json['entries'] as List<dynamic>? ?? [])
-          .map((e) => Entry.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map((item) => Entry.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
       final rawMedia = (json['mediaAttachments'] as List<dynamic>? ?? [])
-          .map((e) =>
-              MediaAttachment.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map((item) =>
+              MediaAttachment.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
       final rawAlbumCollections =
           (json['albumCollections'] as List<dynamic>? ?? [])
-              .map((e) =>
-                  AlbumCollection.fromJson(Map<String, dynamic>.from(e as Map)))
+              .map((item) => AlbumCollection.fromJson(
+                  Map<String, dynamic>.from(item as Map)))
               .toList();
       final rawAlbumPhotos = (json['albumPhotos'] as List<dynamic>? ?? [])
-          .map((e) => AlbumPhoto.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map((item) =>
+              AlbumPhoto.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
 
       return BackupDatabaseSnapshot(

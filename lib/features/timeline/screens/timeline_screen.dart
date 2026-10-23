@@ -308,7 +308,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
         actions: [
           IconButton(
             key: const Key('timeline_albums_button'),
-            icon: const Icon(Icons.photo_album_outlined),
+            icon: const Icon(Icons.photo_album_outlined, size: 20),
             tooltip: '旅行影集',
             onPressed: () {
               Navigator.push(

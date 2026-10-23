@@ -491,7 +491,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             key: const Key('settings_recycle_bin_tile'),
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.delete_outline_rounded, color: tokens.cinnabar),
+            leading:
+                Icon(Icons.delete_outline_rounded, size: 20, color: tokens.cinnabar),
             title: Row(
               children: [
                 Text(
