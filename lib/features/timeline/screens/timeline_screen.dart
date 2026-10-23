@@ -8,6 +8,7 @@ import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/core/theme/widgets/ink_metadata_pill.dart';
 import 'package:memodiary/core/theme/widgets/xuan_paper_card.dart';
+import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/retrospection/widgets/on_this_day_banner.dart';
 import 'package:memodiary/features/retrospection/widgets/serendipity_roulette_card.dart';
@@ -305,6 +306,24 @@ class _TimelineScreenState extends State<TimelineScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            key: const Key('timeline_albums_button'),
+            icon: const Icon(Icons.photo_album_outlined),
+            tooltip: '旅行影集',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AlbumCollectionsScreen(
+                    database: widget.database,
+                    mediaService: widget.mediaService,
+                  ),
+                ),
+              ).then((_) {
+                if (mounted) _loadInitial();
+              });
+            },
+          ),
           IconButton(
             key: const Key('timeline_weekly_review_button'),
             icon: const Icon(Icons.calendar_view_week_rounded),

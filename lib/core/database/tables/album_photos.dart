@@ -1,5 +1,4 @@
 import 'package:drift/drift.dart';
-import 'album_collections.dart';
 
 /// AlbumPhotos table storing sandboxed photos and per-photo annotations (写影札).
 @DataClassName('AlbumPhoto')
@@ -8,9 +7,7 @@ class AlbumPhotos extends Table {
   TextColumn get id => text()();
 
   /// Parent collection ID (cascades on collection deletion)
-  TextColumn get collectionId => text()
-      .references(AlbumCollections, #id, onDelete: KeyAction.cascade)
-      .customConstraint(
+  TextColumn get collectionId => text().customConstraint(
         'NOT NULL REFERENCES album_collections(id) ON DELETE CASCADE',
       )();
 

@@ -12,9 +12,6 @@ void main() {
   late MediaSandboxService mediaService;
   late AlbumRepository repository;
 
-  /// Deterministic 1x1 PNG fixture bytes for sandboxed image ingestion tests
-  final sampleImageBytes = MediaSandboxService.generateProceduralVideoPoster;
-
   setUp(() {
     db = AppDatabase.memory();
     tempDir = Directory.systemTemp.createTempSync('memodiary_album_repo_test_');
@@ -108,7 +105,6 @@ void main() {
 
       await Future<void>.delayed(const Duration(milliseconds: 30));
       expect(emittedCounts, contains(2));
-      expect(sampleImageBytes, isNotNull);
     });
 
     test(
@@ -249,6 +245,67 @@ void main() {
         expect(p2ThumbFile.existsSync(), isFalse);
         expect(await repository.getCollectionById('col_cleanup'), isNull);
         expect(await repository.getPhotosForCollection('col_cleanup'), isEmpty);
+      },
+    );
+
+    test(
+      'setCollectionCover, watchPhotoCounts, and updatePhotoAnnotationAndSyncRoute auto-syncs route while preserving manual route override',
+      () async {
+        await repository.createCollection(
+          id: 'col_sync',
+          title: '路线同步测试',
+        );
+
+        final p1 = await repository.ingestAndAddPhoto(
+          id: 'sync_p1',
+          collectionId: 'col_sync',
+          sourceFile: createSourcePhotoFile('sync_1.jpg'),
+          locationTag: '杭州',
+        );
+        final p2 = await repository.ingestAndAddPhoto(
+          id: 'sync_p2',
+          collectionId: 'col_sync',
+          sourceFile: createSourcePhotoFile('sync_2.jpg'),
+          locationTag: '乌镇',
+        );
+
+        final countsMap = await repository.watchPhotoCounts().first;
+        expect(countsMap['col_sync'], equals(2));
+
+        // 1. Auto-route sync: collection initially has null routeSummary -> editing p2 location auto-synthesizes route
+        await repository.updatePhotoAnnotationAndSyncRoute(
+          photoId: p2.id,
+          locationTag: const Value('乌镇 · 西栅'),
+        );
+        var col = await repository.getCollectionById('col_sync');
+        expect(col!.routeSummary, equals('杭州 → 乌镇 · 西栅'));
+
+        // 2. Subsequent edit while route is still equal to synthesized route updates it again
+        await repository.updatePhotoAnnotationAndSyncRoute(
+          photoId: p1.id,
+          locationTag: const Value('杭州 · 西湖'),
+        );
+        col = await repository.getCollectionById('col_sync');
+        expect(col!.routeSummary, equals('杭州 · 西湖 → 乌镇 · 西栅'));
+
+        // 3. Manual override: user sets custom routeSummary -> subsequent photo location edit preserves manual route
+        await repository.updateCollection(
+          const AlbumCollectionsCompanion(
+            id: Value('col_sync'),
+            routeSummary: Value('自定义江南环线'),
+          ),
+        );
+        await repository.updatePhotoAnnotationAndSyncRoute(
+          photoId: p2.id,
+          locationTag: const Value('苏州 · 拙政园'),
+        );
+        col = await repository.getCollectionById('col_sync');
+        expect(col!.routeSummary, equals('自定义江南环线'));
+
+        // 4. setCollectionCover switches cover to p2
+        await repository.setCollectionCover('col_sync', p2.id);
+        col = await repository.getCollectionById('col_sync');
+        expect(col!.coverImagePath, equals(p2.relativeImagePath));
       },
     );
   });

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
@@ -150,6 +151,30 @@ void main() {
       expect(find.text('Weekly Review'), findsOneWidget);
     });
 
+    testWidgets('AppBar Travel Albums shortcut navigates to AlbumCollectionsScreen', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TimelineScreen(
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final albumsBtn = find.byKey(const Key('timeline_albums_button'));
+      expect(albumsBtn, findsOneWidget);
+
+      await tester.tap(albumsBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlbumCollectionsScreen), findsOneWidget);
+      expect(find.text('旅行影集'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 100));
+    });
+
     testWidgets('AppBar renders streamlined actions without overflow on mobile screen width', (WidgetTester tester) async {
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1.0;
@@ -168,7 +193,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Top bar actions: exactly 3 actions (Weekly Review, Search, Settings)
+      // Top bar actions: Travel Albums, Weekly Review, Search, Settings
+      expect(find.byKey(const Key('timeline_albums_button')), findsOneWidget);
       expect(find.byKey(const Key('timeline_weekly_review_button')), findsOneWidget);
       expect(find.byIcon(Icons.search), findsOneWidget);
       expect(find.byIcon(Icons.settings_outlined), findsOneWidget);

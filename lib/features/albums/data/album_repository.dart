@@ -87,6 +87,13 @@ class AlbumRepository {
         .getSingleOrNull();
   }
 
+  /// Reactive stream of a single collection by its [id].
+  Stream<AlbumCollection?> watchCollectionById(String id) {
+    return (database.select(database.albumCollections)
+          ..where((tbl) => tbl.id.equals(id)))
+        .watchSingleOrNull();
+  }
+
   /// Retrieves all travel album collections ordered by `sortIndex ASC, createdAt DESC`.
   Future<List<AlbumCollection>> getAllCollections() {
     return (database.select(database.albumCollections)
@@ -114,6 +121,44 @@ class AlbumRepository {
       ..addColumns([countExp])
       ..where(database.albumPhotos.collectionId.equals(collectionId));
     return query.map((row) => row.read(countExp) ?? 0).watchSingle();
+  }
+
+  /// Reactive stream emitting a map of `collectionId -> photoCount` across all collections
+  /// using a single `GROUP BY` query.
+  Stream<Map<String, int>> watchPhotoCounts() {
+    final collectionIdCol = database.albumPhotos.collectionId;
+    final countExp = database.albumPhotos.id.count();
+    final query = database.selectOnly(database.albumPhotos)
+      ..addColumns([collectionIdCol, countExp])
+      ..groupBy([collectionIdCol]);
+
+    return query.watch().map((rows) {
+      final counts = <String, int>{};
+      for (final row in rows) {
+        final colId = row.read(collectionIdCol);
+        final count = row.read(countExp) ?? 0;
+        if (colId != null) {
+          counts[colId] = count;
+        }
+      }
+      return counts;
+    });
+  }
+
+  /// Sets [photoId]'s `relativeImagePath` as the `coverImagePath` of [collectionId].
+  Future<void> setCollectionCover(String collectionId, String photoId) async {
+    final photo = await getPhotoById(photoId);
+    if (photo == null || photo.collectionId != collectionId) {
+      throw StateError(
+        'Photo $photoId does not belong to collection $collectionId.',
+      );
+    }
+    await updateCollection(
+      AlbumCollectionsCompanion(
+        id: Value(collectionId),
+        coverImagePath: Value(photo.relativeImagePath),
+      ),
+    );
   }
 
   /// Batch-updates `sortIndex` across collections inside a single transaction.
@@ -335,6 +380,41 @@ class AlbumRepository {
         ),
       );
     });
+  }
+
+  /// Updates a photo's annotation (`caption`, `locationTag`, `shotAt`) and automatically
+  /// regenerates the parent collection's `routeSummary` if the route was previously empty
+  /// or auto-synthesized (preserving manual user overrides).
+  Future<void> updatePhotoAnnotationAndSyncRoute({
+    required String photoId,
+    Value<String?> caption = const Value.absent(),
+    Value<String?> locationTag = const Value.absent(),
+    Value<DateTime?> shotAt = const Value.absent(),
+  }) async {
+    final photo = await getPhotoById(photoId);
+    if (photo == null) return;
+
+    final collection = await getCollectionById(photo.collectionId);
+    final preEditSynthesized = await synthesizeRouteSummary(photo.collectionId);
+
+    final currentRoute = collection?.routeSummary?.trim();
+    final isAutoRoute = currentRoute == null ||
+        currentRoute.isEmpty ||
+        currentRoute == preEditSynthesized;
+
+    await updatePhotoAnnotation(
+      photoId: photoId,
+      caption: caption,
+      locationTag: locationTag,
+      shotAt: shotAt,
+    );
+
+    if (isAutoRoute) {
+      await synthesizeRouteSummary(
+        photo.collectionId,
+        persistToCollection: true,
+      );
+    }
   }
 
   /// Batch-updates `sortOrder` (`0..N-1`) for photos in [collectionId] inside a transaction.

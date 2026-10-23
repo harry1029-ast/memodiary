@@ -1,0 +1,24 @@
+# Milestone 3.5 — Phase 12 Task Checklist
+
+- [x] **12.0 Phase 11 carry-over**
+  - [x] Re-run `dart run build_runner build` and check that `album_photos.collection_id` still has `ON DELETE CASCADE` without hand edits
+  - [x] Remove the leftover no-op `sampleImageBytes` line from `album_repository_test.dart`
+- [x] **12.1 Data & services**
+  - [x] `AlbumRepository`: `watchCollectionById`, `watchPhotoCounts`, `setCollectionCover`, `updatePhotoAnnotationAndSyncRoute`
+  - [x] `ExifDateReader` (pure Dart, DateTimeOriginal → DateTime fallback)
+  - [x] `AlbumIngestionService` (one photo at a time, 50 cap, progress, cancel, skip failures, single batch commit)
+- [x] **12.2 Shared widgets**
+  - [x] `SandboxedAlbumImage` (cacheWidth decode, placeholder)
+  - [x] `AlbumCollectionCard` (cover, seal, route, date and count pills, menu)
+  - [x] `CreateEditCollectionSheet` (validated form → `CollectionFormResult`)
+  - [x] `IngestionProgressDialog`
+  - [x] `PhotoAnnotationSheet` (写影札: preview, caption, location, date, save / set cover / delete)
+- [x] **12.3 Screens**
+  - [x] `AlbumCollectionsScreen` (stream feed, empty state, FAB, edit / set cover / delete menu)
+  - [x] `AlbumWorkspaceScreen` (header and route banner, thumbnail grid, reorder mode, add photos)
+- [x] **12.4 Navigation**: `timeline_albums_button` on `TimelineScreen`
+- [x] **12.5 Tests**
+  - [x] `album_test_harness.dart`
+  - [x] `exif_date_reader_test.dart`, `album_ingestion_service_test.dart`, extended `album_repository_test.dart`
+  - [x] Widget tests: collections screen, create/edit sheet, workspace, annotation sheet, timeline entry point
+- [x] **12.6 Verification**: `flutter test` (full), network quarantine audit, `flutter analyze` with 0 issues, then write walkthrough.md

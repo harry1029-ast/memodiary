@@ -3220,6 +3220,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         albumCollections,
         albumPhotos
       ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
+        [
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('album_collections',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('album_photos', kind: UpdateKind.delete),
+            ],
+          ),
+        ],
+      );
 }
 
 typedef $$TemplatesTableCreateCompanionBuilder = TemplatesCompanion Function({
@@ -4178,6 +4190,28 @@ typedef $$AlbumCollectionsTableUpdateCompanionBuilder
   Value<int> rowid,
 });
 
+final class $$AlbumCollectionsTableReferences extends BaseReferences<
+    _$AppDatabase, $AlbumCollectionsTable, AlbumCollection> {
+  $$AlbumCollectionsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$AlbumPhotosTable, List<AlbumPhoto>>
+      _albumPhotosRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.albumPhotos,
+              aliasName: $_aliasNameGenerator(
+                  db.albumCollections.id, db.albumPhotos.collectionId));
+
+  $$AlbumPhotosTableProcessedTableManager get albumPhotosRefs {
+    final manager = $$AlbumPhotosTableTableManager($_db, $_db.albumPhotos)
+        .filter(
+            (f) => f.collectionId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_albumPhotosRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
 class $$AlbumCollectionsTableFilterComposer
     extends Composer<_$AppDatabase, $AlbumCollectionsTable> {
   $$AlbumCollectionsTableFilterComposer({
@@ -4224,6 +4258,27 @@ class $$AlbumCollectionsTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> albumPhotosRefs(
+      Expression<bool> Function($$AlbumPhotosTableFilterComposer f) f) {
+    final $$AlbumPhotosTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.albumPhotos,
+        getReferencedColumn: (t) => t.collectionId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlbumPhotosTableFilterComposer(
+              $db: $db,
+              $table: $db.albumPhotos,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$AlbumCollectionsTableOrderingComposer
@@ -4320,6 +4375,27 @@ class $$AlbumCollectionsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> albumPhotosRefs<T extends Object>(
+      Expression<T> Function($$AlbumPhotosTableAnnotationComposer a) f) {
+    final $$AlbumPhotosTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.albumPhotos,
+        getReferencedColumn: (t) => t.collectionId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlbumPhotosTableAnnotationComposer(
+              $db: $db,
+              $table: $db.albumPhotos,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$AlbumCollectionsTableTableManager extends RootTableManager<
@@ -4331,12 +4407,9 @@ class $$AlbumCollectionsTableTableManager extends RootTableManager<
     $$AlbumCollectionsTableAnnotationComposer,
     $$AlbumCollectionsTableCreateCompanionBuilder,
     $$AlbumCollectionsTableUpdateCompanionBuilder,
-    (
-      AlbumCollection,
-      BaseReferences<_$AppDatabase, $AlbumCollectionsTable, AlbumCollection>
-    ),
+    (AlbumCollection, $$AlbumCollectionsTableReferences),
     AlbumCollection,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool albumPhotosRefs})> {
   $$AlbumCollectionsTableTableManager(
       _$AppDatabase db, $AlbumCollectionsTable table)
       : super(TableManagerState(
@@ -4409,9 +4482,35 @@ class $$AlbumCollectionsTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable(table),
+                    $$AlbumCollectionsTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({albumPhotosRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (albumPhotosRefs) db.albumPhotos],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (albumPhotosRefs)
+                    await $_getPrefetchedData<AlbumCollection,
+                            $AlbumCollectionsTable, AlbumPhoto>(
+                        currentTable: table,
+                        referencedTable: $$AlbumCollectionsTableReferences
+                            ._albumPhotosRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AlbumCollectionsTableReferences(db, table, p0)
+                                .albumPhotosRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.collectionId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
@@ -4424,12 +4523,9 @@ typedef $$AlbumCollectionsTableProcessedTableManager = ProcessedTableManager<
     $$AlbumCollectionsTableAnnotationComposer,
     $$AlbumCollectionsTableCreateCompanionBuilder,
     $$AlbumCollectionsTableUpdateCompanionBuilder,
-    (
-      AlbumCollection,
-      BaseReferences<_$AppDatabase, $AlbumCollectionsTable, AlbumCollection>
-    ),
+    (AlbumCollection, $$AlbumCollectionsTableReferences),
     AlbumCollection,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool albumPhotosRefs})>;
 typedef $$AlbumPhotosTableCreateCompanionBuilder = AlbumPhotosCompanion
     Function({
   required String id,
@@ -4459,6 +4555,27 @@ typedef $$AlbumPhotosTableUpdateCompanionBuilder = AlbumPhotosCompanion
   Value<int> rowid,
 });
 
+final class $$AlbumPhotosTableReferences
+    extends BaseReferences<_$AppDatabase, $AlbumPhotosTable, AlbumPhoto> {
+  $$AlbumPhotosTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $AlbumCollectionsTable _collectionIdTable(_$AppDatabase db) =>
+      db.albumCollections.createAlias($_aliasNameGenerator(
+          db.albumPhotos.collectionId, db.albumCollections.id));
+
+  $$AlbumCollectionsTableProcessedTableManager get collectionId {
+    final $_column = $_itemColumn<String>('collection_id')!;
+
+    final manager =
+        $$AlbumCollectionsTableTableManager($_db, $_db.albumCollections)
+            .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_collectionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
 class $$AlbumPhotosTableFilterComposer
     extends Composer<_$AppDatabase, $AlbumPhotosTable> {
   $$AlbumPhotosTableFilterComposer({
@@ -4470,9 +4587,6 @@ class $$AlbumPhotosTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get collectionId => $composableBuilder(
-      column: $table.collectionId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get relativeImagePath => $composableBuilder(
       column: $table.relativeImagePath,
@@ -4499,6 +4613,26 @@ class $$AlbumPhotosTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  $$AlbumCollectionsTableFilterComposer get collectionId {
+    final $$AlbumCollectionsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.collectionId,
+        referencedTable: $db.albumCollections,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlbumCollectionsTableFilterComposer(
+              $db: $db,
+              $table: $db.albumCollections,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$AlbumPhotosTableOrderingComposer
@@ -4512,10 +4646,6 @@ class $$AlbumPhotosTableOrderingComposer
   });
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get collectionId => $composableBuilder(
-      column: $table.collectionId,
-      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get relativeImagePath => $composableBuilder(
       column: $table.relativeImagePath,
@@ -4542,6 +4672,26 @@ class $$AlbumPhotosTableOrderingComposer
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  $$AlbumCollectionsTableOrderingComposer get collectionId {
+    final $$AlbumCollectionsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.collectionId,
+        referencedTable: $db.albumCollections,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlbumCollectionsTableOrderingComposer(
+              $db: $db,
+              $table: $db.albumCollections,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$AlbumPhotosTableAnnotationComposer
@@ -4555,9 +4705,6 @@ class $$AlbumPhotosTableAnnotationComposer
   });
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get collectionId => $composableBuilder(
-      column: $table.collectionId, builder: (column) => column);
 
   GeneratedColumn<String> get relativeImagePath => $composableBuilder(
       column: $table.relativeImagePath, builder: (column) => column);
@@ -4582,6 +4729,26 @@ class $$AlbumPhotosTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$AlbumCollectionsTableAnnotationComposer get collectionId {
+    final $$AlbumCollectionsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.collectionId,
+        referencedTable: $db.albumCollections,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlbumCollectionsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.albumCollections,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$AlbumPhotosTableTableManager extends RootTableManager<
@@ -4593,9 +4760,9 @@ class $$AlbumPhotosTableTableManager extends RootTableManager<
     $$AlbumPhotosTableAnnotationComposer,
     $$AlbumPhotosTableCreateCompanionBuilder,
     $$AlbumPhotosTableUpdateCompanionBuilder,
-    (AlbumPhoto, BaseReferences<_$AppDatabase, $AlbumPhotosTable, AlbumPhoto>),
+    (AlbumPhoto, $$AlbumPhotosTableReferences),
     AlbumPhoto,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool collectionId})> {
   $$AlbumPhotosTableTableManager(_$AppDatabase db, $AlbumPhotosTable table)
       : super(TableManagerState(
           db: db,
@@ -4659,9 +4826,46 @@ class $$AlbumPhotosTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable(table),
+                    $$AlbumPhotosTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({collectionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (collectionId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.collectionId,
+                    referencedTable:
+                        $$AlbumPhotosTableReferences._collectionIdTable(db),
+                    referencedColumn:
+                        $$AlbumPhotosTableReferences._collectionIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ));
 }
 
@@ -4674,9 +4878,9 @@ typedef $$AlbumPhotosTableProcessedTableManager = ProcessedTableManager<
     $$AlbumPhotosTableAnnotationComposer,
     $$AlbumPhotosTableCreateCompanionBuilder,
     $$AlbumPhotosTableUpdateCompanionBuilder,
-    (AlbumPhoto, BaseReferences<_$AppDatabase, $AlbumPhotosTable, AlbumPhoto>),
+    (AlbumPhoto, $$AlbumPhotosTableReferences),
     AlbumPhoto,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool collectionId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;

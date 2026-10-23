@@ -25,6 +25,8 @@ typedef VideoThumbnailGenerator = Future<File?> Function(
   int? durationSeconds,
 });
 
+typedef AspectRatioExtractor = Future<double> Function(File imageFile);
+
 /// Exception thrown when a user selects or records a video exceeding the 60s limit.
 class VideoDurationExceededException implements Exception {
   final int durationSeconds;
@@ -75,6 +77,7 @@ class MediaSandboxService {
   final ImageCompressor _compressor;
   final VideoDurationExtractor _durationExtractor;
   final VideoThumbnailGenerator _thumbnailGenerator;
+  final AspectRatioExtractor _aspectRatioExtractor;
   final Uuid _uuid;
 
   MediaSandboxService({
@@ -82,11 +85,13 @@ class MediaSandboxService {
     ImageCompressor? compressor,
     VideoDurationExtractor? durationExtractor,
     VideoThumbnailGenerator? thumbnailGenerator,
+    AspectRatioExtractor? aspectRatioExtractor,
     Uuid? uuid,
   })  : _getBaseDir = baseDirProvider ?? getApplicationDocumentsDirectory,
         _compressor = compressor ?? _defaultCompressor,
         _durationExtractor = durationExtractor ?? _defaultDurationExtractor,
         _thumbnailGenerator = thumbnailGenerator ?? _defaultThumbnailGenerator,
+        _aspectRatioExtractor = aspectRatioExtractor ?? _extractAspectRatio,
         _uuid = uuid ?? const Uuid();
 
   /// Default compressor using FlutterImageCompress with WebP format and fallback
@@ -263,14 +268,14 @@ class MediaSandboxService {
   Future<AlbumPhotoSandboxResult> copyAndProcessAlbumPhoto(
     File sourceFile,
   ) async {
-    if (!await sourceFile.exists()) {
+    if (!sourceFile.existsSync()) {
       throw FileSystemException('Source image does not exist', sourceFile.path);
     }
 
     final baseDir = await _getBaseDir();
     final mediaDir = Directory(p.join(baseDir.path, 'media'));
-    if (!await mediaDir.exists()) {
-      await mediaDir.create(recursive: true);
+    if (!mediaDir.existsSync()) {
+      mediaDir.createSync(recursive: true);
     }
 
     final id = _uuid.v4();
@@ -287,7 +292,7 @@ class MediaSandboxService {
       quality: 80,
     );
 
-    if (fullResResult == null || !await fullResResult.exists()) {
+    if (fullResResult == null || !fullResResult.existsSync()) {
       throw const FileSystemException(
         'Failed to compress and save full-res album photo to sandbox',
       );
@@ -301,11 +306,11 @@ class MediaSandboxService {
       quality: 75,
     );
 
-    if (thumbResult == null || !await thumbResult.exists()) {
-      await fullResResult.copy(thumbTargetPath);
+    if (thumbResult == null || !thumbResult.existsSync()) {
+      fullResResult.copySync(thumbTargetPath);
     }
 
-    final aspectRatio = await _extractAspectRatio(fullResResult);
+    final aspectRatio = await _aspectRatioExtractor(fullResResult);
 
     return AlbumPhotoSandboxResult(
       relativeImagePath: imageRelPath.replaceAll('\\', '/'),
@@ -538,8 +543,8 @@ class MediaSandboxService {
   /// Deletes a sandboxed media file given its relative path
   Future<bool> deleteMedia(String relativePath) async {
     final file = await getFileFromRelativePath(relativePath);
-    if (await file.exists()) {
-      await file.delete();
+    if (file.existsSync()) {
+      file.deleteSync();
       return true;
     }
     return false;
