@@ -14,6 +14,7 @@ import '../widgets/create_edit_collection_sheet.dart';
 import '../widgets/ingestion_progress_dialog.dart';
 import '../widgets/photo_annotation_sheet.dart';
 import '../widgets/sandboxed_album_image.dart';
+import 'album_book_overview_screen.dart';
 import 'album_flipbook_screen.dart';
 
 /// Dedicated workspace screen for an open [AlbumCollection].
@@ -212,6 +213,23 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
     );
   }
 
+  void _handleOpenStudio(
+    AlbumCollection collection,
+    List<AlbumPhoto> photos,
+  ) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AlbumBookOverviewScreen(
+          collection: collection,
+          photos: photos,
+          repository: _repository,
+          mediaService: widget.mediaService,
+          onImportMorePhotos: _handleAddPhotos,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
@@ -249,6 +267,16 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                   ),
                 ),
                 actions: [
+                  IconButton(
+                    key: const Key('workspace_studio_icon_button'),
+                    icon: Icon(
+                      Icons.dashboard_customize_outlined,
+                      size: 20,
+                      color: tokens.cinnabar,
+                    ),
+                    tooltip: '进入工作室',
+                    onPressed: () => _handleOpenStudio(collection, photos),
+                  ),
                   IconButton(
                     key: const Key('workspace_flipbook_icon_button'),
                     icon: Icon(
@@ -431,28 +459,57 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
             ),
           ],
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              key: const Key('workspace_open_flipbook_button'),
-              onPressed: () => _handleOpenFlipbook(collection, photos),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: tokens.cinnabar,
-                side: BorderSide(color: tokens.cinnabar.withValues(alpha: 0.6)),
-                backgroundColor: tokens.cinnabarWash.withValues(alpha: 0.35),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              ),
-              icon: const Icon(Icons.auto_stories_outlined, size: 18),
-              label: const Text(
-                '生成影卷 / 浏览画册',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('workspace_open_studio_button'),
+                  onPressed: () => _handleOpenStudio(collection, photos),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: tokens.cinnabar,
+                    foregroundColor: Colors.white,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  icon: const Icon(Icons.dashboard_customize_outlined, size: 17),
+                  label: const Text(
+                    '浏览画册 / 进入工作室',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('workspace_open_flipbook_button'),
+                  onPressed: () => _handleOpenFlipbook(collection, photos),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: tokens.cinnabar,
+                    side: BorderSide(color: tokens.cinnabar.withValues(alpha: 0.6)),
+                    backgroundColor: tokens.cinnabarWash.withValues(alpha: 0.35),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  icon: const Icon(Icons.auto_stories_outlined, size: 17),
+                  label: const Text(
+                    '生成影卷 / 浏览画册',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

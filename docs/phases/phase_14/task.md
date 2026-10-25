@@ -1,0 +1,29 @@
+# Milestone 3.6 — Phase 14 Task Checklist
+
+- [x] **Task 14.1: Drift Schema v4 Migration & Studio Data Models**
+  - [x] Update `lib/core/database/tables/album_collections.dart` with nullable `studioLayoutJson` and `themeId` (default `'shanshui_ink'`).
+  - [x] Bump `schemaVersion` from `3` to `4` in `lib/core/database/app_database.dart` and add non-destructive `from < 4` migration in `onUpgrade`.
+  - [x] Update `lib/core/database/app_database.g.dart` for `studioLayoutJson` and `themeId` (with backward-compatible `fromJson` fallback).
+  - [x] Bump `BackupManifest.maxSupportedSchemaVersion` to `4` in `lib/features/import_export/models/backup_manifest.dart`.
+  - [x] Create `lib/features/albums/models/album_studio_models.dart` (`AlbumStudioDocument`, `AlbumPageModel`, `PhotoSlotAssignment`, `PageBackgroundConfig`, `PageOverlayElement`, `OverlayElementType`).
+  - [x] Add studio document load/save helpers in `lib/features/albums/data/album_repository.dart`.
+- [x] **Task 14.2: Multi-Photo Collage Layout Catalog & Multi-Photo Auto-Packing**
+  - [x] Create `lib/features/albums/services/page_layout_catalog.dart` with 19 normalized (`0.0..1.0`) collage layout templates across 1, 2, 3, 4, 5, and 6 photos per page (including optional `dateHeaderSlot`).
+  - [x] Update `lib/features/albums/services/album_layout_engine.dart` with `compileStudioDocument()` to pack 2–4 photos per page into rich multi-photo collage layouts by default.
+- [x] **Task 14.3: Themes & Style Catalog + Procedural Background & Sticker Painters**
+  - [x] Create `lib/features/albums/services/album_theme_catalog.dart` with 5 book themes (`shanshui_ink`, `jardin`, `abstract_blue`, `day_at_beach`, `playful_rainbow`), contrasting `Aa` color swatches, graphic pattern presets, and vector `StickerCatalog`.
+  - [x] Create `lib/features/albums/widgets/page_background_painter.dart` (`PageBackgroundPainter` & `StickerElementPainter`) for procedural vector canvas rendering.
+- [x] **Task 14.4: AlbumStudioController with 50-Step Undo/Redo Stack**
+  - [x] Create `lib/features/albums/services/album_studio_controller.dart` supporting slot swapping, Removed holding tray removal/restoration ($N \leftrightarrow N+1$ layout transitions), layout switching, background/graphic editing, global theme application, overlay CRUD/transform, and repository persistence.
+- [x] **Task 14.5: Code Review Fixes (Standards & Spec Refinement)**
+  - [x] Encapsulate `AlbumThemePreset.backgroundConfigForIndex(int pageIndex)` in `album_theme_catalog.dart` and adopt in layout engine and controller.
+  - [x] Introduce `_updatePage()` and `_recordRecentColor()` in `album_studio_controller.dart` to deduplicate repetitive mutation and MRU logic.
+  - [x] Add `StickerCategory.datePill` with presets to `StickerCatalog` and canvas renderer in `page_background_painter.dart`.
+  - [x] Add `movePhotoBetweenPages()` to `AlbumStudioController` with dynamic multi-page layout adaptation and undo/redo.
+  - [x] Implement surplus photo stashing to `removedPhotoIds` on layout downscaling in `changePageLayout()`.
+  - [x] Add `AlbumStudioDocument.reconcileWithPhotoIds()` and wire into `AlbumRepository.loadOrSynthesizeStudioDocument()` to prune deleted photos and route newly ingested workspace photos to the holding tray.
+- [x] **Task 14.6: Automated Unit Tests, Regression Suite & Static Analysis**
+  - [x] Create `test/core/database/schema_v4_migration_test.dart` (and update `schema_v3_migration_test.dart` version assertion).
+  - [x] Create `test/features/albums/page_layout_catalog_test.dart`.
+  - [x] Create and expand `test/features/albums/album_studio_controller_test.dart` with tests for moving photos between pages, downscaling stashing, reconciliation, and date pill stickers.
+  - [x] Run `flutter analyze` (0 issues), all album & migration tests (61/61 passed), and `network_quarantine_audit_test.dart`.
