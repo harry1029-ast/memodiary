@@ -28,3 +28,4 @@ Each segment uses `idRangeOffset = 0` and computes a linear `idDelta = glyphInde
 - Generator: [`lib/features/import_export/services/offline_cjk_ttf_generator.dart`](file:///home/harry1029/projects/memodiary/lib/features/import_export/services/offline_cjk_ttf_generator.dart)
 - Resolver: [`lib/features/import_export/services/pdf_font_resolver.dart`](file:///home/harry1029/projects/memodiary/lib/features/import_export/services/pdf_font_resolver.dart)
 - Unit & Round-Trip Tests: [`test/features/import_export/pdf_font_resolver_test.dart`](file:///home/harry1029/projects/memodiary/test/features/import_export/pdf_font_resolver_test.dart)
+
