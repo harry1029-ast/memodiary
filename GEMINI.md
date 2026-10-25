@@ -49,3 +49,7 @@ Milestone 3.5: Travel Memory Album (v1.1.0-alpha)
 - Phase 11: Drift Schema v3 Migration, Media Pipeline & Album Repository
 - Phase 12: Collection Management, Batch Ingestion & Photo Annotation Workspace
 - Phase 13: Keepsake Synthesis Engine, Interactive In-App Viewer & PDF Photobook Export
+Intermediate Milestone 3.6: DIY Photobook Studio & Scrapbook Editor (v1.2.0-alpha)
+- Phase 14: Studio Data Model, Collage Layout Library, Book Themes & Sticker/Background Engine
+- Phase 15: Book Overview Spread Feed & Interactive Drag-and-Drop Page Editor UI
+- Phase 16: WYSIWYG Vector PDF Photobook Renderer, Offline CJK Font Fix & Hardening

@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../models/album_studio_models.dart';
+import '../services/album_layout_engine.dart';
 
 /// Repository encapsulating travel memory album (`AlbumCollections` & `AlbumPhotos`)
 /// relational queries, reactive Drift streams, batch reordering, route trajectory
@@ -33,6 +35,8 @@ class AlbumRepository {
     DateTime? startDate,
     DateTime? endDate,
     String layoutPreset = 'classic_photobook',
+    String? studioLayoutJson,
+    String themeId = 'shanshui_ink',
     int? sortIndex,
   }) async {
     final collectionId = id ?? _uuid.v4();
@@ -50,6 +54,8 @@ class AlbumRepository {
       startDate: Value(startDate),
       endDate: Value(endDate),
       layoutPreset: Value(layoutPreset),
+      studioLayoutJson: Value(studioLayoutJson),
+      themeId: Value(themeId),
       sortIndex: Value(resolvedSortIndex),
       createdAt: Value(now),
       updatedAt: Value(now),
@@ -486,6 +492,53 @@ class AlbumRepository {
     }
 
     return summary;
+  }
+
+  // ===========================================================================
+  // Studio Document Persistence
+  // ===========================================================================
+
+  /// Persists [document] as `studio_layout_json` and syncs `theme_id` on [collectionId].
+  Future<void> saveStudioDocument(
+    String collectionId,
+    AlbumStudioDocument document,
+  ) async {
+    await updateCollection(
+      AlbumCollectionsCompanion(
+        id: Value(collectionId),
+        studioLayoutJson: Value(document.toJsonString()),
+        themeId: Value(document.activeThemeId),
+      ),
+    );
+  }
+
+  /// Loads the persisted [AlbumStudioDocument] for [collectionId], or synthesizes
+  /// a fresh multi-photo collage document if none is saved yet.
+  Future<AlbumStudioDocument> loadOrSynthesizeStudioDocument(
+    String collectionId,
+  ) async {
+    final collection = await getCollectionById(collectionId);
+    if (collection == null) {
+      throw StateError('Collection $collectionId not found.');
+    }
+
+    final photos = await getPhotosForCollection(collectionId);
+    final rawJson = collection.studioLayoutJson?.trim();
+
+    if (rawJson != null && rawJson.isNotEmpty) {
+      try {
+        final parsed = AlbumStudioDocument.fromJsonString(rawJson);
+        return parsed.reconcileWithPhotoIds(photos.map((p) => p.id));
+      } catch (_) {
+        // Fall through to re-synthesize if stored JSON is corrupted
+      }
+    }
+
+    return AlbumLayoutEngine.compileStudioDocument(
+      collection: collection,
+      photos: photos,
+      themeId: collection.themeId,
+    );
   }
 }
 

@@ -65,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -185,6 +185,12 @@ class AppDatabase extends _$AppDatabase {
               CREATE INDEX IF NOT EXISTS idx_album_photos_collection_order
               ON album_photos(collection_id, sort_order ASC);
             ''');
+          } else if (from < 4) {
+            await m.addColumn(
+              albumCollections,
+              albumCollections.studioLayoutJson,
+            );
+            await m.addColumn(albumCollections, albumCollections.themeId);
           }
         },
         beforeOpen: (details) async {

@@ -2061,6 +2061,20 @@ class $AlbumCollectionsTable extends AlbumCollections
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('classic_photobook'));
+  static const VerificationMeta _studioLayoutJsonMeta =
+      const VerificationMeta('studioLayoutJson');
+  @override
+  late final GeneratedColumn<String> studioLayoutJson = GeneratedColumn<String>(
+      'studio_layout_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _themeIdMeta =
+      const VerificationMeta('themeId');
+  @override
+  late final GeneratedColumn<String> themeId = GeneratedColumn<String>(
+      'theme_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('shanshui_ink'));
   static const VerificationMeta _sortIndexMeta =
       const VerificationMeta('sortIndex');
   @override
@@ -2096,6 +2110,8 @@ class $AlbumCollectionsTable extends AlbumCollections
         startDate,
         endDate,
         layoutPreset,
+        studioLayoutJson,
+        themeId,
         sortIndex,
         createdAt,
         updatedAt
@@ -2159,6 +2175,16 @@ class $AlbumCollectionsTable extends AlbumCollections
           layoutPreset.isAcceptableOrUnknown(
               data['layout_preset']!, _layoutPresetMeta));
     }
+    if (data.containsKey('studio_layout_json')) {
+      context.handle(
+          _studioLayoutJsonMeta,
+          studioLayoutJson.isAcceptableOrUnknown(
+              data['studio_layout_json']!, _studioLayoutJsonMeta));
+    }
+    if (data.containsKey('theme_id')) {
+      context.handle(_themeIdMeta,
+          themeId.isAcceptableOrUnknown(data['theme_id']!, _themeIdMeta));
+    }
     if (data.containsKey('sort_index')) {
       context.handle(_sortIndexMeta,
           sortIndex.isAcceptableOrUnknown(data['sort_index']!, _sortIndexMeta));
@@ -2198,6 +2224,11 @@ class $AlbumCollectionsTable extends AlbumCollections
           .read(DriftSqlType.dateTime, data['${effectivePrefix}end_date']),
       layoutPreset: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}layout_preset'])!,
+      studioLayoutJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}studio_layout_json']),
+      themeId: attachedDatabase.typeMapping
+              .read(DriftSqlType.string, data['${effectivePrefix}theme_id']) ??
+          'shanshui_ink',
       sortIndex: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}sort_index'])!,
       createdAt: attachedDatabase.typeMapping
@@ -2241,6 +2272,12 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
   /// Photobook layout preset identifier
   final String layoutPreset;
 
+  /// Optional serialized JSON of AlbumStudioDocument for DIY scrapbook layouts
+  final String? studioLayoutJson;
+
+  /// Active book theme identifier (defaults to 'shanshui_ink')
+  final String themeId;
+
   /// Explicit display ordering index among collections
   final int sortIndex;
 
@@ -2259,6 +2296,8 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
       this.startDate,
       this.endDate,
       required this.layoutPreset,
+      this.studioLayoutJson,
+      this.themeId = 'shanshui_ink',
       required this.sortIndex,
       required this.createdAt,
       required this.updatedAt});
@@ -2286,6 +2325,10 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
       map['end_date'] = Variable<DateTime>(endDate);
     }
     map['layout_preset'] = Variable<String>(layoutPreset);
+    if (!nullToAbsent || studioLayoutJson != null) {
+      map['studio_layout_json'] = Variable<String>(studioLayoutJson);
+    }
+    map['theme_id'] = Variable<String>(themeId);
     map['sort_index'] = Variable<int>(sortIndex);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2315,6 +2358,10 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
           ? const Value.absent()
           : Value(endDate),
       layoutPreset: Value(layoutPreset),
+      studioLayoutJson: studioLayoutJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(studioLayoutJson),
+      themeId: Value(themeId),
       sortIndex: Value(sortIndex),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -2334,6 +2381,10 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
       startDate: serializer.fromJson<DateTime?>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       layoutPreset: serializer.fromJson<String>(json['layoutPreset']),
+      studioLayoutJson: serializer.fromJson<String?>(json['studioLayoutJson']),
+      themeId: json['themeId'] != null
+          ? serializer.fromJson<String>(json['themeId'])
+          : 'shanshui_ink',
       sortIndex: serializer.fromJson<int>(json['sortIndex']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2352,6 +2403,8 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
       'startDate': serializer.toJson<DateTime?>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'layoutPreset': serializer.toJson<String>(layoutPreset),
+      'studioLayoutJson': serializer.toJson<String?>(studioLayoutJson),
+      'themeId': serializer.toJson<String>(themeId),
       'sortIndex': serializer.toJson<int>(sortIndex),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2368,6 +2421,8 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
           Value<DateTime?> startDate = const Value.absent(),
           Value<DateTime?> endDate = const Value.absent(),
           String? layoutPreset,
+          Value<String?> studioLayoutJson = const Value.absent(),
+          String? themeId,
           int? sortIndex,
           DateTime? createdAt,
           DateTime? updatedAt}) =>
@@ -2384,6 +2439,10 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
         startDate: startDate.present ? startDate.value : this.startDate,
         endDate: endDate.present ? endDate.value : this.endDate,
         layoutPreset: layoutPreset ?? this.layoutPreset,
+        studioLayoutJson: studioLayoutJson.present
+            ? studioLayoutJson.value
+            : this.studioLayoutJson,
+        themeId: themeId ?? this.themeId,
         sortIndex: sortIndex ?? this.sortIndex,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -2408,6 +2467,10 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
       layoutPreset: data.layoutPreset.present
           ? data.layoutPreset.value
           : this.layoutPreset,
+      studioLayoutJson: data.studioLayoutJson.present
+          ? data.studioLayoutJson.value
+          : this.studioLayoutJson,
+      themeId: data.themeId.present ? data.themeId.value : this.themeId,
       sortIndex: data.sortIndex.present ? data.sortIndex.value : this.sortIndex,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2426,6 +2489,8 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('layoutPreset: $layoutPreset, ')
+          ..write('studioLayoutJson: $studioLayoutJson, ')
+          ..write('themeId: $themeId, ')
           ..write('sortIndex: $sortIndex, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2444,6 +2509,8 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
       startDate,
       endDate,
       layoutPreset,
+      studioLayoutJson,
+      themeId,
       sortIndex,
       createdAt,
       updatedAt);
@@ -2460,6 +2527,8 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.layoutPreset == this.layoutPreset &&
+          other.studioLayoutJson == this.studioLayoutJson &&
+          other.themeId == this.themeId &&
           other.sortIndex == this.sortIndex &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -2475,6 +2544,8 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
   final Value<DateTime?> startDate;
   final Value<DateTime?> endDate;
   final Value<String> layoutPreset;
+  final Value<String?> studioLayoutJson;
+  final Value<String> themeId;
   final Value<int> sortIndex;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -2489,6 +2560,8 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.layoutPreset = const Value.absent(),
+    this.studioLayoutJson = const Value.absent(),
+    this.themeId = const Value.absent(),
     this.sortIndex = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2504,6 +2577,8 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.layoutPreset = const Value.absent(),
+    this.studioLayoutJson = const Value.absent(),
+    this.themeId = const Value.absent(),
     this.sortIndex = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2520,6 +2595,8 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<String>? layoutPreset,
+    Expression<String>? studioLayoutJson,
+    Expression<String>? themeId,
     Expression<int>? sortIndex,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2535,6 +2612,8 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (layoutPreset != null) 'layout_preset': layoutPreset,
+      if (studioLayoutJson != null) 'studio_layout_json': studioLayoutJson,
+      if (themeId != null) 'theme_id': themeId,
       if (sortIndex != null) 'sort_index': sortIndex,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2552,6 +2631,8 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
       Value<DateTime?>? startDate,
       Value<DateTime?>? endDate,
       Value<String>? layoutPreset,
+      Value<String?>? studioLayoutJson,
+      Value<String>? themeId,
       Value<int>? sortIndex,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
@@ -2566,6 +2647,8 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       layoutPreset: layoutPreset ?? this.layoutPreset,
+      studioLayoutJson: studioLayoutJson ?? this.studioLayoutJson,
+      themeId: themeId ?? this.themeId,
       sortIndex: sortIndex ?? this.sortIndex,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2603,6 +2686,12 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
     if (layoutPreset.present) {
       map['layout_preset'] = Variable<String>(layoutPreset.value);
     }
+    if (studioLayoutJson.present) {
+      map['studio_layout_json'] = Variable<String>(studioLayoutJson.value);
+    }
+    if (themeId.present) {
+      map['theme_id'] = Variable<String>(themeId.value);
+    }
     if (sortIndex.present) {
       map['sort_index'] = Variable<int>(sortIndex.value);
     }
@@ -2630,6 +2719,8 @@ class AlbumCollectionsCompanion extends UpdateCompanion<AlbumCollection> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('layoutPreset: $layoutPreset, ')
+          ..write('studioLayoutJson: $studioLayoutJson, ')
+          ..write('themeId: $themeId, ')
           ..write('sortIndex: $sortIndex, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')

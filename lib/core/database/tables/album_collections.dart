@@ -31,6 +31,13 @@ class AlbumCollections extends Table {
   TextColumn get layoutPreset =>
       text().withDefault(const Constant('classic_photobook'))();
 
+  /// Optional serialized JSON of AlbumStudioDocument for DIY scrapbook layouts
+  TextColumn get studioLayoutJson => text().nullable()();
+
+  /// Active book theme identifier (defaults to 'shanshui_ink')
+  TextColumn get themeId =>
+      text().withDefault(const Constant('shanshui_ink'))();
+
   /// Explicit display ordering index among collections
   IntColumn get sortIndex => integer().withDefault(const Constant(0))();
 

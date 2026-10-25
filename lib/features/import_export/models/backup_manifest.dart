@@ -144,7 +144,7 @@ class BackupDatabaseSnapshot {
 class BackupManifest {
   static const String expectedFormat = 'memodiary-backup';
   static const int currentFormatVersion = 1;
-  static const int maxSupportedSchemaVersion = 3;
+  static const int maxSupportedSchemaVersion = 4;
 
   final String format;
   final int formatVersion;
