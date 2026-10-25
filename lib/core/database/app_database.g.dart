@@ -2227,8 +2227,7 @@ class $AlbumCollectionsTable extends AlbumCollections
       studioLayoutJson: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}studio_layout_json']),
       themeId: attachedDatabase.typeMapping
-              .read(DriftSqlType.string, data['${effectivePrefix}theme_id']) ??
-          'shanshui_ink',
+          .read(DriftSqlType.string, data['${effectivePrefix}theme_id'])!,
       sortIndex: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}sort_index'])!,
       createdAt: attachedDatabase.typeMapping
@@ -2297,7 +2296,7 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
       this.endDate,
       required this.layoutPreset,
       this.studioLayoutJson,
-      this.themeId = 'shanshui_ink',
+      required this.themeId,
       required this.sortIndex,
       required this.createdAt,
       required this.updatedAt});
@@ -2382,9 +2381,7 @@ class AlbumCollection extends DataClass implements Insertable<AlbumCollection> {
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       layoutPreset: serializer.fromJson<String>(json['layoutPreset']),
       studioLayoutJson: serializer.fromJson<String?>(json['studioLayoutJson']),
-      themeId: json['themeId'] != null
-          ? serializer.fromJson<String>(json['themeId'])
-          : 'shanshui_ink',
+      themeId: serializer.fromJson<String>(json['themeId']),
       sortIndex: serializer.fromJson<int>(json['sortIndex']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -4259,6 +4256,8 @@ typedef $$AlbumCollectionsTableCreateCompanionBuilder
   Value<DateTime?> startDate,
   Value<DateTime?> endDate,
   Value<String> layoutPreset,
+  Value<String?> studioLayoutJson,
+  Value<String> themeId,
   Value<int> sortIndex,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -4275,6 +4274,8 @@ typedef $$AlbumCollectionsTableUpdateCompanionBuilder
   Value<DateTime?> startDate,
   Value<DateTime?> endDate,
   Value<String> layoutPreset,
+  Value<String?> studioLayoutJson,
+  Value<String> themeId,
   Value<int> sortIndex,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -4340,6 +4341,13 @@ class $$AlbumCollectionsTableFilterComposer
 
   ColumnFilters<String> get layoutPreset => $composableBuilder(
       column: $table.layoutPreset, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get studioLayoutJson => $composableBuilder(
+      column: $table.studioLayoutJson,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get themeId => $composableBuilder(
+      column: $table.themeId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get sortIndex => $composableBuilder(
       column: $table.sortIndex, builder: (column) => ColumnFilters(column));
@@ -4412,6 +4420,13 @@ class $$AlbumCollectionsTableOrderingComposer
       column: $table.layoutPreset,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get studioLayoutJson => $composableBuilder(
+      column: $table.studioLayoutJson,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get themeId => $composableBuilder(
+      column: $table.themeId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get sortIndex => $composableBuilder(
       column: $table.sortIndex, builder: (column) => ColumnOrderings(column));
 
@@ -4457,6 +4472,12 @@ class $$AlbumCollectionsTableAnnotationComposer
 
   GeneratedColumn<String> get layoutPreset => $composableBuilder(
       column: $table.layoutPreset, builder: (column) => column);
+
+  GeneratedColumn<String> get studioLayoutJson => $composableBuilder(
+      column: $table.studioLayoutJson, builder: (column) => column);
+
+  GeneratedColumn<String> get themeId =>
+      $composableBuilder(column: $table.themeId, builder: (column) => column);
 
   GeneratedColumn<int> get sortIndex =>
       $composableBuilder(column: $table.sortIndex, builder: (column) => column);
@@ -4522,6 +4543,8 @@ class $$AlbumCollectionsTableTableManager extends RootTableManager<
             Value<DateTime?> startDate = const Value.absent(),
             Value<DateTime?> endDate = const Value.absent(),
             Value<String> layoutPreset = const Value.absent(),
+            Value<String?> studioLayoutJson = const Value.absent(),
+            Value<String> themeId = const Value.absent(),
             Value<int> sortIndex = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -4537,6 +4560,8 @@ class $$AlbumCollectionsTableTableManager extends RootTableManager<
             startDate: startDate,
             endDate: endDate,
             layoutPreset: layoutPreset,
+            studioLayoutJson: studioLayoutJson,
+            themeId: themeId,
             sortIndex: sortIndex,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -4552,6 +4577,8 @@ class $$AlbumCollectionsTableTableManager extends RootTableManager<
             Value<DateTime?> startDate = const Value.absent(),
             Value<DateTime?> endDate = const Value.absent(),
             Value<String> layoutPreset = const Value.absent(),
+            Value<String?> studioLayoutJson = const Value.absent(),
+            Value<String> themeId = const Value.absent(),
             Value<int> sortIndex = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -4567,6 +4594,8 @@ class $$AlbumCollectionsTableTableManager extends RootTableManager<
             startDate: startDate,
             endDate: endDate,
             layoutPreset: layoutPreset,
+            studioLayoutJson: studioLayoutJson,
+            themeId: themeId,
             sortIndex: sortIndex,
             createdAt: createdAt,
             updatedAt: updatedAt,

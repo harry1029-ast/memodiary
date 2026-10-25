@@ -1,4 +1,6 @@
 import 'package:drift/drift.dart';
+// ignore: unused_import
+import 'album_collections.dart';
 
 /// AlbumPhotos table storing sandboxed photos and per-photo annotations (写影札).
 @DataClassName('AlbumPhoto')

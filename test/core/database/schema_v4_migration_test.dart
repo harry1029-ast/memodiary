@@ -243,23 +243,35 @@ void main() {
           equals('{"activeThemeId":"abstract_blue","pages":[]}'),
         );
 
-        // Legacy v3 AlbumCollection JSON without studioLayoutJson or themeId
-        final legacyCol = AlbumCollection.fromJson({
-          'id': 'col_v3_legacy',
-          'title': '旧版影集',
-          'description': null,
-          'destinationTag': null,
-          'routeSummary': null,
-          'coverImagePath': null,
-          'startDate': null,
-          'endDate': null,
-          'layoutPreset': 'classic_photobook',
-          'sortIndex': 0,
-          'createdAt': now.millisecondsSinceEpoch,
-          'updatedAt': now.millisecondsSinceEpoch,
+        // Legacy v3 BackupManifest JSON without studioLayoutJson or themeId in snapshot
+        final legacySnapshot = BackupDatabaseSnapshot.fromJson({
+          'templates': [],
+          'notebooks': [],
+          'entries': [],
+          'mediaAttachments': [],
+          'albumCollections': [
+            {
+              'id': 'col_v3_legacy',
+              'title': '旧版影集',
+              'description': null,
+              'destinationTag': null,
+              'routeSummary': null,
+              'coverImagePath': null,
+              'startDate': null,
+              'endDate': null,
+              'layoutPreset': 'classic_photobook',
+              'sortIndex': 0,
+              'createdAt': now.millisecondsSinceEpoch,
+              'updatedAt': now.millisecondsSinceEpoch,
+            }
+          ],
+          'albumPhotos': [],
         });
-        expect(legacyCol.themeId, equals('shanshui_ink'));
-        expect(legacyCol.studioLayoutJson, isNull);
+        expect(
+          legacySnapshot.albumCollections.single.themeId,
+          equals('shanshui_ink'),
+        );
+        expect(legacySnapshot.albumCollections.single.studioLayoutJson, isNull);
       },
     );
   });

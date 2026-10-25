@@ -138,6 +138,7 @@ void main() {
             startDate: now,
             endDate: now,
             layoutPreset: 'classic_photobook',
+            themeId: 'shanshui_ink',
             sortIndex: 0,
             createdAt: now,
             updatedAt: now,

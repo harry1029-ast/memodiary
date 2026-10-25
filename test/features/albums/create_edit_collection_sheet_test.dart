@@ -85,6 +85,7 @@ void main() {
         startDate: DateTime(2026, 11, 10),
         endDate: DateTime(2026, 11, 16),
         layoutPreset: 'classic_photobook',
+        themeId: 'shanshui_ink',
         sortIndex: 0,
         createdAt: DateTime(2026, 11, 10),
         updatedAt: DateTime(2026, 11, 10),

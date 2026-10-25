@@ -73,6 +73,7 @@ void main() {
       startDate: DateTime(2026, 4, 1),
       endDate: DateTime(2026, 4, 4),
       layoutPreset: 'editorial',
+      themeId: 'shanshui_ink',
       sortIndex: 0,
       createdAt: DateTime(2026, 4, 1),
       updatedAt: DateTime(2026, 4, 4),

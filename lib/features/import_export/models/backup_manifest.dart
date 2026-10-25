@@ -115,10 +115,11 @@ class BackupDatabaseSnapshot {
               MediaAttachment.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
       final rawAlbumCollections =
-          (json['albumCollections'] as List<dynamic>? ?? [])
-              .map((item) => AlbumCollection.fromJson(
-                  Map<String, dynamic>.from(item as Map)))
-              .toList();
+          (json['albumCollections'] as List<dynamic>? ?? []).map((item) {
+        final map = Map<String, dynamic>.from(item as Map);
+        map.putIfAbsent('themeId', () => 'shanshui_ink');
+        return AlbumCollection.fromJson(map);
+      }).toList();
       final rawAlbumPhotos = (json['albumPhotos'] as List<dynamic>? ?? [])
           .map((item) =>
               AlbumPhoto.fromJson(Map<String, dynamic>.from(item as Map)))

@@ -23,6 +23,7 @@ AlbumCollection _buildCollection({
     startDate: DateTime(2026, 4, 1),
     endDate: DateTime(2026, 4, 5),
     layoutPreset: layoutPreset,
+    themeId: 'shanshui_ink',
     sortIndex: 0,
     createdAt: timestamp,
     updatedAt: timestamp,
