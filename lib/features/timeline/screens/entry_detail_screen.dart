@@ -108,7 +108,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       quill.Document doc;
       if (_entry.contentDelta.isNotEmpty) {
         try {
-          final decoded = jsonDecode(_entry.contentDelta);
+          final decoded = jsonDecode(_entry.contentDelta) as List<dynamic>;
           doc = quill.Document.fromJson(decoded);
         } catch (_) {
           doc = quill.Document()..insert(0, _entry.plainText);

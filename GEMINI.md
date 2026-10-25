@@ -30,6 +30,7 @@ Maintain the following 5 core tables in `lib/core/database/app_database.dart`[ci
 - Write unit tests for every data model, date-parsing regex rule, and repository method.
 - **Generated Code Boundary (`.g.dart`)**: Never inspect, diff, or manually edit `.g.dart` files. Always modify table schema definitions in `lib/core/database/tables/` or `app_database.dart` and regenerate code using `dart run build_runner build`.
 - Detailed code shape, naming, a11y semantics, and test harness standards are specified in [CODING_STANDARDS.md](file:///home/harry1029/projects/memodiary/CODING_STANDARDS.md).
+- **Execution & Tooling**: In environments where `flutter` or `dart` is not on the default sandbox `$PATH`, invoke the Flutter SDK binary directly at `/home/harry1029/development/flutter/bin/flutter` (or `/home/harry1029/development/flutter/bin/dart`).
 
 ## Development Roadmap (Reference Only)
 Milestone 1 (Alpha):

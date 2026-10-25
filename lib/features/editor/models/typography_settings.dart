@@ -115,10 +115,11 @@ class TypographySettings {
 
   /// Derives initial typography settings from a Template model
   factory TypographySettings.fromTemplate(dynamic template) {
-    final family = template.fontFamily;
+    final family = template?.fontFamily as String?;
+    final spacing = (template?.lineSpacing as num?)?.toDouble();
     return TypographySettings(
       fontFamily: (family == null || family == 'System') ? null : family,
-      lineSpacing: template.lineSpacing ?? 1.5,
+      lineSpacing: spacing ?? 1.5,
     );
   }
 

@@ -81,7 +81,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
       quill.Document doc;
       if (_debrief.contentDelta.isNotEmpty) {
         try {
-          final decoded = jsonDecode(_debrief.contentDelta);
+          final decoded = jsonDecode(_debrief.contentDelta) as List<dynamic>;
           doc = quill.Document.fromJson(decoded);
         } catch (_) {
           doc = quill.Document()..insert(0, _debrief.plainText);

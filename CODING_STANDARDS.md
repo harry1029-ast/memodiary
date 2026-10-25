@@ -43,6 +43,8 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
   ```
 - **Typed Value Objects over Ad-Hoc Maps**: Do not use raw `Map<String, dynamic>` string literals for internal state or service metadata. Model configurations and state records as immutable Dart classes or records.
 - **Background Isolate Offloading**: CPU-intensive operations (ZIP compression, chunked encryption/decryption, SHA-256 calculation on files $\ge 1\text{ MiB}$, batch database ingestion) must execute inside `Isolate.run()` to prevent UI stutter.
+- **WYSIWYG Export Transform Parity**: Any headless document exporter (PDF generator, raster image synthesizer) consuming interactive canvas models must reproduce all user canvas transformations (pan offsets `panOffsetX`/`panOffsetY`, zoom scale, rotation, layer stacking order) with 1:1 mathematical parity.
+- **Dominant-Axis Downsampling**: Image transcoders downsampling arbitrary user photos must evaluate input aspect ratios and constrain along the dominant dimension (`origW >= origH ? targetWidth : targetHeight`) rather than fixing a single dimension, protecting against memory spikes on extreme panoramic or portrait aspect ratios.
 
 ---
 
