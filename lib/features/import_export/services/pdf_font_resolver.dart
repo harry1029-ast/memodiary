@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:pdf/widgets.dart' as pw;
+import 'offline_cjk_ttf_generator.dart';
 
 /// Manages offline PDF font configuration and safe character encoding.
 ///
@@ -20,6 +21,30 @@ class PdfFontResolver {
     required this.boldItalicFont,
     this.isCjkCapable = false,
   });
+
+  /// Creates a 100% offline CJK-capable TrueType PDF font resolver.
+  ///
+  /// Uses [OfflineCjkTtfGenerator] so Chinese characters, CJK punctuation,
+  /// and Unicode symbols (`·`, `→`) render cleanly without Latin-1 `'?'` fallbacks
+  /// or dynamic network downloads.
+  factory PdfFontResolver.cjk() {
+    final cjkFont = OfflineCjkTtfGenerator.resolveCjkFont();
+    return PdfFontResolver(
+      regularFont: cjkFont,
+      boldFont: cjkFont,
+      italicFont: cjkFont,
+      boldItalicFont: cjkFont,
+      isCjkCapable: true,
+    );
+  }
+
+  /// Asynchronously loads an offline CJK TrueType font from [assetPath] if bundled,
+  /// falling back to the deterministic in-memory CJK TrueType font.
+  static Future<PdfFontResolver> loadOfflineCjk({String? assetPath}) async {
+    final cjkFont =
+        await OfflineCjkTtfGenerator.loadOrGenerateFont(assetPath: assetPath);
+    return PdfFontResolver.fromFont(cjkFont);
+  }
 
   /// Creates a standard Latin-1 PostScript PDF font resolver (zero network, built-in).
   factory PdfFontResolver.standard() {
@@ -67,7 +92,25 @@ class PdfFontResolver {
   /// or escaped into readable tokens if using standard PostScript fonts to prevent encoding exceptions.
   String sanitizeText(String text) {
     if (isCjkCapable) {
-      return text;
+      final buffer = StringBuffer();
+      for (int i = 0; i < text.length; i++) {
+        final codeUnit = text.codeUnitAt(i);
+        // Strip null bytes and control codes that corrupt PDF streams
+        if (codeUnit == 0x0000 ||
+            (codeUnit < 0x0020 &&
+                codeUnit != 0x0009 &&
+                codeUnit != 0x000A &&
+                codeUnit != 0x000D) ||
+            codeUnit == 0x007F) {
+          continue;
+        }
+        // Skip UTF-16 surrogate pairs (e.g. non-BMP emoji) so Type0 BMP font never faults
+        if (codeUnit >= 0xD800 && codeUnit <= 0xDFFF) {
+          continue;
+        }
+        buffer.writeCharCode(codeUnit);
+      }
+      return buffer.toString();
     }
 
     final buffer = StringBuffer();

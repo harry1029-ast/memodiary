@@ -420,6 +420,20 @@ class AlbumStudioDocument {
 
   String toJsonString() => jsonEncode(toJson());
 
+  /// Collects all non-empty photo IDs referenced across all page photo slots.
+  Set<String> collectReferencedPhotoIds() {
+    final ids = <String>{};
+    for (final page in pages) {
+      for (final slot in page.photoSlots) {
+        final id = slot.photoId.trim();
+        if (id.isNotEmpty) {
+          ids.add(id);
+        }
+      }
+    }
+    return ids;
+  }
+
   /// Reconciles this document against [currentPhotoIds] existing in the database:
   /// 1. Prunes deleted photos from all pages and [removedPhotoIds].
   /// 2. Automatically places any newly added photos into [removedPhotoIds]

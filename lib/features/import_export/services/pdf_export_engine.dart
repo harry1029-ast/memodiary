@@ -24,7 +24,7 @@ class PdfExportEngine {
     PdfPageFormat pageFormat = PdfPageFormat.a4,
     PdfFontResolver? fontResolver,
   }) async {
-    final resolver = fontResolver ?? PdfFontResolver.standard();
+    final resolver = fontResolver ?? PdfFontResolver.cjk();
 
     // 1. Resolve visual template
     final template = await database.getTemplateById(entry.templateId) ??
@@ -79,7 +79,7 @@ class PdfExportEngine {
     String? bookTitle,
     PdfFontResolver? fontResolver,
   }) async {
-    final resolver = fontResolver ?? PdfFontResolver.standard();
+    final resolver = fontResolver ?? PdfFontResolver.cjk();
     final doc = pw.Document();
 
     if (entries.isEmpty) {

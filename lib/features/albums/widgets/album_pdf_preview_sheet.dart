@@ -9,14 +9,18 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/widgets/ink_metadata_pill.dart';
 import '../models/album_spread.dart';
+import '../models/album_studio_models.dart';
 import '../services/album_pdf_exporter.dart';
 
 /// Bottom sheet allowing the user to select the PDF photobook format
-/// ([AlbumPdfPageFormat.a4Landscape] vs [AlbumPdfPageFormat.square]),
-/// save the generated vector PDF locally, or share/print it via the OS sheet.
+/// ([AlbumPdfPageFormat.a4Landscape], [AlbumPdfPageFormat.square], or
+/// [AlbumPdfPageFormat.boundSpread]), save the generated vector PDF locally,
+/// or share/print it via the OS sheet.
 class AlbumPdfPreviewSheet extends StatefulWidget {
   final AlbumCollection collection;
   final List<AlbumSpread> spreads;
+  final AlbumStudioDocument? studioDocument;
+  final List<AlbumPhoto>? photos;
   final MediaSandboxService mediaService;
   final Future<Uint8List> Function(Uint8List)? imageTranscoder;
   final Future<String> Function(Uint8List bytes, String fileName)?
@@ -29,6 +33,8 @@ class AlbumPdfPreviewSheet extends StatefulWidget {
     required this.collection,
     required this.spreads,
     required this.mediaService,
+    this.studioDocument,
+    this.photos,
     this.imageTranscoder,
     this.customSaveHandler,
     this.customShareHandler,
@@ -39,6 +45,8 @@ class AlbumPdfPreviewSheet extends StatefulWidget {
     required AlbumCollection collection,
     required List<AlbumSpread> spreads,
     required MediaSandboxService mediaService,
+    AlbumStudioDocument? studioDocument,
+    List<AlbumPhoto>? photos,
     Future<Uint8List> Function(Uint8List)? imageTranscoder,
     Future<String> Function(Uint8List bytes, String fileName)?
         customSaveHandler,
@@ -51,6 +59,8 @@ class AlbumPdfPreviewSheet extends StatefulWidget {
       builder: (sheetContext) => AlbumPdfPreviewSheet(
         collection: collection,
         spreads: spreads,
+        studioDocument: studioDocument,
+        photos: photos,
         mediaService: mediaService,
         imageTranscoder: imageTranscoder,
         customSaveHandler: customSaveHandler,
@@ -72,12 +82,23 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
         .trim()
         .replaceAll(RegExp(r'[\\/:*?"<>|\s]+'), '_');
     final baseName = sanitizedTitle.isEmpty ? 'travel_album' : sanitizedTitle;
-    final suffix =
-        _selectedFormat == AlbumPdfPageFormat.a4Landscape ? 'A4' : 'Square';
+    final suffix = _selectedFormat.fileSuffix;
     return '${baseName}_$suffix.pdf';
   }
 
   Future<Uint8List> _generateBytes() {
+    final studioDoc = widget.studioDocument;
+    if (studioDoc != null && studioDoc.pages.isNotEmpty) {
+      return AlbumPdfExporter.generatePhotobookFromStudioDocument(
+        collection: widget.collection,
+        studioDocument: studioDoc,
+        photos: widget.photos ?? const [],
+        mediaService: widget.mediaService,
+        format: _selectedFormat,
+        imageTranscoder: widget.imageTranscoder,
+      );
+    }
+
     return AlbumPdfExporter.generatePhotobookFromSpreads(
       spreads: widget.spreads,
       mediaService: widget.mediaService,
@@ -213,7 +234,9 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                 children: [
                   InkMetadataPill(
                     icon: Icons.auto_stories_outlined,
-                    label: '共 ${widget.spreads.length} 页画幅',
+                    label: widget.studioDocument != null
+                        ? '共 ${widget.studioDocument!.pages.length + 1} 页画幅'
+                        : '共 ${widget.spreads.length} 页画幅',
                     isAccent: true,
                     maxWidth: 150,
                   ),
@@ -255,11 +278,20 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                     format: AlbumPdfPageFormat.square,
                     key: const Key('pdf_format_square'),
                     icon: Icons.crop_square,
-                    title: '方册画幅',
+                    title: '方册纪念本',
                     subtitle: '210 × 210 mm',
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            _buildFormatOption(
+              tokens: tokens,
+              format: AlbumPdfPageFormat.boundSpread,
+              key: const Key('pdf_format_bound_spread'),
+              icon: Icons.menu_book_outlined,
+              title: '双页跨页装帧',
+              subtitle: '420 × 210 mm · 仿真书脊',
             ),
             const SizedBox(height: 20),
             if (_isGenerating)

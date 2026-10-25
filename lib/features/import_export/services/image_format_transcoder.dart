@@ -42,16 +42,26 @@ class ImageFormatTranscoder {
 
   /// Converts [rawBytes] into PNG or JPEG bytes compatible with `package:pdf`.
   /// If already PNG/JPEG, returns [rawBytes] immediately without re-encoding.
+  ///
+  /// Technical Watchpoint 2 Guard: Clamps decoded frames to [maxDimension]
+  /// (default 1400px print resolution) and immediately disposes native `dart:ui`
+  /// codec/image handles to prevent memory spikes on 20+ page photobooks.
   static Future<Uint8List> ensurePdfCompatibleBytes(
     Uint8List rawBytes, {
     Future<Uint8List> Function(Uint8List)? customTranscoder,
+    int maxDimension = 1400,
   }) async {
     if (rawBytes.isEmpty) {
       throw ArgumentError('Image byte buffer cannot be empty.');
     }
 
-    // 1. Fast-path: Already PNG or JPEG
-    if (isPdfNativeFormat(rawBytes)) {
+    // 1. Fast-path: Already PNG or JPEG within reasonable size
+    final pngMaxDim = _tryReadPngMaxDimension(rawBytes);
+    if (pngMaxDim != null && pngMaxDim <= maxDimension) {
+      return rawBytes;
+    }
+    if (isPdfNativeFormat(rawBytes) && rawBytes.length < 500 * 1024) {
+      // JPEG or compact PNG under 500KB is safe to embed directly
       return rawBytes;
     }
 
@@ -60,24 +70,70 @@ class ImageFormatTranscoder {
       return customTranscoder(rawBytes);
     }
 
-    // 3. Native Flutter engine in-memory transcoding via dart:ui
+    // 3. Native Flutter engine in-memory transcoding via dart:ui with resolution clamping
     try {
-      final codec = await ui.instantiateImageCodec(rawBytes);
-      final frame = await codec.getNextFrame();
-      final byteData =
-          await frame.image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        throw StateError('Failed to convert image frame to PNG ByteData.');
+      final initialCodec = await ui.instantiateImageCodec(rawBytes);
+      final initialFrame = await initialCodec.getNextFrame();
+      final origW = initialFrame.image.width;
+      final origH = initialFrame.image.height;
+
+      // If dimensions are already within maxDimension, use initialFrame directly without upscaling
+      if (origW <= maxDimension && origH <= maxDimension) {
+        if (isPdfNativeFormat(rawBytes)) {
+          initialFrame.image.dispose();
+          initialCodec.dispose();
+          return rawBytes;
+        }
+        return await _extractPngBytesAndDispose(initialCodec, initialFrame);
       }
-      return byteData.buffer.asUint8List();
+
+      // If dimensions exceed maxDimension, downscale along the larger axis preserving aspect ratio
+      initialFrame.image.dispose();
+      initialCodec.dispose();
+
+      final scaledCodec = await ui.instantiateImageCodec(
+        rawBytes,
+        targetWidth: origW >= origH ? maxDimension : null,
+        targetHeight: origH > origW ? maxDimension : null,
+      );
+      final scaledFrame = await scaledCodec.getNextFrame();
+      return await _extractPngBytesAndDispose(scaledCodec, scaledFrame);
     } catch (e) {
       // In headless test environments where native codecs might not decode fake mock bytes,
       // fallback to creating a 1x1 transparent PNG if decoding fails.
       if (!isPdfNativeFormat(rawBytes)) {
         return transparent1x1Png;
       }
-      rethrow;
+      return rawBytes;
     }
+  }
+
+  static Future<Uint8List> _extractPngBytesAndDispose(
+    ui.Codec codec,
+    ui.FrameInfo frame,
+  ) async {
+    final byteData =
+        await frame.image.toByteData(format: ui.ImageByteFormat.png);
+    frame.image.dispose();
+    codec.dispose();
+    if (byteData == null) {
+      throw StateError('Failed to convert image frame to PNG ByteData.');
+    }
+    return byteData.buffer.asUint8List();
+  }
+
+  static int? _tryReadPngMaxDimension(Uint8List bytes) {
+    if (bytes.length >= 24 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) {
+      final bd = ByteData.sublistView(bytes);
+      final w = bd.getUint32(16);
+      final h = bd.getUint32(20);
+      return w > h ? w : h;
+    }
+    return null;
   }
 
   /// 1x1 transparent PNG fallback byte array (68 bytes)

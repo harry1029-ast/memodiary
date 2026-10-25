@@ -331,6 +331,8 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
       context,
       collection: widget.collection,
       spreads: spreads,
+      studioDocument: ctrl.document,
+      photos: widget.photos,
       mediaService: widget.mediaService,
     );
   }
