@@ -10,6 +10,8 @@ import 'core/services/media_sandbox_service.dart';
 import 'core/services/recycle_bin_service.dart';
 import 'core/theme/ink_diary_theme.dart';
 import 'features/auth/app_lock_gate.dart';
+import 'features/intro/screens/book_intro_screen.dart';
+import 'features/intro/services/book_intro_settings_service.dart';
 import 'features/timeline/screens/timeline_screen.dart';
 
 void main() async {
@@ -47,12 +49,17 @@ void main() async {
     debugPrint('Auto-purge exception during cold start: $e');
   }
 
-  // 3. Launch with AppLockGate protecting all views
+  // 3. Check whether to display the 3D Book Intro cover on launch
+  final introSettings = BookIntroSettingsService();
+  final showIntroOnLaunch = await introSettings.getShouldShowOnLaunch();
+
+  // 4. Launch with AppLockGate protecting all views
   runApp(
     AppLockGate(
       child: MemoDiaryApp(
         database: database,
         mediaService: mediaService,
+        showIntroOnLaunch: showIntroOnLaunch,
       ),
     ),
   );
@@ -61,11 +68,13 @@ void main() async {
 class MemoDiaryApp extends StatelessWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
+  final bool showIntroOnLaunch;
 
   const MemoDiaryApp({
     super.key,
     required this.database,
     required this.mediaService,
+    this.showIntroOnLaunch = false,
   });
 
   @override
@@ -75,10 +84,15 @@ class MemoDiaryApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: InkDiaryTheme.light,
       darkTheme: InkDiaryTheme.dark,
-      home: TimelineScreen(
-        database: database,
-        mediaService: mediaService,
-      ),
+      home: showIntroOnLaunch
+          ? BookIntroScreen(
+              database: database,
+              mediaService: mediaService,
+            )
+          : TimelineScreen(
+              database: database,
+              mediaService: mediaService,
+            ),
     );
   }
 }

@@ -110,6 +110,14 @@ class AlbumRepository {
         .get();
   }
 
+  /// Retrieves the most recently created travel album collection, or null if none exist.
+  Future<AlbumCollection?> getLatestCollection() {
+    return (database.select(database.albumCollections)
+          ..orderBy([(table) => OrderingTerm.desc(table.createdAt)])
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
   /// Reactive stream of all travel album collections ordered by `sortIndex ASC, createdAt DESC`.
   Stream<List<AlbumCollection>> watchAllCollections() {
     return (database.select(database.albumCollections)

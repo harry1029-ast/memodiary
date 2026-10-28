@@ -19,6 +19,8 @@ import '../../import_export/widgets/backup_dialogs.dart';
 import '../../import_export/widgets/export_dialog.dart';
 import '../services/storage_optimizer_service.dart';
 import '../widgets/notification_settings_card.dart';
+import '../../intro/screens/book_intro_screen.dart';
+import '../../intro/services/book_intro_settings_service.dart';
 
 /// Settings, Permissions Status, Storage Optimizer, and Offline Privacy screen
 /// elevated into classical Ink & Paper literati aesthetic.
@@ -84,9 +86,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   PermissionStatus? _micStatus;
   PermissionStatus? _storageStatus;
 
+  final _introSettings = BookIntroSettingsService();
+  bool _showBookIntroOnLaunch = true;
+
   @override
   void initState() {
     super.initState();
+    _loadBookIntroPreference();
     if (widget.initialStats != null) {
       _stats = widget.initialStats;
       _isLoadingStats = false;
@@ -94,6 +100,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _loadLastBackupTimestamp();
     } else {
       _loadAll();
+    }
+  }
+
+  Future<void> _loadBookIntroPreference() async {
+    final show = await _introSettings.getShouldShowOnLaunch();
+    if (mounted) {
+      setState(() => _showBookIntroOnLaunch = show);
     }
   }
 
@@ -355,6 +368,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
+          // 0. Book Cover & Experience Section
+          _buildSectionHeader('古籍开卷 · 仪式感设置', 'Book Cover & Intro', tokens),
+          _buildBookIntroCard(tokens),
+          const SizedBox(height: 20),
+
           // 1. Storage & Optimizer Section
           _buildSectionHeader('纸墨存蓄 · 存储与空间', 'Storage & Optimization', tokens),
           _buildStorageCard(tokens),
@@ -401,6 +419,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text(
             tag,
             style: TextStyle(fontSize: 10, color: tokens.danmo, letterSpacing: 0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookIntroCard(InkDiaryTokens tokens) {
+    return XuanPaperCard(
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '启动时展示古籍开卷',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: tokens.jiaomo,
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '开启后冷启动展示 3D 线装书开卷仪式与双入口',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: tokens.danmo,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                key: const Key('settings_book_intro_switch'),
+                value: _showBookIntroOnLaunch,
+                activeThumbColor: tokens.cinnabar,
+                onChanged: (val) async {
+                  await _introSettings.setShouldShowOnLaunch(val);
+                  if (mounted) {
+                    setState(() => _showBookIntroOnLaunch = val);
+                  }
+                },
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          ListTile(
+            key: const Key('settings_book_intro_tile'),
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: tokens.agedFiber,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.menu_book_rounded, color: tokens.cinnabar, size: 20),
+            ),
+            title: Text(
+              '重览 3D 古籍封面开卷',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: tokens.jiaomo,
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+              ),
+            ),
+            subtitle: Text(
+              '立即体验水墨开卷动画与双卷目导览',
+              style: TextStyle(fontSize: 10.5, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.arrow_forward_ios, size: 14, color: tokens.danmo),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BookIntroScreen(
+                    database: widget.database,
+                    mediaService: widget.mediaService,
+                    startOpened: false,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

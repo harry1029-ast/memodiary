@@ -3,6 +3,7 @@
 *.log
 *.pyc
 *.swp
+*.swo
 *~
 *.bak
 *.tmp
@@ -26,6 +27,9 @@ migrate_working_dir/
 *.iws
 .idea/
 .vscode/
+.fleet/
+.cursor/
+.zed/
 
 # Flutter / Dart / Pub related
 **/doc/api/
@@ -41,8 +45,10 @@ coverage/
 **/coverage/
 lcov.info
 devtools_options.yaml
+pubspec-overrides.yaml
+.packages
 
-# Ephemeral Platform Build Files
+# Ephemeral Platform Build Files & Native Toolchains
 linux/flutter/ephemeral/
 windows/flutter/ephemeral/
 macos/Flutter/ephemeral/
@@ -52,6 +58,9 @@ ios/Flutter/flutter_export_environment.sh
 ios/Runner/GeneratedPluginRegistrant.*
 **/Pods/
 **/DerivedData/
+CMakeLists.txt.user*
+CMakeCache.txt
+CMakeFiles/
 
 # Android Studio & Gradle Build Artifacts
 /android/app/debug
@@ -68,10 +77,19 @@ local.properties
 *.apk
 *.aab
 
-# Keystores & Signing Keys (Never commit)
+# Keystores, Signing Keys & Certificates (Never commit)
 key.properties
 **/*.keystore
 **/*.jks
+*.mobileprovision
+*.p12
+*.p8
+*.cer
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
 
 # Symbolication & Obfuscation
 app.*.symbols
@@ -79,6 +97,12 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Stitch CLI & Ephemeral Build Captures
+.stitch.json
+.stitch/current_build/
+.stitch/temp/
+.stitch/*.tmp
 
 # Local Database, Encryption Keys & Runtime Sandbox (Never commit)
 *.db
@@ -91,3 +115,5 @@ app.*.map.json
 .memodiary_auth.json
 .memodiary*
 media/
+exports/
+*.memobak
