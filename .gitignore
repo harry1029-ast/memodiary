@@ -4,22 +4,44 @@
 *.pyc
 *.swp
 *.swo
+*.swn
+*.sw?
+.*.sw?
 *~
 *.bak
 *.tmp
+*.temp
+*.orig
+*.rej
 .DS_Store
+.DS_Store?
+._*
 Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
 .Spotlight-V100
 .Trashes
 .directory
+.Trash-*
+
+# Windows & WSL Alternate Data Streams
 *:Zone.Identifier
+*Zone.Identifier*
+**/*:Zone.Identifier*
+**/*Zone.Identifier*
+
+# Transient & Migration Workspaces
 .atom/
 .build/
 .buildlog/
 .history
+.history/
 .svn/
 .swiftpm/
 migrate_working_dir/
+.scratch/
+scratch/
 
 # IDE & Editor Configurations
 *.iml
@@ -27,6 +49,7 @@ migrate_working_dir/
 *.iws
 .idea/
 .vscode/
+*.code-workspace
 .fleet/
 .cursor/
 .zed/
@@ -47,6 +70,8 @@ lcov.info
 devtools_options.yaml
 pubspec-overrides.yaml
 .packages
+flutter_*.log
+lib/generated_plugin_registrant.dart
 
 # Ephemeral Platform Build Files & Native Toolchains
 linux/flutter/ephemeral/
@@ -58,9 +83,24 @@ ios/Flutter/flutter_export_environment.sh
 ios/Runner/GeneratedPluginRegistrant.*
 **/Pods/
 **/DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+**/xcuserdata/
 CMakeLists.txt.user*
 CMakeCache.txt
 CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+
+# Native object & library binaries
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.a
 
 # Android Studio & Gradle Build Artifacts
 /android/app/debug
@@ -71,6 +111,9 @@ CMakeFiles/
 android/.gradle/
 .kotlin/
 android/.kotlin/
+android/.cxx/
+android/captures/
+**/android/.cxx/
 local.properties
 **/android/local.properties
 *.hprof
@@ -91,9 +134,13 @@ key.properties
 .env.*
 !.env.example
 
-# Symbolication & Obfuscation
+# Symbolication, Dumps & Obfuscation
 app.*.symbols
 app.*.map.json
+*.crash
+*.dump
+core
+*.core
 
 # Widget Preview related
 .widget_preview/
@@ -102,7 +149,10 @@ app.*.map.json
 .stitch.json
 .stitch/current_build/
 .stitch/temp/
+.stitch/captures/
+.stitch/screenshots/
 .stitch/*.tmp
+.stitch/*.sh
 
 # Local Database, Encryption Keys & Runtime Sandbox (Never commit)
 *.db
@@ -117,3 +167,8 @@ app.*.map.json
 media/
 exports/
 *.memobak
+
+# AI Agents & Local Scratchpads
+.antigravity/
+.gemini/
+*.agent.log
