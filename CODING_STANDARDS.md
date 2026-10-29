@@ -74,6 +74,8 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
   - Dynamic user-generated text inside chips must be bounded by `ConstrainedBox(maxWidth: 180)` and `TextOverflow.ellipsis` to prevent `RenderFlex` overflow on viewports down to $320\text{px}$.
 - **Explicit Icon Sizing**: Secondary action icons in list tiles and toolbar buttons must specify explicit pixel sizes (e.g., `size: 20` for secondary list tiles, `size: 16` for chip trailing icons) rather than relying on ambiguous inherited ambient defaults.
 - **3D Transform & Matrix4 Perspective Invariants**: When implementing outward page flips or 3D rotations in Flutter (`rotateY` with `Alignment.centerLeft`), perspective projection must use a negative scale factor (e.g. `setEntry(3, 2, -0.0008)`) so points with positive $z$ expand outward toward the camera rather than collapsing inward.
+- **Accessible Semantics on Canvas Overlays**: Transparent touch targets placed atop a `CustomPainter` (e.g. an empty `InkWell` over a custom canvas) must be explicitly wrapped in `Semantics(button: true, label: '<Action description>')`. Never leave transparent touch targets unlabelled for screen readers.
+- **Immediate SnackBar Feedback Dismissal**: When presenting immediate user feedback upon state mutation, always invoke `ScaffoldMessenger.of(context).hideCurrentSnackBar()` prior to `showSnackBar()` to prevent queued duration stalls in interactive flows and widget test harnesses.
 
 ---
 
@@ -83,7 +85,8 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
 - **Shared Test Harness Extraction**: When widget setup requires screen sizing overrides, database initialization, or service dependency wiring:
   - Extract a reusable `pump<Feature>Screen(WidgetTester tester, ...)` helper.
   - Never copy-paste identical physical size or provider wiring blocks across multiple tests in the same suite.
-- **Repeating Ticker Decoupling & Test Settling**: Widgets driving infinite ambient loops (`controller.repeat()`) must be decoupled from test settling. Test suites testing such widgets must use bounded step pumps (`tester.pump(duration)`) rather than `tester.pumpAndSettle()`. Top-level app entrypoints must default ambient intro loops (`showIntroOnLaunch: false`) to false in component test environments.
+- **Repeating Ticker Decoupling & Test Settling**: Widgets driving infinite ambient loops (`controller.repeat()`) must be decoupled from test settling. Test suites testing such widgets must use bounded step pumps (`tester.pump(duration)`) rather than `tester.pumpAndSettle()`. Top-level app entrypoints must default ambient intro loops (`showIntroOnLaunch: false`) to false in component test environments, and widgets driving background animations must guard execution with `Platform.environment['FLUTTER_TEST'] != 'true'` or an explicit `enableAmbientAnimation` flag.
+- **List Header Ticker Auto-Suspension**: Ambient 60 FPS loops rendered within scrollable list headers must expose an `isVisible` property and pause `controller.stop()` when scrolled past their viewport bounds, resuming ticking only when returned to visibility.
 - **Deep Field Parity over Bare Counts**: Stress and round-trip tests must verify 100% field parity against known-good pre-test snapshots (all columns: `title`, `contentDelta`, `entryDate`, `mood`, `weather`, `unlockAt`, `isDeleted`, `entryPinHash`), rather than only verifying table row counts.
 - **Deterministic Test Payloads**:
   - File format fixtures (such as MP4 or WebP) must declare valid magic-byte headers deterministically (e.g. 32-byte `ftyp` box header `[0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, ...]`) so format parsers pass instantaneously without flaky mocking.
