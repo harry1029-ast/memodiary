@@ -10,6 +10,7 @@ import 'package:memodiary/features/import_export/screens/import_staging_screen.d
 import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/settings/services/storage_optimizer_service.dart';
+import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../import_export/export_service_test.dart';
 
@@ -234,6 +235,7 @@ Visiting Dotonbori in the evening.
       int backupPbkdf2Iterations = 200000,
       Duration delay = const Duration(milliseconds: 50),
       ThemeSettingsService? themeSettings,
+      ScenerySettingsService? scenerySettingsService,
     }) async {
       tester.view.physicalSize = const Size(800, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -251,6 +253,7 @@ Visiting Dotonbori in the evening.
               fileSelector: mockFileSelector,
               backupPbkdf2Iterations: backupPbkdf2Iterations,
               themeSettings: themeSettings,
+              scenerySettingsService: scenerySettingsService,
               initialStats: const StorageStats(
                 activeEntriesCount: 0,
                 deletedEntriesCount: 0,
@@ -368,6 +371,59 @@ Visiting Dotonbori in the evening.
       await tester.pumpAndSettle();
       expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.system));
       expect(mockStorage.data['memodiary_theme_mode'], equals('system'));
+    });
+
+    testWidgets('toggling scenery collapsed switch, locking atmosphere, and reset tile updates state', (tester) async {
+      final mockStorage = MockSecureStorage();
+      final sceneryService = ScenerySettingsService(storage: mockStorage);
+      await pumpSettingsScreen(tester, scenerySettingsService: sceneryService);
+
+      final switchFinder = find.byKey(const Key('settings_scenery_collapsed_switch'));
+      expect(switchFinder, findsOneWidget);
+
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+      expect(mockStorage.data['memodiary_scenery_card_collapsed'], equals('true'));
+
+      // Test locking atmosphere
+      final pinTileFinder = find.byKey(const Key('settings_scenery_pin_atmosphere_tile'));
+      expect(pinTileFinder, findsOneWidget);
+
+      await tester.tap(pinTileFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('锁定画卷意境'), findsAtLeast(1));
+      // Tap winter season chip
+      final winterChip = find.byKey(const Key('settings_pin_season_chip_winter'));
+      expect(winterChip, findsOneWidget);
+      await tester.tap(winterChip);
+      await tester.pumpAndSettle();
+
+      // Tap night time chip
+      final nightChip = find.byKey(const Key('settings_pin_time_chip_night'));
+      expect(nightChip, findsOneWidget);
+      await tester.tap(nightChip);
+      await tester.pumpAndSettle();
+
+      // Tap save
+      final saveBtn = find.byKey(const Key('settings_pin_save_button'));
+      expect(saveBtn, findsOneWidget);
+      await tester.tap(saveBtn);
+      await tester.pumpAndSettle();
+
+      expect(mockStorage.data['memodiary_scenery_pinned_season'], equals('winter'));
+      expect(mockStorage.data['memodiary_scenery_pinned_time'], equals('night'));
+
+      // Test reset tile
+      final resetTileFinder = find.byKey(const Key('settings_scenery_reset_atmosphere_tile'));
+      expect(resetTileFinder, findsOneWidget);
+
+      await tester.tap(resetTileFinder);
+      await tester.pumpAndSettle();
+
+      expect(find.text('已恢复实时四时天候同步'), findsOneWidget);
+      expect(mockStorage.data['memodiary_scenery_pinned_season'], isNull);
+      expect(mockStorage.data['memodiary_scenery_pinned_time'], isNull);
     });
   });
 }

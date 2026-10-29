@@ -7,7 +7,6 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/core/theme/widgets/ink_metadata_pill.dart';
-import 'package:memodiary/core/theme/widgets/xuan_paper_card.dart';
 import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/retrospection/widgets/on_this_day_banner.dart';
@@ -21,17 +20,29 @@ import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_date_spine_item.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
+import '../../editor/services/audio_sanctum_service.dart';
+import '../../scenery/models/shanshui_atmosphere.dart';
+import '../../scenery/screens/contemplation_view_screen.dart';
+import '../../scenery/services/scenery_settings_service.dart';
+import '../../scenery/services/shanshui_atmosphere_resolver.dart';
+import '../../scenery/widgets/shanshui_scenery_card.dart';
 
 /// Main screen displaying the reverse-chronological, lazy-paginated timeline feed of entries
 /// styled in the Ink & Paper Journal (*墨记 · 水墨宣纸*) aesthetic.
 class TimelineScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
+  final ScenerySettingsService? scenerySettingsService;
+  final AudioSanctumService? audioSanctumService;
+  final bool? enableSceneryAnimation;
 
   const TimelineScreen({
     super.key,
     required this.database,
     required this.mediaService,
+    this.scenerySettingsService,
+    this.audioSanctumService,
+    this.enableSceneryAnimation,
   });
 
   @override
@@ -42,6 +53,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
   static const int _pageSize = 20;
 
   final ScrollController _scrollController = ScrollController();
+  late final ScenerySettingsService _scenerySettings;
+  ShanshuiAtmosphereState? _pinnedAtmosphere;
   List<Entry> _entries = [];
   List<Entry> _onThisDayEntries = [];
   Map<String, MediaAttachment> _mediaMap = {};
@@ -51,6 +64,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   bool _hasMore = true;
   int _offset = 0;
   String? _errorMessage;
+  bool _isSceneryVisible = true;
 
   // Thought Spark Inspiration Prompts
   int _sparkIndex = 0;
@@ -65,8 +79,17 @@ class _TimelineScreenState extends State<TimelineScreen> {
   @override
   void initState() {
     super.initState();
+    _scenerySettings = widget.scenerySettingsService ?? ScenerySettingsService();
     _scrollController.addListener(_onScroll);
     _loadInitial();
+    _loadScenerySettings();
+  }
+
+  Future<void> _loadScenerySettings() async {
+    final pinned = await _scenerySettings.getPinnedAtmosphere();
+    if (mounted && pinned != _pinnedAtmosphere) {
+      setState(() => _pinnedAtmosphere = pinned);
+    }
   }
 
   @override
@@ -76,12 +99,26 @@ class _TimelineScreenState extends State<TimelineScreen> {
   }
 
   void _onScroll() {
+    if (_scrollController.hasClients) {
+      final isVisible = _scrollController.offset <= 240.0;
+      if (isVisible != _isSceneryVisible) {
+        setState(() => _isSceneryVisible = isVisible);
+      }
+    }
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 250 &&
         !_isLoadingMore &&
         _hasMore) {
       _loadMore();
     }
+  }
+
+  ShanshuiAtmosphereState _resolveRealTimeAtmosphere() {
+    final latestWeather = _entries.isNotEmpty ? _entries.first.weather : null;
+    return ShanshuiAtmosphereResolver.resolve(
+      now: DateTime.now(),
+      latestEntryWeather: latestWeather,
+    );
   }
 
   Future<void> _loadInitial() async {
@@ -573,92 +610,40 @@ class _TimelineScreenState extends State<TimelineScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Thought Spark Card (灵感火花)
-          XuanPaperCard(
-            margin: EdgeInsets.zero,
-            padding: const EdgeInsets.all(12),
-            backgroundColor: tokens.agedFiber.withValues(alpha: 0.4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 5,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: tokens.cinnabar,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '灵感火花 · THOUGHT SPARK',
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                            color: tokens.jiaomo,
-                          ),
-                        ),
-                      ],
-                    ),
-                    InkWell(
-                      onTap: () {
-                        setState(() {
-                          _sparkIndex = (_sparkIndex + 1) % _thoughtSparks.length;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4.0),
-                        child: Icon(
-                          Icons.refresh_rounded,
-                          size: 16,
-                          color: tokens.danmo,
-                        ),
+          // Shanshui Scenery Card with Embedded Thought Spark Dock
+          Builder(
+            builder: (context) {
+              final realTimeAtmosphere = _resolveRealTimeAtmosphere();
+              final activeAtmosphere = _pinnedAtmosphere ?? realTimeAtmosphere;
+
+              return ShanshuiSceneryCard(
+                atmosphere: activeAtmosphere,
+                activePrompt: _thoughtSparks[_sparkIndex],
+                onRefreshPrompt: () {
+                  setState(() {
+                    _sparkIndex = (_sparkIndex + 1) % _thoughtSparks.length;
+                  });
+                },
+                onWritePrompt: (prompt) => _handleCreateEntry(prompt),
+                onOpenContemplation: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ContemplationViewScreen(
+                        initialAtmosphere: activeAtmosphere,
+                        realTimeAtmosphere: realTimeAtmosphere,
+                        audioService: widget.audioSanctumService ??
+                            AudioSanctumService(),
+                        enableAmbientAnimation: widget.enableSceneryAnimation,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '“${_thoughtSparks[_sparkIndex]}”',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontLiterata,
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    height: 1.5,
-                    color: tokens.nongmo,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: () => _handleCreateEntry(_thoughtSparks[_sparkIndex]),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      foregroundColor: tokens.cinnabar,
-                    ),
-                    icon: const Icon(Icons.brush, size: 13),
-                    label: const Text(
-                      '由此题落墨',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                  );
+                },
+                settingsService: _scenerySettings,
+                enableAmbientAnimation: widget.enableSceneryAnimation,
+                isVisible: _isSceneryVisible,
+              );
+            },
           ),
         ],
       ),

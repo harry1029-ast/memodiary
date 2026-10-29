@@ -8,6 +8,9 @@ import 'package:memodiary/features/albums/screens/album_collections_screen.dart'
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
+import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dart';
+import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
+import 'package:memodiary/features/scenery/widgets/thought_spark_dock.dart';
 
 void main() {
   late AppDatabase db;
@@ -22,18 +25,25 @@ void main() {
     await db.close();
   });
 
+  Future<void> pumpTimelineScreen(
+    WidgetTester tester, {
+    AppDatabase? database,
+    MediaSandboxService? sandboxService,
+  }) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TimelineScreen(
+          database: database ?? db,
+          mediaService: sandboxService ?? mediaService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
   group('TimelineScreen Widget Tests', () {
     testWidgets('displays empty state when no entries exist', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
+      await pumpTimelineScreen(tester);
 
       expect(find.text('MemoDiary'), findsOneWidget);
       expect(find.text('No Diary Entries Yet'), findsOneWidget);
@@ -206,6 +216,126 @@ void main() {
       // Verify title is rendered cleanly without overflow
       expect(find.text('MemoDiary'), findsOneWidget);
       expect(find.text('拾光日记'), findsOneWidget);
+    });
+
+    testWidgets('ShanshuiSceneryCard renders in header, cycles prompts on refresh, and navigates to editor on 由此题落墨', (tester) async {
+      await pumpTimelineScreen(tester);
+
+      expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
+      expect(find.byType(ThoughtSparkDock), findsOneWidget);
+      expect(find.textContaining('灵感火花 · THOUGHT SPARK'), findsOneWidget);
+
+      // Refresh prompt
+      final initialPromptText = find.textContaining('瓦檐下一滴落雨的声响');
+      expect(initialPromptText, findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('thought_spark_refresh_button')));
+      await tester.pumpAndSettle();
+
+      expect(initialPromptText, findsNothing);
+      expect(find.textContaining('多看一眼天边的云霞'), findsOneWidget);
+
+      // Tap 由此题落墨
+      await tester.tap(find.byKey(const Key('thought_spark_write_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EntryEditorScreen), findsOneWidget);
+      final allEntries = await db.select(db.entries).get();
+      expect(
+        allEntries.any((entry) => entry.plainText.contains('今天有没有一瞬间')),
+        isTrue,
+      );
+    });
+
+    testWidgets('collapse button switches ShanshuiSceneryCard into 42px status strip and expand restores it', (tester) async {
+      await pumpTimelineScreen(tester);
+
+      expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
+      expect(find.byKey(const Key('scenery_card_collapsed')), findsNothing);
+
+      // Tap collapse
+      await tester.tap(find.byKey(const Key('scenery_collapse_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
+      expect(find.byKey(const Key('scenery_card_expanded')), findsNothing);
+
+      // Tap expand
+      await tester.tap(find.byKey(const Key('scenery_expand_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
+      expect(find.byKey(const Key('scenery_card_collapsed')), findsNothing);
+    });
+
+    testWidgets('tapping scenery area navigates to ContemplationViewScreen', (tester) async {
+      await pumpTimelineScreen(tester);
+
+      await tester.tap(find.byKey(const Key('scenery_canvas_tap_target')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ContemplationViewScreen), findsOneWidget);
+      expect(find.byKey(const Key('contemplation_lake_canvas')), findsOneWidget);
+
+      // Close back to timeline
+      await tester.tap(find.byKey(const Key('contemplation_close_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TimelineScreen), findsOneWidget);
+    });
+
+    testWidgets('ShanshuiSceneryCard reflects recent entry weather tag', (tester) async {
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'rainy_entry_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('Rainy Day Reflection'),
+          contentDelta: jsonEncode([{'insert': 'Listening to the raindrops.\n'}]),
+          plainText: 'Listening to the raindrops.',
+          entryDate: DateTime.now(),
+          weather: const Value('rainy'),
+        ),
+      );
+
+      await pumpTimelineScreen(tester);
+
+      // Weather badge contains 烟雨
+      expect(find.textContaining('烟雨'), findsAtLeast(1));
+    });
+
+    testWidgets('scrolling timeline past header unmounts scenery card and scroll restoration re-renders it', (tester) async {
+      // Create several entries so list is scrollable
+      for (int i = 0; i < 15; i++) {
+        await db.createEntry(
+          EntriesCompanion.insert(
+            id: 'scroll_entry_$i',
+            notebookId: 'notebook_default',
+            templateId: 'template_minimalist_white',
+            title: Value('Entry $i'),
+            contentDelta: jsonEncode([{'insert': 'Content for entry $i\n'}]),
+            plainText: 'Content for entry $i',
+            entryDate: DateTime.now().subtract(Duration(days: i)),
+          ),
+        );
+      }
+
+      await pumpTimelineScreen(tester);
+
+      // Initially scenery card is visible
+      expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
+
+      // Scroll down past header
+      await tester.drag(find.byType(ListView), const Offset(0, -450));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ShanshuiSceneryCard), findsNothing);
+
+      // Scroll back up to the top
+      await tester.drag(find.byType(ListView), const Offset(0, 450));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
     });
   });
 }

@@ -22,6 +22,8 @@ import '../services/storage_optimizer_service.dart';
 import '../widgets/notification_settings_card.dart';
 import '../../intro/screens/book_intro_screen.dart';
 import '../../intro/services/book_intro_settings_service.dart';
+import '../../scenery/models/shanshui_atmosphere.dart';
+import '../../scenery/services/scenery_settings_service.dart';
 
 /// Settings, Permissions Status, Storage Optimizer, and Offline Privacy screen
 /// elevated into classical Ink & Paper literati aesthetic.
@@ -34,6 +36,7 @@ class SettingsScreen extends StatefulWidget {
   final Future<Map<String, PermissionStatus>> Function()? permissionChecker;
   final StorageStats? initialStats;
   final ThemeSettingsService? themeSettings;
+  final ScenerySettingsService? scenerySettingsService;
 
   const SettingsScreen({
     super.key,
@@ -45,6 +48,7 @@ class SettingsScreen extends StatefulWidget {
     this.permissionChecker,
     this.initialStats,
     this.themeSettings,
+    this.scenerySettingsService,
   });
 
   static Future<Map<String, PermissionStatus>> defaultPermissionChecker() async {
@@ -91,12 +95,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final _introSettings = BookIntroSettingsService();
   bool _showBookIntroOnLaunch = true;
+  late final ScenerySettingsService _scenerySettings;
+  bool _isSceneryCollapsed = false;
+  ShanshuiAtmosphereState? _pinnedAtmosphere;
 
   late final ThemeSettingsService _themeSettings;
 
   @override
   void initState() {
     super.initState();
+    _scenerySettings = widget.scenerySettingsService ?? ScenerySettingsService();
     _themeSettings = widget.themeSettings ?? ThemeSettingsService.instance;
     _loadBookIntroPreference();
     if (widget.initialStats != null) {
@@ -111,8 +119,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadBookIntroPreference() async {
     final show = await _introSettings.getShouldShowOnLaunch();
+    final isSceneryCollapsed = await _scenerySettings.getIsCollapsed();
+    final pinned = await _scenerySettings.getPinnedAtmosphere();
     if (mounted) {
-      setState(() => _showBookIntroOnLaunch = show);
+      setState(() {
+        _showBookIntroOnLaunch = show;
+        _isSceneryCollapsed = isSceneryCollapsed;
+        _pinnedAtmosphere = pinned;
+      });
     }
   }
 
@@ -522,8 +536,243 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '默认折叠山水画卷',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: tokens.jiaomo,
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '在日记时间轴默认收起画卷为精简状态条',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: tokens.danmo,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                key: const Key('settings_scenery_collapsed_switch'),
+                value: _isSceneryCollapsed,
+                activeThumbColor: tokens.cinnabar,
+                onChanged: (val) async {
+                  await _scenerySettings.setIsCollapsed(val);
+                  if (mounted) {
+                    setState(() => _isSceneryCollapsed = val);
+                  }
+                },
+              ),
+            ],
+          ),
+          const Divider(height: 20),
+          ListTile(
+            key: const Key('settings_scenery_pin_atmosphere_tile'),
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: tokens.agedFiber,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.landscape_outlined, color: tokens.cinnabar, size: 20),
+            ),
+            title: Text(
+              '锁定画卷意境',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: tokens.jiaomo,
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+              ),
+            ),
+            subtitle: Text(
+              _pinnedAtmosphere != null
+                  ? '${_pinnedAtmosphere!.season.nameZh} · ${_pinnedAtmosphere!.timeOfDay.nameZh} · ${_pinnedAtmosphere!.weather.nameZh}'
+                  : '随本地时辰与近作天候实时流转',
+              style: TextStyle(fontSize: 10.5, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.tune_rounded, size: 16, color: tokens.danmo),
+            onTap: () => _showPinAtmosphereDialog(tokens),
+          ),
+          const Divider(height: 20),
+          ListTile(
+            key: const Key('settings_scenery_reset_atmosphere_tile'),
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: tokens.agedFiber,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.wb_sunny_outlined, color: tokens.cinnabar, size: 20),
+            ),
+            title: Text(
+              '重置画卷气象同步',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: tokens.jiaomo,
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+              ),
+            ),
+            subtitle: Text(
+              '清除固定画卷天候，恢复与本地时辰及近作天候同步',
+              style: TextStyle(fontSize: 10.5, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.refresh_rounded, size: 16, color: tokens.danmo),
+            onTap: () async {
+              await _scenerySettings.setPinnedAtmosphere(null);
+              if (!mounted) return;
+              setState(() => _pinnedAtmosphere = null);
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('已恢复实时四时天候同步')),
+              );
+            },
+          ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showPinAtmosphereDialog(InkDiaryTokens tokens) async {
+    ShanshuiSeason selectedSeason = _pinnedAtmosphere?.season ?? ShanshuiSeason.spring;
+    ShanshuiTimeOfDay selectedTime = _pinnedAtmosphere?.timeOfDay ?? ShanshuiTimeOfDay.day;
+    ShanshuiWeather selectedWeather = _pinnedAtmosphere?.weather ?? ShanshuiWeather.sunny;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: tokens.xuanGround,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                '锁定画卷意境',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: tokens.jiaomo,
+                ),
+              ),
+              content: MediaQuery.withClampedTextScaling(
+                maxScaleFactor: 1.3,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('四季时节', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        children: ShanshuiSeason.values.map((s) {
+                          final isSel = selectedSeason == s;
+                          return ChoiceChip(
+                            key: Key('settings_pin_season_chip_${s.id}'),
+                            label: Text(s.nameZh),
+                            selected: isSel,
+                            onSelected: (_) => setDialogState(() => selectedSeason = s),
+                            selectedColor: tokens.cinnabar,
+                            labelStyle: TextStyle(
+                              color: isSel ? Colors.white : tokens.jiaomo,
+                              fontSize: 11,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                      Text('时辰光景', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        children: ShanshuiTimeOfDay.values.map((t) {
+                          final isSel = selectedTime == t;
+                          return ChoiceChip(
+                            key: Key('settings_pin_time_chip_${t.id}'),
+                            label: Text(t.nameZh),
+                            selected: isSel,
+                            onSelected: (_) => setDialogState(() => selectedTime = t),
+                            selectedColor: tokens.cinnabar,
+                            labelStyle: TextStyle(
+                              color: isSel ? Colors.white : tokens.jiaomo,
+                              fontSize: 11,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                      Text('天候气象', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        children: ShanshuiWeather.values.map((w) {
+                          final isSel = selectedWeather == w;
+                          return ChoiceChip(
+                            key: Key('settings_pin_weather_chip_${w.id}'),
+                            label: Text(w.nameZh),
+                            selected: isSel,
+                            onSelected: (_) => setDialogState(() => selectedWeather = w),
+                            selectedColor: tokens.cinnabar,
+                            labelStyle: TextStyle(
+                              color: isSel ? Colors.white : tokens.jiaomo,
+                              fontSize: 11,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: Text('取消', style: TextStyle(color: tokens.danmo)),
+                ),
+                FilledButton(
+                  key: const Key('settings_pin_save_button'),
+                  style: FilledButton.styleFrom(backgroundColor: tokens.cinnabar),
+                  onPressed: () async {
+                    final newState = ShanshuiAtmosphereState(
+                      season: selectedSeason,
+                      timeOfDay: selectedTime,
+                      weather: selectedWeather,
+                    );
+                    await _scenerySettings.setPinnedAtmosphere(newState);
+                    if (dialogContext.mounted) {
+                      Navigator.pop(dialogContext);
+                    }
+                    if (mounted) {
+                      setState(() => _pinnedAtmosphere = newState);
+                      ScaffoldMessenger.of(this.context).hideCurrentSnackBar();
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        SnackBar(content: Text('已锁定画卷为：${newState.season.nameZh} · ${newState.timeOfDay.nameZh} · ${newState.weather.nameZh}')),
+                      );
+                    }
+                  },
+                  child: const Text('保存锁定'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
