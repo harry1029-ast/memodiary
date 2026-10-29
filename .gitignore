@@ -56,6 +56,8 @@ scratch/
 .fleet/
 .cursor/
 .zed/
+*.sublime-workspace
+*.sublime-project
 
 # Flutter / Dart / Pub related
 **/doc/api/
@@ -94,6 +96,10 @@ ios/Runner/GeneratedPluginRegistrant.*
 *.xcscmblueprint
 *.xccheckout
 *.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
 **/xcuserdata/
 CMakeLists.txt.user*
 CMakeCache.txt
@@ -153,14 +159,14 @@ core.[0-9]*
 # Widget Preview related
 .widget_preview/
 
-# Stitch CLI & Ephemeral Build Captures
+# Stitch CLI & Local Design Prototyping Workspace
+.stitch/
 .stitch.json
-.stitch/current_build/
-.stitch/temp/
-.stitch/captures/
-.stitch/screenshots/
-.stitch/*.tmp
-.stitch/*.sh
+
+# Node & Package Ephemera
+node_modules/
+.npm/
+.yarn/
 
 # Local Database, Encryption Keys & Runtime Sandbox (Never commit)
 *.db
