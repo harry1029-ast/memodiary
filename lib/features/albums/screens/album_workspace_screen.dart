@@ -208,6 +208,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
           collection: collection,
           photos: photos,
           mediaService: widget.mediaService,
+          repository: widget.repository,
         ),
       ),
     );

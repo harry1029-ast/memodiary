@@ -15,3 +15,11 @@ _Avoid_: Prompt banner, inspiration card
 **Contemplation View**:
 The full-screen interactive modal displaying the complete 3:2 living Shanshui painting with touch ripples, calligraphy colophon, and atmospheric controls.
 _Avoid_: Fullscreen canvas, scenery dialog, zoom view
+
+**Photobook Document**:
+The canonical document model (`AlbumStudioDocument`) representing an editable travel photobook, containing ordered studio pages, layout slot assignments, background styling, and unplaced photo tray references.
+_Avoid_: Album spread list, photobook layout JSON, scrapbook model
+
+**Photobook Spread**:
+A two-page visual unit (`BookSpreadData`) representing facing leaves in the overview feed, flipbook viewer, and bound PDF export, flanked by Front Cover and Epilogue colophon bookends.
+_Avoid_: AlbumSpread, spread pair

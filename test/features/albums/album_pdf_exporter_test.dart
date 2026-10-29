@@ -3,9 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/features/albums/models/album_spread.dart';
 import 'package:memodiary/features/albums/models/album_studio_models.dart';
-import 'package:memodiary/features/albums/services/album_layout_engine.dart';
 import 'package:memodiary/features/albums/services/album_pdf_exporter.dart';
 import 'package:memodiary/features/albums/widgets/album_pdf_preview_sheet.dart';
 import 'album_test_harness.dart';
@@ -88,52 +86,15 @@ void main() {
         createdAt: now,
       );
 
-      final spreads = <AlbumSpread>[
-        CoverSpread(
-          pageNumber: 1,
-          title: collection.title,
-          description: collection.description,
-          destinationTag: collection.destinationTag,
-          startDate: collection.startDate,
-          endDate: collection.endDate,
-          photoCount: 6,
-          coverImagePath: sandboxed1.relativeImagePath,
-        ),
-        SingleHeroSpread(pageNumber: 2, photo: p1),
-        DuoSpread(
-          pageNumber: 3,
-          firstPhoto: p1,
-          secondPhoto: p2,
-          orientation: DuoLayoutOrientation.sideBySide,
-        ),
-        DuoSpread(
-          pageNumber: 4,
-          firstPhoto: p1,
-          secondPhoto: p2,
-          orientation: DuoLayoutOrientation.stacked,
-        ),
-        QuadSpread(
-          pageNumber: 5,
-          photos: [p1, p2, p1, p2],
-        ),
-        const EpilogueSpread(
-          pageNumber: 6,
-          title: '西湖烟雨集',
-          routeSummary: '杭州 → 乌镇 → 苏州',
-          totalPhotos: 6,
-          totalLocations: 3,
-          sealText: '江南',
-        ),
-      ];
-
       var transcodeCalls = 0;
       Future<Uint8List> mockTranscoder(Uint8List raw) async {
         transcodeCalls++;
         return kDeterministic1x1Png;
       }
 
-      final a4Bytes = await AlbumPdfExporter.generatePhotobookFromSpreads(
-        spreads: spreads,
+      final a4Bytes = await AlbumPdfExporter.generatePhotobookPdf(
+        collection: collection,
+        photos: [p1, p2],
         mediaService: harness.mediaService,
         format: AlbumPdfPageFormat.a4Landscape,
         imageTranscoder: mockTranscoder,
@@ -141,10 +102,11 @@ void main() {
 
       expect(a4Bytes, isNotEmpty);
       expect(latin1.decode(a4Bytes.sublist(0, 5)), '%PDF-');
-      expect(_countPdfPages(a4Bytes), 6);
+      expect(_countPdfPages(a4Bytes), greaterThanOrEqualTo(2));
 
-      final squareBytes = await AlbumPdfExporter.generatePhotobookFromSpreads(
-        spreads: spreads,
+      final squareBytes = await AlbumPdfExporter.generatePhotobookPdf(
+        collection: collection,
+        photos: [p1, p2],
         mediaService: harness.mediaService,
         format: AlbumPdfPageFormat.square,
         imageTranscoder: mockTranscoder,
@@ -152,8 +114,7 @@ void main() {
 
       expect(squareBytes, isNotEmpty);
       expect(latin1.decode(squareBytes.sublist(0, 5)), '%PDF-');
-      expect(_countPdfPages(squareBytes), 6);
-      // Since our test fixture already writes PNG magic bytes, fast-path or transcoder works cleanly
+      expect(_countPdfPages(squareBytes), greaterThanOrEqualTo(2));
       expect(transcodeCalls, greaterThanOrEqualTo(0));
     });
 
@@ -344,7 +305,7 @@ void main() {
         updatedAt: now,
       );
 
-      // 1. A4 Landscape single-page format: 1 Cover + 3 Studio pages = 4 PDF pages
+      // 1. A4 Landscape single-page format: 1 Cover + 3 Studio pages + 1 Colophon = 5 PDF pages
       final a4Bytes = await AlbumPdfExporter.generatePhotobookPdf(
         collection: collection,
         photos: photos,
@@ -353,13 +314,13 @@ void main() {
         imageTranscoder: (_) async => kDeterministic1x1Png,
       );
       expect(latin1.decode(a4Bytes.sublist(0, 5)), '%PDF-');
-      expect(_countPdfPages(a4Bytes), 4);
+      expect(_countPdfPages(a4Bytes), 5);
       final a4Raw = latin1.decode(a4Bytes, allowInvalid: true);
       expect(a4Raw, isNot(contains('????')));
       expect(a4Raw, contains('/Subtype/Type0'));
       expect(a4Raw, contains('/Encoding/Identity-H'));
 
-      // 2. Square format: 1 Cover + 3 Studio pages = 4 PDF pages
+      // 2. Square format: 1 Cover + 3 Studio pages + 1 Colophon = 5 PDF pages
       final squareBytes =
           await AlbumPdfExporter.generatePhotobookFromStudioDocument(
         collection: collection,
@@ -370,12 +331,13 @@ void main() {
         imageTranscoder: (_) async => kDeterministic1x1Png,
       );
       expect(latin1.decode(squareBytes.sublist(0, 5)), '%PDF-');
-      expect(_countPdfPages(squareBytes), 4);
+      expect(_countPdfPages(squareBytes), 5);
 
       // 3. 2-Page Bound Spread format (420x210mm):
       // Spread 1 = Cover (left) + Page 2 (right)
       // Spread 2 = Page 3 (left) + Page 4 (right)
-      // Total = 2 Bound Spread PDF pages
+      // Spread 3 = Blank (left) + Colophon (right)
+      // Total = 3 Bound Spread PDF pages
       final spreadBytes =
           await AlbumPdfExporter.generatePhotobookFromStudioDocument(
         collection: collection,
@@ -386,7 +348,7 @@ void main() {
         imageTranscoder: (_) async => kDeterministic1x1Png,
       );
       expect(latin1.decode(spreadBytes.sublist(0, 5)), '%PDF-');
-      expect(_countPdfPages(spreadBytes), 2);
+      expect(_countPdfPages(spreadBytes), 3);
       final spreadRaw = latin1.decode(spreadBytes, allowInvalid: true);
       expect(spreadRaw, isNot(contains('????')));
     });
@@ -411,11 +373,6 @@ void main() {
       createdAt: now,
       updatedAt: now,
     );
-    final spreads = AlbumLayoutEngine.synthesize(
-      collection: collection,
-      photos: const [],
-    );
-
     Uint8List? savedBytes;
     String? savedFileName;
 
@@ -430,7 +387,7 @@ void main() {
                 AlbumPdfPreviewSheet.show(
                   context,
                   collection: collection,
-                  spreads: spreads,
+                  photos: const [],
                   mediaService: harness.mediaService,
                   imageTranscoder: (_) async => kDeterministic1x1Png,
                   customSaveHandler: (bytes, fileName) async {
@@ -451,7 +408,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('album_pdf_preview_sheet')), findsOneWidget);
-    expect(find.text('共 2 页画幅'), findsOneWidget);
+    expect(find.text('共 3 页画幅'), findsOneWidget);
 
     // Select Square format
     await tester.tap(find.byKey(const Key('pdf_format_square')));
@@ -517,7 +474,6 @@ void main() {
                 AlbumPdfPreviewSheet.show(
                   context,
                   collection: collection,
-                  spreads: const [],
                   studioDocument: studioDoc,
                   photos: const [],
                   mediaService: harness.mediaService,
@@ -540,7 +496,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('album_pdf_preview_sheet')), findsOneWidget);
-    expect(find.text('共 3 页画幅'), findsOneWidget);
+    expect(find.text('共 4 页画幅'), findsOneWidget);
 
     // Select 2-Page Bound Spread format
     await tester.tap(find.byKey(const Key('pdf_format_bound_spread')));

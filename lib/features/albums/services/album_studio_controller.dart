@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../data/album_repository.dart';
 import '../models/album_studio_models.dart';
@@ -15,17 +16,26 @@ class AlbumStudioController extends ChangeNotifier {
 
   final String collectionId;
   final AlbumRepository? repository;
+  final Future<void> Function(AlbumStudioDocument)? onPersist;
+  final Duration debounceDuration;
 
   AlbumStudioDocument _document;
   final List<AlbumStudioDocument> _undoStack = [];
   final List<AlbumStudioDocument> _redoStack = [];
   int _selectedPageIndex = 0;
+  Timer? _debounceTimer;
 
   AlbumStudioController({
     required this.collectionId,
     required AlbumStudioDocument initialDocument,
     this.repository,
-  }) : _document = initialDocument;
+    Future<void> Function(AlbumStudioDocument)? onPersist,
+    this.debounceDuration = const Duration(milliseconds: 600),
+  })  : _document = initialDocument,
+        onPersist = onPersist ??
+            (repository != null
+                ? ((doc) => repository.saveStudioDocument(collectionId, doc))
+                : null);
 
   AlbumStudioDocument get document => _document;
 
@@ -69,6 +79,7 @@ class AlbumStudioController extends ChangeNotifier {
         _document.pages.isNotEmpty) {
       _selectedPageIndex = _document.pages.length - 1;
     }
+    _schedulePersist();
     notifyListeners();
   }
 
@@ -123,6 +134,7 @@ class AlbumStudioController extends ChangeNotifier {
       _redoStack.removeAt(0);
     }
     _document = previous;
+    _schedulePersist();
     notifyListeners();
   }
 
@@ -135,6 +147,7 @@ class AlbumStudioController extends ChangeNotifier {
       _undoStack.removeAt(0);
     }
     _document = next;
+    _schedulePersist();
     notifyListeners();
   }
 
@@ -588,10 +601,40 @@ class AlbumStudioController extends ChangeNotifier {
     ];
   }
 
-  /// Persists the current [document] to SQLite via [repository].
+  void _schedulePersist() {
+    if (onPersist == null) return;
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(debounceDuration, () {
+      _executePersist();
+    });
+  }
+
+  Future<void> _executePersist() async {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+    final callback = onPersist;
+    if (callback != null) {
+      await callback(_document);
+    }
+  }
+
+  /// Flushes any pending debounced persistence mutation immediately.
+  Future<void> flush() async {
+    if (_debounceTimer != null) {
+      await _executePersist();
+    }
+  }
+
+  /// Persists the current [document] to SQLite via [onPersist] or [repository].
   Future<void> saveToRepository() async {
-    final repo = repository;
-    if (repo == null) return;
-    await repo.saveStudioDocument(collectionId, _document);
+    await _executePersist();
+  }
+
+  @override
+  void dispose() {
+    if (_debounceTimer != null) {
+      _executePersist();
+    }
+    super.dispose();
   }
 }

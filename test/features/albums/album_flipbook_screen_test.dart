@@ -1,8 +1,9 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/features/albums/models/album_studio_models.dart';
 import 'package:memodiary/features/albums/screens/album_flipbook_screen.dart';
+import 'package:memodiary/features/albums/screens/album_page_editor_screen.dart';
 import 'package:memodiary/features/albums/screens/album_workspace_screen.dart';
 import 'album_test_harness.dart';
 
@@ -54,14 +55,14 @@ void main() {
 
     expect(find.byType(AlbumFlipbookScreen), findsOneWidget);
     expect(find.byKey(const Key('flipbook_page_indicator')), findsOneWidget);
-    expect(find.text('第 1 / 3 页'), findsOneWidget);
+    expect(find.text('第 1 / 1 页'), findsOneWidget);
     expect(find.byKey(const Key('spread_cover_title')), findsOneWidget);
 
     await tearDownAlbumScreen(tester);
   });
 
   testWidgets(
-      'AlbumFlipbookScreen navigates across Cover, Hero, Duo, and Epilogue spreads and toggles fullscreen',
+      'AlbumFlipbookScreen navigates across facing spreads and toggles fullscreen',
       (tester) async {
     final collection = AlbumCollection(
       id: 'col-flip-2',
@@ -79,11 +80,9 @@ void main() {
       updatedAt: DateTime(2026, 4, 4),
     );
 
-    // Prepare 3 photos so 'editorial' layout generates:
-    // Page 1: CoverSpread
-    // Page 2: SingleHeroSpread (photo 1)
-    // Page 3: DuoSpread (photo 2 + photo 3)
-    // Page 4: EpilogueSpread
+    // Prepare 3 photos for multi-photo collage photobook spreads:
+    // Spread 1: Cover (left) + Page 1 (right)
+    // Spread 2: Page 2 (left) + Page 3 (right)
     final photos = [
       AlbumPhoto(
         id: 'p1',
@@ -123,39 +122,64 @@ void main() {
       ),
     ];
 
+    final studioDocument = AlbumStudioDocument(
+      pages: [
+        AlbumPageModel(
+          id: 'p1_model',
+          pageNumber: 1,
+          layoutTemplateId: 'solo_full_bleed',
+          photoSlots: const [
+            PhotoSlotAssignment(slotIndex: 0, photoId: 'p1'),
+          ],
+          backgroundConfig: const PageBackgroundConfig(
+            backgroundColorArgb: 0xFFFCF9F2,
+          ),
+        ),
+        AlbumPageModel(
+          id: 'p2_model',
+          pageNumber: 2,
+          layoutTemplateId: 'solo_full_bleed',
+          photoSlots: const [
+            PhotoSlotAssignment(slotIndex: 0, photoId: 'p2'),
+          ],
+          backgroundConfig: const PageBackgroundConfig(
+            backgroundColorArgb: 0xFFFCF9F2,
+          ),
+        ),
+        AlbumPageModel(
+          id: 'p3_model',
+          pageNumber: 3,
+          layoutTemplateId: 'solo_full_bleed',
+          photoSlots: const [
+            PhotoSlotAssignment(slotIndex: 0, photoId: 'p3'),
+          ],
+          backgroundConfig: const PageBackgroundConfig(
+            backgroundColorArgb: 0xFFFCF9F2,
+          ),
+        ),
+      ],
+    );
+
     await pumpAlbumScreen(
       tester,
       AlbumFlipbookScreen(
         collection: collection,
         photos: photos,
+        studioDocument: studioDocument,
+        repository: harness.repository,
         mediaService: harness.mediaService,
       ),
     );
     await tester.pumpAndSettle();
 
-    // Verify Page 1 (Cover)
-    expect(find.text('第 1 / 4 页'), findsOneWidget);
+    // Verify Spread 1 (Cover on left, Page 1 on right)
+    expect(find.text('第 1 / 2 页'), findsOneWidget);
     expect(find.byKey(const Key('spread_cover_title')), findsOneWidget);
 
-    // Step to Page 2 (SingleHeroSpread) via next button
+    // Step to Spread 2 (Page 2 on left, Page 3 on right) via next button
     await tester.tap(find.byKey(const Key('flipbook_next_page_button')));
     await tester.pumpAndSettle();
-    expect(find.text('第 2 / 4 页'), findsOneWidget);
-    expect(find.byKey(const Key('spread_hero_caption_p1')), findsOneWidget);
-    expect(find.text('西湖苏堤春晓'), findsOneWidget);
-
-    // Step to Page 3 (DuoSpread)
-    await tester.tap(find.byKey(const Key('flipbook_next_page_button')));
-    await tester.pumpAndSettle();
-    expect(find.text('第 3 / 4 页'), findsOneWidget);
-    expect(find.byKey(const Key('spread_duo_side_by_side')), findsOneWidget);
-
-    // Step to Page 4 (EpilogueSpread)
-    await tester.tap(find.byKey(const Key('flipbook_next_page_button')));
-    await tester.pumpAndSettle();
-    expect(find.text('第 4 / 4 页'), findsOneWidget);
-    expect(find.byKey(const Key('spread_epilogue_container')), findsOneWidget);
-    expect(find.text('杭州 → 乌镇 → 苏州'), findsOneWidget);
+    expect(find.text('第 2 / 2 页'), findsOneWidget);
 
     // Single tap viewport to toggle fullscreen chrome off
     expect(find.byKey(const Key('flipbook_bottom_bar')), findsOneWidget);
@@ -168,12 +192,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('flipbook_bottom_bar')), findsOneWidget);
 
-    // Update a photo caption in repository to ensure unused imports/helpers aren't needed
-    await harness.repository.updateCollection(
-      const AlbumCollectionsCompanion(
-        id: Value('col-flip-2'),
-      ),
-    );
+    // Tap on Edit Studio button in AppBar to open AlbumPageEditorScreen
+    final editBtn = find.byKey(const Key('flipbook_edit_button'));
+    expect(editBtn, findsOneWidget);
+    await tester.tap(editBtn);
+    await tester.pumpAndSettle();
+    expect(find.byType(AlbumPageEditorScreen), findsOneWidget);
+
+    // Close page editor to return
+    await tester.tap(find.byKey(const Key('page_editor_confirm_button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlbumFlipbookScreen), findsOneWidget);
 
     await tearDownAlbumScreen(tester);
   });

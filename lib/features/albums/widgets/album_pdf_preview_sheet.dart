@@ -8,8 +8,8 @@ import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/widgets/ink_metadata_pill.dart';
-import '../models/album_spread.dart';
 import '../models/album_studio_models.dart';
+import '../services/album_layout_engine.dart';
 import '../services/album_pdf_exporter.dart';
 
 /// Bottom sheet allowing the user to select the PDF photobook format
@@ -18,9 +18,8 @@ import '../services/album_pdf_exporter.dart';
 /// or share/print it via the OS sheet.
 class AlbumPdfPreviewSheet extends StatefulWidget {
   final AlbumCollection collection;
-  final List<AlbumSpread> spreads;
+  final List<AlbumPhoto> photos;
   final AlbumStudioDocument? studioDocument;
-  final List<AlbumPhoto>? photos;
   final MediaSandboxService mediaService;
   final Future<Uint8List> Function(Uint8List)? imageTranscoder;
   final Future<String> Function(Uint8List bytes, String fileName)?
@@ -31,10 +30,9 @@ class AlbumPdfPreviewSheet extends StatefulWidget {
   const AlbumPdfPreviewSheet({
     super.key,
     required this.collection,
-    required this.spreads,
+    required this.photos,
     required this.mediaService,
     this.studioDocument,
-    this.photos,
     this.imageTranscoder,
     this.customSaveHandler,
     this.customShareHandler,
@@ -43,10 +41,9 @@ class AlbumPdfPreviewSheet extends StatefulWidget {
   static Future<void> show(
     BuildContext context, {
     required AlbumCollection collection,
-    required List<AlbumSpread> spreads,
+    required List<AlbumPhoto> photos,
     required MediaSandboxService mediaService,
     AlbumStudioDocument? studioDocument,
-    List<AlbumPhoto>? photos,
     Future<Uint8List> Function(Uint8List)? imageTranscoder,
     Future<String> Function(Uint8List bytes, String fileName)?
         customSaveHandler,
@@ -58,9 +55,8 @@ class AlbumPdfPreviewSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => AlbumPdfPreviewSheet(
         collection: collection,
-        spreads: spreads,
-        studioDocument: studioDocument,
         photos: photos,
+        studioDocument: studioDocument,
         mediaService: mediaService,
         imageTranscoder: imageTranscoder,
         customSaveHandler: customSaveHandler,
@@ -76,6 +72,21 @@ class AlbumPdfPreviewSheet extends StatefulWidget {
 class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
   AlbumPdfPageFormat _selectedFormat = AlbumPdfPageFormat.a4Landscape;
   bool _isGenerating = false;
+  late final AlbumStudioDocument _resolvedDoc;
+
+  @override
+  void initState() {
+    super.initState();
+    _initResolvedDoc();
+  }
+
+  void _initResolvedDoc() {
+    _resolvedDoc = widget.studioDocument ??
+        AlbumLayoutEngine.resolveOrCompileDocument(
+          collection: widget.collection,
+          photos: widget.photos,
+        );
+  }
 
   String _buildSafeFileName() {
     final sanitizedTitle = widget.collection.title
@@ -87,20 +98,10 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
   }
 
   Future<Uint8List> _generateBytes() {
-    final studioDoc = widget.studioDocument;
-    if (studioDoc != null && studioDoc.pages.isNotEmpty) {
-      return AlbumPdfExporter.generatePhotobookFromStudioDocument(
-        collection: widget.collection,
-        studioDocument: studioDoc,
-        photos: widget.photos ?? const [],
-        mediaService: widget.mediaService,
-        format: _selectedFormat,
-        imageTranscoder: widget.imageTranscoder,
-      );
-    }
-
-    return AlbumPdfExporter.generatePhotobookFromSpreads(
-      spreads: widget.spreads,
+    return AlbumPdfExporter.generatePhotobookFromStudioDocument(
+      collection: widget.collection,
+      studioDocument: _resolvedDoc,
+      photos: widget.photos,
       mediaService: widget.mediaService,
       format: _selectedFormat,
       imageTranscoder: widget.imageTranscoder,
@@ -234,9 +235,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                 children: [
                   InkMetadataPill(
                     icon: Icons.auto_stories_outlined,
-                    label: widget.studioDocument != null
-                        ? '共 ${widget.studioDocument!.pages.length + 1} 页画幅'
-                        : '共 ${widget.spreads.length} 页画幅',
+                    label: '共 ${_resolvedDoc.pages.length + 2} 页画幅',
                     isAccent: true,
                     maxWidth: 150,
                   ),

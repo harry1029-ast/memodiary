@@ -19,7 +19,7 @@ class BookSpreadTile extends StatelessWidget {
   final BookSpreadData spreadData;
   final Map<String, AlbumPhoto> photoById;
   final MediaSandboxService mediaService;
-  final ValueChanged<int> onTapPage;
+  final ValueChanged<int>? onTapPage;
   final VoidCallback? onAddBlankPage;
 
   bool get isCoverLeft => spreadData.isCoverLeft;
@@ -36,7 +36,7 @@ class BookSpreadTile extends StatelessWidget {
     required this.spreadData,
     required this.photoById,
     required this.mediaService,
-    required this.onTapPage,
+    this.onTapPage,
     this.onAddBlankPage,
   });
 
@@ -53,7 +53,7 @@ class BookSpreadTile extends StatelessWidget {
     int? expectedNextPageNumber,
     required Map<String, AlbumPhoto> photoById,
     required MediaSandboxService mediaService,
-    required ValueChanged<int> onTapPage,
+    ValueChanged<int>? onTapPage,
     VoidCallback? onAddBlankPage,
   }) : this(
           key: key,
@@ -254,6 +254,7 @@ class BookSpreadTile extends StatelessWidget {
             ),
           Text(
             collection.title,
+            key: const Key('spread_cover_title'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -280,16 +281,23 @@ class BookSpreadTile extends StatelessWidget {
     required AlbumPageModel page,
     required int pageIndex,
   }) {
+    final leaf = AlbumPageCanvas(
+      page: page,
+      photoById: photoById,
+      mediaService: mediaService,
+      isInteractive: false,
+    );
+
+    final callback = onTapPage;
+    if (callback == null) {
+      return leaf;
+    }
+
     return GestureDetector(
       key: Key('spread_page_tile_$pageIndex'),
       behavior: HitTestBehavior.opaque,
-      onTap: () => onTapPage(pageIndex),
-      child: AlbumPageCanvas(
-        page: page,
-        photoById: photoById,
-        mediaService: mediaService,
-        isInteractive: false,
-      ),
+      onTap: () => callback(pageIndex),
+      child: leaf,
     );
   }
 

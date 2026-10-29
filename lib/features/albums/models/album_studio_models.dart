@@ -480,6 +480,58 @@ class AlbumStudioDocument {
     );
   }
 
+  /// Partitions the document's pages into facing photobook spreads ([BookSpreadData]),
+  /// starting with Spread 0 (Front Cover on the left, Page 1 on the right).
+  ///
+  /// When [includeBlankTrailing] is true (e.g. in the overview spread feed),
+  /// appends an empty spread placeholder allowing users to append subsequent pages
+  /// when the page count is odd.
+  List<BookSpreadData> buildSpreads({bool includeBlankTrailing = false}) {
+    if (pages.isEmpty) {
+      return const [
+        BookSpreadData(isCoverLeft: true),
+      ];
+    }
+
+    final spreads = <BookSpreadData>[
+      BookSpreadData(
+        isCoverLeft: true,
+        rightPage: pages[0],
+        rightPageIndex: 0,
+      ),
+    ];
+
+    var cursor = 1;
+    while (cursor < pages.length) {
+      final left = pages[cursor];
+      final leftIdx = cursor;
+      final right = (cursor + 1 < pages.length) ? pages[cursor + 1] : null;
+      final rightIdx = (cursor + 1 < pages.length) ? cursor + 1 : null;
+
+      spreads.add(
+        BookSpreadData(
+          leftPage: left,
+          leftPageIndex: leftIdx,
+          rightPage: right,
+          rightPageIndex: rightIdx,
+        ),
+      );
+      cursor += 2;
+    }
+
+    if (includeBlankTrailing && pages.length % 2 != 0) {
+      spreads.add(
+        BookSpreadData(
+          leftPage: null,
+          rightPage: null,
+          expectedNextPageNumber: pages.length + 1,
+        ),
+      );
+    }
+
+    return spreads;
+  }
+
   factory AlbumStudioDocument.fromJson(Map<String, dynamic> json) {
     final rawPages = (json['pages'] as List<dynamic>? ?? [])
         .map((item) =>

@@ -67,15 +67,15 @@ class AlbumStudioPdfRenderer {
         document: document,
         pageFormat: pageFormat,
         collection: collection,
-        pages: pages,
+        studioDocument: studioDocument,
         renderContext: renderContext,
       );
       return;
     }
 
     // Single-page formats (A4 Landscape & Square Keepsake):
-    // Page 1 is the Front Cover leaf, followed by each AlbumPageModel
-    final totalPdfPages = 1 + pages.length;
+    // Page 1 is Front Cover leaf, followed by each AlbumPageModel, concluding with Epilogue Colophon.
+    final totalPdfPages = pages.length + 2;
 
     // 1. Front Cover Page
     document.addPage(
@@ -116,33 +116,50 @@ class AlbumStudioPdfRenderer {
         ),
       );
     }
+
+    // 3. Epilogue Colophon Page
+    document.addPage(
+      pw.Page(
+        pageFormat: pageFormat,
+        margin: const pw.EdgeInsets.all(20),
+        build: (context) => _buildSinglePageFrame(
+          pageNumber: totalPdfPages,
+          totalPages: totalPdfPages,
+          resolver: resolver,
+          child: _buildColophonLeafPdf(
+            collection,
+            resolver,
+          ),
+        ),
+      ),
+    );
   }
 
   static void _addBoundSpreads({
     required pw.Document document,
     required PdfPageFormat pageFormat,
     required AlbumCollection collection,
-    required List<AlbumPageModel> pages,
+    required AlbumStudioDocument studioDocument,
     required StudioPdfRenderContext renderContext,
   }) {
-    // Spread 0: Left = Cover Leaf, Right = Page 1 (if any)
-    // Spread k: Left = Page 2k, Right = Page 2k+1 (or Colophon endpaper)
-    final spreadPairs = <(AlbumPageModel?, AlbumPageModel?, bool)>[];
-    if (pages.isEmpty) {
-      spreadPairs.add((null, null, true));
-    } else {
-      spreadPairs.add((null, pages[0], true));
-      var cursor = 1;
-      while (cursor < pages.length) {
-        final left = pages[cursor];
-        final right = (cursor + 1 < pages.length) ? pages[cursor + 1] : null;
-        spreadPairs.add((left, right, false));
-        cursor += 2;
-      }
+    final spreads = List<BookSpreadData>.from(
+      studioDocument.buildSpreads(includeBlankTrailing: false),
+    );
+
+    // Ensure every bound photobook concludes with an Epilogue Colophon leaf.
+    // If the last spread's right leaf is already occupied by a content page,
+    // append a dedicated closing spread with the Colophon on the right leaf.
+    if (spreads.isNotEmpty && spreads.last.rightPage != null) {
+      spreads.add(
+        const BookSpreadData(
+          leftPage: null,
+          rightPage: null,
+        ),
+      );
     }
 
-    for (var spreadIndex = 0; spreadIndex < spreadPairs.length; spreadIndex++) {
-      final (leftPage, rightPage, isCoverLeft) = spreadPairs[spreadIndex];
+    for (var spreadIndex = 0; spreadIndex < spreads.length; spreadIndex++) {
+      final spread = spreads[spreadIndex];
       document.addPage(
         pw.Page(
           pageFormat: pageFormat,
@@ -162,26 +179,23 @@ class AlbumStudioPdfRenderer {
                   final halfWidth = totalWidth * 0.5;
                   final spineWidth = totalWidth * 0.03;
 
-                  final leftWidget = isCoverLeft
+                  final leftWidget = spread.isCoverLeft
                       ? _buildCoverLeafPdf(
                           collection: collection,
                           totalPhotos: renderContext.photoById.length,
                           imageCache: renderContext.imageCache,
                           resolver: renderContext.resolver,
                         )
-                      : (leftPage != null
+                      : (spread.leftPage != null
                           ? buildStudioPageLeaf(
-                              page: leftPage,
+                              page: spread.leftPage!,
                               renderContext: renderContext,
                             )
-                          : _buildColophonLeafPdf(
-                              collection,
-                              renderContext.resolver,
-                            ));
+                          : _buildBlankLeafPdf());
 
-                  final rightWidget = rightPage != null
+                  final rightWidget = spread.rightPage != null
                       ? buildStudioPageLeaf(
-                          page: rightPage,
+                          page: spread.rightPage!,
                           renderContext: renderContext,
                         )
                       : _buildColophonLeafPdf(
@@ -666,6 +680,10 @@ class AlbumStudioPdfRenderer {
         ],
       ),
     );
+  }
+
+  static pw.Widget _buildBlankLeafPdf() {
+    return pw.Container(color: _xuanGround);
   }
 
   static pw.Widget _buildColophonLeafPdf(

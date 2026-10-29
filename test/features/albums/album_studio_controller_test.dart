@@ -71,6 +71,37 @@ void main() {
       expect(controller.pages.first.photoSlots[2].photoId, equals('photo_a'));
     });
 
+    test('auto-persists mutations with debouncing and flushes on dispose', () async {
+      final savedDocs = <AlbumStudioDocument>[];
+      final autoSaveController = AlbumStudioController(
+        collectionId: 'col_1',
+        initialDocument: initialDoc,
+        debounceDuration: const Duration(milliseconds: 50),
+        onPersist: (doc) async {
+          savedDocs.add(doc);
+        },
+      );
+
+      // Perform 3 rapid mutations
+      autoSaveController.swapPhotoSlots(pageId: 'page_1', firstSlotIndex: 0, secondSlotIndex: 1);
+      autoSaveController.swapPhotoSlots(pageId: 'page_1', firstSlotIndex: 1, secondSlotIndex: 2);
+      autoSaveController.swapPhotoSlots(pageId: 'page_1', firstSlotIndex: 0, secondSlotIndex: 2);
+
+      // Immediately before debounce fires: savedDocs should be empty
+      expect(savedDocs, isEmpty);
+
+      // Wait for debounce timer to fire
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(savedDocs.length, 1);
+      expect(savedDocs.first, autoSaveController.document);
+
+      // Perform another mutation and dispose immediately -> should flush
+      autoSaveController.swapPhotoSlots(pageId: 'page_1', firstSlotIndex: 0, secondSlotIndex: 1);
+      autoSaveController.dispose();
+      expect(savedDocs.length, 2);
+      expect(savedDocs.last, autoSaveController.document);
+    });
+
     test(
       'removePhotoToTray and restorePhotoFromTray auto-transition between N and N+1 layouts',
       () {

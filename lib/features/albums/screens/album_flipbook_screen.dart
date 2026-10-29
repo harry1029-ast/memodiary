@@ -3,35 +3,46 @@ import 'package:flutter/services.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
-import '../models/album_spread.dart';
+import '../data/album_repository.dart';
+import '../models/album_studio_models.dart';
 import '../services/album_layout_engine.dart';
+import '../services/album_studio_controller.dart';
 import '../widgets/album_pdf_preview_sheet.dart';
-import '../widgets/album_spread_card.dart';
+import '../widgets/book_spread_tile.dart';
+import 'album_page_editor_screen.dart';
 
 /// Interactive in-app flipbook viewer for a compiled Travel Memory Album.
 ///
-/// Renders synthesized [AlbumSpread] pages inside a horizontal [PageView]
-/// with tactile haptic page turns, a `"第 X / Y 页"` progress pill, single-tap
-/// fullscreen chrome toggle, and 1-tap vector PDF photobook export.
+/// Renders facing photobook spreads ([BookSpreadData]) inside a horizontal [PageView]
+/// with tactile haptic page turns, a `"第 X / Y 页"` progress indicator, single-tap
+/// fullscreen chrome toggle, 1-tap vector PDF photobook export, and tap-to-edit
+/// deep linking into [AlbumPageEditorScreen].
 class AlbumFlipbookScreen extends StatefulWidget {
   final AlbumCollection collection;
   final List<AlbumPhoto> photos;
   final MediaSandboxService mediaService;
+  final AlbumRepository? repository;
+  final AlbumStudioDocument? document;
   final Future<Uint8List> Function(Uint8List)? imageTranscoder;
   final Future<String> Function(Uint8List bytes, String fileName)?
       customPdfSaveHandler;
   final Future<void> Function(Uint8List bytes, String fileName)?
       customPdfShareHandler;
 
+  AlbumStudioDocument? get studioDocument => document;
+
   const AlbumFlipbookScreen({
     super.key,
     required this.collection,
     required this.photos,
     required this.mediaService,
+    this.repository,
+    AlbumStudioDocument? document,
+    AlbumStudioDocument? studioDocument,
     this.imageTranscoder,
     this.customPdfSaveHandler,
     this.customPdfShareHandler,
-  });
+  })  : document = document ?? studioDocument;
 
   @override
   State<AlbumFlipbookScreen> createState() => _AlbumFlipbookScreenState();
@@ -39,7 +50,9 @@ class AlbumFlipbookScreen extends StatefulWidget {
 
 class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
   late final PageController _pageController;
-  late final List<AlbumSpread> _spreads;
+  late AlbumStudioDocument _studioDocument;
+  late List<BookSpreadData> _spreads;
+  late final Map<String, AlbumPhoto> _photoById;
   int _currentIndex = 0;
   bool _isFullscreen = false;
 
@@ -47,10 +60,19 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
-    _spreads = AlbumLayoutEngine.synthesize(
-      collection: widget.collection,
-      photos: widget.photos,
-    );
+    _photoById = <String, AlbumPhoto>{
+      for (final photo in widget.photos) photo.id: photo,
+    };
+    _initDocument();
+  }
+
+  void _initDocument() {
+    _studioDocument = widget.document ??
+        AlbumLayoutEngine.resolveOrCompileDocument(
+          collection: widget.collection,
+          photos: widget.photos,
+        );
+    _spreads = _studioDocument.buildSpreads(includeBlankTrailing: false);
   }
 
   @override
@@ -92,12 +114,44 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
     AlbumPdfPreviewSheet.show(
       context,
       collection: widget.collection,
-      spreads: _spreads,
+      photos: widget.photos,
+      studioDocument: _studioDocument,
       mediaService: widget.mediaService,
       imageTranscoder: widget.imageTranscoder,
       customSaveHandler: widget.customPdfSaveHandler,
       customShareHandler: widget.customPdfShareHandler,
     );
+  }
+
+  Future<void> _handleOpenStudioEditor([int pageIndex = 0]) async {
+    final repo = widget.repository;
+    if (repo == null) return;
+    final controller = AlbumStudioController(
+      collectionId: widget.collection.id,
+      initialDocument: _studioDocument,
+      repository: repo,
+    );
+    controller.selectPage(pageIndex);
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AlbumPageEditorScreen(
+          controller: controller,
+          collection: widget.collection,
+          photos: widget.photos,
+          repository: repo,
+          mediaService: widget.mediaService,
+          initialPageIndex: pageIndex,
+        ),
+      ),
+    );
+
+    if (mounted) {
+      setState(() {
+        _studioDocument = controller.document;
+        _spreads = _studioDocument.buildSpreads(includeBlankTrailing: false);
+      });
+    }
   }
 
   @override
@@ -124,6 +178,17 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
                 ),
               ),
               actions: [
+                if (widget.repository != null)
+                  IconButton(
+                    key: const Key('flipbook_edit_button'),
+                    icon: Icon(
+                      Icons.edit_outlined,
+                      size: 20,
+                      color: tokens.jiaomo,
+                    ),
+                    tooltip: '编辑画册排版',
+                    onPressed: _handleOpenStudioEditor,
+                  ),
                 IconButton(
                   key: const Key('flipbook_export_pdf_button'),
                   icon: Icon(
@@ -153,10 +218,24 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
                   onPageChanged: _handlePageChanged,
                   itemBuilder: (context, index) {
                     final spread = _spreads[index];
-                    return AlbumSpreadCard(
-                      spread: spread,
-                      totalPages: totalPages,
-                      mediaService: widget.mediaService,
+                    return Center(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          child: BookSpreadTile(
+                            key: Key('album_spread_page_$index'),
+                            spreadIndex: index,
+                            collection: widget.collection,
+                            spreadData: spread,
+                            photoById: _photoById,
+                            mediaService: widget.mediaService,
+                          ),
+                        ),
+                      ),
                     );
                   },
                 ),

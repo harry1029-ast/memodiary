@@ -131,6 +131,6 @@ Future<void> pumpAlbumScreen(
 /// timers are cleanly drained before `_verifyInvariants` checks the test.
 Future<void> tearDownAlbumScreen(WidgetTester tester) async {
   await tester.pumpWidget(const SizedBox.shrink());
-  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(seconds: 1));
 }
 

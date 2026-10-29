@@ -4,8 +4,6 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../constants/album_studio_strings.dart';
 import '../data/album_repository.dart';
-import '../models/album_studio_models.dart';
-import '../services/album_layout_engine.dart';
 import '../services/album_studio_controller.dart';
 import '../widgets/album_pdf_preview_sheet.dart';
 import '../widgets/book_spread_tile.dart';
@@ -323,17 +321,11 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
     await ctrl.saveToRepository();
     if (!mounted) return;
 
-    final spreads = AlbumLayoutEngine.synthesize(
-      collection: widget.collection,
-      photos: widget.photos,
-    );
-
     await AlbumPdfPreviewSheet.show(
       context,
       collection: widget.collection,
-      spreads: spreads,
-      studioDocument: ctrl.document,
       photos: widget.photos,
+      studioDocument: ctrl.document,
       mediaService: widget.mediaService,
     );
   }
@@ -357,7 +349,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
       listenable: ctrl,
       builder: (context, _) {
         final pages = ctrl.pages;
-        final spreads = _buildSpreadPairs(pages);
+        final spreads = ctrl.document.buildSpreads(includeBlankTrailing: true);
         final removedCount = ctrl.removedPhotoIds.length;
 
         return Scaffold(
@@ -438,6 +430,8 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                         collection: widget.collection,
                         photos: widget.photos,
                         mediaService: widget.mediaService,
+                        studioDocument: ctrl.document,
+                        repository: widget.repository,
                       ),
                     ),
                   );
@@ -480,55 +474,6 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
         );
       },
     );
-  }
-
-  List<_SpreadPair> _buildSpreadPairs(List<AlbumPageModel> pages) {
-    if (pages.isEmpty) {
-      return const [
-        _SpreadPair(isCoverLeft: true),
-      ];
-    }
-
-    final pairs = <_SpreadPair>[
-      _SpreadPair(
-        isCoverLeft: true,
-        rightPage: pages[0],
-        rightPageIndex: 0,
-      ),
-    ];
-
-    var cursor = 1;
-    while (cursor < pages.length) {
-      final left = pages[cursor];
-      final leftIdx = cursor;
-      final right = (cursor + 1 < pages.length) ? pages[cursor + 1] : null;
-      final rightIdx = (cursor + 1 < pages.length) ? cursor + 1 : null;
-
-      pairs.add(
-        _SpreadPair(
-          leftPage: left,
-          leftPageIndex: leftIdx,
-          rightPage: right,
-          rightPageIndex: rightIdx,
-        ),
-      );
-      cursor += 2;
-    }
-
-    // If pages.length is odd (1, 3, 5...), all currently created spreads have
-    // their right leaves populated (Spread 0: Cover + Page 1; Spread 1: Page 2 + Page 3...).
-    // Append a trailing spread with an empty left leaf so the user can add Page (N + 1) on the left!
-    if (pages.length % 2 != 0) {
-      pairs.add(
-        _SpreadPair(
-          leftPage: null,
-          rightPage: null,
-          expectedNextPageNumber: pages.length + 1,
-        ),
-      );
-    }
-
-    return pairs;
   }
 
   Widget _buildFloatingActionDock(InkDiaryTokens tokens) {
@@ -604,8 +549,6 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
     );
   }
 }
-
-typedef _SpreadPair = BookSpreadData;
 
 class _OverviewDockButton extends StatelessWidget {
   final Key buttonKey;
