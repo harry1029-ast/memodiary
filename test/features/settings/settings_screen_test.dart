@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/theme_settings_service.dart';
+import '../../helpers/mock_secure_storage.dart';
 import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
 import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
@@ -35,7 +37,7 @@ void main() {
 
   group('SettingsScreen Widget Tests', () {
     testWidgets('renders all settings modules and privacy declaration', (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.physicalSize = const Size(800, 2600);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
         tester.view.resetPhysicalSize();
@@ -73,6 +75,11 @@ void main() {
       expect(find.text('Settings & Privacy'), findsOneWidget);
 
       // Verify Sections
+      expect(find.text('Appearance & Theme'), findsOneWidget);
+      expect(find.text('墨色明暗设定'), findsOneWidget);
+      expect(find.byKey(const Key('settings_theme_mode_system')), findsOneWidget);
+      expect(find.byKey(const Key('settings_theme_mode_light')), findsOneWidget);
+      expect(find.byKey(const Key('settings_theme_mode_dark')), findsOneWidget);
       expect(find.text('Storage & Optimization'), findsOneWidget);
       expect(find.text('Data Portability'), findsOneWidget);
       expect(find.text('Permissions Dashboard'), findsOneWidget);
@@ -226,6 +233,7 @@ Visiting Dotonbori in the evening.
       WidgetTester tester, {
       int backupPbkdf2Iterations = 200000,
       Duration delay = const Duration(milliseconds: 50),
+      ThemeSettingsService? themeSettings,
     }) async {
       tester.view.physicalSize = const Size(800, 1600);
       tester.view.devicePixelRatio = 1.0;
@@ -242,6 +250,7 @@ Visiting Dotonbori in the evening.
               mediaService: mediaService,
               fileSelector: mockFileSelector,
               backupPbkdf2Iterations: backupPbkdf2Iterations,
+              themeSettings: themeSettings,
               initialStats: const StorageStats(
                 activeEntriesCount: 0,
                 deletedEntriesCount: 0,
@@ -330,6 +339,35 @@ Visiting Dotonbori in the evening.
       await tester.pumpAndSettle();
 
       expect(find.byType(RecycleBinScreen), findsOneWidget);
+    });
+
+    testWidgets('tapping light and dark theme mode options toggles theme and persists preference',
+        (WidgetTester tester) async {
+      final mockStorage = MockSecureStorage();
+      final themeSettings = ThemeSettingsService(storage: mockStorage);
+
+      await pumpSettingsScreen(tester, themeSettings: themeSettings);
+
+      // Default is system
+      expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.system));
+
+      // Tap Light Mode
+      await tester.tap(find.byKey(const Key('settings_theme_mode_light')));
+      await tester.pumpAndSettle();
+      expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.light));
+      expect(mockStorage.data['memodiary_theme_mode'], equals('light'));
+
+      // Tap Dark Mode
+      await tester.tap(find.byKey(const Key('settings_theme_mode_dark')));
+      await tester.pumpAndSettle();
+      expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.dark));
+      expect(mockStorage.data['memodiary_theme_mode'], equals('dark'));
+
+      // Tap System Mode
+      await tester.tap(find.byKey(const Key('settings_theme_mode_system')));
+      await tester.pumpAndSettle();
+      expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.system));
+      expect(mockStorage.data['memodiary_theme_mode'], equals('system'));
     });
   });
 }

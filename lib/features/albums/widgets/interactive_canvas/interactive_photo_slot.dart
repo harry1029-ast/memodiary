@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/services/media_sandbox_service.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
+import '../../constants/album_studio_strings.dart';
 import '../../models/album_studio_models.dart';
 import '../sandboxed_album_image.dart';
 
@@ -306,7 +307,7 @@ class _InteractivePhotoSlotState extends State<InteractivePhotoSlot> {
                     buttonKey: Key('slot_remove_to_tray_$index'),
                     icon: Icons.remove_circle_outline,
                     color: const Color(0xFFFF8A80),
-                    tooltip: '移至暂存栏',
+                    tooltip: AlbumStudioStrings.collectionBoxSlotTooltip,
                     onTap: widget.onRemoveToTray!,
                   ),
               ],

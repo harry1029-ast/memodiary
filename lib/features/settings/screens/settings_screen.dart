@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/theme_settings_service.dart';
 import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
 import '../../../core/theme/widgets/xuan_paper_card.dart';
 import '../../analytics/screens/analytics_dashboard_screen.dart';
@@ -32,6 +33,7 @@ class SettingsScreen extends StatefulWidget {
   final int backupPbkdf2Iterations;
   final Future<Map<String, PermissionStatus>> Function()? permissionChecker;
   final StorageStats? initialStats;
+  final ThemeSettingsService? themeSettings;
 
   const SettingsScreen({
     super.key,
@@ -42,6 +44,7 @@ class SettingsScreen extends StatefulWidget {
     this.backupPbkdf2Iterations = BackupCrypto.defaultIterations,
     this.permissionChecker,
     this.initialStats,
+    this.themeSettings,
   });
 
   static Future<Map<String, PermissionStatus>> defaultPermissionChecker() async {
@@ -89,9 +92,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _introSettings = BookIntroSettingsService();
   bool _showBookIntroOnLaunch = true;
 
+  late final ThemeSettingsService _themeSettings;
+
   @override
   void initState() {
     super.initState();
+    _themeSettings = widget.themeSettings ?? ThemeSettingsService.instance;
     _loadBookIntroPreference();
     if (widget.initialStats != null) {
       _stats = widget.initialStats;
@@ -373,6 +379,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildBookIntroCard(tokens),
           const SizedBox(height: 20),
 
+          // 0.5. Appearance & Theme Section
+          _buildSectionHeader('墨韵气象 · 外观模式', 'Appearance & Theme', tokens),
+          _buildAppearanceCard(tokens),
+          const SizedBox(height: 20),
+
           // 1. Storage & Optimizer Section
           _buildSectionHeader('纸墨存蓄 · 存储与空间', 'Storage & Optimization', tokens),
           _buildStorageCard(tokens),
@@ -512,6 +523,146 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAppearanceCard(InkDiaryTokens tokens) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: _themeSettings.themeModeNotifier,
+      builder: (context, activeThemeMode, _) {
+        return XuanPaperCard(
+          key: const Key('settings_appearance_card'),
+          margin: EdgeInsets.zero,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: tokens.agedFiber,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      activeThemeMode.filledIcon,
+                      color: tokens.cinnabar,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '墨色明暗设定',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: tokens.jiaomo,
+                            fontFamily: InkDiaryTheme.fontNotoSerif,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          activeThemeMode.description,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: tokens.danmo,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  for (var index = 0; index < ThemeMode.values.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildThemeOption(
+                        key: Key('settings_theme_mode_${ThemeMode.values[index].name}'),
+                        mode: ThemeMode.values[index],
+                        activeMode: activeThemeMode,
+                        tokens: tokens,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildThemeOption({
+    required Key key,
+    required ThemeMode mode,
+    required ThemeMode activeMode,
+    required InkDiaryTokens tokens,
+  }) {
+    final isSelected = activeMode == mode;
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '${mode.label} (${mode.subtitle})',
+      child: InkWell(
+        key: key,
+        borderRadius: BorderRadius.circular(10),
+        onTap: () async {
+          if (activeMode == mode) return;
+          await _themeSettings.setThemeMode(mode);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? tokens.cinnabarWash
+                : tokens.agedFiber.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? tokens.cinnabar : tokens.deckleBorder,
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                mode.icon,
+                size: 20,
+                color: isSelected ? tokens.cinnabar : tokens.danmo,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                mode.label,
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? tokens.cinnabarDark : tokens.jiaomo,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                mode.subtitle,
+                style: TextStyle(
+                  fontSize: 9.5,
+                  color: isSelected ? tokens.cinnabar : tokens.qingmo,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

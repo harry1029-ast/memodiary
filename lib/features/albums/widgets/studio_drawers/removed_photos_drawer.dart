@@ -1,15 +1,21 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/services/media_sandbox_service.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
+import '../../constants/album_studio_strings.dart';
 import '../sandboxed_album_image.dart';
 
-/// Studio bottom drawer displaying photos currently placed in the `'Removed'`
-/// holding tray (`removedPhotoIds`).
+/// Studio bottom drawer displaying unassigned photos and decorative elements
+/// placed in the Collection Box (`removedPhotoIds`).
 ///
-/// Tapping or dragging any photo onto the page canvas restores it and
-/// automatically upgrades the page layout from `N` to `N + 1` slots.
-class RemovedPhotosDrawer extends StatelessWidget {
+/// Features two view modes:
+/// 1. Compact horizontal strip (~210px) keeping the canvas fully visible.
+/// 2. Expanded vertical grid (~55% screen height) for easily browsing large batches.
+///
+/// Tapping or dragging any photo onto the page canvas places it on the active page
+/// and automatically upgrades the layout from `N` to `N + 1` slots.
+class RemovedPhotosDrawer extends StatefulWidget {
   final List<String> removedPhotoIds;
   final Map<String, AlbumPhoto> photoById;
   final MediaSandboxService mediaService;
@@ -26,22 +32,77 @@ class RemovedPhotosDrawer extends StatelessWidget {
   });
 
   @override
+  State<RemovedPhotosDrawer> createState() => _RemovedPhotosDrawerState();
+}
+
+class _RemovedPhotosDrawerState extends State<RemovedPhotosDrawer> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final targetHeight = _isExpanded
+        ? math.min(screenHeight * 0.85, math.max(380.0, screenHeight * 0.55))
+        : 210.0;
 
-    return Container(
+    return AnimatedContainer(
       key: const Key('studio_removed_photos_drawer'),
-      height: 210,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      height: targetHeight,
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
       decoration: BoxDecoration(
         color: tokens.xuanPureLeaf,
         border: Border(
           top: BorderSide(color: tokens.deckleBorder, width: 1.0),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: tokens.jiaomo.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Drag handle bar to toggle compact / expanded view
+          Center(
+            child: Semantics(
+              button: true,
+              label: _isExpanded ? '收起收集箱为横栏' : '展开收集箱为多列网格',
+              child: GestureDetector(
+                key: const Key('collection_box_drag_handle'),
+                behavior: HitTestBehavior.opaque,
+                onVerticalDragEnd: (details) {
+                  if (details.primaryVelocity != null) {
+                    if (details.primaryVelocity! < -80 && !_isExpanded) {
+                      setState(() => _isExpanded = true);
+                    } else if (details.primaryVelocity! > 80 && _isExpanded) {
+                      setState(() => _isExpanded = false);
+                    }
+                  }
+                },
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: tokens.danmo.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+
+          // Header Row
           Row(
             children: [
               Icon(
@@ -52,7 +113,7 @@ class RemovedPhotosDrawer extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '暂存相册 · Removed (${removedPhotoIds.length})',
+                  '${AlbumStudioStrings.collectionBoxTitle} (${widget.removedPhotoIds.length})',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 15,
@@ -61,17 +122,30 @@ class RemovedPhotosDrawer extends StatelessWidget {
                   ),
                 ),
               ),
+              // Expand / Collapse Grid Toggle
               IconButton(
-                key: const Key('close_removed_drawer_button'),
+                key: const Key('collection_box_toggle_expand_button'),
                 visualDensity: VisualDensity.compact,
-                icon: Icon(Icons.expand_more, color: tokens.danmo),
+                icon: Icon(
+                  _isExpanded ? Icons.unfold_less : Icons.unfold_more,
+                  color: tokens.danmo,
+                  size: 20,
+                ),
+                tooltip: _isExpanded ? '收起为横栏' : '展开多列网格',
+                onPressed: () => setState(() => _isExpanded = !_isExpanded),
+              ),
+              // Close Drawer
+              IconButton(
+                key: const Key('collection_box_close_button'),
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close, color: tokens.danmo, size: 20),
                 tooltip: '收起面板',
-                onPressed: onClose,
+                onPressed: widget.onClose,
               ),
             ],
           ),
           Text(
-            '点击或拖拽照片即可放回当前书页，版式将自动适配 (N → N+1)',
+            AlbumStudioStrings.collectionBoxDrawerSub,
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontNotoSerif,
               fontSize: 11.5,
@@ -79,11 +153,13 @@ class RemovedPhotosDrawer extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
+
+          // Content: Horizontal ListView vs Vertical Multi-Column GridView
           Expanded(
-            child: removedPhotoIds.isEmpty
+            child: widget.removedPhotoIds.isEmpty
                 ? Center(
                     child: Text(
-                      '暂无移出的照片，所有影像均已排入书页中',
+                      '收集箱为空，所有素材已排入画册中',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 13,
@@ -91,16 +167,45 @@ class RemovedPhotosDrawer extends StatelessWidget {
                       ),
                     ),
                   )
-                : ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: removedPhotoIds.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      final photoId = removedPhotoIds[index];
-                      final photo = photoById[photoId];
-                      return _buildTrayThumbnail(tokens, photoId, photo);
-                    },
-                  ),
+                : _isExpanded
+                    ? GridView.builder(
+                        key: const Key('collection_box_vertical_grid'),
+                        padding: const EdgeInsets.only(bottom: 6),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 0.88,
+                        ),
+                        itemCount: widget.removedPhotoIds.length,
+                        itemBuilder: (context, index) {
+                          final photoId = widget.removedPhotoIds[index];
+                          final photo = widget.photoById[photoId];
+                          return _buildTrayThumbnail(
+                            tokens,
+                            photoId,
+                            photo,
+                            isGrid: true,
+                          );
+                        },
+                      )
+                    : ListView.separated(
+                        key: const Key('collection_box_horizontal_list'),
+                        scrollDirection: Axis.horizontal,
+                        itemCount: widget.removedPhotoIds.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final photoId = widget.removedPhotoIds[index];
+                          final photo = widget.photoById[photoId];
+                          return _buildTrayThumbnail(
+                            tokens,
+                            photoId,
+                            photo,
+                            isGrid: false,
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -110,14 +215,15 @@ class RemovedPhotosDrawer extends StatelessWidget {
   Widget _buildTrayThumbnail(
     InkDiaryTokens tokens,
     String photoId,
-    AlbumPhoto? photo,
-  ) {
+    AlbumPhoto? photo, {
+    required bool isGrid,
+  }) {
     final card = InkWell(
       key: Key('removed_tray_item_$photoId'),
-      onTap: () => onRestorePhoto(photoId),
+      onTap: () => widget.onRestorePhoto(photoId),
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        width: 96,
+        width: isGrid ? double.infinity : 96,
         decoration: BoxDecoration(
           color: tokens.agedFiber,
           borderRadius: BorderRadius.circular(8),
@@ -130,7 +236,7 @@ class RemovedPhotosDrawer extends StatelessWidget {
               borderRadius: BorderRadius.circular(7),
               child: SandboxedAlbumImage(
                 relativePath: photo?.relativeThumbnailPath,
-                mediaService: mediaService,
+                mediaService: widget.mediaService,
                 cacheWidth: 240,
                 borderRadius: 0,
                 fit: BoxFit.cover,
@@ -154,7 +260,7 @@ class RemovedPhotosDrawer extends StatelessWidget {
                     Icon(Icons.add, size: 12, color: Colors.white),
                     SizedBox(width: 2),
                     Text(
-                      '放回本页',
+                      AlbumStudioStrings.collectionBoxBadge,
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 10.5,
@@ -183,7 +289,7 @@ class RemovedPhotosDrawer extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: SandboxedAlbumImage(
               relativePath: photo?.relativeThumbnailPath,
-              mediaService: mediaService,
+              mediaService: widget.mediaService,
               cacheWidth: 240,
               borderRadius: 8,
               fit: BoxFit.cover,
@@ -195,4 +301,3 @@ class RemovedPhotosDrawer extends StatelessWidget {
     );
   }
 }
-

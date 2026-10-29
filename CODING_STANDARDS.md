@@ -79,6 +79,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
 
 ## 4. Testing & Verification Hygiene
 
+- **Shared Test Doubles (`test/helpers/`)**: Reusable test doubles, mocks, and fake service implementations (e.g. `MockSecureStorage`, `MockFileSelectorService`) must live under `test/helpers/` rather than being re-declared as private classes across multiple individual test suites.
 - **Shared Test Harness Extraction**: When widget setup requires screen sizing overrides, database initialization, or service dependency wiring:
   - Extract a reusable `pump<Feature>Screen(WidgetTester tester, ...)` helper.
   - Never copy-paste identical physical size or provider wiring blocks across multiple tests in the same suite.

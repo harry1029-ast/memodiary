@@ -220,12 +220,12 @@ void main() {
           );
         }
 
-        // First load synthesizes multi-photo studio document (5 photos -> 3 + 2)
+        // First load synthesizes clean-slate studio document with all photos in Collection Box
         final synthesized = await harness.repository
             .loadOrSynthesizeStudioDocument(collection.id);
-        expect(synthesized.pages.length, equals(2));
-        expect(synthesized.pages[0].photoSlots.length, equals(3));
-        expect(synthesized.pages[1].photoSlots.length, equals(2));
+        expect(synthesized.pages.length, equals(1));
+        expect(synthesized.pages[0].photoSlots, isEmpty);
+        expect(synthesized.removedPhotoIds.length, equals(5));
 
         final repoController = AlbumStudioController(
           collectionId: collection.id,
@@ -234,17 +234,20 @@ void main() {
         );
 
         repoController.applyGlobalTheme('abstract_blue');
-        repoController.removePhotoToTray(
-          pageId: repoController.pages.first.id,
-          slotIndex: 0,
+        // Place one photo from Collection Box onto page 1
+        repoController.restorePhotoFromTray(
+          photoId: 'kyoto_0',
+          targetPageId: repoController.pages.first.id,
         );
+        expect(repoController.pages.first.photoSlots.length, equals(1));
+        expect(repoController.removedPhotoIds, isNot(contains('kyoto_0')));
         await repoController.saveToRepository();
 
         final reloaded = await harness.repository
             .loadOrSynthesizeStudioDocument(collection.id);
         expect(reloaded, equals(repoController.document));
         expect(reloaded.activeThemeId, equals('abstract_blue'));
-        expect(reloaded.removedPhotoIds, equals(['kyoto_0']));
+        expect(reloaded.pages.first.photoSlots.length, equals(1));
       },
     );
 

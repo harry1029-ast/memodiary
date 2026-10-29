@@ -146,4 +146,101 @@ void main() {
 
     await tearDownAlbumScreen(tester);
   });
+
+  testWidgets(
+      'AlbumBookOverviewScreen shows "+ 新增书页" on right when even pages and on left when odd pages',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await harness.repository.createCollection(
+      id: 'col-studio-3',
+      title: '江南水乡手账',
+      description: '烟雨江南',
+      destinationTag: '乌镇',
+    );
+
+    // Ingest 2 photos -> 1 synthesized page
+    for (var i = 0; i < 2; i++) {
+      final src = harness.createSourcePhoto('wuzhen_$i.png');
+      await harness.repository.ingestAndAddPhoto(
+        collectionId: 'col-studio-3',
+        sourceFile: src,
+      );
+    }
+
+    final collection =
+        (await harness.repository.getCollectionById('col-studio-3'))!;
+    final photos =
+        await harness.repository.getPhotosForCollection('col-studio-3');
+
+    await pumpAlbumScreen(
+      tester,
+      AlbumBookOverviewScreen(
+        collection: collection,
+        photos: photos,
+        repository: harness.repository,
+        mediaService: harness.mediaService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // With 1 page (Spread 0: Cover + Page 1), Spread 1 is a trailing spread
+    // with "+ 新增书页" on the LEFT side (Page 2).
+    expect(find.textContaining('共 1 页'), findsOneWidget);
+    expect(
+      find.byKey(const Key('spread_1_add_left_page_button')),
+      findsOneWidget,
+    );
+    expect(find.text('待添加 · Page 2'), findsOneWidget);
+
+    // Tap the left-side button on Spread 1 to add Page 2
+    await tester.tap(find.byKey(const Key('spread_1_add_left_page_button')));
+    await tester.pumpAndSettle();
+
+    // Now 2 pages: Spread 1 has Page 2 on left, and "+ 新增书页" on the RIGHT side (Image 1)
+    expect(find.textContaining('共 2 页'), findsOneWidget);
+    expect(
+      find.byKey(const Key('spread_1_add_right_page_button')),
+      findsOneWidget,
+    );
+    expect(find.text('Page 2'), findsOneWidget);
+    expect(find.text('卷尾留白 · Endpaper'), findsOneWidget);
+
+    // Tap the right-side button on Spread 1 to add Page 3
+    await tester.tap(find.byKey(const Key('spread_1_add_right_page_button')));
+    await tester.pumpAndSettle();
+
+    // Now 3 pages (Image 2): Spread 1 has Page 2 and Page 3.
+    // Trailing Spread 2 is generated with "+ 新增书页" on the LEFT side!
+    expect(find.textContaining('共 3 页'), findsOneWidget);
+    expect(find.text('Page 2'), findsOneWidget);
+    expect(find.text('Page 3'), findsOneWidget);
+    expect(
+      find.byKey(const Key('spread_2_add_left_page_button')),
+      findsOneWidget,
+    );
+    expect(find.text('待添加 · Page 4'), findsOneWidget);
+
+    // And the right side of Spread 2 is an inactive endpaper displaying '拾光印记'
+    expect(
+      find.byKey(const Key('spread_2_add_right_page_button')),
+      findsNothing,
+    );
+
+    // Tap the left-side button on Spread 2 to add Page 4
+    await tester.tap(find.byKey(const Key('spread_2_add_left_page_button')));
+    await tester.pumpAndSettle();
+
+    // Now 4 pages: Spread 2 has Page 4 on the left, and "+ 新增书页" activates on the RIGHT side
+    expect(find.textContaining('共 4 页'), findsOneWidget);
+    expect(find.text('Page 4'), findsOneWidget);
+    expect(
+      find.byKey(const Key('spread_2_add_right_page_button')),
+      findsOneWidget,
+    );
+
+    await tearDownAlbumScreen(tester);
+  });
 }

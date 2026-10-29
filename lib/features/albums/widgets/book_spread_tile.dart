@@ -3,6 +3,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
+import '../constants/album_studio_strings.dart';
 import '../models/album_studio_models.dart';
 import 'interactive_canvas/album_page_canvas.dart';
 import 'sandboxed_album_image.dart';
@@ -15,40 +16,76 @@ import 'sandboxed_album_image.dart';
 class BookSpreadTile extends StatelessWidget {
   final int spreadIndex;
   final AlbumCollection collection;
-  final bool isCoverLeft;
-  final AlbumPageModel? leftPage;
-  final int? leftPageIndex;
-  final AlbumPageModel? rightPage;
-  final int? rightPageIndex;
+  final BookSpreadData spreadData;
   final Map<String, AlbumPhoto> photoById;
   final MediaSandboxService mediaService;
   final ValueChanged<int> onTapPage;
   final VoidCallback? onAddBlankPage;
 
+  bool get isCoverLeft => spreadData.isCoverLeft;
+  AlbumPageModel? get leftPage => spreadData.leftPage;
+  int? get leftPageIndex => spreadData.leftPageIndex;
+  AlbumPageModel? get rightPage => spreadData.rightPage;
+  int? get rightPageIndex => spreadData.rightPageIndex;
+  int? get expectedNextPageNumber => spreadData.expectedNextPageNumber;
+
   const BookSpreadTile({
     super.key,
     required this.spreadIndex,
     required this.collection,
-    this.isCoverLeft = false,
-    this.leftPage,
-    this.leftPageIndex,
-    this.rightPage,
-    this.rightPageIndex,
+    required this.spreadData,
     required this.photoById,
     required this.mediaService,
     required this.onTapPage,
     this.onAddBlankPage,
   });
 
+  /// Convenience / compatibility constructor accepting individual spread parameters.
+  BookSpreadTile.flat({
+    Key? key,
+    required int spreadIndex,
+    required AlbumCollection collection,
+    bool isCoverLeft = false,
+    AlbumPageModel? leftPage,
+    int? leftPageIndex,
+    AlbumPageModel? rightPage,
+    int? rightPageIndex,
+    int? expectedNextPageNumber,
+    required Map<String, AlbumPhoto> photoById,
+    required MediaSandboxService mediaService,
+    required ValueChanged<int> onTapPage,
+    VoidCallback? onAddBlankPage,
+  }) : this(
+          key: key,
+          spreadIndex: spreadIndex,
+          collection: collection,
+          spreadData: BookSpreadData(
+            isCoverLeft: isCoverLeft,
+            leftPage: leftPage,
+            leftPageIndex: leftPageIndex,
+            rightPage: rightPage,
+            rightPageIndex: rightPageIndex,
+            expectedNextPageNumber: expectedNextPageNumber,
+          ),
+          photoById: photoById,
+          mediaService: mediaService,
+          onTapPage: onTapPage,
+          onAddBlankPage: onAddBlankPage,
+        );
+
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
     final leftLabel = isCoverLeft
-        ? '封面 · Cover'
-        : (leftPage != null ? 'Page ${leftPage!.pageNumber}' : '');
+        ? AlbumStudioStrings.coverLabel
+        : (leftPage != null
+            ? '${AlbumStudioStrings.pagePrefix} ${leftPage!.pageNumber}'
+            : (expectedNextPageNumber != null
+                ? '${AlbumStudioStrings.pendingAddPrefix} $expectedNextPageNumber'
+                : ''));
     final rightLabel = rightPage != null
-        ? 'Page ${rightPage!.pageNumber}'
-        : '卷尾留白 · Endpaper';
+        ? '${AlbumStudioStrings.pagePrefix} ${rightPage!.pageNumber}'
+        : AlbumStudioStrings.endpaperLabel;
 
     return Column(
       key: Key('book_spread_tile_$spreadIndex'),
@@ -90,7 +127,13 @@ class BookSpreadTile extends StatelessWidget {
                                     page: leftPage!,
                                     pageIndex: leftPageIndex!,
                                   )
-                                : _buildEndpaperLeaf(tokens),
+                                : _buildEndpaperLeaf(
+                                    tokens,
+                                    canAddPage: onAddBlankPage != null,
+                                    buttonKey: Key(
+                                      'spread_${spreadIndex}_add_left_page_button',
+                                    ),
+                                  ),
                       ),
                       // Right Leaf
                       Expanded(
@@ -99,7 +142,14 @@ class BookSpreadTile extends StatelessWidget {
                                 page: rightPage!,
                                 pageIndex: rightPageIndex!,
                               )
-                            : _buildEndpaperLeaf(tokens),
+                            : _buildEndpaperLeaf(
+                                tokens,
+                                canAddPage: onAddBlankPage != null &&
+                                    (leftPage != null || isCoverLeft),
+                                buttonKey: Key(
+                                      'spread_${spreadIndex}_add_right_page_button',
+                                    ),
+                              ),
                       ),
                     ],
                   ),
@@ -243,13 +293,17 @@ class BookSpreadTile extends StatelessWidget {
     );
   }
 
-  Widget _buildEndpaperLeaf(InkDiaryTokens tokens) {
+  Widget _buildEndpaperLeaf(
+    InkDiaryTokens tokens, {
+    required bool canAddPage,
+    Key? buttonKey,
+  }) {
     return Container(
       color: tokens.agedFiber.withValues(alpha: 0.55),
       child: Center(
-        child: onAddBlankPage != null
+        child: canAddPage && onAddBlankPage != null
             ? InkWell(
-                key: const Key('spread_add_trailing_page_button'),
+                key: buttonKey ?? const Key('spread_add_trailing_page_button'),
                 onTap: onAddBlankPage,
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
@@ -264,7 +318,7 @@ class BookSpreadTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '新增书页',
+                        AlbumStudioStrings.addBlankPageButton,
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontNotoSerif,
                           fontSize: 11,

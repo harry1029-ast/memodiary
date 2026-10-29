@@ -150,7 +150,27 @@ void main() {
     });
 
     test(
-      'packs 2 to 4 photos per page by default instead of placing 1 photo per page',
+      'compiles clean-slate studio document with 1 blank starter page and all photos in Collection Box by default',
+      () {
+        final collection = _buildCollection(themeId: 'shanshui_ink');
+        final fourPhotos = [
+          for (var i = 0; i < 4; i++) _buildPhoto(id: 'clean_$i', sortOrder: i),
+        ];
+
+        final doc = AlbumLayoutEngine.compileStudioDocument(
+          collection: collection,
+          photos: fourPhotos,
+        );
+
+        expect(doc.pages.length, equals(1));
+        expect(doc.pages.first.photoSlots, isEmpty);
+        expect(doc.removedPhotoIds.length, equals(4));
+        expect(doc.removedPhotoIds, equals(['clean_0', 'clean_1', 'clean_2', 'clean_3']));
+      },
+    );
+
+    test(
+      'packs 2 to 4 photos per page when autoPopulate is true',
       () {
         final collection = _buildCollection(themeId: 'shanshui_ink');
 
@@ -162,6 +182,7 @@ void main() {
         final doc6 = AlbumLayoutEngine.compileStudioDocument(
           collection: collection,
           photos: sixPhotos,
+          autoPopulate: true,
         );
 
         expect(doc6.pages.length, equals(2));
@@ -174,6 +195,7 @@ void main() {
         final doc5 = AlbumLayoutEngine.compileStudioDocument(
           collection: collection,
           photos: fivePhotos,
+          autoPopulate: true,
         );
         expect(doc5.pages.length, equals(2));
         expect(doc5.pages[0].photoSlots.length, equals(3));
@@ -186,6 +208,7 @@ void main() {
         final doc10 = AlbumLayoutEngine.compileStudioDocument(
           collection: collection,
           photos: tenPhotos,
+          autoPopulate: true,
         );
         expect(doc10.pages.length, lessThanOrEqualTo(4));
         for (final page in doc10.pages) {

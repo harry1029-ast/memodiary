@@ -224,13 +224,19 @@ class AlbumLayoutEngine {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  /// Compiles an initial [AlbumStudioDocument] for the DIY Photobook Studio,
-  /// packing 2 to 4 photos per page into rich multi-photo collage layouts by default
-  /// instead of placing 1 photo per page.
+  /// Compiles an initial [AlbumStudioDocument] for the DIY Photobook Studio.
+  ///
+  /// By default ([autoPopulate] = false), gives users full creative autonomy by starting
+  /// with a single blank starter page styled with the active theme background, placing all
+  /// ingested photos directly into the Collection Box tray ([AlbumStudioDocument.removedPhotoIds]).
+  ///
+  /// When [autoPopulate] is true, automatically packs 2 to 4 photos per page into multi-photo
+  /// collage layouts.
   static AlbumStudioDocument compileStudioDocument({
     required AlbumCollection collection,
     required List<AlbumPhoto> photos,
     String? themeId,
+    bool autoPopulate = false,
   }) {
     final resolvedTheme =
         AlbumThemeCatalog.getThemeById(themeId ?? collection.themeId);
@@ -242,12 +248,13 @@ class AlbumLayoutEngine {
         return first.createdAt.compareTo(second.createdAt);
       });
 
-    if (orderedPhotos.isEmpty) {
+    if (!autoPopulate || orderedPhotos.isEmpty) {
       return AlbumStudioDocument(
         activeThemeId: resolvedTheme.id,
         recentBackgroundColors: [
           resolvedTheme.defaultBackgroundConfig.backgroundColorArgb,
         ],
+        removedPhotoIds: orderedPhotos.map((photo) => photo.id).toList(),
         pages: [
           AlbumPageModel(
             id: 'page_1',

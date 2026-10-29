@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
+import '../constants/album_studio_strings.dart';
 import '../data/album_repository.dart';
 import '../models/album_studio_models.dart';
 import '../services/album_layout_engine.dart';
@@ -279,7 +280,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                                       size: 19,
                                       color: tokens.cinnabar,
                                     ),
-                                    tooltip: '删除此页 (照片将移入暂存栏)',
+                                    tooltip: '删除此页 (照片将移入收集箱)',
                                     onPressed: () => ctrl.removePage(page.id),
                                   ),
                                 Icon(
@@ -385,9 +386,10 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                   ),
                 ),
                 Text(
-                  removedCount > 0
-                      ? '共 ${pages.length} 页 · 暂存栏 $removedCount 张'
-                      : '共 ${pages.length} 页 · 点击任意页面进入排版',
+                  AlbumStudioStrings.overviewHeaderCount(
+                    pages.length,
+                    removedCount,
+                  ),
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 11,
@@ -455,11 +457,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                   return BookSpreadTile(
                     spreadIndex: spreadIdx,
                     collection: widget.collection,
-                    isCoverLeft: pair.isCoverLeft,
-                    leftPage: pair.leftPage,
-                    leftPageIndex: pair.leftPageIndex,
-                    rightPage: pair.rightPage,
-                    rightPageIndex: pair.rightPageIndex,
+                    spreadData: pair,
                     photoById: photoById,
                     mediaService: widget.mediaService,
                     onTapPage: _handleOpenPageEditor,
@@ -515,6 +513,19 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
         ),
       );
       cursor += 2;
+    }
+
+    // If pages.length is odd (1, 3, 5...), all currently created spreads have
+    // their right leaves populated (Spread 0: Cover + Page 1; Spread 1: Page 2 + Page 3...).
+    // Append a trailing spread with an empty left leaf so the user can add Page (N + 1) on the left!
+    if (pages.length % 2 != 0) {
+      pairs.add(
+        _SpreadPair(
+          leftPage: null,
+          rightPage: null,
+          expectedNextPageNumber: pages.length + 1,
+        ),
+      );
     }
 
     return pairs;
@@ -594,21 +605,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
   }
 }
 
-class _SpreadPair {
-  final bool isCoverLeft;
-  final AlbumPageModel? leftPage;
-  final int? leftPageIndex;
-  final AlbumPageModel? rightPage;
-  final int? rightPageIndex;
-
-  const _SpreadPair({
-    this.isCoverLeft = false,
-    this.leftPage,
-    this.leftPageIndex,
-    this.rightPage,
-    this.rightPageIndex,
-  });
-}
+typedef _SpreadPair = BookSpreadData;
 
 class _OverviewDockButton extends StatelessWidget {
   final Key buttonKey;

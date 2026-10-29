@@ -526,3 +526,23 @@ class AlbumStudioDocument {
       );
 }
 
+/// Typed value object bundling spread layout coordinates and page assignments
+/// for photobook spread rendering (CODING_STANDARDS.md § 2).
+class BookSpreadData {
+  final bool isCoverLeft;
+  final AlbumPageModel? leftPage;
+  final int? leftPageIndex;
+  final AlbumPageModel? rightPage;
+  final int? rightPageIndex;
+  final int? expectedNextPageNumber;
+
+  const BookSpreadData({
+    this.isCoverLeft = false,
+    this.leftPage,
+    this.leftPageIndex,
+    this.rightPage,
+    this.rightPageIndex,
+    this.expectedNextPageNumber,
+  });
+}
+

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/features/albums/models/album_studio_models.dart';
 import 'package:memodiary/features/albums/screens/album_page_editor_screen.dart';
+import 'package:memodiary/features/albums/services/album_layout_engine.dart';
 import 'package:memodiary/features/albums/services/album_studio_controller.dart';
 import 'package:memodiary/features/albums/widgets/studio_drawers/add_elements_drawer.dart';
 import 'package:memodiary/features/albums/widgets/studio_drawers/background_style_drawer.dart';
@@ -20,8 +22,9 @@ void main() {
   });
 
   Future<(AlbumStudioController, List<String>)> createControllerWithPhotos(
-    int count,
-  ) async {
+    int count, {
+    bool autoPopulate = true,
+  }) async {
     await harness.repository.createCollection(
       id: 'col-editor-test',
       title: '姑苏园林手账',
@@ -37,8 +40,15 @@ void main() {
       photoIds.add(photo.id);
     }
 
-    final doc = await harness.repository
-        .loadOrSynthesizeStudioDocument('col-editor-test');
+    final collection =
+        (await harness.repository.getCollectionById('col-editor-test'))!;
+    final photos =
+        await harness.repository.getPhotosForCollection('col-editor-test');
+    final doc = AlbumLayoutEngine.compileStudioDocument(
+      collection: collection,
+      photos: photos,
+      autoPopulate: autoPopulate,
+    );
     final controller = AlbumStudioController(
       collectionId: 'col-editor-test',
       initialDocument: doc,
@@ -66,6 +76,7 @@ void main() {
         mediaService: harness.mediaService,
         initialPageIndex: 0,
       ),
+      viewportSize: const Size(800, 2000),
     );
     await tester.pumpAndSettle();
 
@@ -123,6 +134,7 @@ void main() {
         mediaService: harness.mediaService,
         initialPageIndex: 0,
       ),
+      viewportSize: const Size(800, 2000),
     );
     await tester.pumpAndSettle();
 
@@ -188,6 +200,7 @@ void main() {
         mediaService: harness.mediaService,
         initialPageIndex: 0,
       ),
+      viewportSize: const Size(800, 2000),
     );
     await tester.pumpAndSettle();
 
@@ -244,6 +257,7 @@ void main() {
         mediaService: harness.mediaService,
         initialPageIndex: 0,
       ),
+      viewportSize: const Size(800, 2000),
     );
     await tester.pumpAndSettle();
 
@@ -275,4 +289,133 @@ void main() {
 
     await tearDownAlbumScreen(tester);
   });
+
+  testWidgets(
+      'AlbumPageEditorScreen auto-opens Collection Box on empty page, supports 2-state grid expansion, and enforces 4-photo limit notice',
+      (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final (controller, photoIds) = await createControllerWithPhotos(
+      7,
+      autoPopulate: false,
+    );
+    final collection =
+        (await harness.repository.getCollectionById('col-editor-test'))!;
+    final photos =
+        await harness.repository.getPhotosForCollection('col-editor-test');
+
+    await pumpAlbumScreen(
+      tester,
+      AlbumPageEditorScreen(
+        controller: controller,
+        collection: collection,
+        photos: photos,
+        repository: harness.repository,
+        mediaService: harness.mediaService,
+        initialPageIndex: 0,
+      ),
+      viewportSize: const Size(800, 2000),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Page 1 is empty, so Collection Box drawer auto-opens
+    expect(find.byType(RemovedPhotosDrawer), findsOneWidget);
+    expect(find.textContaining('收集箱 · Collection Box (7)'), findsOneWidget);
+    expect(find.text('放入本页'), findsWidgets);
+    expect(
+      find.byKey(const Key('collection_box_horizontal_list')),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel('展开收集箱为多列网格'),
+      findsOneWidget,
+    );
+
+    // 2. Expand to multi-column vertical grid via toggle button
+    await tester.tap(find.byKey(const Key('collection_box_toggle_expand_button')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('collection_box_vertical_grid')),
+      findsOneWidget,
+    );
+
+    // 3. Tap drag handle to toggle back to horizontal strip
+    await tester.tap(find.byKey(const Key('collection_box_drag_handle')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('collection_box_horizontal_list')),
+      findsOneWidget,
+    );
+
+    // 4. Place 6 photos onto the page one by one
+    for (var i = 0; i < 6; i++) {
+      final item = find.byKey(Key('removed_tray_item_${photoIds[i]}'));
+      expect(item, findsOneWidget);
+      await tester.tap(item);
+      await tester.pumpAndSettle();
+    }
+
+    expect(controller.selectedPage!.photoSlots.length, 6);
+    expect(controller.removedPhotoIds.length, 1);
+
+    // 5. Try placing the 7th photo when 6 photos are already on the page
+    final seventhItem = find.byKey(Key('removed_tray_item_${photoIds[6]}'));
+    expect(seventhItem, findsOneWidget);
+    await tester.tap(seventhItem);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // SnackBar appears warning about the 6-photo maximum limit
+    expect(find.textContaining('当前书页照片已满 (最多6张)'), findsOneWidget);
+    expect(controller.selectedPage!.photoSlots.length, 6);
+    expect(controller.removedPhotoIds.length, 1);
+
+    // Let the SnackBar dismiss cleanly
+    await tester.pump(const Duration(seconds: 3));
+
+    await tearDownAlbumScreen(tester);
+  });
+
+  testWidgets(
+    'AlbumPageEditorScreen safely initializes when document has 0 pages without clamp crash',
+    (tester) async {
+      await harness.repository.createCollection(
+        id: 'col-empty-test',
+        title: 'Empty Test',
+        destinationTag: '苏州',
+      );
+      final collection =
+          (await harness.repository.getCollectionById('col-empty-test'))!;
+
+      final controller = AlbumStudioController(
+        repository: harness.repository,
+        collectionId: 'col-empty-test',
+        initialDocument: AlbumStudioDocument(
+          activeThemeId: 'theme_xuan_minimal',
+          pages: const [],
+          removedPhotoIds: const [],
+        ),
+      );
+
+      await pumpAlbumScreen(
+        tester,
+        AlbumPageEditorScreen(
+          controller: controller,
+          collection: collection,
+          photos: const [],
+          repository: harness.repository,
+          mediaService: harness.mediaService,
+          initialPageIndex: 0,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlbumPageEditorScreen), findsOneWidget);
+      await tearDownAlbumScreen(tester);
+    },
+  );
 }

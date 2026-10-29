@@ -2,6 +2,8 @@
 *.class
 *.log
 *.pyc
+*.py[cod]
+__pycache__/
 *.swp
 *.swo
 *.swn
@@ -9,6 +11,7 @@
 .*.sw?
 *~
 *.bak
+*.backup
 *.tmp
 *.temp
 *.orig
@@ -66,9 +69,13 @@ build/
 **/build/
 coverage/
 **/coverage/
+.coverage/
 lcov.info
+test-results/
+junit.xml
 devtools_options.yaml
 pubspec-overrides.yaml
+pubspec_overrides.yaml
 .packages
 flutter_*.log
 lib/generated_plugin_registrant.dart
@@ -139,7 +146,8 @@ app.*.symbols
 app.*.map.json
 *.crash
 *.dump
-core
+/core
+core.[0-9]*
 *.core
 
 # Widget Preview related

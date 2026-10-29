@@ -9,6 +9,7 @@ import 'core/database/database_key_manager.dart';
 import 'core/services/media_sandbox_service.dart';
 import 'core/services/recycle_bin_service.dart';
 import 'core/theme/ink_diary_theme.dart';
+import 'core/theme/theme_settings_service.dart';
 import 'features/auth/app_lock_gate.dart';
 import 'features/intro/screens/book_intro_screen.dart';
 import 'features/intro/services/book_intro_settings_service.dart';
@@ -53,13 +54,18 @@ void main() async {
   final introSettings = BookIntroSettingsService();
   final showIntroOnLaunch = await introSettings.getShouldShowOnLaunch();
 
-  // 4. Launch with AppLockGate protecting all views
+  // 4. Load persisted theme preference (System, Light, or Dark)
+  final themeSettings = ThemeSettingsService.instance;
+  await themeSettings.getThemeMode();
+
+  // 5. Launch with AppLockGate protecting all views
   runApp(
     AppLockGate(
       child: MemoDiaryApp(
         database: database,
         mediaService: mediaService,
         showIntroOnLaunch: showIntroOnLaunch,
+        themeSettings: themeSettings,
       ),
     ),
   );
@@ -69,30 +75,38 @@ class MemoDiaryApp extends StatelessWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
   final bool showIntroOnLaunch;
+  final ThemeSettingsService themeSettings;
 
-  const MemoDiaryApp({
+  MemoDiaryApp({
     super.key,
     required this.database,
     required this.mediaService,
     this.showIntroOnLaunch = false,
-  });
+    ThemeSettingsService? themeSettings,
+  }) : themeSettings = themeSettings ?? ThemeSettingsService.instance;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'MemoDiary',
-      debugShowCheckedModeBanner: false,
-      theme: InkDiaryTheme.light,
-      darkTheme: InkDiaryTheme.dark,
-      home: showIntroOnLaunch
-          ? BookIntroScreen(
-              database: database,
-              mediaService: mediaService,
-            )
-          : TimelineScreen(
-              database: database,
-              mediaService: mediaService,
-            ),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeSettings.themeModeNotifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          title: 'MemoDiary',
+          debugShowCheckedModeBanner: false,
+          theme: InkDiaryTheme.light,
+          darkTheme: InkDiaryTheme.dark,
+          themeMode: themeMode,
+          home: showIntroOnLaunch
+              ? BookIntroScreen(
+                  database: database,
+                  mediaService: mediaService,
+                )
+              : TimelineScreen(
+                  database: database,
+                  mediaService: mediaService,
+                ),
+        );
+      },
     );
   }
 }

@@ -3,9 +3,12 @@ import 'package:intl/intl.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/utils/collection_extensions.dart';
+import '../constants/album_studio_strings.dart';
 import '../data/album_repository.dart';
 import '../models/album_studio_models.dart';
 import '../services/album_studio_controller.dart';
+import '../services/page_layout_catalog.dart';
 import '../widgets/interactive_canvas/album_page_canvas.dart';
 import '../widgets/photo_annotation_sheet.dart';
 import '../widgets/studio_drawers/add_elements_drawer.dart';
@@ -58,6 +61,15 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         widget.controller.selectPage(widget.initialPageIndex);
+        final pages = widget.controller.pages;
+        final curIdx = pages.safeClampIndex(widget.initialPageIndex);
+        if (curIdx != null &&
+            pages[curIdx].photoSlots.isEmpty &&
+            widget.controller.removedPhotoIds.isNotEmpty) {
+          setState(() {
+            _activeDrawerTab = StudioDrawerTab.removed;
+          });
+        }
       }
     });
   }
@@ -319,12 +331,8 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
                               secondSlotIndex: secondSlot,
                             );
                           },
-                          onDropTrayPhoto: (photoId) {
-                            widget.controller.restorePhotoFromTray(
-                              photoId: photoId,
-                              targetPageId: activePage.id,
-                            );
-                          },
+                          onDropTrayPhoto: (photoId) =>
+                              _restorePhotoToPage(activePage, photoId),
                           onUpdatePanZoom: (
                             slotIndex, {
                             panOffsetX,
@@ -388,6 +396,30 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
     );
   }
 
+  void _restorePhotoToPage(AlbumPageModel activePage, String photoId) {
+    if (activePage.photoSlots.length >= PageLayoutCatalog.maxPhotosPerPage) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AlbumStudioStrings.pageFullNotice(
+              PageLayoutCatalog.maxPhotosPerPage,
+            ),
+            style: const TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+            ),
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    widget.controller.restorePhotoFromTray(
+      photoId: photoId,
+      targetPageId: activePage.id,
+    );
+  }
+
   Widget _buildActiveDrawer(
     AlbumPageModel activePage,
     Map<String, AlbumPhoto> photoById,
@@ -398,12 +430,7 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
           removedPhotoIds: widget.controller.removedPhotoIds,
           photoById: photoById,
           mediaService: widget.mediaService,
-          onRestorePhoto: (photoId) {
-            widget.controller.restorePhotoFromTray(
-              photoId: photoId,
-              targetPageId: activePage.id,
-            );
-          },
+          onRestorePhoto: (photoId) => _restorePhotoToPage(activePage, photoId),
           onClose: () => setState(() => _activeDrawerTab = null),
         );
 
@@ -468,7 +495,8 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
               child: _DockTabItem(
                 tabKey: const Key('studio_tab_removed'),
                 icon: Icons.inventory_2_outlined,
-                label: removedCount > 0 ? 'Removed ($removedCount)' : 'Removed',
+                label:
+                    '${AlbumStudioStrings.collectionBoxDockTab} ($removedCount)',
                 badgeCount: removedCount,
                 isSelected: _activeDrawerTab == StudioDrawerTab.removed,
                 tokens: tokens,
