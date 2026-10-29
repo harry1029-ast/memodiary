@@ -37,12 +37,14 @@ class ShanshuiSceneryCard extends StatefulWidget {
 class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
   late final ScenerySettingsService _settingsService;
   bool _isCollapsed = false;
+  bool _isThoughtSparkHidden = false;
 
   @override
   void initState() {
     super.initState();
     _settingsService = widget.settingsService ?? ScenerySettingsService();
     _loadCollapsedPreference();
+    _loadThoughtSparkPreference();
   }
 
   Future<void> _loadCollapsedPreference() async {
@@ -52,9 +54,21 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
     }
   }
 
+  Future<void> _loadThoughtSparkPreference() async {
+    final hidden = await _settingsService.getIsThoughtSparkHidden();
+    if (mounted && hidden != _isThoughtSparkHidden) {
+      setState(() => _isThoughtSparkHidden = hidden);
+    }
+  }
+
   Future<void> _toggleCollapsed(bool collapsed) async {
     setState(() => _isCollapsed = collapsed);
     await _settingsService.setIsCollapsed(collapsed);
+  }
+
+  Future<void> _toggleThoughtSparkHidden(bool isHidden) async {
+    setState(() => _isThoughtSparkHidden = isHidden);
+    await _settingsService.setIsThoughtSparkHidden(isHidden);
   }
 
   @override
@@ -265,7 +279,6 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
                             Text(
                               widget.atmosphere.season.nameZh,
                               style: const TextStyle(
-                                fontFamily: 'Noto Serif SC',
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFFF7F4EB),
@@ -307,17 +320,63 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
                     ),
                   ),
 
-                  // 4. Embedded Thought Spark Dock
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: ThoughtSparkDock(
-                      prompt: widget.activePrompt,
-                      onRefreshPrompt: widget.onRefreshPrompt,
-                      onWritePrompt: widget.onWritePrompt,
+                  // 4. Embedded Thought Spark Dock or Mini Reveal Tab
+                  if (!_isThoughtSparkHidden)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: ThoughtSparkDock(
+                        prompt: widget.activePrompt,
+                        onRefreshPrompt: widget.onRefreshPrompt,
+                        onWritePrompt: widget.onWritePrompt,
+                        onHideDock: () => _toggleThoughtSparkHidden(true),
+                      ),
+                    )
+                  else
+                    Positioned(
+                      bottom: 6,
+                      right: 10,
+                      child: Semantics(
+                        label: '展开灵感火花',
+                        button: true,
+                        child: InkWell(
+                          key: const Key('thought_spark_reveal_button'),
+                          onTap: () => _toggleThoughtSparkHidden(false),
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xB31E1A17),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 4,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: tokens.cinnabar,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                const Text(
+                                  '灵感火花 ⌃',
+                                  style: TextStyle(
+                                    color: Color(0xFFF7F4EB),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             );

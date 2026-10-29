@@ -5,6 +5,7 @@ import '../models/shanshui_atmosphere.dart';
 /// optional permanently pinned atmosphere override) in encrypted local storage.
 class ScenerySettingsService {
   static const String _keyCollapsed = 'memodiary_scenery_card_collapsed';
+  static const String _keyThoughtSparkHidden = 'memodiary_thought_spark_hidden';
   static const String _keyPinnedSeason = 'memodiary_scenery_pinned_season';
   static const String _keyPinnedTime = 'memodiary_scenery_pinned_time';
   static const String _keyPinnedWeather = 'memodiary_scenery_pinned_weather';
@@ -37,6 +38,28 @@ class ScenerySettingsService {
       await _storage.write(
         key: _keyCollapsed,
         value: isCollapsed ? 'true' : 'false',
+      );
+    } catch (_) {
+      // Gracefully absorb storage errors in restricted environments
+    }
+  }
+
+  /// Whether the Thought Spark dock inside Shanshui Scenery Card is hidden to reveal the full painting.
+  Future<bool> getIsThoughtSparkHidden() async {
+    try {
+      final stored = await _storage.read(key: _keyThoughtSparkHidden);
+      return stored == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Persists whether the Thought Spark dock is hidden.
+  Future<void> setIsThoughtSparkHidden(bool isHidden) async {
+    try {
+      await _storage.write(
+        key: _keyThoughtSparkHidden,
+        value: isHidden ? 'true' : 'false',
       );
     } catch (_) {
       // Gracefully absorb storage errors in restricted environments

@@ -1,5 +1,7 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/shapes/classical_chinese_borders.dart';
 
 /// Converts a calendar day of the month (1-31) into traditional Chinese numeral phrasing
 /// (e.g. 1 -> '初一', 10 -> '初十', 15 -> '十五', 20 -> '二十', 25 -> '廿五', 31 -> '三十一').
@@ -88,105 +90,33 @@ class TimelineDateSpineItem extends StatelessWidget {
           child: child,
         ),
 
-        // 3. Left Date Marker Stamp Badge & Connecting Ink Pip
+        // 3. Left Date Marker Stamp Badge (Carved Waist-Tally Seal) & Connecting Knot
         Positioned(
-          left: 12,
+          left: 11,
           top: 2,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Tooltip(
-                message: '${date.year}年${date.month}月${date.day}日 ${formatChineseWeekday(date.weekday)}',
-                child: InkWell(
-                  onTap: onTapBadge,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: 50,
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: isHighlighted
-                          ? tokens.cinnabar
-                          : (isDark ? tokens.xuanPureLeaf : tokens.agedFiber),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isHighlighted
-                            ? tokens.cinnabar
-                            : tokens.deckleBorder,
-                        width: 1.0,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: isHighlighted
-                              ? tokens.cinnabar.withValues(alpha: 0.28)
-                              : tokens.jiaomo.withValues(alpha: isDark ? 0.2 : 0.04),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1.5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Month label
-                        Text(
-                          '${date.month}月',
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.6,
-                            height: 1.1,
-                            color: isHighlighted
-                                ? tokens.cinnabarWash
-                                : tokens.danmo,
-                          ),
-                        ),
-                        const SizedBox(height: 1.5),
-                        // Traditional Chinese day numeral
-                        Text(
-                          formatTraditionalChineseDay(date.day),
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                            height: 1.15,
-                            color: isHighlighted
-                                ? Colors.white
-                                : tokens.jiaomo,
-                          ),
-                        ),
-                        const SizedBox(height: 1.5),
-                        // Weekday tag
-                        Text(
-                          formatChineseWeekday(date.weekday),
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                            fontSize: 8.5,
-                            height: 1.1,
-                            color: isHighlighted
-                                ? tokens.cinnabarWash.withValues(alpha: 0.85)
-                                : tokens.danmo,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              _buildWaistTallyBadge(
+                context: context,
+                tokens: tokens,
+                isDark: isDark,
               ),
-              const SizedBox(height: 4),
-              // Connecting Ink Pip Dot
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isHighlighted
-                      ? tokens.cinnabar
-                      : (isDark ? tokens.danmo : tokens.qingmo),
-                  border: Border.all(
-                    color: tokens.xuanGround,
-                    width: 1.5,
+              const SizedBox(height: 3),
+              // Connecting Diamond Node Knot (Pan-Chang Knot Node on the Silk Cord)
+              Transform.rotate(
+                angle: math.pi / 4,
+                child: Container(
+                  width: 6.5,
+                  height: 6.5,
+                  decoration: BoxDecoration(
+                    color: isHighlighted
+                        ? tokens.cinnabar
+                        : (isDark ? tokens.danmo : const Color(0xFFB5A487)),
+                    border: Border.all(
+                      color: tokens.xuanGround,
+                      width: 1.0,
+                    ),
                   ),
                 ),
               ),
@@ -194,6 +124,123 @@ class TimelineDateSpineItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildWaistTallyBadge({
+    required BuildContext context,
+    required InkDiaryTokens tokens,
+    required bool isDark,
+  }) {
+    final borderColor = isHighlighted
+        ? const Color(0xFF6E180F)
+        : (isDark ? tokens.deckleBorder : const Color(0xFFB5A487));
+
+    final innerBorderColor = isHighlighted
+        ? const Color(0xFFF8ECE0).withValues(alpha: 0.35)
+        : (isDark
+            ? tokens.qingmo.withValues(alpha: 0.25)
+            : const Color(0xFFFCF9F2).withValues(alpha: 0.8));
+
+    final tallyBorder = WaistTallyBorder(
+      cutSize: 7.0,
+      cordHoleRadius: 2.2,
+      borderColor: borderColor,
+      borderWidth: 1.0,
+      innerBorderColor: innerBorderColor,
+    );
+
+    final gradient = isHighlighted
+        ? const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFC23E30), Color(0xFFA42B1E)],
+          )
+        : (isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF2E2B27), Color(0xFF1F1D1A)],
+              )
+            : const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFFF7F2E6), Color(0xFFE5D7BC)],
+              ));
+
+    final shadowColor = isHighlighted
+        ? const Color(0xFFA82E21).withValues(alpha: 0.35)
+        : const Color(0xFF2A261E).withValues(alpha: isDark ? 0.3 : 0.1);
+
+    return Tooltip(
+      message: '${date.year}年${date.month}月${date.day}日 ${formatChineseWeekday(date.weekday)}',
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          customBorder: tallyBorder,
+          onTap: onTapBadge,
+          child: Container(
+            width: 52,
+            padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
+            decoration: ShapeDecoration(
+              shape: tallyBorder,
+              gradient: gradient,
+              shadows: [
+                BoxShadow(
+                  color: shadowColor,
+                  blurRadius: 4,
+                  offset: const Offset(0, 1.5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Month label (clean sans-serif)
+                Text(
+                  '${date.month}月',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                    height: 1.1,
+                    color: isHighlighted
+                        ? const Color(0xFFFDE8E5)
+                        : tokens.danmo,
+                  ),
+                ),
+                const SizedBox(height: 1.0),
+                // Traditional Chinese day numeral
+                Text(
+                  formatTraditionalChineseDay(date.day),
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                    height: 1.15,
+                    color: isHighlighted
+                        ? Colors.white
+                        : tokens.jiaomo,
+                  ),
+                ),
+                const SizedBox(height: 1.0),
+                // Weekday tag
+                Text(
+                  formatChineseWeekday(date.weekday),
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.1,
+                    color: isHighlighted
+                        ? const Color(0xFFFCE2DF).withValues(alpha: 0.9)
+                        : tokens.danmo,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

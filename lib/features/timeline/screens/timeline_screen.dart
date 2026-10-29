@@ -1,13 +1,15 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:uuid/uuid.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
-import 'package:memodiary/core/theme/widgets/ink_metadata_pill.dart';
-import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
+import 'package:memodiary/core/theme/widgets/octagonal_medallion_button.dart';
+import 'package:memodiary/core/theme/widgets/scroll_roller_fab.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/retrospection/widgets/on_this_day_banner.dart';
 import 'package:memodiary/features/retrospection/widgets/serendipity_roulette_card.dart';
@@ -65,6 +67,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   int _offset = 0;
   String? _errorMessage;
   bool _isSceneryVisible = true;
+  bool _isFabRolledUp = false;
 
   // Thought Spark Inspiration Prompts
   int _sparkIndex = 0;
@@ -103,6 +106,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
       final isVisible = _scrollController.offset <= 240.0;
       if (isVisible != _isSceneryVisible) {
         setState(() => _isSceneryVisible = isVisible);
+      }
+
+      // Dynamic rolling physics for Scroll-Roller FAB
+      final userDirection = _scrollController.position.userScrollDirection;
+      if (userDirection == ScrollDirection.reverse && !_isFabRolledUp) {
+        setState(() => _isFabRolledUp = true);
+      } else if ((userDirection == ScrollDirection.forward || _scrollController.offset <= 12) && _isFabRolledUp) {
+        setState(() => _isFabRolledUp = false);
       }
     }
     if (_scrollController.position.pixels >=
@@ -285,6 +296,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     return Scaffold(
       backgroundColor: tokens.xuanGround,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         titleSpacing: 16,
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -307,11 +319,10 @@ class _TimelineScreenState extends State<TimelineScreen> {
                           'MemoDiary',
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: tokens.jiaomo,
-                            letterSpacing: 1.0,
+                            letterSpacing: 0.8,
                           ),
                         ),
                       ),
@@ -319,8 +330,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
                       Text(
                         '拾光日记',
                         style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontNotoSerif,
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: tokens.danmo,
                           letterSpacing: 0.5,
                         ),
@@ -331,8 +342,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
                     'INK DIARY · TIMELINE',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 9,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w500,
                       letterSpacing: 1.2,
                       color: tokens.danmo,
                     ),
@@ -343,75 +354,68 @@ class _TimelineScreenState extends State<TimelineScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            key: const Key('timeline_albums_button'),
-            icon: const Icon(Icons.photo_album_outlined, size: 20),
-            tooltip: '旅行影集',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AlbumCollectionsScreen(
-                    database: widget.database,
-                    mediaService: widget.mediaService,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: OctagonalMedallionButton(
+              key: const Key('timeline_weekly_review_button'),
+              icon: Icons.calendar_view_week_rounded,
+              tooltip: '周志复盘',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WeeklyReviewScreen(
+                      database: widget.database,
+                      mediaService: widget.mediaService,
+                    ),
                   ),
-                ),
-              ).then((_) {
-                if (mounted) _loadInitial();
-              });
-            },
+                ).then((_) {
+                  if (mounted) _loadInitial();
+                });
+              },
+            ),
           ),
-          IconButton(
-            key: const Key('timeline_weekly_review_button'),
-            icon: const Icon(Icons.calendar_view_week_rounded),
-            tooltip: '周志复盘',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => WeeklyReviewScreen(
-                    database: widget.database,
-                    mediaService: widget.mediaService,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: OctagonalMedallionButton(
+              key: const Key('timeline_search_button'),
+              icon: Icons.search_rounded,
+              tooltip: '检索墨痕',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SearchScreen(
+                      database: widget.database,
+                      mediaService: widget.mediaService,
+                    ),
                   ),
-                ),
-              ).then((_) {
-                if (mounted) _loadInitial();
-              });
-            },
+                ).then((_) {
+                  if (mounted) _loadInitial();
+                });
+              },
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: '检索墨痕',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SearchScreen(
-                    database: widget.database,
-                    mediaService: widget.mediaService,
+          Padding(
+            padding: const EdgeInsets.only(left: 4, right: 12),
+            child: OctagonalMedallionButton(
+              key: const Key('timeline_settings_button'),
+              icon: Icons.settings_outlined,
+              tooltip: '设置与私隐',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SettingsScreen(
+                      database: widget.database,
+                      mediaService: widget.mediaService,
+                    ),
                   ),
-                ),
-              ).then((_) {
-                if (mounted) _loadInitial();
-              });
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            tooltip: '设置与私隐',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SettingsScreen(
-                    database: widget.database,
-                    mediaService: widget.mediaService,
-                  ),
-                ),
-              ).then((_) {
-                if (mounted) _loadInitial();
-              });
-            },
+                ).then((_) {
+                  if (mounted) _loadInitial();
+                });
+              },
+            ),
           ),
         ],
       ),
@@ -494,34 +498,11 @@ class _TimelineScreenState extends State<TimelineScreen> {
                     },
                   ),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: ScrollRollerFab(
+        key: const Key('timeline_write_fab'),
+        isRolledUp: _isFabRolledUp,
         onPressed: () => _handleCreateEntry(),
-        backgroundColor: tokens.cinnabar,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.brush_rounded, size: 20),
-        label: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '挥毫落墨',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              'Write Diary',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -547,7 +528,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                         Text(
                           '岁月微澜',
                           style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: tokens.jiaomo,
@@ -567,7 +547,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                         Text(
                           '研墨静思',
                           style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: tokens.cinnabar,
@@ -580,7 +559,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
                       '「纸寿千年，墨润万境。心迹随笔安放。」',
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontLiterata,
                         fontSize: 11.5,
                         fontStyle: FontStyle.italic,
                         color: tokens.danmo,
@@ -591,17 +569,18 @@ class _TimelineScreenState extends State<TimelineScreen> {
               ),
               const SizedBox(width: 8),
 
-              // Active Volume pill
-              InkMetadataPill(
+              // Active Volume Begonia Plaque Button
+              BegoniaPlaqueButton(
+                key: const Key('timeline_notebook_selector_button'),
                 label: activeVolumeTitle,
                 leading: Icon(
                   Icons.auto_stories_outlined,
-                  size: 14,
+                  size: 13,
                   color: tokens.cinnabar,
                 ),
                 trailing: Icon(
                   Icons.keyboard_arrow_down_rounded,
-                  size: 16,
+                  size: 15,
                   color: tokens.danmo,
                 ),
                 onTap: _handleOpenNotebooks,

@@ -68,6 +68,7 @@ class EntrySummaryCard extends StatelessWidget {
 
     return XuanPaperCard(
       onTap: onTap,
+      hasWusilanBorder: true,
       margin: customMargin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -90,7 +91,6 @@ class EntrySummaryCard extends StatelessWidget {
                 child: Text(
                   '$dateFormatted  $timeFormatted',
                   style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.3,
@@ -142,7 +142,6 @@ class EntrySummaryCard extends StatelessWidget {
                     Text(
                       titleText,
                       style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: tokens.jiaomo,
@@ -157,7 +156,6 @@ class EntrySummaryCard extends StatelessWidget {
                       Text(
                         snippetText,
                         style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontLiterata,
                           fontSize: 13.5,
                           color: isLocked
                               ? tokens.cinnabar

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
+import 'package:memodiary/features/timeline/widgets/notebook_selector_sheet.dart';
 import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
 import 'package:memodiary/features/scenery/widgets/thought_spark_dock.dart';
@@ -48,7 +48,7 @@ void main() {
       expect(find.text('MemoDiary'), findsOneWidget);
       expect(find.text('No Diary Entries Yet'), findsOneWidget);
       expect(find.text('Write Your First Entry'), findsOneWidget);
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byKey(const Key('timeline_write_fab')), findsOneWidget);
     });
 
     testWidgets('renders both normal entry cards and sealed Time Capsule cards with privacy protection', (WidgetTester tester) async {
@@ -161,7 +161,7 @@ void main() {
       expect(find.text('Weekly Review'), findsOneWidget);
     });
 
-    testWidgets('AppBar Travel Albums shortcut navigates to AlbumCollectionsScreen', (WidgetTester tester) async {
+    testWidgets('AppBar renders 3 octagonal medallions without back arrow or albums overflow', (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: TimelineScreen(
@@ -172,17 +172,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final albumsBtn = find.byKey(const Key('timeline_albums_button'));
-      expect(albumsBtn, findsOneWidget);
+      // Top bar actions: Weekly Review, Search, Settings (Albums removed to declutter Title)
+      expect(find.byKey(const Key('timeline_weekly_review_button')), findsOneWidget);
+      expect(find.byKey(const Key('timeline_search_button')), findsOneWidget);
+      expect(find.byKey(const Key('timeline_settings_button')), findsOneWidget);
+      expect(find.byKey(const Key('timeline_albums_button')), findsNothing);
+      expect(find.byType(BackButton), findsNothing);
 
-      await tester.tap(albumsBtn);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(AlbumCollectionsScreen), findsOneWidget);
-      expect(find.text('旅行影集'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pump(const Duration(milliseconds: 100));
+      // Verify title is rendered cleanly without overflow
+      expect(find.text('MemoDiary'), findsOneWidget);
+      expect(find.text('拾光日记'), findsOneWidget);
     });
 
     testWidgets('AppBar renders streamlined actions without overflow on mobile screen width', (WidgetTester tester) async {
@@ -203,11 +202,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Top bar actions: Travel Albums, Weekly Review, Search, Settings
-      expect(find.byKey(const Key('timeline_albums_button')), findsOneWidget);
+      // Top bar actions: 3 octagonal medallions
       expect(find.byKey(const Key('timeline_weekly_review_button')), findsOneWidget);
-      expect(find.byIcon(Icons.search), findsOneWidget);
-      expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+      expect(find.byKey(const Key('timeline_search_button')), findsOneWidget);
+      expect(find.byKey(const Key('timeline_settings_button')), findsOneWidget);
+
+      // Travel albums button removed to prevent title squishing
+      expect(find.byKey(const Key('timeline_albums_button')), findsNothing);
 
       // Infrequent maintenance actions are no longer cluttering the top bar
       expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
@@ -336,6 +337,40 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
+    });
+
+    testWidgets('ThoughtSparkDock hide button collapses prompt to reveal full scenery and reveal restores it', (tester) async {
+      await pumpTimelineScreen(tester);
+
+      // Initially ThoughtSparkDock is visible
+      expect(find.byKey(const Key('thought_spark_dock')), findsOneWidget);
+      expect(find.byKey(const Key('thought_spark_hide_button')), findsOneWidget);
+
+      // Tap hide button
+      await tester.tap(find.byKey(const Key('thought_spark_hide_button')));
+      await tester.pumpAndSettle();
+
+      // ThoughtSparkDock is now hidden, revealing the full scenery canvas
+      expect(find.byKey(const Key('thought_spark_dock')), findsNothing);
+      expect(find.byKey(const Key('thought_spark_reveal_button')), findsOneWidget);
+
+      // Tap reveal button to restore prompt dock
+      await tester.tap(find.byKey(const Key('thought_spark_reveal_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('thought_spark_dock')), findsOneWidget);
+    });
+
+    testWidgets('Active volume BegoniaPlaque button opens NotebookSelectorSheet', (tester) async {
+      await pumpTimelineScreen(tester);
+
+      final notebookBtn = find.byKey(const Key('timeline_notebook_selector_button'));
+      expect(notebookBtn, findsOneWidget);
+
+      await tester.tap(notebookBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NotebookSelectorSheet), findsOneWidget);
     });
   });
 }
