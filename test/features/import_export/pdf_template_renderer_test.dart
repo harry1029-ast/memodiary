@@ -111,6 +111,31 @@ void main() {
       expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
     });
 
+    test('builds and generates valid PDF with Dot Grid template', () async {
+      final doc = pw.Document();
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.dotGrid,
+        backgroundColor: material.Color(0xFFFDFBF7),
+        fontFamily: 'Noto Serif',
+        lineSpacing: 1.5,
+        marginHorizontal: 28.0,
+      );
+
+      doc.addPage(
+        pw.Page(
+          pageTheme: pw.PageTheme(
+            pageFormat: PdfPageFormat.a4,
+            buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, style),
+          ),
+          build: (context) => pw.Center(child: pw.Text('Dot Grid Content')),
+        ),
+      );
+
+      final bytes = await doc.save();
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
+
     test('builds and generates valid PDF with Retro Kraft template', () async {
       final doc = pw.Document();
       const style = TemplateStyle(

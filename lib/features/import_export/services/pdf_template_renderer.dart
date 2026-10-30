@@ -38,6 +38,10 @@ class PdfTemplateRenderer {
               _paintGridPaper(canvas, size, style);
               break;
 
+            case TemplateBackgroundType.dotGrid:
+              _paintDotGridPaper(canvas, size, style);
+              break;
+
             case TemplateBackgroundType.paperTexture:
               _paintPaperTexture(canvas, size, style);
               break;
@@ -89,6 +93,24 @@ class PdfTemplateRenderer {
       canvas.drawLine(0, y, size.x, y);
     }
     canvas.strokePath();
+  }
+
+  /// Minimalist dot grid in PDF vector coordinates
+  static void _paintDotGridPaper(
+    PdfGraphics canvas,
+    PdfPoint size,
+    TemplateStyle style,
+  ) {
+    final dotSize = 20.0 * (style.lineSpacing / 1.5).clamp(0.8, 2.0);
+
+    canvas.setFillColor(const PdfColor(0.47, 0.56, 0.61, 0.25));
+
+    for (double x = 0; x < size.x; x += dotSize) {
+      for (double y = 0; y < size.y; y += dotSize) {
+        canvas.drawEllipse(x, y, 0.8, 0.8);
+      }
+    }
+    canvas.fillPath();
   }
 
   /// Vintage kraft paper with top and bottom decorative accent bars

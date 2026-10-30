@@ -17,6 +17,7 @@ import '../controllers/editor_autosave_manager.dart';
 import '../models/thought_spark.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
+import '../services/baseline_metrics_calculator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/ghost_prompt_view.dart';
@@ -64,6 +65,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   final FocusNode _editorFocusNode = FocusNode();
   final ScrollController _editorScrollController = ScrollController();
   EditorAutosaveManager? _autosaveManager;
+
+  final GlobalKey _letterheadKey = GlobalKey();
+  double _headerHeight = 90.0;
 
   Template? _currentTemplate;
   List<Template> _allTemplates = [];
@@ -438,6 +442,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     final inkColor = isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF212121);
     final iconColor = isPaperDark ? const Color(0xFFDCD6CA) : tokens.nongmo;
 
+    _updateHeaderHeight();
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isPaperDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
@@ -572,146 +578,108 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 fit: StackFit.expand,
                 children: [
                   Positioned.fill(
-                    child: TemplateCanvasContainer(
-                      style: templateStyle,
-                      customPadding: EdgeInsets.zero,
-                      child: Theme(
-                        data: paperBaseTheme.copyWith(
-                          textTheme: paperBaseTheme.textTheme.apply(
-                            bodyColor: inkColor,
-                            displayColor: inkColor,
+                    child: AnimatedBuilder(
+                      animation: _editorScrollController,
+                      builder: (context, _) {
+                        final scrollOffset = _editorScrollController.hasClients
+                            ? _editorScrollController.offset
+                            : 0.0;
+                        return TemplateCanvasContainer(
+                          style: templateStyle,
+                          typography: _typography,
+                          scrollOffset: scrollOffset,
+                          headerHeight: _headerHeight,
+                          customPadding: EdgeInsets.zero,
+                          child: const SizedBox.expand(),
+                        );
+                      },
+                    ),
+                  ),
+                  Theme(
+                    data: paperBaseTheme.copyWith(
+                      textTheme: paperBaseTheme.textTheme.apply(
+                        bodyColor: inkColor,
+                        displayColor: inkColor,
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      controller: _editorScrollController,
+                      padding: EdgeInsets.zero,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. In-Paper Journal Letterhead & Ghost Prompt
+                          Container(
+                            key: _letterheadKey,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: templateStyle.marginHorizontal.clamp(16.0, 36.0),
+                              vertical: 8.0,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                JournalLetterhead(
+                                  entryDate: _entryDate,
+                                  mood: _mood,
+                                  weather: _weather,
+                                  titleController: _titleController,
+                                  onDateChanged: (val) {
+                                    setState(() => _entryDate = val);
+                                    widget.database.updateEntryMetadata(widget.entryId, entryDate: val);
+                                  },
+                                  onMoodChanged: (val) {
+                                    setState(() => _mood = val);
+                                    widget.database.updateEntryMetadata(widget.entryId, mood: val);
+                                  },
+                                  onWeatherChanged: (val) {
+                                    setState(() => _weather = val);
+                                    widget.database.updateEntryMetadata(widget.entryId, weather: val);
+                                  },
+                                ),
+                                GhostPromptView(
+                                  controller: _controller!,
+                                  spark: _spark,
+                                  onAdoptPrompt: () => _handleInsertPrompt(_spark.localizedPrompt),
+                                  onShuffle: _handleShuffleSpark,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        child: SingleChildScrollView(
-                          controller: _editorScrollController,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: templateStyle.marginHorizontal.clamp(16.0, 36.0),
-                            vertical: 8.0,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // 1. In-Paper Journal Letterhead
-                              JournalLetterhead(
-                                entryDate: _entryDate,
-                                mood: _mood,
-                                weather: _weather,
-                                titleController: _titleController,
-                                onDateChanged: (val) {
-                                  setState(() => _entryDate = val);
-                                  widget.database.updateEntryMetadata(widget.entryId, entryDate: val);
-                                },
-                                onMoodChanged: (val) {
-                                  setState(() => _mood = val);
-                                  widget.database.updateEntryMetadata(widget.entryId, mood: val);
-                                },
-                                onWeatherChanged: (val) {
-                                  setState(() => _weather = val);
-                                  widget.database.updateEntryMetadata(widget.entryId, weather: val);
-                                },
-                              ),
 
-                              // 2. In-Line Ghost Prompt (only when document is empty)
-                              GhostPromptView(
-                                controller: _controller!,
-                                spark: _spark,
-                                onAdoptPrompt: () => _handleInsertPrompt(_spark.localizedPrompt),
-                                onShuffle: _handleShuffleSpark,
-                              ),
-
-                              // 3. Quill Editor Content
-                              QuillEditor(
-                                controller: _controller!,
-                                focusNode: _editorFocusNode,
-                                scrollController: _editorScrollController,
-                                config: QuillEditorConfig(
-                                  placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
-                                  expands: false,
-                                  scrollable: false,
-                                  embedBuilders: [
-                                    SandboxedImageEmbedBuilder(
-                                      mediaSandboxService: widget.mediaSandboxService,
-                                      onImageRemoved: () => _autosaveManager?.saveDraft(),
-                                    ),
-                                    SandboxedVideoEmbedBuilder(
-                                      mediaSandboxService: widget.mediaSandboxService,
-                                      onVideoRemoved: () => _autosaveManager?.saveDraft(),
-                                    ),
-                                  ],
-                                  customStyles: DefaultStyles(
-                                    placeHolder: DefaultTextBlockStyle(
-                                      _typography.toTextStyle(
-                                        color: isPaperDark ? const Color(0xFFA69F93) : const Color(0x7F212121),
-                                      ),
-                                      const HorizontalSpacing(0, 0),
-                                      const VerticalSpacing(0, 0),
-                                      const VerticalSpacing(0, 0),
-                                      null,
-                                    ),
-                                    paragraph: DefaultTextBlockStyle(
-                                      _typography.toTextStyle(
-                                        color: inkColor,
-                                      ),
-                                      const HorizontalSpacing(0, 0),
-                                      const VerticalSpacing(0, 0),
-                                      const VerticalSpacing(0, 0),
-                                      null,
-                                    ),
-                                    h1: DefaultTextBlockStyle(
-                                      _typography.toTextStyle(
-                                        color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
-                                      ).copyWith(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      const HorizontalSpacing(0, 0),
-                                      const VerticalSpacing(8, 4),
-                                      const VerticalSpacing(0, 0),
-                                      null,
-                                    ),
-                                    h2: DefaultTextBlockStyle(
-                                      _typography.toTextStyle(
-                                        color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
-                                      ).copyWith(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      const HorizontalSpacing(0, 0),
-                                      const VerticalSpacing(6, 3),
-                                      const VerticalSpacing(0, 0),
-                                      null,
-                                    ),
-                                    h3: DefaultTextBlockStyle(
-                                      _typography.toTextStyle(
-                                        color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
-                                      ).copyWith(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      const HorizontalSpacing(0, 0),
-                                      const VerticalSpacing(4, 2),
-                                      const VerticalSpacing(0, 0),
-                                      null,
-                                    ),
-                                    quote: DefaultTextBlockStyle(
-                                      _typography.toTextStyle(
-                                        color: isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF424242),
-                                      ).copyWith(
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                      const HorizontalSpacing(0, 0),
-                                      const VerticalSpacing(4, 4),
-                                      const VerticalSpacing(0, 0),
-                                      null,
-                                    ),
+                          // 2. Quill Editor Content with 12px gutter from margin line
+                          Padding(
+                            padding: EdgeInsets.only(
+                              left: templateStyle.marginHorizontal.clamp(16.0, 36.0) + 12.0,
+                              right: templateStyle.marginHorizontal.clamp(16.0, 36.0),
+                              bottom: 120.0,
+                            ),
+                            child: QuillEditor(
+                              controller: _controller!,
+                              focusNode: _editorFocusNode,
+                              scrollController: _editorScrollController,
+                              config: QuillEditorConfig(
+                                placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
+                                expands: false,
+                                scrollable: false,
+                                embedBuilders: [
+                                  SandboxedImageEmbedBuilder(
+                                    mediaSandboxService: widget.mediaSandboxService,
+                                    onImageRemoved: () => _autosaveManager?.saveDraft(),
                                   ),
+                                  SandboxedVideoEmbedBuilder(
+                                    mediaSandboxService: widget.mediaSandboxService,
+                                    onVideoRemoved: () => _autosaveManager?.saveDraft(),
+                                  ),
+                                ],
+                                customStyles: _buildQuillStyles(
+                                  typography: _typography,
+                                  inkColor: inkColor,
+                                  isPaperDark: isPaperDark,
                                 ),
                               ),
-
-                              const SizedBox(height: 120),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
@@ -771,6 +739,92 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _updateHeaderHeight() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final renderBox = _letterheadKey.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox != null && renderBox.hasSize) {
+        final height = renderBox.size.height;
+        if ((height - _headerHeight).abs() > 0.5) {
+          setState(() {
+            _headerHeight = height;
+          });
+        }
+      }
+    });
+  }
+
+  DefaultStyles _buildQuillStyles({
+    required TypographySettings typography,
+    required Color inkColor,
+    required bool isPaperDark,
+  }) {
+    final baseStyle = typography.toTextStyle(color: inkColor);
+    final rowHeight = BaselineMetricsCalculator.calculateLineHeight(baseStyle);
+
+    return DefaultStyles(
+      placeHolder: DefaultTextBlockStyle(
+        typography.toTextStyle(
+          color: isPaperDark ? const Color(0xFFA69F93) : const Color(0x7F212121),
+        ),
+        const HorizontalSpacing(0, 0),
+        const VerticalSpacing(0, 0),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      paragraph: DefaultTextBlockStyle(
+        baseStyle,
+        const HorizontalSpacing(0, 0),
+        const VerticalSpacing(0, 0),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      h1: DefaultTextBlockStyle(
+        baseStyle.copyWith(
+          fontSize: (typography.fontSize * 1.5).clamp(20.0, 32.0),
+          fontWeight: FontWeight.bold,
+          color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
+        ),
+        const HorizontalSpacing(0, 0),
+        VerticalSpacing(rowHeight * 0.25, rowHeight * 0.25),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      h2: DefaultTextBlockStyle(
+        baseStyle.copyWith(
+          fontSize: (typography.fontSize * 1.25).clamp(18.0, 26.0),
+          fontWeight: FontWeight.bold,
+          color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
+        ),
+        const HorizontalSpacing(0, 0),
+        VerticalSpacing(rowHeight * 0.2, rowHeight * 0.2),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      h3: DefaultTextBlockStyle(
+        baseStyle.copyWith(
+          fontSize: (typography.fontSize * 1.1).clamp(16.0, 22.0),
+          fontWeight: FontWeight.bold,
+          color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
+        ),
+        const HorizontalSpacing(0, 0),
+        VerticalSpacing(rowHeight * 0.15, rowHeight * 0.15),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      quote: DefaultTextBlockStyle(
+        baseStyle.copyWith(
+          fontStyle: FontStyle.italic,
+          color: isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF424242),
+        ),
+        const HorizontalSpacing(0, 0),
+        VerticalSpacing(rowHeight * 0.2, rowHeight * 0.2),
+        const VerticalSpacing(0, 0),
+        null,
       ),
     );
   }

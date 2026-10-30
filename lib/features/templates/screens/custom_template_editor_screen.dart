@@ -256,6 +256,11 @@ class _CustomTemplateEditorScreenState
                   borderRadius: BorderRadius.circular(15),
                   child: TemplateCanvasContainer(
                     style: previewStyle,
+                    typography: TypographySettings(
+                      fontSize: 14,
+                      lineSpacing: _lineSpacing,
+                      fontFamily: previewStyle.fontFamily,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

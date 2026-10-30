@@ -17,8 +17,12 @@ void main() {
       expect(TemplateBackgroundType.fromString('color'), TemplateBackgroundType.color);
       expect(TemplateBackgroundType.fromString('lined'), TemplateBackgroundType.lined);
       expect(TemplateBackgroundType.fromString('grid'), TemplateBackgroundType.grid);
+      expect(TemplateBackgroundType.fromString('dot_grid'), TemplateBackgroundType.dotGrid);
+      expect(TemplateBackgroundType.fromString('dotgrid'), TemplateBackgroundType.dotGrid);
       expect(TemplateBackgroundType.fromString('paper_texture'), TemplateBackgroundType.paperTexture);
       expect(TemplateBackgroundType.fromString('unknown'), TemplateBackgroundType.color);
+      expect(TemplateBackgroundType.dotGrid.toDbValue, 'dot_grid');
+      expect(TemplateBackgroundType.dotGrid.label, 'Dot Grid');
     });
   });
 
@@ -81,6 +85,40 @@ void main() {
       expect(pSame.shouldRepaint(p1), isFalse);
       expect(pDiffType.shouldRepaint(p1), isTrue);
       expect(pDiffSpacing.shouldRepaint(p1), isTrue);
+    });
+
+    test('accepts typography, scrollOffset, headerHeight and triggers shouldRepaint on change', () {
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: Colors.white,
+        lineSpacing: 1.5,
+        marginHorizontal: 20.0,
+      );
+
+      final p1 = TemplateCanvasPainter(
+        style: style,
+        scrollOffset: 0.0,
+        headerHeight: 90.0,
+      );
+      final pScrollChanged = TemplateCanvasPainter(
+        style: style,
+        scrollOffset: 50.0,
+        headerHeight: 90.0,
+      );
+      final pHeaderChanged = TemplateCanvasPainter(
+        style: style,
+        scrollOffset: 0.0,
+        headerHeight: 120.0,
+      );
+
+      final recorder = PictureRecorder();
+      final canvas = Canvas(recorder);
+      expect(() => pScrollChanged.paint(canvas, const Size(400, 800)), returnsNormally);
+      final pic = recorder.endRecording();
+      pic.dispose();
+
+      expect(pScrollChanged.shouldRepaint(p1), isTrue);
+      expect(pHeaderChanged.shouldRepaint(p1), isTrue);
     });
   });
 }

@@ -6,6 +6,7 @@ enum TemplateBackgroundType {
   color,
   lined,
   grid,
+  dotGrid,
   paperTexture;
 
   static TemplateBackgroundType fromString(String value) {
@@ -14,6 +15,9 @@ enum TemplateBackgroundType {
         return TemplateBackgroundType.lined;
       case 'grid':
         return TemplateBackgroundType.grid;
+      case 'dot_grid':
+      case 'dotgrid':
+        return TemplateBackgroundType.dotGrid;
       case 'paper_texture':
       case 'papertexture':
         return TemplateBackgroundType.paperTexture;
@@ -31,6 +35,8 @@ enum TemplateBackgroundType {
         return 'lined';
       case TemplateBackgroundType.grid:
         return 'grid';
+      case TemplateBackgroundType.dotGrid:
+        return 'dot_grid';
       case TemplateBackgroundType.paperTexture:
         return 'paper_texture';
     }
@@ -44,6 +50,8 @@ enum TemplateBackgroundType {
         return 'Lined Paper';
       case TemplateBackgroundType.grid:
         return 'Grid Paper';
+      case TemplateBackgroundType.dotGrid:
+        return 'Dot Grid';
       case TemplateBackgroundType.paperTexture:
         return 'Kraft Paper';
     }

@@ -104,5 +104,33 @@ void main() {
       expect(stored!.name, equals('Mint Grid Studio'));
       expect(stored.isCustom, isTrue);
     });
+
+    testWidgets('allows selecting dot_grid background pattern and saves correctly', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CustomTemplateEditorScreen(database: db),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('template_name_input')),
+        'Zen Dot Grid',
+      );
+      await tester.pumpAndSettle();
+
+      final dotGridChip = find.byKey(const Key('bg_type_dot_grid'));
+      await tester.ensureVisible(dotGridChip);
+      await tester.pumpAndSettle();
+      await tester.tap(dotGridChip);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('save_custom_template_button')));
+      await tester.pumpAndSettle();
+
+      final customTemplates = await db.getCustomTemplates();
+      final created = customTemplates.firstWhere((t) => t.name == 'Zen Dot Grid');
+      expect(created.backgroundType, equals('dot_grid'));
+    });
   });
 }

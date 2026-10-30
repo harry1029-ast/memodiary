@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../editor/models/typography_settings.dart';
 import '../models/template_style.dart';
 import 'template_canvas_painter.dart';
 
@@ -6,6 +7,10 @@ import 'template_canvas_painter.dart';
 class TemplateCanvasContainer extends StatelessWidget {
   final TemplateStyle style;
   final Widget child;
+  final TypographySettings? typography;
+  final double scrollOffset;
+  final double headerHeight;
+
   /// Optional override for canvas padding.
   ///
   /// When wrapping scrollable in-paper headers or docks that manage their own horizontal
@@ -16,13 +21,21 @@ class TemplateCanvasContainer extends StatelessWidget {
     super.key,
     required this.style,
     required this.child,
+    this.typography,
+    this.scrollOffset = 0.0,
+    this.headerHeight = 0.0,
     this.customPadding,
   });
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: TemplateCanvasPainter(style: style),
+      painter: TemplateCanvasPainter(
+        style: style,
+        typography: typography,
+        scrollOffset: scrollOffset,
+        headerHeight: headerHeight,
+      ),
       child: Padding(
         padding: customPadding ??
             EdgeInsets.symmetric(
@@ -34,4 +47,3 @@ class TemplateCanvasContainer extends StatelessWidget {
     );
   }
 }
-
