@@ -28,11 +28,13 @@ import '../features/weekly_review/screens/weekly_review_screen.dart';
 class ScreenSpec {
   final String slug;
   final String title;
+  final bool fullPage;
   final Widget Function(AppDatabase db, MediaSandboxService media, AlbumRepository repo, Entry entry1, Entry debrief, AlbumCollection col) builder;
 
   const ScreenSpec({
     required this.slug,
     required this.title,
+    this.fullPage = true,
     required this.builder,
   });
 }
@@ -170,6 +172,7 @@ class CaptureRunnerApp extends StatefulWidget {
 class _CaptureRunnerAppState extends State<CaptureRunnerApp> {
   final GlobalKey _boundaryKey = GlobalKey();
   Widget? _currentWidget;
+  double _containerHeight = 892;
   String _currentStatus = 'Preparing capture sequence...';
 
   late final List<ScreenSpec> _specs;
@@ -307,6 +310,7 @@ class _CaptureRunnerAppState extends State<CaptureRunnerApp> {
       print('[$i/${_specs.length}] Mounting: ${spec.title} (${spec.slug})...');
 
       setState(() {
+        _containerHeight = 892;
         _currentStatus = 'Rendering ${spec.title}...';
         _currentWidget = spec.builder(
           widget.database,
@@ -320,6 +324,29 @@ class _CaptureRunnerAppState extends State<CaptureRunnerApp> {
 
       // Allow 800ms for database streams, animations, and font layout to fully settle
       await Future.delayed(const Duration(milliseconds: 800));
+
+      if (spec.fullPage) {
+        final scrollPositions =
+            _findAllScrollPositions(_boundaryKey.currentContext);
+        if (scrollPositions.isNotEmpty) {
+          double maxAdditional = 0;
+          for (final pos in scrollPositions) {
+            if (pos.maxScrollExtent > maxAdditional) {
+              maxAdditional = pos.maxScrollExtent;
+            }
+          }
+          if (maxAdditional > 20) {
+            final expandedHeight =
+                (892 + maxAdditional).clamp(892.0, 3200.0);
+            print(
+                '  ↳ Detected scroll content (+$maxAdditional px). Expanding height to ${expandedHeight.toInt()}px...');
+            setState(() {
+              _containerHeight = expandedHeight;
+            });
+            await Future.delayed(const Duration(milliseconds: 400));
+          }
+        }
+      }
 
       try {
         final boundary = _boundaryKey.currentContext?.findRenderObject()
@@ -351,6 +378,25 @@ class _CaptureRunnerAppState extends State<CaptureRunnerApp> {
     exit(0);
   }
 
+  List<ScrollPosition> _findAllScrollPositions(BuildContext? root) {
+    if (root == null) return [];
+    final List<ScrollPosition> positions = [];
+    void search(Element element) {
+      if (element is StatefulElement && element.state is ScrollableState) {
+        final state = element.state as ScrollableState;
+        try {
+          if (state.position.hasContentDimensions) {
+            positions.add(state.position);
+          }
+        } catch (_) {}
+      }
+      element.visitChildren(search);
+    }
+
+    root.visitChildElements(search);
+    return positions;
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -359,31 +405,34 @@ class _CaptureRunnerAppState extends State<CaptureRunnerApp> {
       darkTheme: InkDiaryTheme.dark,
       home: Scaffold(
         backgroundColor: const Color(0xFF1E1E1E),
-        body: Center(
-          child: RepaintBoundary(
-            key: _boundaryKey,
-            child: Container(
-              width: 412,
-              height: 892,
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFCF9F2),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 16,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: _currentWidget ??
-                  Center(
-                    child: Text(
-                      _currentStatus,
-                      style: const TextStyle(color: Colors.black54),
+        body: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Center(
+            child: RepaintBoundary(
+              key: _boundaryKey,
+              child: Container(
+                width: 412,
+                height: _containerHeight,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFCF9F2),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 16,
+                      offset: Offset(0, 4),
                     ),
-                  ),
+                  ],
+                ),
+                child: _currentWidget ??
+                    Center(
+                      child: Text(
+                        _currentStatus,
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                    ),
+              ),
             ),
           ),
         ),

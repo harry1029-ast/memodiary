@@ -23,3 +23,19 @@ _Avoid_: Album spread list, photobook layout JSON, scrapbook model
 **Photobook Spread**:
 A two-page visual unit (`BookSpreadData`) representing facing leaves in the overview feed, flipbook viewer, and bound PDF export, flanked by Front Cover and Epilogue colophon bookends.
 _Avoid_: AlbumSpread, spread pair
+
+**Journal Sheet**:
+The full-bleed writing canvas in the entry editor where the chosen template background, paper texture, ruled lines, and typography fill the entire viewport without letterboxing or floating card containers.
+_Avoid_: Editor box, paper card, canvas container
+
+**Journal Letterhead**:
+The typographic header rendered directly onto the top of the Journal Sheet, presenting the entry date, weather, and mood as authentic diary stationery front-matter with tap-to-modify interactions.
+_Avoid_: Metadata bar, metadata chips, entry header strip
+
+**Ghost Prompt**:
+The subtle inspirational thought cue rendered as placeholder text directly inside the empty Journal Sheet, disappearing naturally upon user input and rotatable on demand without occupying persistent vertical container space.
+_Avoid_: Thought spark container, prompt banner, inspiration card
+
+**Writing Dock**:
+The consolidated, de-duplicated bottom toolbar in the entry editor providing contextual rich-text formatting, media attachments, and ambiance controls in a single streamlined dock.
+_Avoid_: Editor toolbar, formatting strip, action bar
