@@ -16,6 +16,11 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 **Implementer subagents** should be run in the background where possible for maximum concurrency.
 
+### Concurrency & Context Window Protection
+When executing tickets, distinguish between execution modes:
+- **Mode A (Worktree Subagents — Default for $\ge 3$ tickets)**: Each ticket runs in an isolated subagent worktree on its own branch. Keeps compiler churn, file diffs, and test output out of the primary session, protecting against context window bloat.
+- **Mode B (In-Session Direct)**: Sequential in-session execution. Recommended only for small 1–2 ticket tasks; using Mode B on larger epics triggers rapid context compaction.
+
 ## Steps
 
 1. Read the spec and tickets to understand the task graph.

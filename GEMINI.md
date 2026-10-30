@@ -31,6 +31,7 @@ Maintain the following 5 core tables in `lib/core/database/app_database.dart`[ci
 - **Generated Code Boundary (`.g.dart`)**: Never inspect, diff, or manually edit `.g.dart` files. Always modify table schema definitions in `lib/core/database/tables/` or `app_database.dart` and regenerate code using `dart run build_runner build`.
 - Detailed code shape, naming, a11y semantics, and test harness standards are specified in [CODING_STANDARDS.md](file:///home/harry1029/projects/memodiary/CODING_STANDARDS.md).
 - **Execution & Tooling**: In environments where `flutter` or `dart` is not on the default sandbox `$PATH`, invoke the Flutter SDK binary directly at `/home/harry1029/development/flutter/bin/flutter` (or `/home/harry1029/development/flutter/bin/dart`). Note that external SDK binaries (`/home/harry1029/development/...`) and Git index writes (`git add`, `git rm`, `git commit`) reside outside or are protected by the sandbox mount, requiring execution outside the sandbox (`BypassSandbox: true`).
+- **Tool Economy & Token Hygiene**: Always run targeted test commands using `--reporter=compact` (e.g. `/home/harry1029/development/flutter/bin/flutter test --reporter=compact test/features/<feature>/`) to minimize console token bloat. Reserve full-suite test runs exclusively for milestone certification. Restrict log/search inspections using pipe limits (`head -n 20`, `grep -m 5`).
 
 ## Development Roadmap (Reference Only)
 Milestone 1 (Alpha):

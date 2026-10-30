@@ -6,6 +6,10 @@ import 'template_canvas_painter.dart';
 class TemplateCanvasContainer extends StatelessWidget {
   final TemplateStyle style;
   final Widget child;
+  /// Optional override for canvas padding.
+  ///
+  /// When wrapping scrollable in-paper headers or docks that manage their own horizontal
+  /// margins, pass [customPadding]: EdgeInsets.zero to prevent double padding with [style.marginHorizontal].
   final EdgeInsetsGeometry? customPadding;
 
   const TemplateCanvasContainer({
