@@ -7,10 +7,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/dictation_service.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
 import 'package:memodiary/features/editor/widgets/entry_metadata_bar.dart';
+import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
+import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/thought_spark_banner.dart';
+import 'package:memodiary/features/editor/widgets/writing_dock.dart';
 import '../../core/services/dictation_service_test.dart';
 
 void main() {
@@ -58,9 +62,10 @@ void main() {
   });
 
   group('EntryEditorScreen Widget Tests', () {
-    testWidgets('renders all editor components and metadata bar', (tester) async {
+    testWidgets('renders full-bleed journal sheet, letterhead, ghost prompt, and writing dock', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: InkDiaryTheme.light,
           home: EntryEditorScreen(
             database: db,
             mediaSandboxService: sandboxService,
@@ -72,45 +77,28 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Verify header, metadata, banner, editor, and toolbar are rendered
-      expect(find.byType(EntryMetadataBar), findsOneWidget);
-      expect(find.byType(ThoughtSparkBanner), findsOneWidget);
+      // Verify new architecture widgets are rendered
+      expect(find.byType(JournalLetterhead), findsOneWidget);
+      expect(find.byType(GhostPromptView), findsOneWidget);
       expect(find.byType(QuillEditor), findsOneWidget);
-      expect(find.byType(EditorToolbar), findsOneWidget);
-      expect(find.text('Saved'), findsOneWidget);
-      expect(find.text('2026-10-16 12:00'), findsOneWidget);
-    });
+      expect(find.byType(WritingDock), findsOneWidget);
 
-    testWidgets('using thought spark prompt inserts it and hides banner', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Tap 'Use Prompt'
-      expect(find.text('Use Prompt'), findsOneWidget);
-      await tester.tap(find.text('Use Prompt'));
-      await tester.pumpAndSettle();
-
-      // Banner should be hidden
+      // Verify old cluttered components are completely retired
+      expect(find.byType(EntryMetadataBar), findsNothing);
       expect(find.byType(ThoughtSparkBanner), findsNothing);
+      expect(find.byType(EditorToolbar), findsNothing);
 
-      // Verify database gets updated with prompt content
-      final entry = await db.getEntryById('editor_test_entry');
-      expect(entry!.plainText.isNotEmpty, isTrue);
+      // Verify status and title
+      expect(find.text('已保存'), findsOneWidget);
+      expect(find.text('Test Diary Title'), findsOneWidget);
+      expect(find.byKey(const Key('editor_seal_done_btn')), findsOneWidget);
+      expect(find.byKey(const Key('editor_more_options_btn')), findsOneWidget);
     });
 
-    testWidgets('opening template switcher and typography sheets from toolbar', (tester) async {
+    testWidgets('using ghost prompt inserts it into editor and hides placeholder', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
+          theme: InkDiaryTheme.light,
           home: EntryEditorScreen(
             database: db,
             mediaSandboxService: sandboxService,
@@ -122,12 +110,45 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap template button in AppBar
-      await tester.tap(find.byTooltip('Switch Template'));
+      // Tap '由此题落墨 · Adopt Prompt'
+      expect(find.textContaining('由此题落墨'), findsOneWidget);
+      await tester.tap(find.textContaining('由此题落墨'));
+      await tester.pumpAndSettle();
+
+      // Ghost prompt placeholder should vanish because editor now has text
+      expect(find.textContaining('由此题落墨'), findsNothing);
+
+      // Verify database gets updated with quoted prompt content
+      final entry = await db.getEntryById('editor_test_entry');
+      expect(entry!.plainText.contains('【灵感拾遗】'), isTrue);
+    });
+
+    testWidgets('opening template switcher and typography sheets from options menu', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: EntryEditorScreen(
+            database: db,
+            mediaSandboxService: sandboxService,
+            entryId: 'editor_test_entry',
+            dictationService: dictationService,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Open options menu in AppBar
+      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      await tester.pumpAndSettle();
+
+      // Select Templates
+      expect(find.textContaining('更换素笺模板'), findsOneWidget);
+      await tester.tap(find.textContaining('更换素笺模板'));
       await tester.pumpAndSettle();
 
       expect(find.text('Switch Template'), findsOneWidget);
-      // Close sheet
+      // Select Lined Paper
       await tester.tap(find.text('Lined Paper'));
       await tester.pumpAndSettle();
 
@@ -135,8 +156,12 @@ void main() {
       final entry = await db.getEntryById('editor_test_entry');
       expect(entry!.templateId, 'template_lined_paper');
 
-      // Tap typography in AppBar
-      await tester.tap(find.byTooltip('Typography').first);
+      // Re-open options menu for Typography
+      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('字法排印'), findsOneWidget);
+      await tester.tap(find.textContaining('字法排印'));
       await tester.pumpAndSettle();
 
       expect(find.text('Typography Settings'), findsOneWidget);
@@ -148,7 +173,7 @@ void main() {
     testWidgets('renders cleanly in dark mode without canvas collapse', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: ThemeData.dark(),
+          theme: InkDiaryTheme.dark,
           home: EntryEditorScreen(
             database: db,
             mediaSandboxService: sandboxService,
@@ -164,13 +189,8 @@ void main() {
       final canvasFinder = find.byType(Positioned);
       expect(canvasFinder, findsWidgets);
 
-      // Verify thought spark banner renders legible prompt in dark mode
-      expect(find.byType(ThoughtSparkBanner), findsOneWidget);
-      final textWidgets = tester.widgetList<Text>(find.byType(Text));
-      final promptWidget = textWidgets.firstWhere(
-        (t) => (t.data ?? '').startsWith('“'),
-      );
-      expect(promptWidget.style?.color, const Color(0xFFF0ECE3));
+      // Verify no old ThoughtSparkBanner is present
+      expect(find.byType(ThoughtSparkBanner), findsNothing);
 
       // Verify seal watermark is present
       expect(find.text('澄心\n寄墨'), findsOneWidget);
