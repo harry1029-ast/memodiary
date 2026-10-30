@@ -18,6 +18,7 @@ class AlbumLayoutEngine {
     required AlbumCollection collection,
     required List<AlbumPhoto> photos,
     String? themeId,
+    bool autoPopulate = true,
   }) {
     final rawJson = collection.studioLayoutJson?.trim();
     if (rawJson != null && rawJson.isNotEmpty) {
@@ -33,7 +34,7 @@ class AlbumLayoutEngine {
       collection: collection,
       photos: photos,
       themeId: themeId,
-      autoPopulate: true,
+      autoPopulate: autoPopulate,
     );
   }
 

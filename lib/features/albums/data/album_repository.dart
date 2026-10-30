@@ -531,21 +531,11 @@ class AlbumRepository {
     }
 
     final photos = await getPhotosForCollection(collectionId);
-    final rawJson = collection.studioLayoutJson?.trim();
-
-    if (rawJson != null && rawJson.isNotEmpty) {
-      try {
-        final parsed = AlbumStudioDocument.fromJsonString(rawJson);
-        return parsed.reconcileWithPhotoIds(photos.map((p) => p.id));
-      } catch (_) {
-        // Fall through to re-synthesize if stored JSON is corrupted
-      }
-    }
-
-    return AlbumLayoutEngine.compileStudioDocument(
+    return AlbumLayoutEngine.resolveOrCompileDocument(
       collection: collection,
       photos: photos,
       themeId: collection.themeId,
+      autoPopulate: false,
     );
   }
 }

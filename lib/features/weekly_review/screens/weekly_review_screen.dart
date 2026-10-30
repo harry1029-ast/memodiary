@@ -521,8 +521,8 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
           if (moodCounts.isNotEmpty)
             Wrap(
               spacing: 6,
-              children: moodCounts.entries.map((m) {
-                final emoji = EntrySummaryCard.moodEmojis[m.key] ?? '🙂';
+              children: moodCounts.entries.map((entry) {
+                final emoji = EntrySummaryCard.moodEmojis[entry.key] ?? '🙂';
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
@@ -531,7 +531,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                     border: Border.all(color: tokens.agedFiber),
                   ),
                   child: Text(
-                    '$emoji ${m.value}',
+                    '$emoji ${entry.value}',
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                   ),
                 );

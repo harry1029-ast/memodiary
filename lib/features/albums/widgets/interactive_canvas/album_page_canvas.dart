@@ -101,7 +101,7 @@ class _AlbumPageCanvasState extends State<AlbumPageCanvas> {
 
         final sortedOverlays = List<PageOverlayElement>.from(
           widget.page.overlays,
-        )..sort((a, b) => a.zIndex.compareTo(b.zIndex));
+        )..sort((first, second) => first.zIndex.compareTo(second.zIndex));
 
         final canvasStack = Stack(
           clipBehavior: Clip.none,

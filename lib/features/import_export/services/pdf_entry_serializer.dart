@@ -237,26 +237,26 @@ class PdfEntrySerializer {
         continue;
       }
 
-      final textSpans = block.spans.map((s) {
+      final textSpans = block.spans.map((span) {
         pw.Font font;
-        if (s.isBold && s.isItalic) {
+        if (span.isBold && span.isItalic) {
           font = fontResolver.boldItalicFont;
-        } else if (s.isBold) {
+        } else if (span.isBold) {
           font = fontResolver.boldFont;
-        } else if (s.isItalic) {
+        } else if (span.isItalic) {
           font = fontResolver.italicFont;
         } else {
           font = fontResolver.regularFont;
         }
 
         return pw.TextSpan(
-          text: s.text,
+          text: span.text,
           style: pw.TextStyle(
             font: font,
-            color: s.color ?? PdfColors.black,
-            decoration: s.isUnderline
+            color: span.color ?? PdfColors.black,
+            decoration: span.isUnderline
                 ? pw.TextDecoration.underline
-                : (s.isStrike ? pw.TextDecoration.lineThrough : null),
+                : (span.isStrike ? pw.TextDecoration.lineThrough : null),
           ),
         );
       }).toList();

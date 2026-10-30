@@ -681,13 +681,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
-                        children: ShanshuiSeason.values.map((s) {
-                          final isSel = selectedSeason == s;
+                        children: ShanshuiSeason.values.map((season) {
+                          final isSel = selectedSeason == season;
                           return ChoiceChip(
-                            key: Key('settings_pin_season_chip_${s.id}'),
-                            label: Text(s.nameZh),
+                            key: Key('settings_pin_season_chip_${season.id}'),
+                            label: Text(season.nameZh),
                             selected: isSel,
-                            onSelected: (_) => setDialogState(() => selectedSeason = s),
+                            onSelected: (_) => setDialogState(() => selectedSeason = season),
                             selectedColor: tokens.cinnabar,
                             labelStyle: TextStyle(
                               color: isSel ? Colors.white : tokens.jiaomo,
@@ -701,13 +701,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
-                        children: ShanshuiTimeOfDay.values.map((t) {
-                          final isSel = selectedTime == t;
+                        children: ShanshuiTimeOfDay.values.map((timeOfDay) {
+                          final isSel = selectedTime == timeOfDay;
                           return ChoiceChip(
-                            key: Key('settings_pin_time_chip_${t.id}'),
-                            label: Text(t.nameZh),
+                            key: Key('settings_pin_time_chip_${timeOfDay.id}'),
+                            label: Text(timeOfDay.nameZh),
                             selected: isSel,
-                            onSelected: (_) => setDialogState(() => selectedTime = t),
+                            onSelected: (_) => setDialogState(() => selectedTime = timeOfDay),
                             selectedColor: tokens.cinnabar,
                             labelStyle: TextStyle(
                               color: isSel ? Colors.white : tokens.jiaomo,
@@ -721,13 +721,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
-                        children: ShanshuiWeather.values.map((w) {
-                          final isSel = selectedWeather == w;
+                        children: ShanshuiWeather.values.map((weather) {
+                          final isSel = selectedWeather == weather;
                           return ChoiceChip(
-                            key: Key('settings_pin_weather_chip_${w.id}'),
-                            label: Text(w.nameZh),
+                            key: Key('settings_pin_weather_chip_${weather.id}'),
+                            label: Text(weather.nameZh),
                             selected: isSel,
-                            onSelected: (_) => setDialogState(() => selectedWeather = w),
+                            onSelected: (_) => setDialogState(() => selectedWeather = weather),
                             selectedColor: tokens.cinnabar,
                             labelStyle: TextStyle(
                               color: isSel ? Colors.white : tokens.jiaomo,

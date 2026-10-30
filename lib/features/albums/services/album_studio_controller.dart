@@ -213,7 +213,7 @@ class AlbumStudioController extends ChangeNotifier {
 
     _updatePage(
       pageId,
-      (p) => p.copyWith(
+      (page) => page.copyWith(
         layoutTemplateId: nextLayoutId,
         photoSlots: remainingSlots,
       ),
@@ -254,7 +254,7 @@ class AlbumStudioController extends ChangeNotifier {
 
     _updatePage(
       targetPageId,
-      (p) => p.copyWith(
+      (page) => page.copyWith(
         layoutTemplateId: nextLayout.id,
         photoSlots: updatedSlots,
       ),
@@ -395,7 +395,7 @@ class AlbumStudioController extends ChangeNotifier {
 
     _updatePage(
       pageId,
-      (p) => p.copyWith(
+      (page) => page.copyWith(
         layoutTemplateId: layoutTemplateId,
         photoSlots: updatedSlots,
       ),

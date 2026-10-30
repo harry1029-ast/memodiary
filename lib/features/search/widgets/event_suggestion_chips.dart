@@ -66,18 +66,18 @@ class EventSuggestionChips extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: suggestions.map((s) {
+              children: suggestions.map((suggestion) {
                 final isSelected = activeTerm != null &&
                     activeTerm!.trim().toLowerCase() ==
-                        s.term.trim().toLowerCase();
+                        suggestion.term.trim().toLowerCase();
 
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: InkWell(
-                    key: Key('event_chip_${s.term}'),
+                    key: Key('event_chip_${suggestion.term}'),
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      onSuggestionTapped(s);
+                      onSuggestionTapped(suggestion);
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
@@ -94,13 +94,13 @@ class EventSuggestionChips extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            s.isCurated ? Icons.bookmark_border_rounded : Icons.tag_rounded,
+                            suggestion.isCurated ? Icons.bookmark_border_rounded : Icons.tag_rounded,
                             size: 13,
                             color: isSelected ? tokens.cinnabar : tokens.danmo,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${s.label} · ${s.count}',
+                            '${suggestion.label} · ${suggestion.count}',
                             style: TextStyle(
                               fontFamily: InkDiaryTheme.fontKaiti,
                               fontSize: 12,
