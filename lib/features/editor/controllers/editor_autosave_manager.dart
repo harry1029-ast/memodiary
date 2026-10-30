@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import '../../../core/database/app_database.dart';
 
 enum AutosaveStatus { saved, saving, unsaved }
 
-/// Manages background autosave of Quill Delta and extracted plain text to SQLite
+/// Manages background autosave of entry title, Quill Delta, and plain text to SQLite
 /// with debounced (2s) and periodic (≤10s) timers.
 class EditorAutosaveManager {
   final AppDatabase database;
   final String entryId;
   final QuillController controller;
+  final TextEditingController? titleController;
   final Duration debounceDuration;
   final Duration periodicDuration;
 
@@ -27,6 +28,7 @@ class EditorAutosaveManager {
     required this.database,
     required this.entryId,
     required this.controller,
+    this.titleController,
     this.debounceDuration = const Duration(seconds: 2),
     this.periodicDuration = const Duration(seconds: 8),
   }) {
@@ -34,7 +36,9 @@ class EditorAutosaveManager {
   }
 
   void _init() {
-    _docSub = controller.document.changes.listen((_) {
+    titleController?.addListener(_handleTitleChange);
+
+    _docSub = controller.document.changes.listen((change) {
       _isDirty = true;
       statusNotifier.value = AutosaveStatus.unsaved;
 
@@ -48,14 +52,26 @@ class EditorAutosaveManager {
     });
 
     // Periodic safety timer
-    _periodicTimer = Timer.periodic(periodicDuration, (_) {
+    _periodicTimer = Timer.periodic(periodicDuration, (timer) {
       if (_isDirty) {
         saveDraft();
       }
     });
   }
 
-  /// Immediately serializes Delta JSON and plain text, then saves to database
+  void _handleTitleChange() {
+    _isDirty = true;
+    statusNotifier.value = AutosaveStatus.unsaved;
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(debounceDuration, () {
+      if (_isDirty) {
+        saveDraft();
+      }
+    });
+  }
+
+  /// Immediately serializes title, Delta JSON, and plain text, then saves to database
   Future<void> saveDraft({bool force = false}) async {
     if (!_isDirty && !force) return;
 
@@ -65,12 +81,18 @@ class EditorAutosaveManager {
     try {
       final deltaJson = jsonEncode(controller.document.toDelta().toJson());
       final plainText = controller.document.toPlainText().trim();
+      final titleText = titleController?.text.trim();
 
-      await database.updateEntryContent(
-        entryId,
-        deltaJson,
-        plainText,
-      );
+      await database.transaction(() async {
+        if (titleText != null) {
+          await database.updateEntryMetadata(entryId, title: titleText);
+        }
+        await database.updateEntryContent(
+          entryId,
+          deltaJson,
+          plainText,
+        );
+      });
 
       _isDirty = false;
       statusNotifier.value = AutosaveStatus.saved;
@@ -83,6 +105,7 @@ class EditorAutosaveManager {
     _debounceTimer?.cancel();
     _periodicTimer?.cancel();
     _docSub?.cancel();
+    titleController?.removeListener(_handleTitleChange);
     statusNotifier.dispose();
   }
 }
