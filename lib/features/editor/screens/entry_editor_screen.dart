@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -766,6 +767,18 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     final baseStyle = typography.toTextStyle(color: inkColor);
     final rowHeight = BaselineMetricsCalculator.calculateLineHeight(baseStyle);
 
+    final h1FontSize = 22.0;
+    final h1TextHeight = h1FontSize * 1.2;
+    final h1Padding = math.max(0.0, (rowHeight * 2 - h1TextHeight) / 2);
+
+    final h2FontSize = 18.0;
+    final h2TextHeight = h2FontSize * 1.2;
+    final h2Padding = math.max(0.0, (rowHeight * 2 - h2TextHeight) / 2);
+
+    final h3FontSize = 16.0;
+    final h3TextHeight = h3FontSize * 1.2;
+    final h3Padding = math.max(0.0, (rowHeight - h3TextHeight) / 2);
+
     return DefaultStyles(
       placeHolder: DefaultTextBlockStyle(
         typography.toTextStyle(
@@ -785,34 +798,37 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       ),
       h1: DefaultTextBlockStyle(
         baseStyle.copyWith(
-          fontSize: (typography.fontSize * 1.5).clamp(20.0, 32.0),
+          fontSize: h1FontSize,
+          height: 1.2,
           fontWeight: FontWeight.bold,
           color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
         ),
         const HorizontalSpacing(0, 0),
-        VerticalSpacing(rowHeight * 0.25, rowHeight * 0.25),
+        VerticalSpacing(h1Padding, h1Padding),
         const VerticalSpacing(0, 0),
         null,
       ),
       h2: DefaultTextBlockStyle(
         baseStyle.copyWith(
-          fontSize: (typography.fontSize * 1.25).clamp(18.0, 26.0),
+          fontSize: h2FontSize,
+          height: 1.2,
           fontWeight: FontWeight.bold,
           color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
         ),
         const HorizontalSpacing(0, 0),
-        VerticalSpacing(rowHeight * 0.2, rowHeight * 0.2),
+        VerticalSpacing(h2Padding, h2Padding),
         const VerticalSpacing(0, 0),
         null,
       ),
       h3: DefaultTextBlockStyle(
         baseStyle.copyWith(
-          fontSize: (typography.fontSize * 1.1).clamp(16.0, 22.0),
+          fontSize: h3FontSize,
+          height: 1.2,
           fontWeight: FontWeight.bold,
           color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
         ),
         const HorizontalSpacing(0, 0),
-        VerticalSpacing(rowHeight * 0.15, rowHeight * 0.15),
+        VerticalSpacing(h3Padding, h3Padding),
         const VerticalSpacing(0, 0),
         null,
       ),
@@ -822,7 +838,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           color: isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF424242),
         ),
         const HorizontalSpacing(0, 0),
-        VerticalSpacing(rowHeight * 0.2, rowHeight * 0.2),
+        const VerticalSpacing(0, 0),
         const VerticalSpacing(0, 0),
         null,
       ),

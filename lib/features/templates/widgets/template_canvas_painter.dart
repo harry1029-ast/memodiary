@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../editor/models/typography_settings.dart';
 import '../../editor/services/baseline_metrics_calculator.dart';
@@ -35,6 +36,30 @@ class TemplateCanvasPainter extends CustomPainter {
     return _rowHeight * 0.78;
   }
 
+  double get _effectiveHeaderY => headerHeight - scrollOffset;
+
+  void _paintHeaderDivider(Canvas canvas, Size size) {
+    if (_effectiveHeaderY > 0) {
+      final dividerPaint = Paint()
+        ..color = _isDark ? const Color(0x28FFFFFF) : const Color(0x2478909C)
+        ..strokeWidth = 0.8;
+      canvas.drawLine(
+        Offset(0, _effectiveHeaderY),
+        Offset(size.width, _effectiveHeaderY),
+        dividerPaint,
+      );
+    }
+  }
+
+  (double, int) _calculateLineBounds() {
+    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
+    final startY = _effectiveHeaderY + _baselineOffset;
+    final minLineIndex = startY < clipY
+        ? ((clipY - startY) / _rowHeight).ceil()
+        : 0;
+    return (startY, minLineIndex);
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
@@ -68,33 +93,19 @@ class TemplateCanvasPainter extends CustomPainter {
 
   void _paintLinedPaper(Canvas canvas, Size size) {
     final rowHeight = _rowHeight;
-    final baselineOffset = _baselineOffset;
+    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
+    final (startY, minLineIndex) = _calculateLineBounds();
 
-    // Horizontal notebook rules
     final linePaint = Paint()
       ..color = _isDark ? const Color(0x18FFFFFF) : const Color(0x1E4A6572)
       ..strokeWidth = 1.0;
 
-    if (headerHeight > 0) {
-      final dividerPaint = Paint()
-        ..color = _isDark ? const Color(0x28FFFFFF) : const Color(0x2478909C)
-        ..strokeWidth = 0.8;
-      canvas.drawLine(
-        Offset(0, headerHeight),
-        Offset(size.width, headerHeight),
-        dividerPaint,
-      );
-    }
-
-    final startY = headerHeight - scrollOffset + baselineOffset;
-    final int minLineIndex = startY < headerHeight
-        ? ((headerHeight - startY) / rowHeight).ceil()
-        : 0;
+    _paintHeaderDivider(canvas, size);
 
     for (int lineIndex = minLineIndex; ; lineIndex++) {
       final y = startY + lineIndex * rowHeight;
       if (y > size.height) break;
-      if (y < headerHeight) continue;
+      if (y < clipY) continue;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
     }
 
@@ -103,9 +114,10 @@ class TemplateCanvasPainter extends CustomPainter {
       ..color = _isDark ? const Color(0x38EF9A9A) : const Color(0x33E57373)
       ..strokeWidth = 1.2;
 
-    final marginX = style.marginHorizontal.clamp(12.0, 48.0);
+    final marginX = style.marginHorizontal.clamp(16.0, 36.0);
+    final topY = math.max(0.0, _effectiveHeaderY);
     canvas.drawLine(
-      Offset(marginX, headerHeight),
+      Offset(marginX, topY),
       Offset(marginX, size.height),
       marginPaint,
     );
@@ -113,7 +125,8 @@ class TemplateCanvasPainter extends CustomPainter {
 
   void _paintGridPaper(Canvas canvas, Size size) {
     final rowHeight = _rowHeight;
-    final baselineOffset = _baselineOffset;
+    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
+    final (startY, minLineIndex) = _calculateLineBounds();
 
     final hGridPaint = Paint()
       ..color = _isDark ? const Color(0x18FFFFFF) : const Color(0x1A78909C)
@@ -123,64 +136,38 @@ class TemplateCanvasPainter extends CustomPainter {
       ..color = _isDark ? const Color(0x12FFFFFF) : const Color(0x1478909C)
       ..strokeWidth = 0.6;
 
-    if (headerHeight > 0) {
-      final dividerPaint = Paint()
-        ..color = _isDark ? const Color(0x28FFFFFF) : const Color(0x2478909C)
-        ..strokeWidth = 0.8;
-      canvas.drawLine(
-        Offset(0, headerHeight),
-        Offset(size.width, headerHeight),
-        dividerPaint,
-      );
-    }
+    _paintHeaderDivider(canvas, size);
 
     // Vertical grid guidelines (Hobonichi style: subtle, non-intrusive)
+    final topY = math.max(0.0, _effectiveHeaderY);
     for (double x = 0; x < size.width; x += rowHeight) {
-      canvas.drawLine(Offset(x, headerHeight), Offset(x, size.height), vGridPaint);
+      canvas.drawLine(Offset(x, topY), Offset(x, size.height), vGridPaint);
     }
 
     // Horizontal grid rules aligned to text baseline
-    final startY = headerHeight - scrollOffset + baselineOffset;
-    final int minLineIndex = startY < headerHeight
-        ? ((headerHeight - startY) / rowHeight).ceil()
-        : 0;
-
     for (int lineIndex = minLineIndex; ; lineIndex++) {
       final y = startY + lineIndex * rowHeight;
       if (y > size.height) break;
-      if (y < headerHeight) continue;
+      if (y < clipY) continue;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), hGridPaint);
     }
   }
 
   void _paintDotGridPaper(Canvas canvas, Size size) {
     final rowHeight = _rowHeight;
-    final baselineOffset = _baselineOffset;
+    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
+    final (startY, minLineIndex) = _calculateLineBounds();
 
     final dotPaint = Paint()
       ..color = _isDark ? const Color(0x24FFFFFF) : const Color(0x2878909C)
       ..style = PaintingStyle.fill;
 
-    if (headerHeight > 0) {
-      final dividerPaint = Paint()
-        ..color = _isDark ? const Color(0x28FFFFFF) : const Color(0x2478909C)
-        ..strokeWidth = 0.8;
-      canvas.drawLine(
-        Offset(0, headerHeight),
-        Offset(size.width, headerHeight),
-        dividerPaint,
-      );
-    }
-
-    final startY = headerHeight - scrollOffset + baselineOffset;
-    final int minLineIndex = startY < headerHeight
-        ? ((headerHeight - startY) / rowHeight).ceil()
-        : 0;
+    _paintHeaderDivider(canvas, size);
 
     for (int lineIndex = minLineIndex; ; lineIndex++) {
       final y = startY + lineIndex * rowHeight;
       if (y > size.height) break;
-      if (y < headerHeight) continue;
+      if (y < clipY) continue;
 
       for (double x = 0; x < size.width; x += rowHeight) {
         canvas.drawCircle(Offset(x, y), 1.2, dotPaint);
@@ -229,18 +216,14 @@ class TemplateCanvasPainter extends CustomPainter {
       ..strokeWidth = 0.9;
 
     final rowHeight = _rowHeight;
-    final baselineOffset = _baselineOffset;
-    final marginX = style.marginHorizontal;
-
-    final startY = headerHeight - scrollOffset + baselineOffset;
-    final int minLineIndex = startY < headerHeight
-        ? ((headerHeight - startY) / rowHeight).ceil()
-        : 0;
+    final marginX = style.marginHorizontal.clamp(16.0, 36.0);
+    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
+    final (startY, minLineIndex) = _calculateLineBounds();
 
     for (int lineIndex = minLineIndex; ; lineIndex++) {
       final y = startY + lineIndex * rowHeight;
       if (y > size.height) break;
-      if (y < headerHeight) continue;
+      if (y < clipY) continue;
       canvas.drawLine(
         Offset(marginX, y),
         Offset(size.width - marginX, y),

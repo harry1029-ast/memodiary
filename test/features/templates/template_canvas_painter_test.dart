@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_painter.dart';
 
@@ -95,30 +96,37 @@ void main() {
         marginHorizontal: 20.0,
       );
 
-      final p1 = TemplateCanvasPainter(
+      final basePainter = TemplateCanvasPainter(
         style: style,
         scrollOffset: 0.0,
         headerHeight: 90.0,
       );
-      final pScrollChanged = TemplateCanvasPainter(
+      final scrolledPainter = TemplateCanvasPainter(
         style: style,
         scrollOffset: 50.0,
         headerHeight: 90.0,
       );
-      final pHeaderChanged = TemplateCanvasPainter(
+      final headerChangedPainter = TemplateCanvasPainter(
         style: style,
         scrollOffset: 0.0,
         headerHeight: 120.0,
       );
+      final typographyChangedPainter = TemplateCanvasPainter(
+        style: style,
+        typography: const TypographySettings(fontSize: 18.0),
+        scrollOffset: 0.0,
+        headerHeight: 90.0,
+      );
 
       final recorder = PictureRecorder();
       final canvas = Canvas(recorder);
-      expect(() => pScrollChanged.paint(canvas, const Size(400, 800)), returnsNormally);
+      expect(() => scrolledPainter.paint(canvas, const Size(400, 800)), returnsNormally);
       final pic = recorder.endRecording();
       pic.dispose();
 
-      expect(pScrollChanged.shouldRepaint(p1), isTrue);
-      expect(pHeaderChanged.shouldRepaint(p1), isTrue);
+      expect(scrolledPainter.shouldRepaint(basePainter), isTrue);
+      expect(headerChangedPainter.shouldRepaint(basePainter), isTrue);
+      expect(typographyChangedPainter.shouldRepaint(basePainter), isTrue);
     });
   });
 }

@@ -129,7 +129,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final customTemplates = await db.getCustomTemplates();
-      final created = customTemplates.firstWhere((t) => t.name == 'Zen Dot Grid');
+      final created = customTemplates.firstWhere((template) => template.name == 'Zen Dot Grid');
       expect(created.backgroundType, equals('dot_grid'));
     });
   });

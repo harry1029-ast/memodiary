@@ -40,9 +40,9 @@ void main() {
         height: 1.5,
       );
 
-      final b1 = BaselineMetricsCalculator.calculateBaselineOffset(style1);
-      final b2 = BaselineMetricsCalculator.calculateBaselineOffset(style2);
-      expect(b1, equals(b2));
+      final baselineA = BaselineMetricsCalculator.calculateBaselineOffset(style1);
+      final baselineB = BaselineMetricsCalculator.calculateBaselineOffset(style2);
+      expect(baselineA, equals(baselineB));
     });
 
     test('clears cache without error', () {
