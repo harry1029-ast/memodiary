@@ -39,16 +39,7 @@ class EditorAutosaveManager {
     titleController?.addListener(_handleTitleChange);
 
     _docSub = controller.document.changes.listen((change) {
-      _isDirty = true;
-      statusNotifier.value = AutosaveStatus.unsaved;
-
-      // Debounce timer
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(debounceDuration, () {
-        if (_isDirty) {
-          saveDraft();
-        }
-      });
+      _scheduleDebounce();
     });
 
     // Periodic safety timer
@@ -60,6 +51,10 @@ class EditorAutosaveManager {
   }
 
   void _handleTitleChange() {
+    _scheduleDebounce();
+  }
+
+  void _scheduleDebounce() {
     _isDirty = true;
     statusNotifier.value = AutosaveStatus.unsaved;
 

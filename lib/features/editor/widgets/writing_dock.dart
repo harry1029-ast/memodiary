@@ -49,34 +49,42 @@ class _WritingDockState extends State<WritingDock> {
     final tokens = InkDiaryTheme.tokensOf(context);
     final effectiveBackground = widget.backgroundColor ?? tokens.xuanGround.withValues(alpha: 0.96);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: effectiveBackground,
-        border: Border(
-          top: BorderSide(
-            color: tokens.agedFiber,
-            width: 1.0,
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.3,
+      child: Container(
+        decoration: BoxDecoration(
+          color: effectiveBackground,
+          border: Border(
+            top: BorderSide(
+              color: tokens.agedFiber,
+              width: 1.0,
+            ),
           ),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: tokens.jiaomo.withValues(alpha: 0.04),
-            offset: const Offset(0, -2),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Tier 2: Inline Formatting Ribbon (Expands on demand)
-            if (_isFormattingOpen) _buildFormattingRibbon(tokens),
-
-            // Tier 1: 5 Primary High-Frequency Tools
-            _buildPrimaryToolbar(tokens),
+          boxShadow: [
+            BoxShadow(
+              color: tokens.jiaomo.withValues(alpha: 0.04),
+              offset: const Offset(0, -2),
+              blurRadius: 8,
+            ),
           ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Tier 2: Smoothly animated inline formatting ribbon
+              AnimatedSize(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeInOutCubic,
+                alignment: Alignment.bottomCenter,
+                child: _isFormattingOpen ? _buildFormattingRibbon(tokens) : const SizedBox.shrink(),
+              ),
+
+              // Tier 1: 5 Primary High-Frequency Tools
+              _buildPrimaryToolbar(tokens),
+            ],
+          ),
         ),
       ),
     );
@@ -231,14 +239,6 @@ class _WritingDockState extends State<WritingDock> {
                   isActive: style.containsKey(Attribute.underline.key),
                   onTap: () => _toggleFormat(Attribute.underline),
                   tooltip: '下划线 · Underline',
-                  tokens: tokens,
-                ),
-                // Strikethrough
-                _buildFormatIconBtn(
-                  icon: Icons.strikethrough_s,
-                  isActive: style.containsKey(Attribute.strikeThrough.key),
-                  onTap: () => _toggleFormat(Attribute.strikeThrough),
-                  tooltip: '删除线 · Strikethrough',
                   tokens: tokens,
                 ),
 

@@ -46,8 +46,9 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       await tester.pumpAndSettle();
 
-      // Check date
+      // Check date and solar term
       expect(find.textContaining('2026年10月30日'), findsOneWidget);
+      expect(find.textContaining('霜降'), findsOneWidget);
 
       // Check mood emblem
       expect(find.text('🙂'), findsOneWidget);

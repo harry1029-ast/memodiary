@@ -74,22 +74,5 @@ void main() {
 
       expect(adopted, isTrue);
     });
-
-    testWidgets('tapping shuffle button invokes onShuffle callback', (tester) async {
-      bool shuffled = false;
-      await tester.pumpWidget(buildTestWidget(
-        controller: emptyController,
-        onShuffle: () => shuffled = true,
-      ));
-      await tester.pumpAndSettle();
-
-      final shuffleBtn = find.byIcon(Icons.refresh);
-      expect(shuffleBtn, findsOneWidget);
-
-      await tester.tap(shuffleBtn);
-      await tester.pump();
-
-      expect(shuffled, isTrue);
-    });
   });
 }

@@ -372,6 +372,24 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     setState(() {
       _spark = _thoughtSparkService.nextSpark();
     });
+
+    // If entry has existing text, offer the refreshed prompt via a gentle floating action
+    if (_controller != null && _controller!.document.toPlainText().trim().isNotEmpty) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '“${_spark.localizedPrompt}”',
+            style: const TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
+          ),
+          action: SnackBarAction(
+            label: '落墨插入',
+            onPressed: () => _handleInsertPrompt(_spark.localizedPrompt),
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   void _handleInsertPrompt(String prompt) {
@@ -429,7 +447,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: iconColor),
+            icon: Icon(Icons.arrow_back, color: iconColor, size: 22),
             tooltip: '返回 · Back',
             onPressed: _handleSaveAndExit,
           ),
@@ -476,14 +494,14 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             // Cinnabar Seal & Complete Save
             IconButton(
               key: const Key('editor_seal_done_btn'),
-              icon: Icon(Icons.check, color: tokens.cinnabar),
+              icon: Icon(Icons.check, color: tokens.cinnabar, size: 22),
               tooltip: '完成归卷 · Done',
               onPressed: _handleSaveAndExit,
             ),
             // Options Menu (Templates, Typography, Time Capsule, Soundscapes)
             PopupMenuButton<String>(
               key: const Key('editor_more_options_btn'),
-              icon: Icon(Icons.more_horiz_rounded, color: iconColor),
+              icon: Icon(Icons.more_horiz_rounded, color: iconColor, size: 22),
               tooltip: '更多设置 · Options',
               onSelected: (optionValue) {
                 switch (optionValue) {
@@ -556,6 +574,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                   Positioned.fill(
                     child: TemplateCanvasContainer(
                       style: templateStyle,
+                      customPadding: EdgeInsets.zero,
                       child: Theme(
                         data: paperBaseTheme.copyWith(
                           textTheme: paperBaseTheme.textTheme.apply(
