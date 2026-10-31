@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/services/ocr/ocr_queue_manager.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/theme_settings_service.dart';
 import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
@@ -20,6 +21,7 @@ import '../../import_export/widgets/backup_dialogs.dart';
 import '../../import_export/widgets/export_dialog.dart';
 import '../services/storage_optimizer_service.dart';
 import '../widgets/notification_settings_card.dart';
+import '../widgets/ocr_backfill_dialog.dart';
 import '../../intro/screens/book_intro_screen.dart';
 import '../../intro/services/book_intro_settings_service.dart';
 import '../../scenery/models/shanshui_atmosphere.dart';
@@ -37,6 +39,7 @@ class SettingsScreen extends StatefulWidget {
   final StorageStats? initialStats;
   final ThemeSettingsService? themeSettings;
   final ScenerySettingsService? scenerySettingsService;
+  final OcrQueueManager? ocrQueueManager;
 
   const SettingsScreen({
     super.key,
@@ -49,6 +52,7 @@ class SettingsScreen extends StatefulWidget {
     this.initialStats,
     this.themeSettings,
     this.scenerySettingsService,
+    this.ocrQueueManager,
   });
 
   static Future<Map<String, PermissionStatus>> defaultPermissionChecker() async {
@@ -100,6 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   ShanshuiAtmosphereState? _pinnedAtmosphere;
 
   late final ThemeSettingsService _themeSettings;
+  int _unindexedPhotoCount = 0;
 
   @override
   void initState() {
@@ -107,6 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _scenerySettings = widget.scenerySettingsService ?? ScenerySettingsService();
     _themeSettings = widget.themeSettings ?? ThemeSettingsService.instance;
     _loadBookIntroPreference();
+    _loadOcrStatus();
     if (widget.initialStats != null) {
       _stats = widget.initialStats;
       _isLoadingStats = false;
@@ -114,6 +120,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _loadLastBackupTimestamp();
     } else {
       _loadAll();
+    }
+  }
+
+  Future<void> _loadOcrStatus() async {
+    if (widget.ocrQueueManager == null) return;
+    try {
+      final count = await widget.ocrQueueManager!.pendingBackfillCount();
+      if (mounted) {
+        setState(() {
+          _unindexedPhotoCount = count;
+        });
+      }
+    } catch (error) {
+      debugPrint('Error loading OCR backfill count in settings: $error');
     }
   }
 
@@ -1047,6 +1067,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
               });
             },
           ),
+          if (widget.ocrQueueManager != null) ...[
+            Divider(height: 24, color: tokens.agedFiber),
+            ListTile(
+              key: const Key('settings_ocr_backfill_tile'),
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                Icons.document_scanner_outlined,
+                size: 20,
+                color: tokens.cinnabar,
+              ),
+              title: Row(
+                children: [
+                  Text(
+                    '离线识图索引',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                      color: tokens.jiaomo,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'OCR Indexing',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 12,
+                      color: tokens.danmo,
+                    ),
+                  ),
+                ],
+              ),
+              subtitle: Text(
+                _unindexedPhotoCount == 0
+                    ? '已建立全部文字索引'
+                    : '发现 $_unindexedPhotoCount 张照片尚未建立索引',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontKaiti,
+                  fontSize: 11.5,
+                  color: tokens.danmo,
+                ),
+              ),
+              trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
+              onTap: () async {
+                await showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (dialogContext) => OcrBackfillDialog(
+                    ocrQueueManager: widget.ocrQueueManager!,
+                  ),
+                );
+                if (mounted) {
+                  _loadOcrStatus();
+                }
+              },
+            ),
+          ],
         ],
       ),
     );

@@ -7,6 +7,8 @@ import 'package:sqlite3/open.dart';
 import 'core/database/app_database.dart';
 import 'core/database/database_key_manager.dart';
 import 'core/services/media_sandbox_service.dart';
+import 'core/services/ocr/ocr_queue_manager.dart';
+import 'core/services/ocr/ocr_service.dart';
 import 'core/services/recycle_bin_service.dart';
 import 'core/theme/ink_diary_theme.dart';
 import 'core/theme/theme_settings_service.dart';
@@ -58,7 +60,16 @@ void main() async {
   final themeSettings = ThemeSettingsService.instance;
   await themeSettings.getThemeMode();
 
-  // 5. Launch with AppLockGate protecting all views
+  // 5. Initialize on-device OCR pipeline and reactive queue manager
+  final ocrService = PlatformOcrService();
+  final ocrQueueManager = OcrQueueManager(
+    database: database,
+    mediaSandboxService: mediaService,
+    ocrService: ocrService,
+  );
+  ocrQueueManager.start();
+
+  // 6. Launch with AppLockGate protecting all views
   runApp(
     AppLockGate(
       child: MemoDiaryApp(
@@ -66,6 +77,7 @@ void main() async {
         mediaService: mediaService,
         showIntroOnLaunch: showIntroOnLaunch,
         themeSettings: themeSettings,
+        ocrQueueManager: ocrQueueManager,
       ),
     ),
   );
@@ -76,6 +88,7 @@ class MemoDiaryApp extends StatelessWidget {
   final MediaSandboxService mediaService;
   final bool showIntroOnLaunch;
   final ThemeSettingsService themeSettings;
+  final OcrQueueManager? ocrQueueManager;
 
   MemoDiaryApp({
     super.key,
@@ -83,6 +96,7 @@ class MemoDiaryApp extends StatelessWidget {
     required this.mediaService,
     this.showIntroOnLaunch = false,
     ThemeSettingsService? themeSettings,
+    this.ocrQueueManager,
   }) : themeSettings = themeSettings ?? ThemeSettingsService.instance;
 
   @override
@@ -100,10 +114,12 @@ class MemoDiaryApp extends StatelessWidget {
               ? BookIntroScreen(
                   database: database,
                   mediaService: mediaService,
+                  ocrQueueManager: ocrQueueManager,
                 )
               : TimelineScreen(
                   database: database,
                   mediaService: mediaService,
+                  ocrQueueManager: ocrQueueManager,
                 ),
         );
       },

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/services/ocr/ocr_queue_manager.dart';
 import '../../albums/data/album_repository.dart';
 import '../../albums/screens/album_collections_screen.dart';
 import '../../timeline/screens/timeline_screen.dart';
@@ -19,6 +20,7 @@ class BookIntroScreen extends StatefulWidget {
   final MediaSandboxService mediaService;
   final AlbumRepository? albumRepository;
   final bool startOpened;
+  final OcrQueueManager? ocrQueueManager;
 
   const BookIntroScreen({
     super.key,
@@ -26,6 +28,7 @@ class BookIntroScreen extends StatefulWidget {
     required this.mediaService,
     this.albumRepository,
     this.startOpened = false,
+    this.ocrQueueManager,
   });
 
   @override
@@ -193,6 +196,7 @@ class _BookIntroScreenState extends State<BookIntroScreen>
         builder: (_) => TimelineScreen(
           database: widget.database,
           mediaService: widget.mediaService,
+          ocrQueueManager: widget.ocrQueueManager,
         ),
       ),
     );

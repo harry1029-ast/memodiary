@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:uuid/uuid.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/services/ocr/ocr_queue_manager.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
@@ -37,6 +38,7 @@ class TimelineScreen extends StatefulWidget {
   final ScenerySettingsService? scenerySettingsService;
   final AudioSanctumService? audioSanctumService;
   final bool? enableSceneryAnimation;
+  final OcrQueueManager? ocrQueueManager;
 
   const TimelineScreen({
     super.key,
@@ -45,6 +47,7 @@ class TimelineScreen extends StatefulWidget {
     this.scenerySettingsService,
     this.audioSanctumService,
     this.enableSceneryAnimation,
+    this.ocrQueueManager,
   });
 
   @override
@@ -388,6 +391,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                     builder: (context) => SearchScreen(
                       database: widget.database,
                       mediaService: widget.mediaService,
+                      ocrQueueManager: widget.ocrQueueManager,
                     ),
                   ),
                 ).then((_) {
@@ -409,6 +413,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                     builder: (context) => SettingsScreen(
                       database: widget.database,
                       mediaService: widget.mediaService,
+                      ocrQueueManager: widget.ocrQueueManager,
                     ),
                   ),
                 ).then((_) {

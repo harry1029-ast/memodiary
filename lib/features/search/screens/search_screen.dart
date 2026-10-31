@@ -16,6 +16,7 @@ import '../services/natural_language_search_parser.dart';
 import '../widgets/event_suggestion_chips.dart';
 import '../widgets/photo_text_match_card.dart';
 import '../widgets/search_filter_chips.dart';
+import '../../settings/widgets/ocr_backfill_dialog.dart';
 
 /// Available segmented view modes for search results.
 enum SearchSegment {
@@ -487,34 +488,57 @@ class _SearchScreenState extends State<SearchScreen> {
       return const SizedBox.shrink();
     }
 
-    return Container(
+    return InkWell(
       key: const Key('search_ocr_backfill_banner'),
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: tokens.ricePaper,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: tokens.agedFiber),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.document_scanner_outlined,
-            size: 16,
-            color: tokens.cinnabar,
+      borderRadius: BorderRadius.circular(8),
+      onTap: () async {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) => OcrBackfillDialog(
+            ocrQueueManager: widget.ocrQueueManager!,
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '发现 $_pendingBackfillCount 张照片尚未建立文字索引',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontKaiti,
-                fontSize: 12,
-                color: tokens.jiaomo,
+        );
+        if (mounted) {
+          await _loadBackfillCount();
+          if (_searchController.text.trim().isNotEmpty) {
+            _executeSearch();
+          }
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: tokens.ricePaper,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: tokens.agedFiber),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.document_scanner_outlined,
+              size: 16,
+              color: tokens.cinnabar,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '发现 $_pendingBackfillCount 张照片尚未建立文字索引',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontKaiti,
+                  fontSize: 12,
+                  color: tokens.jiaomo,
+                ),
               ),
             ),
-          ),
-        ],
+            Icon(
+              Icons.chevron_right,
+              size: 16,
+              color: tokens.danmo,
+            ),
+          ],
+        ),
       ),
     );
   }
