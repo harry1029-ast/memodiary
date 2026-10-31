@@ -18,6 +18,36 @@ class QuarantinedHttpOverrides extends HttpOverrides {
   }
 }
 
+/// Validates that a source AndroidManifest.xml never grants network permissions,
+/// permitting ONLY explicit `tools:node="remove"` quarantine directives for
+/// `INTERNET` and `ACCESS_NETWORK_STATE` (ADR 0004).
+List<String> findForbiddenNetworkGrantsInSourceManifest(String manifestXml) {
+  final violations = <String>[];
+  final hasToolsNamespace = RegExp(
+    r'<manifest\b[^>]*\bxmlns:tools\s*=\s*"http://schemas\.android\.com/tools"',
+  ).hasMatch(manifestXml);
+
+  final permittedRemoveDirective = RegExp(
+    r'<uses-permission\b(?=[^>]*\bandroid:name\s*=\s*"android\.permission\.(?:INTERNET|ACCESS_NETWORK_STATE)")(?=[^>]*\btools:node\s*=\s*"remove")[^>]*/>',
+  );
+
+  final strippedXml = hasToolsNamespace
+      ? manifestXml.replaceAll(permittedRemoveDirective, '')
+      : manifestXml;
+
+  if (strippedXml.contains('android.permission.INTERNET')) {
+    violations.add('Forbidden grant or unquarantined reference to android.permission.INTERNET');
+  }
+  if (strippedXml.contains('android.permission.ACCESS_NETWORK_STATE')) {
+    violations.add('Forbidden grant or unquarantined reference to android.permission.ACCESS_NETWORK_STATE');
+  }
+  if (strippedXml.contains('android.permission.ACCESS_WIFI_STATE')) {
+    violations.add('Forbidden reference to android.permission.ACCESS_WIFI_STATE');
+  }
+
+  return violations;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -118,30 +148,48 @@ void main() {
       }
     });
 
-    test('3. Source Manifest Targeting: android/app/src/main/AndroidManifest.xml has zero internet permission', () {
+    test('3. Source Manifest Targeting: android/app/src/main/AndroidManifest.xml strips network permissions with zero grants', () {
       final manifestFile = File('android/app/src/main/AndroidManifest.xml');
       expect(manifestFile.existsSync(), isTrue, reason: 'Source AndroidManifest.xml must exist');
 
       final content = manifestFile.readAsStringSync();
 
-      // Assert complete absence of internet or network-related permissions
       expect(
-        content.contains('android.permission.INTERNET'),
-        isFalse,
-        reason: 'android.permission.INTERNET must NEVER be declared in MemoDiary',
-      );
-      expect(
-        content.contains('android.permission.ACCESS_NETWORK_STATE'),
-        isFalse,
-        reason: 'android.permission.ACCESS_NETWORK_STATE must not be declared',
-      );
-      expect(
-        content.contains('android.permission.ACCESS_WIFI_STATE'),
-        isFalse,
-        reason: 'android.permission.ACCESS_WIFI_STATE must not be declared',
+        findForbiddenNetworkGrantsInSourceManifest(content),
+        isEmpty,
+        reason: 'Source AndroidManifest.xml must never grant INTERNET, ACCESS_NETWORK_STATE, or ACCESS_WIFI_STATE',
       );
 
-      // Verify that only local hardware permissions are declared
+      // Verify explicit tools:node="remove" quarantine directives per ADR 0004
+      expect(
+        RegExp(
+          r'<uses-permission\b(?=[^>]*\bandroid:name\s*=\s*"android\.permission\.INTERNET")(?=[^>]*\btools:node\s*=\s*"remove")[^>]*/>',
+        ).hasMatch(content),
+        isTrue,
+        reason: 'AndroidManifest.xml must strip transitive android.permission.INTERNET via tools:node="remove"',
+      );
+      expect(
+        RegExp(
+          r'<uses-permission\b(?=[^>]*\bandroid:name\s*=\s*"android\.permission\.ACCESS_NETWORK_STATE")(?=[^>]*\btools:node\s*=\s*"remove")[^>]*/>',
+        ).hasMatch(content),
+        isTrue,
+        reason: 'AndroidManifest.xml must strip transitive android.permission.ACCESS_NETWORK_STATE via tools:node="remove"',
+      );
+
+      // Self-check validator rejects real permission grants even when tools namespace is present
+      const realGrantXml = '''
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>
+''';
+      expect(
+        findForbiddenNetworkGrantsInSourceManifest(realGrantXml),
+        isNotEmpty,
+        reason: 'Validator must fail on any real android.permission.INTERNET grant',
+      );
+
+      // Verify that only local hardware permissions are granted
       expect(content.contains('android.permission.RECORD_AUDIO'), isTrue);
       expect(content.contains('android.permission.CAMERA'), isTrue);
     });
@@ -204,7 +252,7 @@ void main() {
         );
       });
 
-      test('Android manifest references @string/app_name with zero INTERNET permission', () {
+      test('Android manifest references @string/app_name with zero INTERNET permission grant', () {
         final manifest = File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
         expect(
           manifest.contains('android:label="@string/app_name"'),
@@ -212,9 +260,9 @@ void main() {
           reason: 'AndroidManifest.xml must reference localized @string/app_name',
         );
         expect(
-          manifest.contains('android.permission.INTERNET'),
-          isFalse,
-          reason: 'android.permission.INTERNET must never be present',
+          findForbiddenNetworkGrantsInSourceManifest(manifest),
+          isEmpty,
+          reason: 'android.permission.INTERNET must never be granted in AndroidManifest.xml',
         );
       });
 

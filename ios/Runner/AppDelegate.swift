@@ -12,5 +12,8 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    if let ocrRegistrar = engineBridge.pluginRegistry.registrar(forPlugin: "OcrChannelHandler") {
+      OcrChannelHandler.register(with: ocrRegistrar)
+    }
   }
 }
