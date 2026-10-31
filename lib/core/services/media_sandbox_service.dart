@@ -540,6 +540,12 @@ class MediaSandboxService {
     return File(fullPath);
   }
 
+  /// Resolves a sandboxed relative path into an absolute string path.
+  Future<String> resolveAbsolutePath(String relativePath) async {
+    final file = await getFileFromRelativePath(relativePath);
+    return file.path;
+  }
+
   /// Deletes a sandboxed media file given its relative path
   Future<bool> deleteMedia(String relativePath) async {
     final file = await getFileFromRelativePath(relativePath);
