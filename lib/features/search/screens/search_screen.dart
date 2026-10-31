@@ -17,6 +17,7 @@ import '../widgets/event_suggestion_chips.dart';
 import '../widgets/photo_text_match_card.dart';
 import '../widgets/search_filter_chips.dart';
 import '../../settings/widgets/ocr_backfill_dialog.dart';
+import 'ocr_photo_viewer_screen.dart';
 
 /// Available segmented view modes for search results.
 enum SearchSegment {
@@ -250,6 +251,16 @@ class _SearchScreenState extends State<SearchScreen> {
       widget.onPhotoMatchTap!(match);
       return;
     }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (routeContext) => OcrPhotoViewerScreen(
+          match: match,
+          query: _searchController.text,
+          mediaSandboxService: widget.mediaService,
+          database: widget.database,
+        ),
+      ),
+    );
   }
 
   void _navigateToDetail(Entry entry) {

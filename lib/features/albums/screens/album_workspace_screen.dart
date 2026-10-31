@@ -25,8 +25,8 @@ import 'album_flipbook_screen.dart';
 class AlbumWorkspaceScreen extends StatefulWidget {
   final String collectionId;
   final AlbumCollection? initialCollection;
-  final AppDatabase database;
-  final MediaSandboxService mediaService;
+  final AppDatabase? database;
+  final MediaSandboxService? mediaService;
   final AlbumRepository? repository;
   final ImagePicker? imagePicker;
   final AlbumIngestionService? ingestionService;
@@ -36,8 +36,8 @@ class AlbumWorkspaceScreen extends StatefulWidget {
     super.key,
     required this.collectionId,
     this.initialCollection,
-    required this.database,
-    required this.mediaService,
+    this.database,
+    this.mediaService,
     this.repository,
     this.imagePicker,
     this.ingestionService,
@@ -49,6 +49,11 @@ class AlbumWorkspaceScreen extends StatefulWidget {
 }
 
 class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
+  AppDatabase? _fallbackDb;
+  MediaSandboxService? _fallbackMedia;
+  AppDatabase get _db => widget.database ?? (_fallbackDb ??= AppDatabase.memory());
+  MediaSandboxService get _media => widget.mediaService ?? (_fallbackMedia ??= MediaSandboxService());
+
   late final AlbumRepository _repository;
   late final ImagePicker _imagePicker;
   late final AlbumIngestionService _ingestionService;
@@ -61,14 +66,14 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
     super.initState();
     _repository = widget.repository ??
         AlbumRepository(
-          database: widget.database,
-          mediaService: widget.mediaService,
+          database: _db,
+          mediaService: _media,
         );
     _imagePicker = widget.imagePicker ?? ImagePicker();
     _ingestionService = widget.ingestionService ??
         AlbumIngestionService(
           repository: _repository,
-          mediaService: widget.mediaService,
+          mediaService: _media,
         );
     _collectionStream = _repository.watchCollectionById(widget.collectionId);
     _photosStream = _repository.watchPhotosForCollection(widget.collectionId);
@@ -207,7 +212,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
         builder: (context) => AlbumFlipbookScreen(
           collection: collection,
           photos: photos,
-          mediaService: widget.mediaService,
+          mediaService: _media,
           repository: widget.repository,
         ),
       ),
@@ -224,7 +229,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
           collection: collection,
           photos: photos,
           repository: _repository,
-          mediaService: widget.mediaService,
+          mediaService: _media,
           onImportMorePhotos: _handleAddPhotos,
         ),
       ),
@@ -579,14 +584,14 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
             photo: photo,
             collection: collection,
             repository: _repository,
-            mediaService: widget.mediaService,
+            mediaService: _media,
           ),
           child: Stack(
             fit: StackFit.expand,
             children: [
               SandboxedAlbumImage(
                 relativePath: photo.relativeThumbnailPath,
-                mediaService: widget.mediaService,
+                mediaService: _media,
                 cacheWidth: 300,
                 borderRadius: 8,
               ),
@@ -686,7 +691,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
               const SizedBox(width: 10),
               SandboxedAlbumImage(
                 relativePath: photo.relativeThumbnailPath,
-                mediaService: widget.mediaService,
+                mediaService: _media,
                 cacheWidth: 300,
                 width: 56,
                 height: 56,

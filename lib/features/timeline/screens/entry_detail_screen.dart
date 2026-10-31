@@ -28,22 +28,24 @@ import '../widgets/entry_summary_card.dart';
 /// Read-only literati detail viewer displaying the entry inside its procedural canvas template
 /// with rich-text styling, sandboxed media embeds, and traditional reader aesthetics.
 class EntryDetailScreen extends StatefulWidget {
-  final Entry entry;
-  final AppDatabase database;
-  final MediaSandboxService mediaService;
+  final Entry? entry;
+  final String? entryId;
+  final AppDatabase? database;
+  final MediaSandboxService? mediaService;
   final AuthService? authService;
   final AudioSanctumService? audioSanctumService;
   final Future<void> Function(String text, {String? subject})? shareHandler;
 
   const EntryDetailScreen({
     super.key,
-    required this.entry,
-    required this.database,
-    required this.mediaService,
+    this.entry,
+    this.entryId,
+    this.database,
+    this.mediaService,
     this.authService,
     this.audioSanctumService,
     this.shareHandler,
-  });
+  }) : assert(entry != null || entryId != null, 'Either entry or entryId must be provided');
 
   @override
   State<EntryDetailScreen> createState() => _EntryDetailScreenState();
@@ -51,6 +53,11 @@ class EntryDetailScreen extends StatefulWidget {
 
 class _EntryDetailScreenState extends State<EntryDetailScreen> {
   late Entry _entry;
+  AppDatabase? _fallbackDb;
+  MediaSandboxService? _fallbackMedia;
+  AppDatabase get _db => widget.database ?? (_fallbackDb ??= AppDatabase.memory());
+  MediaSandboxService get _media => widget.mediaService ?? (_fallbackMedia ??= MediaSandboxService());
+
   late final AuthService _authService;
   late final AudioSanctumService _audioSanctumService;
   Template? _template;
@@ -66,7 +73,21 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _entry = widget.entry;
+    _entry = widget.entry ??
+        Entry(
+          id: widget.entryId!,
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: '',
+          contentDelta: '[]',
+          plainText: '',
+          entryDate: DateTime.now(),
+          isWeeklyReview: false,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+          isDeleted: false,
+          isLocked: false,
+        );
     _authService = widget.authService ?? AuthService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _loadData();
@@ -86,15 +107,15 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
     try {
       // Refresh entry from database if available
-      final freshEntry = await widget.database.getEntryById(_entry.id);
+      final freshEntry = await _db.getEntryById(_entry.id);
       if (freshEntry != null) {
         _entry = freshEntry;
       }
 
       // Load active template
-      _template = await widget.database.getTemplateById(_entry.templateId);
+      _template = await _db.getTemplateById(_entry.templateId);
       if (_template == null) {
-        final allTemplates = await widget.database.getAllTemplates();
+        final allTemplates = await _db.getAllTemplates();
         if (allTemplates.isNotEmpty) {
           _template = allTemplates.first;
         }
@@ -179,7 +200,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Future<void> _handleToggleLock() async {
     if (_entry.isLocked) {
       // Permanently remove lock
-      await widget.database.unlockEntryPermanently(_entry.id);
+      await _db.unlockEntryPermanently(_entry.id);
       HapticFeedback.lightImpact();
       await _loadData();
       if (mounted) {
@@ -228,7 +249,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
     if (pin != null && pin.length >= 4) {
       final pinHash = _authService.hashEntryPin(pin);
-      await widget.database.lockEntry(_entry.id, pinHash: pinHash);
+      await _db.lockEntry(_entry.id, pinHash: pinHash);
       HapticFeedback.lightImpact();
       setState(() {
         _isSessionUnlocked = false;
@@ -238,16 +259,16 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   Future<void> _handleSwitchTemplate() async {
-    final templates = await widget.database.getAllTemplates();
+    final templates = await _db.getAllTemplates();
     if (!mounted) return;
 
     await TemplateSwitcherSheet.show(
       context: context,
       templates: templates,
       currentTemplateId: _entry.templateId,
-      database: widget.database,
+      database: _db,
       onTemplateSelected: (newTemplate) async {
-        await widget.database.updateEntryTemplate(_entry.id, newTemplate.id);
+        await _db.updateEntryTemplate(_entry.id, newTemplate.id);
         setState(() {
           _template = newTemplate;
           _entry = _entry.copyWith(templateId: newTemplate.id);
@@ -281,8 +302,8 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => EntryEditorScreen(
-          database: widget.database,
-          mediaSandboxService: widget.mediaService,
+          database: _db,
+          mediaSandboxService: _media,
           entryId: _entry.id,
         ),
       ),
@@ -338,7 +359,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     );
 
     if (confirmed == true) {
-      await widget.database.softDeleteEntry(_entry.id);
+      await _db.softDeleteEntry(_entry.id);
       if (mounted) {
         Navigator.pop(context, true); // Pop detail screen and notify timeline
       }
@@ -563,8 +584,8 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 MaterialPageRoute(
                   builder: (ctx) => PdfPreviewScreen(
                     singleEntry: _entry,
-                    database: widget.database,
-                    mediaService: widget.mediaService,
+                    database: _db,
+                    mediaService: _media,
                   ),
                 ),
               );
@@ -600,8 +621,8 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                     MaterialPageRoute(
                       builder: (ctx) => PdfPreviewScreen(
                         singleEntry: _entry,
-                        database: widget.database,
-                        mediaService: widget.mediaService,
+                        database: _db,
+                        mediaService: _media,
                       ),
                     ),
                   );
@@ -609,9 +630,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 case 'export':
                   ExportDialog.show(
                     context: context,
-                    database: widget.database,
+                    database: _db,
                     singleEntry: _entry,
-                    mediaService: widget.mediaService,
+                    mediaService: _media,
                   );
                   break;
                 case 'delete':
@@ -752,10 +773,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                         padding: EdgeInsets.zero,
                         embedBuilders: [
                           SandboxedImageEmbedBuilder(
-                            mediaSandboxService: widget.mediaService,
+                            mediaSandboxService: _media,
                           ),
                           SandboxedVideoEmbedBuilder(
-                            mediaSandboxService: widget.mediaService,
+                            mediaSandboxService: _media,
                           ),
                         ],
                         customStyles: quill.DefaultStyles(

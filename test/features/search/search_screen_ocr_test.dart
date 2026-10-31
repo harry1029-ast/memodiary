@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/services/ocr/ocr_queue_manager.dart';
+import 'package:memodiary/features/search/screens/ocr_photo_viewer_screen.dart';
 import 'package:memodiary/features/search/screens/search_screen.dart';
 import 'package:memodiary/features/search/widgets/photo_text_match_card.dart';
 import '../../helpers/fake_ocr_service.dart';
@@ -250,6 +251,32 @@ void main() {
 
       expect(find.text('午后咖啡'), findsOneWidget);
       expect(find.byKey(const Key('photo_match_card_media_signboard')), findsOneWidget);
+    });
+
+    testWidgets(
+        'tapping photo match card navigates to OcrPhotoViewerScreen when onPhotoMatchTap is null',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          home: SearchScreen(
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('search_text_field')), '咖啡');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('photo_match_card_media_signboard')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('photo_match_card_media_signboard')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OcrPhotoViewerScreen), findsOneWidget);
     });
 
     testWidgets(
