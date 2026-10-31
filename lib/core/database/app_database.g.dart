@@ -1632,6 +1632,12 @@ class $MediaAttachmentsTable extends MediaAttachments
   late final GeneratedColumn<String> ocrText = GeneratedColumn<String>(
       'ocr_text', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _ocrBlocksJsonMeta =
+      const VerificationMeta('ocrBlocksJson');
+  @override
+  late final GeneratedColumn<String> ocrBlocksJson = GeneratedColumn<String>(
+      'ocr_blocks_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1641,8 +1647,16 @@ class $MediaAttachmentsTable extends MediaAttachments
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, entryId, mediaType, relativePath, thumbnailPath, ocrText, createdAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        entryId,
+        mediaType,
+        relativePath,
+        thumbnailPath,
+        ocrText,
+        ocrBlocksJson,
+        createdAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1688,6 +1702,12 @@ class $MediaAttachmentsTable extends MediaAttachments
       context.handle(_ocrTextMeta,
           ocrText.isAcceptableOrUnknown(data['ocr_text']!, _ocrTextMeta));
     }
+    if (data.containsKey('ocr_blocks_json')) {
+      context.handle(
+          _ocrBlocksJsonMeta,
+          ocrBlocksJson.isAcceptableOrUnknown(
+              data['ocr_blocks_json']!, _ocrBlocksJsonMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1713,6 +1733,8 @@ class $MediaAttachmentsTable extends MediaAttachments
           .read(DriftSqlType.string, data['${effectivePrefix}thumbnail_path']),
       ocrText: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}ocr_text']),
+      ocrBlocksJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ocr_blocks_json']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
@@ -1743,6 +1765,9 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
   /// Extracted offline OCR text (if processed)
   final String? ocrText;
 
+  /// Normalized line bounding boxes JSON (if processed)
+  final String? ocrBlocksJson;
+
   /// Attachment creation timestamp
   final DateTime createdAt;
   const MediaAttachment(
@@ -1752,6 +1777,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       required this.relativePath,
       this.thumbnailPath,
       this.ocrText,
+      this.ocrBlocksJson,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1765,6 +1791,9 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
     }
     if (!nullToAbsent || ocrText != null) {
       map['ocr_text'] = Variable<String>(ocrText);
+    }
+    if (!nullToAbsent || ocrBlocksJson != null) {
+      map['ocr_blocks_json'] = Variable<String>(ocrBlocksJson);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -1782,6 +1811,9 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       ocrText: ocrText == null && nullToAbsent
           ? const Value.absent()
           : Value(ocrText),
+      ocrBlocksJson: ocrBlocksJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrBlocksJson),
       createdAt: Value(createdAt),
     );
   }
@@ -1796,6 +1828,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       relativePath: serializer.fromJson<String>(json['relativePath']),
       thumbnailPath: serializer.fromJson<String?>(json['thumbnailPath']),
       ocrText: serializer.fromJson<String?>(json['ocrText']),
+      ocrBlocksJson: serializer.fromJson<String?>(json['ocrBlocksJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -1809,6 +1842,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       'relativePath': serializer.toJson<String>(relativePath),
       'thumbnailPath': serializer.toJson<String?>(thumbnailPath),
       'ocrText': serializer.toJson<String?>(ocrText),
+      'ocrBlocksJson': serializer.toJson<String?>(ocrBlocksJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -1820,6 +1854,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           String? relativePath,
           Value<String?> thumbnailPath = const Value.absent(),
           Value<String?> ocrText = const Value.absent(),
+          Value<String?> ocrBlocksJson = const Value.absent(),
           DateTime? createdAt}) =>
       MediaAttachment(
         id: id ?? this.id,
@@ -1829,6 +1864,8 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
         thumbnailPath:
             thumbnailPath.present ? thumbnailPath.value : this.thumbnailPath,
         ocrText: ocrText.present ? ocrText.value : this.ocrText,
+        ocrBlocksJson:
+            ocrBlocksJson.present ? ocrBlocksJson.value : this.ocrBlocksJson,
         createdAt: createdAt ?? this.createdAt,
       );
   MediaAttachment copyWithCompanion(MediaAttachmentsCompanion data) {
@@ -1843,6 +1880,9 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           ? data.thumbnailPath.value
           : this.thumbnailPath,
       ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
+      ocrBlocksJson: data.ocrBlocksJson.present
+          ? data.ocrBlocksJson.value
+          : this.ocrBlocksJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -1856,14 +1896,15 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           ..write('relativePath: $relativePath, ')
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('ocrText: $ocrText, ')
+          ..write('ocrBlocksJson: $ocrBlocksJson, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, entryId, mediaType, relativePath, thumbnailPath, ocrText, createdAt);
+  int get hashCode => Object.hash(id, entryId, mediaType, relativePath,
+      thumbnailPath, ocrText, ocrBlocksJson, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1874,6 +1915,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           other.relativePath == this.relativePath &&
           other.thumbnailPath == this.thumbnailPath &&
           other.ocrText == this.ocrText &&
+          other.ocrBlocksJson == this.ocrBlocksJson &&
           other.createdAt == this.createdAt);
 }
 
@@ -1884,6 +1926,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
   final Value<String> relativePath;
   final Value<String?> thumbnailPath;
   final Value<String?> ocrText;
+  final Value<String?> ocrBlocksJson;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const MediaAttachmentsCompanion({
@@ -1893,6 +1936,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     this.relativePath = const Value.absent(),
     this.thumbnailPath = const Value.absent(),
     this.ocrText = const Value.absent(),
+    this.ocrBlocksJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1903,6 +1947,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     required String relativePath,
     this.thumbnailPath = const Value.absent(),
     this.ocrText = const Value.absent(),
+    this.ocrBlocksJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -1916,6 +1961,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     Expression<String>? relativePath,
     Expression<String>? thumbnailPath,
     Expression<String>? ocrText,
+    Expression<String>? ocrBlocksJson,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -1926,6 +1972,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       if (relativePath != null) 'relative_path': relativePath,
       if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
       if (ocrText != null) 'ocr_text': ocrText,
+      if (ocrBlocksJson != null) 'ocr_blocks_json': ocrBlocksJson,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1938,6 +1985,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       Value<String>? relativePath,
       Value<String?>? thumbnailPath,
       Value<String?>? ocrText,
+      Value<String?>? ocrBlocksJson,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return MediaAttachmentsCompanion(
@@ -1947,6 +1995,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       relativePath: relativePath ?? this.relativePath,
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       ocrText: ocrText ?? this.ocrText,
+      ocrBlocksJson: ocrBlocksJson ?? this.ocrBlocksJson,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -1973,6 +2022,9 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     if (ocrText.present) {
       map['ocr_text'] = Variable<String>(ocrText.value);
     }
+    if (ocrBlocksJson.present) {
+      map['ocr_blocks_json'] = Variable<String>(ocrBlocksJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1991,6 +2043,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
           ..write('relativePath: $relativePath, ')
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('ocrText: $ocrText, ')
+          ..write('ocrBlocksJson: $ocrBlocksJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2792,6 +2845,18 @@ class $AlbumPhotosTable extends AlbumPhotos
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(1.0));
+  static const VerificationMeta _ocrTextMeta =
+      const VerificationMeta('ocrText');
+  @override
+  late final GeneratedColumn<String> ocrText = GeneratedColumn<String>(
+      'ocr_text', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _ocrBlocksJsonMeta =
+      const VerificationMeta('ocrBlocksJson');
+  @override
+  late final GeneratedColumn<String> ocrBlocksJson = GeneratedColumn<String>(
+      'ocr_blocks_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -2811,6 +2876,8 @@ class $AlbumPhotosTable extends AlbumPhotos
         shotAt,
         sortOrder,
         aspectRatio,
+        ocrText,
+        ocrBlocksJson,
         createdAt
       ];
   @override
@@ -2876,6 +2943,16 @@ class $AlbumPhotosTable extends AlbumPhotos
           aspectRatio.isAcceptableOrUnknown(
               data['aspect_ratio']!, _aspectRatioMeta));
     }
+    if (data.containsKey('ocr_text')) {
+      context.handle(_ocrTextMeta,
+          ocrText.isAcceptableOrUnknown(data['ocr_text']!, _ocrTextMeta));
+    }
+    if (data.containsKey('ocr_blocks_json')) {
+      context.handle(
+          _ocrBlocksJsonMeta,
+          ocrBlocksJson.isAcceptableOrUnknown(
+              data['ocr_blocks_json']!, _ocrBlocksJsonMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -2908,6 +2985,10 @@ class $AlbumPhotosTable extends AlbumPhotos
           .read(DriftSqlType.int, data['${effectivePrefix}sort_order'])!,
       aspectRatio: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}aspect_ratio'])!,
+      ocrText: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ocr_text']),
+      ocrBlocksJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}ocr_blocks_json']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
@@ -2947,6 +3028,12 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
   /// Cached width / height aspect ratio (default 1.0) for zero-decode layout synthesis
   final double aspectRatio;
 
+  /// Extracted offline OCR text (if processed)
+  final String? ocrText;
+
+  /// Normalized line bounding boxes JSON (if processed)
+  final String? ocrBlocksJson;
+
   /// Record creation timestamp
   final DateTime createdAt;
   const AlbumPhoto(
@@ -2959,6 +3046,8 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
       this.shotAt,
       required this.sortOrder,
       required this.aspectRatio,
+      this.ocrText,
+      this.ocrBlocksJson,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2978,6 +3067,12 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
     }
     map['sort_order'] = Variable<int>(sortOrder);
     map['aspect_ratio'] = Variable<double>(aspectRatio);
+    if (!nullToAbsent || ocrText != null) {
+      map['ocr_text'] = Variable<String>(ocrText);
+    }
+    if (!nullToAbsent || ocrBlocksJson != null) {
+      map['ocr_blocks_json'] = Variable<String>(ocrBlocksJson);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -2998,6 +3093,12 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
           shotAt == null && nullToAbsent ? const Value.absent() : Value(shotAt),
       sortOrder: Value(sortOrder),
       aspectRatio: Value(aspectRatio),
+      ocrText: ocrText == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrText),
+      ocrBlocksJson: ocrBlocksJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ocrBlocksJson),
       createdAt: Value(createdAt),
     );
   }
@@ -3016,6 +3117,8 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
       shotAt: serializer.fromJson<DateTime?>(json['shotAt']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       aspectRatio: serializer.fromJson<double>(json['aspectRatio']),
+      ocrText: serializer.fromJson<String?>(json['ocrText']),
+      ocrBlocksJson: serializer.fromJson<String?>(json['ocrBlocksJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -3032,6 +3135,8 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
       'shotAt': serializer.toJson<DateTime?>(shotAt),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'aspectRatio': serializer.toJson<double>(aspectRatio),
+      'ocrText': serializer.toJson<String?>(ocrText),
+      'ocrBlocksJson': serializer.toJson<String?>(ocrBlocksJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -3046,6 +3151,8 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
           Value<DateTime?> shotAt = const Value.absent(),
           int? sortOrder,
           double? aspectRatio,
+          Value<String?> ocrText = const Value.absent(),
+          Value<String?> ocrBlocksJson = const Value.absent(),
           DateTime? createdAt}) =>
       AlbumPhoto(
         id: id ?? this.id,
@@ -3058,6 +3165,9 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
         shotAt: shotAt.present ? shotAt.value : this.shotAt,
         sortOrder: sortOrder ?? this.sortOrder,
         aspectRatio: aspectRatio ?? this.aspectRatio,
+        ocrText: ocrText.present ? ocrText.value : this.ocrText,
+        ocrBlocksJson:
+            ocrBlocksJson.present ? ocrBlocksJson.value : this.ocrBlocksJson,
         createdAt: createdAt ?? this.createdAt,
       );
   AlbumPhoto copyWithCompanion(AlbumPhotosCompanion data) {
@@ -3079,6 +3189,10 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       aspectRatio:
           data.aspectRatio.present ? data.aspectRatio.value : this.aspectRatio,
+      ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
+      ocrBlocksJson: data.ocrBlocksJson.present
+          ? data.ocrBlocksJson.value
+          : this.ocrBlocksJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -3095,6 +3209,8 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
           ..write('shotAt: $shotAt, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('aspectRatio: $aspectRatio, ')
+          ..write('ocrText: $ocrText, ')
+          ..write('ocrBlocksJson: $ocrBlocksJson, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3111,6 +3227,8 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
       shotAt,
       sortOrder,
       aspectRatio,
+      ocrText,
+      ocrBlocksJson,
       createdAt);
   @override
   bool operator ==(Object other) =>
@@ -3125,6 +3243,8 @@ class AlbumPhoto extends DataClass implements Insertable<AlbumPhoto> {
           other.shotAt == this.shotAt &&
           other.sortOrder == this.sortOrder &&
           other.aspectRatio == this.aspectRatio &&
+          other.ocrText == this.ocrText &&
+          other.ocrBlocksJson == this.ocrBlocksJson &&
           other.createdAt == this.createdAt);
 }
 
@@ -3138,6 +3258,8 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
   final Value<DateTime?> shotAt;
   final Value<int> sortOrder;
   final Value<double> aspectRatio;
+  final Value<String?> ocrText;
+  final Value<String?> ocrBlocksJson;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const AlbumPhotosCompanion({
@@ -3150,6 +3272,8 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
     this.shotAt = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.aspectRatio = const Value.absent(),
+    this.ocrText = const Value.absent(),
+    this.ocrBlocksJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3163,6 +3287,8 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
     this.shotAt = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.aspectRatio = const Value.absent(),
+    this.ocrText = const Value.absent(),
+    this.ocrBlocksJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -3179,6 +3305,8 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
     Expression<DateTime>? shotAt,
     Expression<int>? sortOrder,
     Expression<double>? aspectRatio,
+    Expression<String>? ocrText,
+    Expression<String>? ocrBlocksJson,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -3193,6 +3321,8 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
       if (shotAt != null) 'shot_at': shotAt,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (aspectRatio != null) 'aspect_ratio': aspectRatio,
+      if (ocrText != null) 'ocr_text': ocrText,
+      if (ocrBlocksJson != null) 'ocr_blocks_json': ocrBlocksJson,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3208,6 +3338,8 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
       Value<DateTime?>? shotAt,
       Value<int>? sortOrder,
       Value<double>? aspectRatio,
+      Value<String?>? ocrText,
+      Value<String?>? ocrBlocksJson,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return AlbumPhotosCompanion(
@@ -3221,6 +3353,8 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
       shotAt: shotAt ?? this.shotAt,
       sortOrder: sortOrder ?? this.sortOrder,
       aspectRatio: aspectRatio ?? this.aspectRatio,
+      ocrText: ocrText ?? this.ocrText,
+      ocrBlocksJson: ocrBlocksJson ?? this.ocrBlocksJson,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -3257,6 +3391,12 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
     if (aspectRatio.present) {
       map['aspect_ratio'] = Variable<double>(aspectRatio.value);
     }
+    if (ocrText.present) {
+      map['ocr_text'] = Variable<String>(ocrText.value);
+    }
+    if (ocrBlocksJson.present) {
+      map['ocr_blocks_json'] = Variable<String>(ocrBlocksJson.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -3278,6 +3418,8 @@ class AlbumPhotosCompanion extends UpdateCompanion<AlbumPhoto> {
           ..write('shotAt: $shotAt, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('aspectRatio: $aspectRatio, ')
+          ..write('ocrText: $ocrText, ')
+          ..write('ocrBlocksJson: $ocrBlocksJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4047,6 +4189,7 @@ typedef $$MediaAttachmentsTableCreateCompanionBuilder
   required String relativePath,
   Value<String?> thumbnailPath,
   Value<String?> ocrText,
+  Value<String?> ocrBlocksJson,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -4058,6 +4201,7 @@ typedef $$MediaAttachmentsTableUpdateCompanionBuilder
   Value<String> relativePath,
   Value<String?> thumbnailPath,
   Value<String?> ocrText,
+  Value<String?> ocrBlocksJson,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -4088,6 +4232,9 @@ class $$MediaAttachmentsTableFilterComposer
 
   ColumnFilters<String> get ocrText => $composableBuilder(
       column: $table.ocrText, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ocrBlocksJson => $composableBuilder(
+      column: $table.ocrBlocksJson, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4122,6 +4269,10 @@ class $$MediaAttachmentsTableOrderingComposer
   ColumnOrderings<String> get ocrText => $composableBuilder(
       column: $table.ocrText, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get ocrBlocksJson => $composableBuilder(
+      column: $table.ocrBlocksJson,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
@@ -4152,6 +4303,9 @@ class $$MediaAttachmentsTableAnnotationComposer
 
   GeneratedColumn<String> get ocrText =>
       $composableBuilder(column: $table.ocrText, builder: (column) => column);
+
+  GeneratedColumn<String> get ocrBlocksJson => $composableBuilder(
+      column: $table.ocrBlocksJson, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4190,6 +4344,7 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             Value<String> relativePath = const Value.absent(),
             Value<String?> thumbnailPath = const Value.absent(),
             Value<String?> ocrText = const Value.absent(),
+            Value<String?> ocrBlocksJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -4200,6 +4355,7 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             relativePath: relativePath,
             thumbnailPath: thumbnailPath,
             ocrText: ocrText,
+            ocrBlocksJson: ocrBlocksJson,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -4210,6 +4366,7 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             required String relativePath,
             Value<String?> thumbnailPath = const Value.absent(),
             Value<String?> ocrText = const Value.absent(),
+            Value<String?> ocrBlocksJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -4220,6 +4377,7 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             relativePath: relativePath,
             thumbnailPath: thumbnailPath,
             ocrText: ocrText,
+            ocrBlocksJson: ocrBlocksJson,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -4657,6 +4815,8 @@ typedef $$AlbumPhotosTableCreateCompanionBuilder = AlbumPhotosCompanion
   Value<DateTime?> shotAt,
   Value<int> sortOrder,
   Value<double> aspectRatio,
+  Value<String?> ocrText,
+  Value<String?> ocrBlocksJson,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -4671,6 +4831,8 @@ typedef $$AlbumPhotosTableUpdateCompanionBuilder = AlbumPhotosCompanion
   Value<DateTime?> shotAt,
   Value<int> sortOrder,
   Value<double> aspectRatio,
+  Value<String?> ocrText,
+  Value<String?> ocrBlocksJson,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -4731,6 +4893,12 @@ class $$AlbumPhotosTableFilterComposer
   ColumnFilters<double> get aspectRatio => $composableBuilder(
       column: $table.aspectRatio, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get ocrText => $composableBuilder(
+      column: $table.ocrText, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ocrBlocksJson => $composableBuilder(
+      column: $table.ocrBlocksJson, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
 
@@ -4790,6 +4958,13 @@ class $$AlbumPhotosTableOrderingComposer
   ColumnOrderings<double> get aspectRatio => $composableBuilder(
       column: $table.aspectRatio, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get ocrText => $composableBuilder(
+      column: $table.ocrText, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ocrBlocksJson => $composableBuilder(
+      column: $table.ocrBlocksJson,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -4847,6 +5022,12 @@ class $$AlbumPhotosTableAnnotationComposer
   GeneratedColumn<double> get aspectRatio => $composableBuilder(
       column: $table.aspectRatio, builder: (column) => column);
 
+  GeneratedColumn<String> get ocrText =>
+      $composableBuilder(column: $table.ocrText, builder: (column) => column);
+
+  GeneratedColumn<String> get ocrBlocksJson => $composableBuilder(
+      column: $table.ocrBlocksJson, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -4903,6 +5084,8 @@ class $$AlbumPhotosTableTableManager extends RootTableManager<
             Value<DateTime?> shotAt = const Value.absent(),
             Value<int> sortOrder = const Value.absent(),
             Value<double> aspectRatio = const Value.absent(),
+            Value<String?> ocrText = const Value.absent(),
+            Value<String?> ocrBlocksJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -4916,6 +5099,8 @@ class $$AlbumPhotosTableTableManager extends RootTableManager<
             shotAt: shotAt,
             sortOrder: sortOrder,
             aspectRatio: aspectRatio,
+            ocrText: ocrText,
+            ocrBlocksJson: ocrBlocksJson,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -4929,6 +5114,8 @@ class $$AlbumPhotosTableTableManager extends RootTableManager<
             Value<DateTime?> shotAt = const Value.absent(),
             Value<int> sortOrder = const Value.absent(),
             Value<double> aspectRatio = const Value.absent(),
+            Value<String?> ocrText = const Value.absent(),
+            Value<String?> ocrBlocksJson = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -4942,6 +5129,8 @@ class $$AlbumPhotosTableTableManager extends RootTableManager<
             shotAt: shotAt,
             sortOrder: sortOrder,
             aspectRatio: aspectRatio,
+            ocrText: ocrText,
+            ocrBlocksJson: ocrBlocksJson,
             createdAt: createdAt,
             rowid: rowid,
           ),

@@ -11,7 +11,7 @@ void main() {
         final db = AppDatabase(NativeDatabase.memory());
         addTearDown(() => db.close());
 
-        expect(db.schemaVersion, equals(4));
+        expect(db.schemaVersion, equals(5));
 
         final now = DateTime(2026, 10, 23, 12, 0);
         await db.into(db.albumCollections).insert(

@@ -7,12 +7,15 @@ import 'package:sqlite3/open.dart';
 import 'package:uuid/uuid.dart';
 import '../../features/import_export/models/backup_manifest.dart';
 import '../../features/weekly_review/services/calendar_week_utils.dart';
+import 'models/photo_text_match.dart';
 import 'tables/templates.dart';
 import 'tables/notebooks.dart';
 import 'tables/entries.dart';
 import 'tables/media_attachments.dart';
 import 'tables/album_collections.dart';
 import 'tables/album_photos.dart';
+
+export 'models/photo_text_match.dart';
 
 part 'app_database.g.dart';
 
@@ -65,7 +68,67 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
+
+  /// Creates the `media_fts` FTS5 virtual table and its 6 synchronization triggers.
+  Future<void> _createMediaFts() async {
+    await customStatement('''
+      CREATE VIRTUAL TABLE IF NOT EXISTS media_fts USING fts5(
+        id UNINDEXED,
+        source_type UNINDEXED,
+        parent_id UNINDEXED,
+        relative_path UNINDEXED,
+        ocr_text,
+        tokenize='unicode61'
+      );
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS media_attachments_ai AFTER INSERT ON media_attachments BEGIN
+        INSERT INTO media_fts(id, source_type, parent_id, relative_path, ocr_text)
+        SELECT new.id, 'entry_media', new.entry_id, new.relative_path, new.ocr_text
+        WHERE new.media_type = 'image' AND coalesce(new.ocr_text, '') <> '';
+      END;
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS media_attachments_au AFTER UPDATE ON media_attachments BEGIN
+        DELETE FROM media_fts WHERE id = old.id AND source_type = 'entry_media';
+        INSERT INTO media_fts(id, source_type, parent_id, relative_path, ocr_text)
+        SELECT new.id, 'entry_media', new.entry_id, new.relative_path, new.ocr_text
+        WHERE new.media_type = 'image' AND coalesce(new.ocr_text, '') <> '';
+      END;
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS media_attachments_ad AFTER DELETE ON media_attachments BEGIN
+        DELETE FROM media_fts WHERE id = old.id AND source_type = 'entry_media';
+      END;
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS album_photos_ai AFTER INSERT ON album_photos BEGIN
+        INSERT INTO media_fts(id, source_type, parent_id, relative_path, ocr_text)
+        SELECT new.id, 'album_photo', new.collection_id, new.relative_image_path, new.ocr_text
+        WHERE coalesce(new.ocr_text, '') <> '';
+      END;
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS album_photos_au AFTER UPDATE ON album_photos BEGIN
+        DELETE FROM media_fts WHERE id = old.id AND source_type = 'album_photo';
+        INSERT INTO media_fts(id, source_type, parent_id, relative_path, ocr_text)
+        SELECT new.id, 'album_photo', new.collection_id, new.relative_image_path, new.ocr_text
+        WHERE coalesce(new.ocr_text, '') <> '';
+      END;
+    ''');
+
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS album_photos_ad AFTER DELETE ON album_photos BEGIN
+        DELETE FROM media_fts WHERE id = old.id AND source_type = 'album_photo';
+      END;
+    ''');
+  }
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -105,6 +168,9 @@ class AppDatabase extends _$AppDatabase {
               DELETE FROM entries_fts WHERE id = old.id;
             END;
           ''');
+
+          // 3b. Create media_fts FTS5 virtual table and synchronization triggers
+          await _createMediaFts();
 
           // 4. Create index for ultra-fast reverse-chronological timeline pagination
           await customStatement('''
@@ -191,6 +257,23 @@ class AppDatabase extends _$AppDatabase {
               albumCollections.studioLayoutJson,
             );
             await m.addColumn(albumCollections, albumCollections.themeId);
+          }
+          if (from < 5) {
+            await m.addColumn(
+              mediaAttachments,
+              mediaAttachments.ocrBlocksJson,
+            );
+            if (from >= 3) {
+              await m.addColumn(albumPhotos, albumPhotos.ocrText);
+              await m.addColumn(albumPhotos, albumPhotos.ocrBlocksJson);
+            }
+            await _createMediaFts();
+            await customStatement('''
+              INSERT INTO media_fts(id, source_type, parent_id, relative_path, ocr_text)
+              SELECT id, 'entry_media', entry_id, relative_path, ocr_text
+              FROM media_attachments
+              WHERE media_type = 'image' AND coalesce(ocr_text, '') <> '';
+            ''');
           }
         },
         beforeOpen: (details) async {
@@ -842,6 +925,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(mediaAttachments).go();
       await delete(entries).go();
       await customStatement('DELETE FROM entries_fts;');
+      await customStatement('DELETE FROM media_fts;');
       await delete(notebooks).go();
       await delete(templates).go();
 
@@ -972,6 +1056,283 @@ class AppDatabase extends _$AppDatabase {
         await into(albumPhotos).insert(photo);
       }
     });
+  }
+
+  // ===========================================================================
+  // Phase 17: On-Device OCR Persistence & Dual-Path In-Photo Privacy Search
+  // ===========================================================================
+
+  /// Updates cached OCR text and normalized line bounding boxes on an entry media attachment.
+  Future<void> updateMediaOcr(
+    String id, {
+    required String ocrText,
+    required String ocrBlocksJson,
+  }) async {
+    await (update(mediaAttachments)..where((tbl) => tbl.id.equals(id))).write(
+      MediaAttachmentsCompanion(
+        ocrText: Value(ocrText),
+        ocrBlocksJson: Value(ocrBlocksJson),
+      ),
+    );
+  }
+
+  /// Updates cached OCR text and normalized line bounding boxes on an album photo.
+  Future<void> updateAlbumPhotoOcr(
+    String id, {
+    required String ocrText,
+    required String ocrBlocksJson,
+  }) async {
+    await (update(albumPhotos)..where((tbl) => tbl.id.equals(id))).write(
+      AlbumPhotosCompanion(
+        ocrText: Value(ocrText),
+        ocrBlocksJson: Value(ocrBlocksJson),
+      ),
+    );
+  }
+
+  /// Searches OCR text across entry media attachments and album photos using
+  /// dual-path FTS5 `MATCH` and CJK `LIKE` fallback, enforcing strict entry privacy.
+  Future<List<PhotoTextMatch>> searchPhotoText(
+    String query, {
+    int limit = 50,
+    DateTime? now,
+  }) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty || limit <= 0) return const [];
+
+    final entryMediaIds = <String>{};
+    final albumPhotoIds = <String>{};
+
+    if (RegExp(r'[\p{L}\p{N}]', unicode: true).hasMatch(trimmed)) {
+      final escaped = trimmed.replaceAll('"', '""');
+      final ftsRows = await customSelect(
+        'SELECT id, source_type FROM media_fts WHERE media_fts MATCH ?',
+        variables: [Variable.withString('"$escaped"*')],
+        readsFrom: {mediaAttachments, albumPhotos},
+      ).get();
+
+      for (final row in ftsRows) {
+        final id = row.read<String>('id');
+        final sourceType = row.read<String>('source_type');
+        if (sourceType == PhotoTextMatch.sourceEntryMedia) {
+          entryMediaIds.add(id);
+        } else if (sourceType == PhotoTextMatch.sourceAlbumPhoto) {
+          albumPhotoIds.add(id);
+        }
+      }
+    }
+
+    if (RegExp(r'[\u4e00-\u9fff]').hasMatch(trimmed)) {
+      final escapedLike =
+          '%${trimmed.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+      final mediaLikeRows = await customSelect(
+        r"SELECT id FROM media_attachments WHERE media_type = 'image' AND coalesce(ocr_text, '') LIKE ? ESCAPE '\'",
+        variables: [Variable.withString(escapedLike)],
+        readsFrom: {mediaAttachments},
+      ).get();
+      for (final row in mediaLikeRows) {
+        entryMediaIds.add(row.read<String>('id'));
+      }
+
+      final albumLikeRows = await customSelect(
+        r"SELECT id FROM album_photos WHERE coalesce(ocr_text, '') LIKE ? ESCAPE '\'",
+        variables: [Variable.withString(escapedLike)],
+        readsFrom: {albumPhotos},
+      ).get();
+      for (final row in albumLikeRows) {
+        albumPhotoIds.add(row.read<String>('id'));
+      }
+    }
+
+    if (entryMediaIds.isEmpty && albumPhotoIds.isEmpty) {
+      return const [];
+    }
+
+    final effectiveNow = now ?? DateTime.now();
+    final matches = <PhotoTextMatch>[];
+    final seenIds = <String>{};
+
+    if (entryMediaIds.isNotEmpty) {
+      final joinedEntryRows = await (select(mediaAttachments).join([
+        innerJoin(entries, entries.id.equalsExp(mediaAttachments.entryId)),
+      ])
+            ..where(
+              mediaAttachments.id.isIn(entryMediaIds) &
+                  mediaAttachments.mediaType.equals('image') &
+                  mediaAttachments.ocrText.isNotNull() &
+                  mediaAttachments.ocrText.equals('').not() &
+                  entries.isDeleted.equals(false) &
+                  entries.isLocked.equals(false) &
+                  (entries.unlockAt.isNull() |
+                      entries.unlockAt.isSmallerOrEqualValue(effectiveNow)),
+            ))
+          .get();
+
+      for (final row in joinedEntryRows) {
+        final attachment = row.readTable(mediaAttachments);
+        final entry = row.readTable(entries);
+        if (seenIds.add(attachment.id)) {
+          matches.add(
+            PhotoTextMatch(
+              id: attachment.id,
+              sourceType: PhotoTextMatch.sourceEntryMedia,
+              parentId: attachment.entryId,
+              relativePath: attachment.relativePath,
+              thumbnailPath: attachment.thumbnailPath,
+              ocrText: attachment.ocrText ?? '',
+              ocrBlocksJson: attachment.ocrBlocksJson,
+              parentTitle: entry.title,
+              parentDate: entry.entryDate,
+            ),
+          );
+        }
+      }
+    }
+
+    if (albumPhotoIds.isNotEmpty) {
+      final joinedAlbumRows = await (select(albumPhotos).join([
+        innerJoin(
+          albumCollections,
+          albumCollections.id.equalsExp(albumPhotos.collectionId),
+        ),
+      ])
+            ..where(
+              albumPhotos.id.isIn(albumPhotoIds) &
+                  albumPhotos.ocrText.isNotNull() &
+                  albumPhotos.ocrText.equals('').not(),
+            ))
+          .get();
+
+      for (final row in joinedAlbumRows) {
+        final photo = row.readTable(albumPhotos);
+        final collection = row.readTable(albumCollections);
+        if (seenIds.add(photo.id)) {
+          matches.add(
+            PhotoTextMatch(
+              id: photo.id,
+              sourceType: PhotoTextMatch.sourceAlbumPhoto,
+              parentId: photo.collectionId,
+              relativePath: photo.relativeImagePath,
+              thumbnailPath: photo.relativeThumbnailPath,
+              ocrText: photo.ocrText ?? '',
+              ocrBlocksJson: photo.ocrBlocksJson,
+              parentTitle: collection.title,
+              parentDate: photo.shotAt ?? photo.createdAt,
+            ),
+          );
+        }
+      }
+    }
+
+    matches.sort((left, right) {
+      final leftEpoch = left.parentDate?.millisecondsSinceEpoch ?? 0;
+      final rightEpoch = right.parentDate?.millisecondsSinceEpoch ?? 0;
+      final cmp = rightEpoch.compareTo(leftEpoch);
+      if (cmp != 0) return cmp;
+      return left.id.compareTo(right.id);
+    });
+
+    if (matches.length > limit) {
+      return matches.sublist(0, limit);
+    }
+    return matches;
+  }
+
+  UnindexedImageItem _mapUnindexedImageRow(QueryRow row) {
+    return UnindexedImageItem(
+      id: row.read<String>('id'),
+      sourceType: row.read<String>('source_type'),
+      relativePath: row.read<String>('relative_path'),
+      createdAt: row.read<DateTime>('created_at'),
+    );
+  }
+
+  /// Returns all images across active entries and album collections whose
+  /// `ocr_text` is `NULL`, ordered chronologically (`created_at ASC`).
+  Future<List<UnindexedImageItem>> getUnindexedImages() async {
+    final rows = await customSelect(
+      '''
+      SELECT ma.id AS id,
+             'entry_media' AS source_type,
+             ma.relative_path AS relative_path,
+             ma.created_at AS created_at
+      FROM media_attachments ma
+      INNER JOIN entries e ON e.id = ma.entry_id
+      WHERE ma.media_type = 'image'
+        AND ma.ocr_text IS NULL
+        AND e.is_deleted = 0
+      UNION ALL
+      SELECT ap.id AS id,
+             'album_photo' AS source_type,
+             ap.relative_image_path AS relative_path,
+             ap.created_at AS created_at
+      FROM album_photos ap
+      INNER JOIN album_collections ac ON ac.id = ap.collection_id
+      WHERE ap.ocr_text IS NULL
+      ORDER BY created_at ASC, id ASC
+      ''',
+      readsFrom: {mediaAttachments, entries, albumPhotos, albumCollections},
+    ).get();
+
+    return rows.map(_mapUnindexedImageRow).toList();
+  }
+
+  /// Counts all unindexed images (`ocr_text IS NULL`) across active entries and albums.
+  Future<int> countUnindexedImages() async {
+    final row = await customSelect(
+      '''
+      SELECT (
+        SELECT COUNT(*)
+        FROM media_attachments ma
+        INNER JOIN entries e ON e.id = ma.entry_id
+        WHERE ma.media_type = 'image'
+          AND ma.ocr_text IS NULL
+          AND e.is_deleted = 0
+      ) + (
+        SELECT COUNT(*)
+        FROM album_photos ap
+        INNER JOIN album_collections ac ON ac.id = ap.collection_id
+        WHERE ap.ocr_text IS NULL
+      ) AS cnt
+      ''',
+      readsFrom: {mediaAttachments, entries, albumPhotos, albumCollections},
+    ).getSingle();
+
+    return row.read<int>('cnt');
+  }
+
+  /// Reactively watches unindexed images across active entries and album collections
+  /// created at or after [since], ordered chronologically (`created_at ASC`).
+  Stream<List<UnindexedImageItem>> watchUnindexedImagesSince(DateTime since) {
+    return customSelect(
+      '''
+      SELECT ma.id AS id,
+             'entry_media' AS source_type,
+             ma.relative_path AS relative_path,
+             ma.created_at AS created_at
+      FROM media_attachments ma
+      INNER JOIN entries e ON e.id = ma.entry_id
+      WHERE ma.media_type = 'image'
+        AND ma.ocr_text IS NULL
+        AND e.is_deleted = 0
+        AND ma.created_at >= ?
+      UNION ALL
+      SELECT ap.id AS id,
+             'album_photo' AS source_type,
+             ap.relative_image_path AS relative_path,
+             ap.created_at AS created_at
+      FROM album_photos ap
+      INNER JOIN album_collections ac ON ac.id = ap.collection_id
+      WHERE ap.ocr_text IS NULL
+        AND ap.created_at >= ?
+      ORDER BY created_at ASC, id ASC
+      ''',
+      variables: [
+        Variable.withDateTime(since),
+        Variable.withDateTime(since),
+      ],
+      readsFrom: {mediaAttachments, entries, albumPhotos, albumCollections},
+    ).watch().map((rows) => rows.map(_mapUnindexedImageRow).toList());
   }
 }
 

@@ -34,6 +34,12 @@ class AlbumPhotos extends Table {
   /// Cached width / height aspect ratio (default 1.0) for zero-decode layout synthesis
   RealColumn get aspectRatio => real().withDefault(const Constant(1.0))();
 
+  /// Extracted offline OCR text (if processed)
+  TextColumn get ocrText => text().nullable()();
+
+  /// Normalized line bounding boxes JSON (if processed)
+  TextColumn get ocrBlocksJson => text().nullable()();
+
   /// Record creation timestamp
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 

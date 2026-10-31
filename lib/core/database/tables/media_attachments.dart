@@ -24,6 +24,9 @@ class MediaAttachments extends Table {
   /// Extracted offline OCR text (if processed)
   TextColumn get ocrText => text().nullable()();
 
+  /// Normalized line bounding boxes JSON (if processed)
+  TextColumn get ocrBlocksJson => text().nullable()();
+
   /// Attachment creation timestamp
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
