@@ -39,3 +39,15 @@ _Avoid_: Thought spark container, prompt banner, inspiration card
 **Writing Dock**:
 The consolidated, de-duplicated bottom toolbar in the entry editor providing contextual rich-text formatting, media attachments, and ambiance controls in a single streamlined dock.
 _Avoid_: Editor toolbar, formatting strip, action bar
+
+**Photo Text Match**:
+A search result record (`PhotoTextMatch`) sourced from `media_fts` representing text recognized inside an entry attachment or album photo, paired with normalized line bounding boxes and parent context.
+_Avoid_: OCR hit, image search result, reverse image match
+
+**OCR Sentinel**:
+The explicit empty marker (`ocr_text = ''` and `ocr_blocks_json = '[]'`) persisted when an image contains zero recognizable text or cannot be decoded, distinguishing already-scanned photos from unindexed (`NULL`) photos.
+_Avoid_: Null OCR result, empty scan flag
+
+**Backfill Indexer**:
+The user-triggered, pauseable/resumable maintenance routine (`OcrQueueManager.runBackfill`) that scans historical unindexed photos (`ocr_text IS NULL`) sequentially without blocking launch or UI frames.
+_Avoid_: Background library scanner, batch OCR job
