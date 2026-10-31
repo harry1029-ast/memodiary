@@ -16,19 +16,21 @@ class OcrPhotoViewerScreen extends StatefulWidget {
   final PhotoTextMatch match;
   final String query;
   final MediaSandboxService mediaSandboxService;
-  final AppDatabase? database;
+  final AppDatabase database;
   final bool enableAnimation;
   final Size? imageSize;
 
-  const OcrPhotoViewerScreen({
+  OcrPhotoViewerScreen({
     super.key,
     required this.match,
     required this.query,
     required this.mediaSandboxService,
-    this.database,
-    this.enableAnimation = false,
+    required this.database,
+    bool? enableAnimation,
     this.imageSize,
-  });
+  }) : enableAnimation = enableAnimation ??
+            (const bool.fromEnvironment('dart.vm.product') ||
+                Platform.environment['FLUTTER_TEST'] != 'true');
 
   @override
   State<OcrPhotoViewerScreen> createState() => _OcrPhotoViewerScreenState();
@@ -152,7 +154,7 @@ class _OcrPhotoViewerScreenState extends State<OcrPhotoViewerScreen> {
         button: true,
         label: _isVisible ? '隐藏高亮' : '显示高亮',
         child: FloatingActionButton.extended(
-          key: const Key('ocr_highlight_toggle'),
+          key: const Key('search_ocr_highlight_toggle'),
           onPressed: () {
             setState(() {
               _isVisible = !_isVisible;
@@ -297,7 +299,7 @@ class _OcrPhotoViewerScreenState extends State<OcrPhotoViewerScreen> {
             ),
             const SizedBox(width: 12),
             FilledButton.icon(
-              key: const Key('ocr_viewer_view_parent_button'),
+              key: const Key('search_ocr_viewer_view_parent_button'),
               onPressed: _navigateToParent,
               icon: Icon(
                 isEntryMedia ? Icons.menu_book_outlined : Icons.photo_library_outlined,

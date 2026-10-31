@@ -25,8 +25,8 @@ import 'album_flipbook_screen.dart';
 class AlbumWorkspaceScreen extends StatefulWidget {
   final String collectionId;
   final AlbumCollection? initialCollection;
-  final AppDatabase? database;
-  final MediaSandboxService? mediaService;
+  final AppDatabase database;
+  final MediaSandboxService mediaService;
   final AlbumRepository? repository;
   final ImagePicker? imagePicker;
   final AlbumIngestionService? ingestionService;
@@ -35,9 +35,9 @@ class AlbumWorkspaceScreen extends StatefulWidget {
   const AlbumWorkspaceScreen({
     super.key,
     required this.collectionId,
+    required this.database,
+    required this.mediaService,
     this.initialCollection,
-    this.database,
-    this.mediaService,
     this.repository,
     this.imagePicker,
     this.ingestionService,
@@ -49,10 +49,8 @@ class AlbumWorkspaceScreen extends StatefulWidget {
 }
 
 class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
-  AppDatabase? _fallbackDb;
-  MediaSandboxService? _fallbackMedia;
-  AppDatabase get _db => widget.database ?? (_fallbackDb ??= AppDatabase.memory());
-  MediaSandboxService get _media => widget.mediaService ?? (_fallbackMedia ??= MediaSandboxService());
+  AppDatabase get _db => widget.database;
+  MediaSandboxService get _media => widget.mediaService;
 
   late final AlbumRepository _repository;
   late final ImagePicker _imagePicker;

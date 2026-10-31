@@ -316,5 +316,73 @@ void main() {
       expect(find.byKey(const Key('settings_ocr_backfill_dialog')), findsOneWidget);
       expect(find.text('识图索引已完成'), findsOneWidget);
     });
+
+    testWidgets('Pause and resume toggle updates status label and button text',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await createDummyPhoto(id: 'photo_1', relativePath: 'media/p1.webp');
+      await createDummyPhoto(id: 'photo_2', relativePath: 'media/p2.webp');
+
+      final completer = Completer<void>();
+      fakeOcr.onRecognize = (path) async {
+        if (path.contains('p1.webp')) {
+          await completer.future;
+        }
+        return const OcrResult(
+          plainText: '文字',
+          lines: [],
+        );
+      };
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            mediaService: mediaService,
+            ocrQueueManager: queueManager,
+            permissionChecker: mockPermissionChecker,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('settings_ocr_backfill_tile')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byKey(const Key('settings_ocr_backfill_dialog')), findsOneWidget);
+      final pauseBtn = find.byKey(const Key('settings_ocr_backfill_pause_button'));
+      expect(pauseBtn, findsOneWidget);
+      expect(find.text('暂停'), findsOneWidget);
+
+      // Tap 暂停 button
+      await tester.tap(pauseBtn);
+      await tester.pump();
+
+      // Button updates to "继续", label shows "已暂停"
+      expect(find.text('继续'), findsOneWidget);
+      expect(find.textContaining('已暂停:'), findsOneWidget);
+
+      // Tap 继续 button
+      await tester.tap(pauseBtn);
+      await tester.pump();
+
+      // Button updates back to "暂停"
+      expect(find.text('暂停'), findsOneWidget);
+
+      // Complete OCR recognition
+      completer.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('识图索引已完成'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('settings_ocr_backfill_done_button')));
+      await tester.pumpAndSettle();
+    });
   });
 }

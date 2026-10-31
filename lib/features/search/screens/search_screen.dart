@@ -246,16 +246,28 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  String _computeEffectiveQuery() {
+    final rawQuery = _searchController.text.trim();
+    final parsed = widget.parser.parse(
+      rawQuery,
+      now: widget.referenceNow,
+      ignoredKinds: _dismissedKinds,
+    );
+    return parsed.keywords.isNotEmpty ? parsed.keywords : rawQuery;
+  }
+
   void _onPhotoMatchTapped(PhotoTextMatch match) {
     if (widget.onPhotoMatchTap != null) {
       widget.onPhotoMatchTap!(match);
       return;
     }
+    final effectiveQuery = _computeEffectiveQuery();
+
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (routeContext) => OcrPhotoViewerScreen(
           match: match,
-          query: _searchController.text,
+          query: effectiveQuery,
           mediaSandboxService: widget.mediaService,
           database: widget.database,
         ),
@@ -662,7 +674,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildCombinedResultsList(InkDiaryTokens tokens) {
-    final query = _searchController.text.trim();
+    final effectiveQuery = _computeEffectiveQuery();
+
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
@@ -686,7 +699,7 @@ class _SearchScreenState extends State<SearchScreen> {
             return PhotoTextMatchCard(
               match: match,
               mediaService: widget.mediaService,
-              query: query,
+              query: effectiveQuery,
               onTap: () => _onPhotoMatchTapped(match),
             );
           }),
@@ -715,7 +728,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildPhotosList() {
-    final query = _searchController.text.trim();
+    final effectiveQuery = _computeEffectiveQuery();
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _photoResults.length,
@@ -724,7 +738,7 @@ class _SearchScreenState extends State<SearchScreen> {
         return PhotoTextMatchCard(
           match: match,
           mediaService: widget.mediaService,
-          query: query,
+          query: effectiveQuery,
           onTap: () => _onPhotoMatchTapped(match),
         );
       },

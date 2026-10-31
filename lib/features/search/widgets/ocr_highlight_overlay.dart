@@ -13,14 +13,16 @@ class OcrHighlightOverlay extends StatefulWidget {
   final bool isVisible;
   final bool enableAnimation;
 
-  const OcrHighlightOverlay({
+  OcrHighlightOverlay({
     super.key,
     required this.lines,
     required this.query,
     required this.originalImageSize,
     required this.isVisible,
-    this.enableAnimation = true,
-  });
+    bool? enableAnimation,
+  }) : enableAnimation = enableAnimation ??
+            (const bool.fromEnvironment('dart.vm.product') ||
+                Platform.environment['FLUTTER_TEST'] != 'true');
 
   /// Computes the centered letterbox/pillarbox destination rect within [containerSize]
   /// using [BoxFit.contain] for an image of [originalImageSize].

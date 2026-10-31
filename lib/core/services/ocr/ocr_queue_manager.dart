@@ -258,9 +258,11 @@ class OcrQueueManager {
   ///
   /// Periodically invokes [onProgress] with `(current, total)` after each item.
   /// Checks [isCancelled] and aborts cleanly if requested.
+  /// Checks [isPaused] and waits until unpaused or cancelled.
   Future<void> runBackfill({
     void Function(int current, int total)? onProgress,
     bool Function()? isCancelled,
+    bool Function()? isPaused,
   }) async {
     if (_isDisposed) {
       return;
@@ -273,6 +275,17 @@ class OcrQueueManager {
     }
 
     for (var index = 0; index < total; index++) {
+      if (_isDisposed || (isCancelled?.call() == true)) {
+        break;
+      }
+
+      while (isPaused?.call() == true) {
+        if (_isDisposed || (isCancelled?.call() == true)) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+
       if (_isDisposed || (isCancelled?.call() == true)) {
         break;
       }

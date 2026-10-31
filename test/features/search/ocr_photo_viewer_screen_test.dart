@@ -81,8 +81,8 @@ void main() {
 
       expect(find.byType(InteractiveViewer), findsOneWidget);
       expect(find.byType(OcrHighlightOverlay), findsOneWidget);
-      expect(find.byKey(const Key('ocr_highlight_toggle')), findsOneWidget);
-      expect(find.byKey(const Key('ocr_viewer_view_parent_button')), findsOneWidget);
+      expect(find.byKey(const Key('search_ocr_highlight_toggle')), findsOneWidget);
+      expect(find.byKey(const Key('search_ocr_viewer_view_parent_button')), findsOneWidget);
       expect(find.text('西湖游记'), findsWidgets);
     });
 
@@ -146,7 +146,7 @@ void main() {
       expect(overlayBefore.isVisible, isTrue);
 
       // Tap toggle button
-      await tester.tap(find.byKey(const Key('ocr_highlight_toggle')));
+      await tester.tap(find.byKey(const Key('search_ocr_highlight_toggle')));
       await tester.pumpAndSettle();
 
       // Button now shows "显示高亮" and overlay is hidden
@@ -155,7 +155,7 @@ void main() {
       expect(overlayAfter.isVisible, isFalse);
 
       // Tap toggle button again to restore
-      await tester.tap(find.byKey(const Key('ocr_highlight_toggle')));
+      await tester.tap(find.byKey(const Key('search_ocr_highlight_toggle')));
       await tester.pumpAndSettle();
 
       expect(find.text('隐藏高亮'), findsOneWidget);
@@ -206,7 +206,7 @@ void main() {
 
       expect(find.text('查看原日记'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('ocr_viewer_view_parent_button')));
+      await tester.tap(find.byKey(const Key('search_ocr_viewer_view_parent_button')));
       await tester.pumpAndSettle();
 
       expect(find.byType(EntryDetailScreen), findsOneWidget);
@@ -250,7 +250,7 @@ void main() {
 
       expect(find.text('查看相册'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('ocr_viewer_view_parent_button')));
+      await tester.tap(find.byKey(const Key('search_ocr_viewer_view_parent_button')));
       await tester.pumpAndSettle();
 
       expect(find.byType(AlbumWorkspaceScreen), findsOneWidget);

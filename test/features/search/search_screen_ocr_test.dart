@@ -66,7 +66,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify card key
-      expect(find.byKey(const Key('photo_match_card_photo_match_1')), findsOneWidget);
+      expect(find.byKey(const Key('search_photo_match_card_photo_match_1')), findsOneWidget);
 
       // Verify "图中文字匹配" badge
       expect(find.text('图中文字匹配'), findsOneWidget);
@@ -100,7 +100,7 @@ void main() {
       expect(foundHighlightedSpan, isTrue, reason: 'Expected "花港观鱼" to be styled bold with cinnabar');
 
       // Tap card
-      await tester.tap(find.byKey(const Key('photo_match_card_photo_match_1')));
+      await tester.tap(find.byKey(const Key('search_photo_match_card_photo_match_1')));
       expect(wasTapped, isTrue);
     });
   });
@@ -204,11 +204,11 @@ void main() {
 
       // In "全部" segment: both entry card and photo text match card appear
       expect(find.text('午后咖啡'), findsOneWidget); // Entry title
-      expect(find.byKey(const Key('photo_match_card_media_signboard')), findsOneWidget);
+      expect(find.byKey(const Key('search_photo_match_card_media_signboard')), findsOneWidget);
       expect(find.text('图中文字匹配'), findsOneWidget);
 
       // Tap on photo match card
-      await tester.tap(find.byKey(const Key('photo_match_card_media_signboard')));
+      await tester.tap(find.byKey(const Key('search_photo_match_card_media_signboard')));
       expect(tappedMatch, isNotNull);
       expect(tappedMatch!.id, 'media_signboard');
     });
@@ -236,21 +236,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('午后咖啡'), findsOneWidget);
-      expect(find.byKey(const Key('photo_match_card_media_signboard')), findsNothing);
+      expect(find.byKey(const Key('search_photo_match_card_media_signboard')), findsNothing);
 
       // 2. Switch to "图中文字"
       await tester.tap(find.byKey(const Key('search_segment_photos')));
       await tester.pumpAndSettle();
 
       expect(find.text('午后咖啡'), findsNothing);
-      expect(find.byKey(const Key('photo_match_card_media_signboard')), findsOneWidget);
+      expect(find.byKey(const Key('search_photo_match_card_media_signboard')), findsOneWidget);
 
       // 3. Switch back to "全部"
       await tester.tap(find.byKey(const Key('search_segment_all')));
       await tester.pumpAndSettle();
 
       expect(find.text('午后咖啡'), findsOneWidget);
-      expect(find.byKey(const Key('photo_match_card_media_signboard')), findsOneWidget);
+      expect(find.byKey(const Key('search_photo_match_card_media_signboard')), findsOneWidget);
     });
 
     testWidgets(
@@ -271,9 +271,9 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('photo_match_card_media_signboard')), findsOneWidget);
+      expect(find.byKey(const Key('search_photo_match_card_media_signboard')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('photo_match_card_media_signboard')));
+      await tester.tap(find.byKey(const Key('search_photo_match_card_media_signboard')));
       await tester.pumpAndSettle();
 
       expect(find.byType(OcrPhotoViewerScreen), findsOneWidget);
@@ -342,6 +342,43 @@ void main() {
       expect(find.textContaining('尚未建立文字索引'), findsOneWidget);
 
       await queueManager.dispose();
+    });
+
+    testWidgets(
+        'natural language query extracts keywords and forwards effective keyword to photo match card and viewer',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          home: SearchScreen(
+            database: db,
+            mediaService: mediaService,
+            referenceNow: DateTime(2026, 10, 25),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Search "10月咖啡" (parsed keywords should be "咖啡")
+      await tester.enterText(find.byKey(const Key('search_text_field')), '10月咖啡');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+
+      // Card found
+      final cardFinder = find.byKey(const Key('search_photo_match_card_media_signboard'));
+      expect(cardFinder, findsOneWidget);
+
+      final cardWidget = tester.widget<PhotoTextMatchCard>(find.byType(PhotoTextMatchCard));
+      expect(cardWidget.query, '咖啡');
+
+      // Tapping card navigates to viewer with effective query
+      await tester.tap(cardFinder);
+      await tester.pumpAndSettle();
+
+      final viewerFinder = find.byType(OcrPhotoViewerScreen);
+      expect(viewerFinder, findsOneWidget);
+      final viewerWidget = tester.widget<OcrPhotoViewerScreen>(viewerFinder);
+      expect(viewerWidget.query, '咖啡');
     });
   });
 }

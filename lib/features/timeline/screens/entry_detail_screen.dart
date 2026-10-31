@@ -30,8 +30,8 @@ import '../widgets/entry_summary_card.dart';
 class EntryDetailScreen extends StatefulWidget {
   final Entry? entry;
   final String? entryId;
-  final AppDatabase? database;
-  final MediaSandboxService? mediaService;
+  final AppDatabase database;
+  final MediaSandboxService mediaService;
   final AuthService? authService;
   final AudioSanctumService? audioSanctumService;
   final Future<void> Function(String text, {String? subject})? shareHandler;
@@ -40,8 +40,8 @@ class EntryDetailScreen extends StatefulWidget {
     super.key,
     this.entry,
     this.entryId,
-    this.database,
-    this.mediaService,
+    required this.database,
+    required this.mediaService,
     this.authService,
     this.audioSanctumService,
     this.shareHandler,
@@ -52,11 +52,9 @@ class EntryDetailScreen extends StatefulWidget {
 }
 
 class _EntryDetailScreenState extends State<EntryDetailScreen> {
-  late Entry _entry;
-  AppDatabase? _fallbackDb;
-  MediaSandboxService? _fallbackMedia;
-  AppDatabase get _db => widget.database ?? (_fallbackDb ??= AppDatabase.memory());
-  MediaSandboxService get _media => widget.mediaService ?? (_fallbackMedia ??= MediaSandboxService());
+  Entry? _entry;
+  AppDatabase get _db => widget.database;
+  MediaSandboxService get _media => widget.mediaService;
 
   late final AuthService _authService;
   late final AudioSanctumService _audioSanctumService;
@@ -73,21 +71,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _entry = widget.entry ??
-        Entry(
-          id: widget.entryId!,
-          notebookId: 'notebook_default',
-          templateId: 'template_minimalist_white',
-          title: '',
-          contentDelta: '[]',
-          plainText: '',
-          entryDate: DateTime.now(),
-          isWeeklyReview: false,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          isDeleted: false,
-          isLocked: false,
-        );
+    _entry = widget.entry;
     _authService = widget.authService ?? AuthService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _loadData();
@@ -106,14 +90,22 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Refresh entry from database if available
-      final freshEntry = await _db.getEntryById(_entry.id);
+      final targetId = _entry?.id ?? widget.entryId!;
+      final freshEntry = await _db.getEntryById(targetId);
       if (freshEntry != null) {
         _entry = freshEntry;
       }
 
+      final entry = _entry;
+      if (entry == null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
+      }
+
       // Load active template
-      _template = await _db.getTemplateById(_entry.templateId);
+      _template = await _db.getTemplateById(entry.templateId);
       if (_template == null) {
         final allTemplates = await _db.getAllTemplates();
         if (allTemplates.isNotEmpty) {
@@ -127,15 +119,15 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
       // Build read-only QuillController
       quill.Document doc;
-      if (_entry.contentDelta.isNotEmpty) {
+      if (entry.contentDelta.isNotEmpty) {
         try {
-          final decoded = jsonDecode(_entry.contentDelta) as List<dynamic>;
+          final decoded = jsonDecode(entry.contentDelta) as List<dynamic>;
           doc = quill.Document.fromJson(decoded);
         } catch (_) {
-          doc = quill.Document()..insert(0, _entry.plainText);
+          doc = quill.Document()..insert(0, entry.plainText);
         }
       } else {
-        doc = quill.Document()..insert(0, _entry.plainText);
+        doc = quill.Document()..insert(0, entry.plainText);
       }
 
       _quillController?.dispose();
@@ -156,9 +148,12 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     }
   }
 
-  bool get _isCurrentlyBlocked => _entry.isLocked && !_isSessionUnlocked;
+  bool get _isCurrentlyBlocked => _entry != null && _entry!.isLocked && !_isSessionUnlocked;
 
   Future<void> _handleUnlockWithPin() async {
+    final entry = _entry;
+    if (entry == null) return;
+
     final enteredPin = _pinController.text.trim();
     if (enteredPin.isEmpty) {
       setState(() => _pinError = '请输入印匣密码');
@@ -166,8 +161,8 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     }
 
     bool verified = false;
-    if (_entry.entryPinHash != null && _entry.entryPinHash!.isNotEmpty) {
-      verified = _authService.verifyEntryPin(enteredPin, _entry.entryPinHash!);
+    if (entry.entryPinHash != null && entry.entryPinHash!.isNotEmpty) {
+      verified = _authService.verifyEntryPin(enteredPin, entry.entryPinHash!);
     } else {
       verified = await _authService.verifyPin(enteredPin);
     }
@@ -198,9 +193,12 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   Future<void> _handleToggleLock() async {
-    if (_entry.isLocked) {
+    final entry = _entry;
+    if (entry == null) return;
+
+    if (entry.isLocked) {
       // Permanently remove lock
-      await _db.unlockEntryPermanently(_entry.id);
+      await _db.unlockEntryPermanently(entry.id);
       HapticFeedback.lightImpact();
       await _loadData();
       if (mounted) {
@@ -249,7 +247,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
     if (pin != null && pin.length >= 4) {
       final pinHash = _authService.hashEntryPin(pin);
-      await _db.lockEntry(_entry.id, pinHash: pinHash);
+      await _db.lockEntry(entry.id, pinHash: pinHash);
       HapticFeedback.lightImpact();
       setState(() {
         _isSessionUnlocked = false;
@@ -259,19 +257,22 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   Future<void> _handleSwitchTemplate() async {
+    final entry = _entry;
+    if (entry == null) return;
+
     final templates = await _db.getAllTemplates();
     if (!mounted) return;
 
     await TemplateSwitcherSheet.show(
       context: context,
       templates: templates,
-      currentTemplateId: _entry.templateId,
+      currentTemplateId: entry.templateId,
       database: _db,
       onTemplateSelected: (newTemplate) async {
-        await _db.updateEntryTemplate(_entry.id, newTemplate.id);
+        await _db.updateEntryTemplate(entry.id, newTemplate.id);
         setState(() {
           _template = newTemplate;
-          _entry = _entry.copyWith(templateId: newTemplate.id);
+          _entry = entry.copyWith(templateId: newTemplate.id);
           _typography = TypographySettings.fromTemplate(newTemplate);
         });
       },
@@ -298,13 +299,16 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   Future<void> _handleEdit() async {
+    final entry = _entry;
+    if (entry == null) return;
+
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => EntryEditorScreen(
           database: _db,
           mediaSandboxService: _media,
-          entryId: _entry.id,
+          entryId: entry.id,
         ),
       ),
     );
@@ -316,25 +320,31 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   }
 
   Future<void> _handleShare() async {
-    final dateStr = DateFormat('yyyy-MM-dd EEEE').format(_entry.entryDate);
-    final titleStr = (_entry.title?.trim().isNotEmpty ?? false)
-        ? '${_entry.title!.trim()}\n\n'
+    final entry = _entry;
+    if (entry == null) return;
+
+    final dateStr = DateFormat('yyyy-MM-dd EEEE').format(entry.entryDate);
+    final titleStr = (entry.title?.trim().isNotEmpty ?? false)
+        ? '${entry.title!.trim()}\n\n'
         : '';
-    final fullShareText = '$titleStr$dateStr\n\n${_entry.plainText}';
+    final fullShareText = '$titleStr$dateStr\n\n${entry.plainText}';
 
     if (widget.shareHandler != null) {
-      await widget.shareHandler!(fullShareText, subject: _entry.title);
+      await widget.shareHandler!(fullShareText, subject: entry.title);
     } else {
       await SharePlus.instance.share(
         ShareParams(
           text: fullShareText,
-          subject: _entry.title,
+          subject: entry.title,
         ),
       );
     }
   }
 
   Future<void> _handleSoftDelete() async {
+    final entry = _entry;
+    if (entry == null) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -359,7 +369,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     );
 
     if (confirmed == true) {
-      await _db.softDeleteEntry(_entry.id);
+      await _db.softDeleteEntry(entry.id);
       if (mounted) {
         Navigator.pop(context, true); // Pop detail screen and notify timeline
       }
@@ -474,11 +484,32 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
 
-    if (_isLoading || _template == null || _quillController == null) {
+    if (_isLoading) {
       return Scaffold(
         backgroundColor: tokens.xuanGround,
         body: Center(
           child: CircularProgressIndicator(color: tokens.cinnabar),
+        ),
+      );
+    }
+
+    final entry = _entry;
+    if (entry == null || _template == null || _quillController == null) {
+      return Scaffold(
+        backgroundColor: tokens.xuanGround,
+        appBar: AppBar(
+          backgroundColor: tokens.xuanGround,
+          leading: BackButton(color: tokens.jiaomo),
+        ),
+        body: Center(
+          child: Text(
+            '未找到对应日记手稿',
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontKaiti,
+              color: tokens.danmo,
+              fontSize: 15,
+            ),
+          ),
         ),
       );
     }
@@ -494,7 +525,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           title: Text(
-            DateFormat('yyyy年M月d日').format(_entry.entryDate),
+            DateFormat('yyyy年M月d日').format(entry.entryDate),
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontNotoSerif,
               fontSize: 16,
@@ -507,10 +538,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     }
 
     final templateStyle = TemplateStyle.fromTemplate(_template!);
-    final dateFormatted = DateFormat('yyyy年M月d日 · EEEE').format(_entry.entryDate);
-    final moodEmoji = _entry.mood != null ? EntrySummaryCard.moodEmojis[_entry.mood!] : null;
-    final weatherIcon = _entry.weather != null ? EntrySummaryCard.weatherIcons[_entry.weather!] : null;
-    final wordCount = _entry.plainText.trim().length;
+    final dateFormatted = DateFormat('yyyy年M月d日 · EEEE').format(entry.entryDate);
+    final moodEmoji = entry.mood != null ? EntrySummaryCard.moodEmojis[entry.mood!] : null;
+    final weatherIcon = entry.weather != null ? EntrySummaryCard.weatherIcons[entry.weather!] : null;
+    final wordCount = entry.plainText.trim().length;
     final readMinutes = (wordCount / 200).ceil().clamp(1, 60);
 
     return Scaffold(
@@ -583,7 +614,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (ctx) => PdfPreviewScreen(
-                    singleEntry: _entry,
+                    singleEntry: entry,
                     database: _db,
                     mediaService: _media,
                   ),
@@ -601,10 +632,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           IconButton(
             key: const Key('entry_detail_lock_toggle_btn'),
             icon: Icon(
-              _entry.isLocked ? Icons.lock : Icons.lock_outline,
-              color: _entry.entryPinHash != null ? tokens.cinnabar : tokens.nongmo,
+              entry.isLocked ? Icons.lock : Icons.lock_outline,
+              color: entry.entryPinHash != null ? tokens.cinnabar : tokens.nongmo,
             ),
-            tooltip: _entry.isLocked ? '解除私密封缄' : '私密封存',
+            tooltip: entry.isLocked ? '解除私密封缄' : '私密封存',
             onPressed: _handleToggleLock,
           ),
           // More Menu
@@ -620,7 +651,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (ctx) => PdfPreviewScreen(
-                        singleEntry: _entry,
+                        singleEntry: entry,
                         database: _db,
                         mediaService: _media,
                       ),
@@ -631,7 +662,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                   ExportDialog.show(
                     context: context,
                     database: _db,
-                    singleEntry: _entry,
+                    singleEntry: entry,
                     mediaService: _media,
                   );
                   break;
@@ -682,7 +713,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                     // Solar term & seasonal markers ribbon
                     Row(
                       children: [
-                        if (_entry.isWeeklyReview) ...[
+                        if (entry.isWeeklyReview) ...[
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                             decoration: BoxDecoration(
@@ -691,7 +722,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                               border: Border.all(color: tokens.deckleBorder),
                             ),
                             child: Text(
-                              _entry.weekNumber != null ? 'W${_entry.weekNumber} Review' : 'Weekly Review',
+                              entry.weekNumber != null ? 'W${entry.weekNumber} Review' : 'Weekly Review',
                               style: TextStyle(
                                 fontFamily: InkDiaryTheme.fontNotoSerif,
                                 fontSize: 11,
@@ -703,7 +734,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                           const SizedBox(width: 8),
                         ],
                         CinnabarSealBadge(
-                          text: _entry.isWeeklyReview ? '周录' : '岁在此时',
+                          text: entry.isWeeklyReview ? '周录' : '岁在此时',
                           isRound: false,
                         ),
                         const SizedBox(width: 8),
@@ -729,7 +760,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                             ),
                           ),
                         ),
-                        if (_entry.isLocked)
+                        if (entry.isLocked)
                           Icon(
                             Icons.lock,
                             size: 14,
@@ -740,9 +771,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                     const SizedBox(height: 14),
 
                     // Main Title
-                    if (_entry.title?.trim().isNotEmpty ?? false) ...[
+                    if (entry.title?.trim().isNotEmpty ?? false) ...[
                       Text(
-                        _entry.title!.trim(),
+                        entry.title!.trim(),
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontNotoSerif,
                           fontSize: 22,
@@ -802,7 +833,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              DateFormat('yyyy年M月d日 记').format(_entry.entryDate),
+                              DateFormat('yyyy年M月d日 记').format(entry.entryDate),
                               style: TextStyle(
                                 fontFamily: InkDiaryTheme.fontKaiti,
                                 fontSize: 11,

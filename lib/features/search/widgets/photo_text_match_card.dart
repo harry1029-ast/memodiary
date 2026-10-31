@@ -41,7 +41,7 @@ class PhotoTextMatchCard extends StatelessWidget {
     final snippetLine = _extractMatchingSnippet(match.ocrText, query);
 
     return XuanPaperCard(
-      key: Key('photo_match_card_${match.id}'),
+      key: Key('search_photo_match_card_${match.id}'),
       onTap: onTap,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(12),

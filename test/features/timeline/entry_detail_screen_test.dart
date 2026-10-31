@@ -131,5 +131,39 @@ void main() {
       final updated = await db.getEntryById('entry_to_soft_delete');
       expect(updated!.isDeleted, isTrue);
     });
+
+    testWidgets('loads asynchronously when initialized via entryId with clean spinner', (tester) async {
+      final now = DateTime(2026, 10, 20);
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'async_loaded_entry',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('异步载入手札'),
+          contentDelta: jsonEncode([{'insert': '异步内容\n'}]),
+          plainText: '异步内容',
+          entryDate: now,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EntryDetailScreen(
+            entryId: 'async_loaded_entry',
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+
+      // Verify progress indicator is rendered initially
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      await tester.pumpAndSettle();
+
+      // Verify loaded title and content
+      expect(find.text('异步载入手札'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+    });
   });
 }

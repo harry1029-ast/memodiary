@@ -38,6 +38,7 @@ class OcrBackfillDialog extends StatefulWidget {
 
 class _OcrBackfillDialogState extends State<OcrBackfillDialog> {
   bool _isCancelled = false;
+  bool _isPaused = false;
   bool _isComplete = false;
   int _current = 0;
   int _total = 0;
@@ -79,6 +80,7 @@ class _OcrBackfillDialogState extends State<OcrBackfillDialog> {
           }
         },
         isCancelled: () => _isCancelled,
+        isPaused: () => _isPaused,
       );
 
       if (mounted && !_isCancelled) {
@@ -112,9 +114,14 @@ class _OcrBackfillDialogState extends State<OcrBackfillDialog> {
         ? (_current / _total).clamp(0.0, 1.0)
         : (_isComplete ? 1.0 : null);
 
-    final statusText = _isComplete
-        ? '识图索引已完成'
-        : '正在索引: $_current/$_total 张照片';
+    final String statusText;
+    if (_isComplete) {
+      statusText = '识图索引已完成';
+    } else if (_isPaused) {
+      statusText = '已暂停: $_current/$_total 张照片';
+    } else {
+      statusText = '正在索引: $_current/$_total 张照片';
+    }
 
     return PopScope(
       canPop: true,
@@ -189,7 +196,19 @@ class _OcrBackfillDialogState extends State<OcrBackfillDialog> {
           ],
         ),
         actions: [
-          if (!_isComplete)
+          if (!_isComplete) ...[
+            TextButton(
+              key: const Key('settings_ocr_backfill_pause_button'),
+              style: TextButton.styleFrom(
+                foregroundColor: tokens.jiaomo,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isPaused = !_isPaused;
+                });
+              },
+              child: Text(_isPaused ? '继续' : '暂停'),
+            ),
             TextButton(
               key: const Key('settings_ocr_backfill_cancel_button'),
               style: TextButton.styleFrom(
@@ -197,8 +216,8 @@ class _OcrBackfillDialogState extends State<OcrBackfillDialog> {
               ),
               onPressed: _handleCancel,
               child: const Text('取消'),
-            )
-          else
+            ),
+          ] else
             FilledButton.tonal(
               key: const Key('settings_ocr_backfill_done_button'),
               style: FilledButton.styleFrom(

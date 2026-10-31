@@ -705,5 +705,85 @@ void main() {
       // 1 item remaining to backfill
       expect(await queueManager.pendingBackfillCount(), 1);
     });
+
+    test('runBackfill pauses when isPaused returns true and resumes when false', () async {
+      final mediaDir = Directory('${tempDir.path}/media');
+      await mediaDir.create(recursive: true);
+
+      final file1 = File('${mediaDir.path}/pause_1.webp');
+      await file1.writeAsBytes([1]);
+      final file2 = File('${mediaDir.path}/pause_2.webp');
+      await file2.writeAsBytes([2]);
+
+      ocrService.setResult(file1.path, const OcrResult(plainText: 'Pause 1', lines: []));
+      ocrService.setResult(file2.path, const OcrResult(plainText: 'Pause 2', lines: []));
+
+      final now = DateTime(2026, 10, 10);
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'entry_pause',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('Pause Entry'),
+          contentDelta: '[{"insert":"Pause\\n"}]',
+          plainText: 'Pause',
+          entryDate: now,
+          createdAt: Value(now),
+        ),
+      );
+
+      await db.into(db.mediaAttachments).insert(
+            MediaAttachmentsCompanion.insert(
+              id: 'pause_att_1',
+              entryId: 'entry_pause',
+              mediaType: 'image',
+              relativePath: 'media/pause_1.webp',
+              createdAt: Value(now),
+            ),
+          );
+      await db.into(db.mediaAttachments).insert(
+            MediaAttachmentsCompanion.insert(
+              id: 'pause_att_2',
+              entryId: 'entry_pause',
+              mediaType: 'image',
+              relativePath: 'media/pause_2.webp',
+              createdAt: Value(now.add(const Duration(minutes: 1))),
+            ),
+          );
+
+      var isPaused = false;
+      final progress = <(int, int)>[];
+
+      // Start backfill in a future
+      final backfillFuture = queueManager.runBackfill(
+        onProgress: (current, total) {
+          progress.add((current, total));
+          if (current == 1) {
+            isPaused = true;
+          }
+        },
+        isPaused: () => isPaused,
+      );
+
+      // Wait a moment while paused
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+
+      // Item 1 was processed, item 2 should be waiting while isPaused == true
+      expect(progress, equals([(1, 2)]));
+      final row2BeforeResume = await (db.select(db.mediaAttachments)
+            ..where((tbl) => tbl.id.equals('pause_att_2')))
+          .getSingle();
+      expect(row2BeforeResume.ocrText, isNull);
+
+      // Resume backfill
+      isPaused = false;
+      await backfillFuture;
+
+      expect(progress, equals([(1, 2), (2, 2)]));
+      final row2AfterResume = await (db.select(db.mediaAttachments)
+            ..where((tbl) => tbl.id.equals('pause_att_2')))
+          .getSingle();
+      expect(row2AfterResume.ocrText, 'Pause 2');
+    });
   });
 }
