@@ -46,6 +46,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
 - **Background Isolate Offloading**: CPU-intensive operations (ZIP compression, chunked encryption/decryption, SHA-256 calculation on files $\ge 1\text{ MiB}$, batch database ingestion) must execute inside `Isolate.run()` to prevent UI stutter.
 - **WYSIWYG Export Transform Parity**: Any headless document exporter (PDF generator, raster image synthesizer) consuming interactive canvas models must reproduce all user canvas transformations (pan offsets `panOffsetX`/`panOffsetY`, zoom scale, rotation, layer stacking order) with 1:1 mathematical parity.
 - **Dominant-Axis Downsampling**: Image transcoders downsampling arbitrary user photos must evaluate input aspect ratios and constrain along the dominant dimension (`origW >= origH ? targetWidth : targetHeight`) rather than fixing a single dimension, protecting against memory spikes on extreme panoramic or portrait aspect ratios.
+- **No Silent In-Memory Fallbacks in Production UI**: Screen and container widgets must never instantiate in-memory databases (`AppDatabase.memory()`) or unconfigured services inside state getters to satisfy optional constructor parameters. Pass required dependencies explicitly via constructors or inherit from provider/context. Silent fallbacks mask missing wiring bugs and create split state during navigation.
 
 ---
 
