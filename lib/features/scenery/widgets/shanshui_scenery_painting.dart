@@ -1,13 +1,29 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_palette.dart';
 import '../models/shanshui_scenery_geometry.dart';
 import 'shanshui_canvas_painter.dart';
 
+/// Pluggable builder function signature for modular realm painters.
+typedef RealmPainterBuilder = CustomPainter Function({
+  required ShanshuiAtmosphereState atmosphere,
+  required ShanshuiPalette palette,
+  required double animationTime,
+  required List<ShanshuiParticle> particles,
+  required List<ShanshuiWeatherDrop> weatherDrops,
+  required List<ShanshuiCrane> cranes,
+  required List<ShanshuiRipple> ripples,
+  required bool showCalligraphy,
+  required bool fullPoem,
+  required double lightningAlpha,
+});
+
 /// Interactive stateful painting widget managing the 60 FPS animation ticker,
-/// particle physics, crane flocking, lake touch ripples, and lifecycle pause.
+/// particle physics, crane flocking, modular realm painter dispatch,
+/// lake touch ripples, and lifecycle pause.
 class ShanshuiSceneryPainting extends StatefulWidget {
   final ShanshuiAtmosphereState atmosphere;
   final double aspectRatio;
@@ -16,6 +32,8 @@ class ShanshuiSceneryPainting extends StatefulWidget {
   final bool? enableAmbientAnimation;
   final VoidCallback? onSceneryTap;
   final bool isVisible;
+  final RealmPainterBuilder? indoorPainterBuilder;
+  final RealmPainterBuilder? outdoorPainterBuilder;
 
   const ShanshuiSceneryPainting({
     super.key,
@@ -26,6 +44,8 @@ class ShanshuiSceneryPainting extends StatefulWidget {
     this.enableAmbientAnimation,
     this.onSceneryTap,
     this.isVisible = true,
+    this.indoorPainterBuilder,
+    this.outdoorPainterBuilder,
   });
 
   @override
@@ -43,6 +63,12 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
   double _elapsedSeconds = 0.0;
   double _lightningAlpha = 0.0;
   double _nextLightningTime = 2.5;
+
+  ui.Picture? _cachedIndoorPicture;
+  ui.Picture? _cachedOutdoorPicture;
+
+  int get particleCount => _particles.length;
+  int get rippleCount => _ripples.length;
 
   bool get _effectiveAnimate {
     if (widget.enableAmbientAnimation != null) {
@@ -76,6 +102,9 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
   @override
   void didUpdateWidget(covariant ShanshuiSceneryPainting oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!widget.atmosphere.matchesEnvironment(oldWidget.atmosphere)) {
+      _disposeCachedPictures();
+    }
     if (widget.isVisible != oldWidget.isVisible) {
       if (!widget.isVisible) {
         if (_controller.isAnimating) _controller.stop();
@@ -85,6 +114,13 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
         }
       }
     }
+  }
+
+  void _disposeCachedPictures() {
+    _cachedIndoorPicture?.dispose();
+    _cachedIndoorPicture = null;
+    _cachedOutdoorPicture?.dispose();
+    _cachedOutdoorPicture = null;
   }
 
   void _initParticlePools() {
@@ -220,13 +256,53 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
     });
   }
 
+  /// Adds a gentle swirl of floating blossom petals and luminous motes at normalized coordinates.
+  void addPetalSwirlAtNormalized(double nx, double ny) {
+    final random = math.Random();
+    setState(() {
+      for (int i = 0; i < 6; i++) {
+        final angle = random.nextDouble() * math.pi * 2;
+        final speed = 1.0 + random.nextDouble() * 2.0;
+        _particles.add(
+          ShanshuiParticle(
+            x: nx + math.cos(angle) * 16.0,
+            y: ny + math.sin(angle) * 16.0,
+            vx: math.cos(angle) * speed,
+            vy: math.sin(angle) * speed - 0.4,
+            size: 3.5 + random.nextDouble() * 3.5,
+            angle: angle,
+            vAngle: (random.nextDouble() - 0.5) * 0.08,
+            phase: random.nextDouble() * math.pi * 2,
+            colorToggle: random.nextBool(),
+          ),
+        );
+      }
+      // Bounded pool so particles never grow unbounded
+      if (_particles.length > 72) {
+        _particles.removeRange(0, _particles.length - 72);
+      }
+    });
+  }
+
   void _handleTapDown(TapDownDetails details, BoxConstraints constraints) {
     if (constraints.maxWidth <= 0 || constraints.maxHeight <= 0) return;
     final scaleX = 1500.0 / constraints.maxWidth;
     final scaleY = 1000.0 / constraints.maxHeight;
     final nx = details.localPosition.dx * scaleX;
     final ny = details.localPosition.dy * scaleY;
-    addRippleAtNormalized(nx, ny);
+
+    switch (widget.atmosphere.realm) {
+      case ShanshuiRealm.nature:
+        addRippleAtNormalized(nx, ny);
+        break;
+      case ShanshuiRealm.indoor:
+        addPetalSwirlAtNormalized(nx, ny);
+        break;
+      case ShanshuiRealm.outdoor:
+        addRippleAtNormalized(nx, ny);
+        addPetalSwirlAtNormalized(nx, ny);
+        break;
+    }
 
     widget.onSceneryTap?.call();
   }
@@ -242,9 +318,82 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
 
   @override
   void dispose() {
+    _disposeCachedPictures();
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  CustomPainter _buildPainter(ShanshuiPalette palette) {
+    switch (widget.atmosphere.realm) {
+      case ShanshuiRealm.nature:
+        return ShanshuiCanvasPainter(
+          atmosphere: widget.atmosphere,
+          palette: palette,
+          animationTime: _elapsedSeconds,
+          particles: _particles,
+          weatherDrops: _weatherDrops,
+          cranes: _cranes,
+          ripples: _ripples,
+          showCalligraphy: widget.showCalligraphy,
+          fullPoem: widget.fullPoem,
+          lightningAlpha: _lightningAlpha,
+        );
+      case ShanshuiRealm.indoor:
+        if (widget.indoorPainterBuilder != null) {
+          return widget.indoorPainterBuilder!(
+            atmosphere: widget.atmosphere,
+            palette: palette,
+            animationTime: _elapsedSeconds,
+            particles: _particles,
+            weatherDrops: _weatherDrops,
+            cranes: _cranes,
+            ripples: _ripples,
+            showCalligraphy: widget.showCalligraphy,
+            fullPoem: widget.fullPoem,
+            lightningAlpha: _lightningAlpha,
+          );
+        }
+        return ShanshuiCanvasPainter(
+          atmosphere: widget.atmosphere,
+          palette: palette,
+          animationTime: _elapsedSeconds,
+          particles: _particles,
+          weatherDrops: _weatherDrops,
+          cranes: _cranes,
+          ripples: _ripples,
+          showCalligraphy: widget.showCalligraphy,
+          fullPoem: widget.fullPoem,
+          lightningAlpha: _lightningAlpha,
+        );
+      case ShanshuiRealm.outdoor:
+        if (widget.outdoorPainterBuilder != null) {
+          return widget.outdoorPainterBuilder!(
+            atmosphere: widget.atmosphere,
+            palette: palette,
+            animationTime: _elapsedSeconds,
+            particles: _particles,
+            weatherDrops: _weatherDrops,
+            cranes: _cranes,
+            ripples: _ripples,
+            showCalligraphy: widget.showCalligraphy,
+            fullPoem: widget.fullPoem,
+            lightningAlpha: _lightningAlpha,
+          );
+        }
+        return ShanshuiCanvasPainter(
+          atmosphere: widget.atmosphere,
+          palette: palette,
+          animationTime: _elapsedSeconds,
+          particles: _particles,
+          weatherDrops: _weatherDrops,
+          cranes: _cranes,
+          ripples: _ripples,
+          showCalligraphy: widget.showCalligraphy,
+          fullPoem: widget.fullPoem,
+          lightningAlpha: _lightningAlpha,
+        );
+    }
   }
 
   @override
@@ -263,18 +412,7 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: CustomPaint(
-                painter: ShanshuiCanvasPainter(
-                  atmosphere: widget.atmosphere,
-                  palette: palette,
-                  animationTime: _elapsedSeconds,
-                  particles: _particles,
-                  weatherDrops: _weatherDrops,
-                  cranes: _cranes,
-                  ripples: _ripples,
-                  showCalligraphy: widget.showCalligraphy,
-                  fullPoem: widget.fullPoem,
-                  lightningAlpha: _lightningAlpha,
-                ),
+                painter: _buildPainter(palette),
                 size: Size.infinite,
               ),
             ),
@@ -284,4 +422,3 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
     );
   }
 }
-
