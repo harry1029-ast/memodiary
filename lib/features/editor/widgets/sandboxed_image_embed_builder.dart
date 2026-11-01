@@ -2,16 +2,23 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../models/media_embed_data.dart';
+import 'grid_snapped_embed_container.dart';
 
 /// Custom EmbedBuilder for flutter_quill that resolves sandboxed relative paths
-/// (e.g. 'media/{uuid}.webp') to absolute Files using MediaSandboxService.
+/// (e.g. 'media/{uuid}.webp') and embeds photos within an Integer-Row Height Snapper
+/// and Tipped-In Ephemera Card with contextual captioning and framing actions.
 class SandboxedImageEmbedBuilder extends EmbedBuilder {
   final MediaSandboxService mediaSandboxService;
   final VoidCallback? onImageRemoved;
+  final ValueChanged<String>? onEmbedMutated;
+  final double rowHeight;
 
   const SandboxedImageEmbedBuilder({
     required this.mediaSandboxService,
     this.onImageRemoved,
+    this.onEmbedMutated,
+    this.rowHeight = 28.0,
   });
 
   @override
@@ -22,22 +29,46 @@ class SandboxedImageEmbedBuilder extends EmbedBuilder {
 
   @override
   Widget build(BuildContext context, EmbedContext embedContext) {
-    final imageSource = embedContext.node.value.data as String;
+    final embedData = MediaEmbedData.fromRaw(embedContext.node.value.data);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      alignment: Alignment.center,
+    return GridSnappedEmbedContainer(
+      rowHeight: rowHeight,
+      aspect: embedData.aspect,
+      caption: embedData.caption,
+      readOnly: embedContext.readOnly,
+      onRemove: () {
+        final offset = embedContext.node.documentOffset;
+        embedContext.controller.replaceText(offset, 1, '', null);
+        onImageRemoved?.call();
+      },
+      onCaptionChanged: (newCaption) {
+        final nextData = embedData.copyWith(caption: newCaption);
+        final offset = embedContext.node.documentOffset;
+        embedContext.controller.replaceText(
+          offset,
+          1,
+          BlockEmbed.image(nextData.toEmbedValue()),
+          null,
+        );
+        onEmbedMutated?.call(nextData.toEmbedValue());
+      },
+      onAspectChanged: (newAspect) {
+        final nextData = embedData.copyWith(aspect: newAspect);
+        final offset = embedContext.node.documentOffset;
+        embedContext.controller.replaceText(
+          offset,
+          1,
+          BlockEmbed.image(nextData.toEmbedValue()),
+          null,
+        );
+        onEmbedMutated?.call(nextData.toEmbedValue());
+      },
       child: FutureBuilder<File>(
-        future: _resolveFile(imageSource),
+        future: _resolveFile(embedData.path),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              color: Colors.grey.shade100,
               child: const Center(
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
@@ -46,17 +77,11 @@ class SandboxedImageEmbedBuilder extends EmbedBuilder {
 
           if (snapshot.hasError || !snapshot.hasData || !snapshot.data!.existsSync()) {
             return Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
+              color: Colors.grey.shade100,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.broken_image_outlined, size: 40, color: Colors.grey.shade400),
+                  Icon(Icons.broken_image_outlined, size: 36, color: Colors.grey.shade400),
                   const SizedBox(height: 6),
                   Text(
                     'Image not found in sandbox',
@@ -71,30 +96,25 @@ class SandboxedImageEmbedBuilder extends EmbedBuilder {
           return Stack(
             alignment: Alignment.topRight,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  file,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 120,
-                    color: Colors.grey.shade200,
-                    child: const Center(child: Icon(Icons.error_outline)),
-                  ),
+              Image.file(
+                file,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: Colors.grey.shade200,
+                  child: const Center(child: Icon(Icons.error_outline)),
                 ),
               ),
               if (!embedContext.readOnly)
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(6.0),
                   child: CircleAvatar(
-                    radius: 16,
+                    radius: 14,
                     backgroundColor: Colors.black54,
                     child: IconButton(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.close, size: 16, color: Colors.white),
+                      icon: const Icon(Icons.close, size: 14, color: Colors.white),
                       onPressed: () {
-                        // Remove image embed from Quill document
                         final offset = embedContext.node.documentOffset;
                         embedContext.controller.replaceText(offset, 1, '', null);
                         onImageRemoved?.call();
@@ -117,4 +137,3 @@ class SandboxedImageEmbedBuilder extends EmbedBuilder {
     return File(source);
   }
 }
-

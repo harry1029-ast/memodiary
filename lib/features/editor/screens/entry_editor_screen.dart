@@ -638,37 +638,49 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                           ),
 
                           // 2. Quill Editor Content with contextual margin alignment
-                          Padding(
-                            padding: EdgeInsets.only(
-                              left: templateStyle.contentMarginLeft,
-                              right: templateStyle.resolvedHorizontalMargin,
-                              bottom: 120.0,
-                            ),
-                            child: QuillEditor(
-                              controller: _controller!,
-                              focusNode: _editorFocusNode,
-                              scrollController: _editorScrollController,
-                              config: QuillEditorConfig(
-                                placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
-                                expands: false,
-                                scrollable: false,
-                                embedBuilders: [
-                                  SandboxedImageEmbedBuilder(
-                                    mediaSandboxService: widget.mediaSandboxService,
-                                    onImageRemoved: () => _autosaveManager?.saveDraft(),
-                                  ),
-                                  SandboxedVideoEmbedBuilder(
-                                    mediaSandboxService: widget.mediaSandboxService,
-                                    onVideoRemoved: () => _autosaveManager?.saveDraft(),
-                                  ),
-                                ],
-                                customStyles: _buildQuillStyles(
-                                  typography: _typography,
-                                  inkColor: inkColor,
-                                  isPaperDark: isPaperDark,
+                          Builder(
+                            builder: (context) {
+                              final activeRowHeight = BaselineMetricsCalculator.calculateLineHeight(
+                                _typography.toTextStyle(color: inkColor),
+                              );
+
+                              return Padding(
+                                padding: EdgeInsets.only(
+                                  left: templateStyle.contentMarginLeft,
+                                  right: templateStyle.resolvedHorizontalMargin,
+                                  bottom: 120.0,
                                 ),
-                              ),
-                            ),
+                                child: QuillEditor(
+                                  controller: _controller!,
+                                  focusNode: _editorFocusNode,
+                                  scrollController: _editorScrollController,
+                                  config: QuillEditorConfig(
+                                    placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
+                                    expands: false,
+                                    scrollable: false,
+                                    embedBuilders: [
+                                      SandboxedImageEmbedBuilder(
+                                        mediaSandboxService: widget.mediaSandboxService,
+                                        onImageRemoved: () => _autosaveManager?.saveDraft(),
+                                        onEmbedMutated: (_) => _autosaveManager?.saveDraft(),
+                                        rowHeight: activeRowHeight,
+                                      ),
+                                      SandboxedVideoEmbedBuilder(
+                                        mediaSandboxService: widget.mediaSandboxService,
+                                        onVideoRemoved: () => _autosaveManager?.saveDraft(),
+                                        onEmbedMutated: (_) => _autosaveManager?.saveDraft(),
+                                        rowHeight: activeRowHeight,
+                                      ),
+                                    ],
+                                    customStyles: _buildQuillStyles(
+                                      typography: _typography,
+                                      inkColor: inkColor,
+                                      isPaperDark: isPaperDark,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

@@ -2,17 +2,24 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../models/media_embed_data.dart';
+import 'grid_snapped_embed_container.dart';
 import 'sandboxed_video_player.dart';
 
 /// Custom EmbedBuilder for flutter_quill that renders sandboxed video blocks
-/// with inline playback controls, poster previews, and edit-mode deletion.
+/// inside an Integer-Row Height Snapper and Tipped-In Ephemera Card
+/// with WebP poster thumbnail previews, inline playback, and contextual action bar.
 class SandboxedVideoEmbedBuilder extends EmbedBuilder {
   final MediaSandboxService mediaSandboxService;
   final VoidCallback? onVideoRemoved;
+  final ValueChanged<String>? onEmbedMutated;
+  final double rowHeight;
 
   const SandboxedVideoEmbedBuilder({
     required this.mediaSandboxService,
     this.onVideoRemoved,
+    this.onEmbedMutated,
+    this.rowHeight = 28.0,
   });
 
   @override
@@ -23,22 +30,46 @@ class SandboxedVideoEmbedBuilder extends EmbedBuilder {
 
   @override
   Widget build(BuildContext context, EmbedContext embedContext) {
-    final videoSource = embedContext.node.value.data as String;
+    final embedData = MediaEmbedData.fromRaw(embedContext.node.value.data);
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      alignment: Alignment.center,
+    return GridSnappedEmbedContainer(
+      rowHeight: rowHeight,
+      aspect: embedData.aspect,
+      caption: embedData.caption,
+      readOnly: embedContext.readOnly,
+      onRemove: () {
+        final offset = embedContext.node.documentOffset;
+        embedContext.controller.replaceText(offset, 1, '', null);
+        onVideoRemoved?.call();
+      },
+      onCaptionChanged: (newCaption) {
+        final nextData = embedData.copyWith(caption: newCaption);
+        final offset = embedContext.node.documentOffset;
+        embedContext.controller.replaceText(
+          offset,
+          1,
+          BlockEmbed.video(nextData.toEmbedValue()),
+          null,
+        );
+        onEmbedMutated?.call(nextData.toEmbedValue());
+      },
+      onAspectChanged: (newAspect) {
+        final nextData = embedData.copyWith(aspect: newAspect);
+        final offset = embedContext.node.documentOffset;
+        embedContext.controller.replaceText(
+          offset,
+          1,
+          BlockEmbed.video(nextData.toEmbedValue()),
+          null,
+        );
+        onEmbedMutated?.call(nextData.toEmbedValue());
+      },
       child: FutureBuilder<List<File?>>(
-        future: _resolveMediaFiles(videoSource),
+        future: _resolveMediaFiles(embedData.path),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E222D),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              color: const Color(0xFF1E222D),
               child: const Center(
                 child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
               ),
@@ -47,13 +78,7 @@ class SandboxedVideoEmbedBuilder extends EmbedBuilder {
 
           if (snapshot.hasError || !snapshot.hasData || snapshot.data![0] == null) {
             return Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
+              color: Colors.grey.shade100,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -78,17 +103,15 @@ class SandboxedVideoEmbedBuilder extends EmbedBuilder {
                 videoFile: videoFile,
                 thumbnailFile: thumbFile,
               ),
-
-              // Edit mode delete button
               if (!embedContext.readOnly)
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: const EdgeInsets.all(6.0),
                   child: CircleAvatar(
-                    radius: 16,
+                    radius: 14,
                     backgroundColor: Colors.black54,
                     child: IconButton(
                       padding: EdgeInsets.zero,
-                      icon: const Icon(Icons.close, size: 16, color: Colors.white),
+                      icon: const Icon(Icons.close, size: 14, color: Colors.white),
                       onPressed: () {
                         final offset = embedContext.node.documentOffset;
                         embedContext.controller.replaceText(offset, 1, '', null);
