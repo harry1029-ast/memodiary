@@ -102,6 +102,47 @@ void main() {
             'per CODING_STANDARDS.md § 1. Found violations in:\n${violations.join('\n')}',
       );
     });
+
+    test('lib/features/scenery enforces component domain prefix on widget keys', () {
+      final sceneryDir = Directory('${rootDir.path}/lib/features/scenery');
+      expect(sceneryDir.existsSync(), isTrue);
+
+      const validPrefixes = <String>['scenery_', 'thought_spark_', 'contemplation_'];
+      final keyRegex = RegExp(r"Key\('([^']+)'\)");
+      final dartFiles = sceneryDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
+
+      final violations = <String>[];
+
+      for (final file in dartFiles) {
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        final lines = file.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i];
+          final trimmed = line.trim();
+          if (trimmed.startsWith('//') || trimmed.startsWith('*')) {
+            continue;
+          }
+
+          for (final match in keyRegex.allMatches(line)) {
+            final keyName = match.group(1);
+            if (keyName != null && !validPrefixes.any((prefix) => keyName.startsWith(prefix))) {
+              violations.add('$relPath:${i + 1}: Key(\'$keyName\')');
+            }
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Widget keys in lib/features/scenery must follow component domain prefix '
+            '(scenery_, thought_spark_, contemplation_) per CODING_STANDARDS.md § 1. '
+            'Found violations in:\n${violations.join('\n')}',
+      );
+    });
   });
 }
 
