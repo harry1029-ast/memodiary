@@ -179,6 +179,104 @@ void main() {
         expect(state.isAnimating, isFalse);
       },
     );
+
+    testWidgets(
+      'displays realm switcher pills and switching realm updates title, couplet, and cinnabar seal',
+      (tester) async {
+        await pumpContemplationViewScreen(tester);
+
+        // Verify realm chips exist
+        expect(find.byKey(const Key('contemplation_realm_chip_nature')), findsOneWidget);
+        expect(find.byKey(const Key('contemplation_realm_chip_indoor')), findsOneWidget);
+        expect(find.byKey(const Key('contemplation_realm_chip_outdoor')), findsOneWidget);
+
+        expect(find.text('林泉'), findsOneWidget);
+        expect(find.text('雅室'), findsOneWidget);
+        expect(find.text('市井'), findsOneWidget);
+
+        // Switch to Indoor (雅室)
+        await tester.tap(find.byKey(const Key('contemplation_realm_chip_indoor')));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Seasonal title for indoor spring: 春 · 桃夭茶寮
+        expect(find.textContaining('春 · 桃夭茶寮'), findsOneWidget);
+        // Indoor seal inscription: 春风入室
+        expect(find.text('春风入室'), findsOneWidget);
+        // Indoor spring poem: 小楼一夜听春雨，深巷明朝卖杏花
+        expect(find.textContaining('小楼一夜听春雨，深巷明朝卖杏花'), findsOneWidget);
+
+        // Divergence from real-time triggers 恢复实时 button
+        expect(find.byKey(const Key('contemplation_sync_realtime_button')), findsOneWidget);
+
+        // Switch to Outdoor (市井)
+        await tester.tap(find.byKey(const Key('contemplation_realm_chip_outdoor')));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        // Seasonal title for outdoor spring: 春 · 桃李春风集
+        expect(find.textContaining('春 · 桃李春风集'), findsOneWidget);
+        // Outdoor seal: 春和景明
+        expect(find.text('春和景明'), findsOneWidget);
+        // Outdoor poem: 千门万户曈曈日，总把新桃换旧符
+        expect(find.textContaining('千门万户曈曈日，总把新桃换旧符'), findsOneWidget);
+
+        // Tap 恢复实时 to restore Nature real-time state
+        await tester.tap(find.byKey(const Key('contemplation_sync_realtime_button')));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.textContaining('春 · 桃夭青绿'), findsOneWidget);
+        expect(find.textContaining('水面初平云脚低，几处早莺争暖树'), findsOneWidget);
+        expect(find.byKey(const Key('contemplation_sync_realtime_button')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'switching realm updates active ambient soundscape preset contextually',
+      (tester) async {
+        final audioService = AudioSanctumService(enablePlatformAudio: false);
+        addTearDown(audioService.dispose);
+
+        await pumpContemplationViewScreen(
+          tester,
+          audioService: audioService,
+        );
+
+        // Toggle soundscape on in Nature (sunny day) -> bambooBreeze
+        await tester.tap(find.byKey(const Key('contemplation_soundscape_button')));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(audioService.isPlaying, isTrue);
+        expect(audioService.activePreset, equals(SoundscapePreset.bambooBreeze));
+
+        // Switch to Indoor -> vintageLibrary
+        await tester.tap(find.byKey(const Key('contemplation_realm_chip_indoor')));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(audioService.isPlaying, isTrue);
+        expect(audioService.activePreset, equals(SoundscapePreset.vintageLibrary));
+
+        // Switch back to Nature -> bambooBreeze
+        await tester.tap(find.byKey(const Key('contemplation_realm_chip_nature')));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(audioService.isPlaying, isTrue);
+        expect(audioService.activePreset, equals(SoundscapePreset.bambooBreeze));
+      },
+    );
+
+    testWidgets(
+      'renders cleanly without overflow down to 320px width with clamped text scaling',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 700);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await pumpContemplationViewScreen(tester);
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }
 

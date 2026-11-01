@@ -60,6 +60,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   final ScrollController _scrollController = ScrollController();
   late final ScenerySettingsService _scenerySettings;
   ShanshuiAtmosphereState? _pinnedAtmosphere;
+  SceneryRealmPreference _realmPreference = SceneryRealmPreference.auto;
   List<Entry> _entries = [];
   List<Entry> _onThisDayEntries = [];
   Map<String, MediaAttachment> _mediaMap = {};
@@ -93,8 +94,12 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   Future<void> _loadScenerySettings() async {
     final pinned = await _scenerySettings.getPinnedAtmosphere();
-    if (mounted && pinned != _pinnedAtmosphere) {
-      setState(() => _pinnedAtmosphere = pinned);
+    final realmPref = await _scenerySettings.getRealmPreference();
+    if (mounted) {
+      setState(() {
+        _pinnedAtmosphere = pinned;
+        _realmPreference = realmPref;
+      });
     }
   }
 
@@ -128,10 +133,27 @@ class _TimelineScreenState extends State<TimelineScreen> {
   }
 
   ShanshuiAtmosphereState _resolveRealTimeAtmosphere() {
+    final now = DateTime.now();
+    Entry? eligibleEntry;
+    for (final entry in _entries) {
+      if (ShanshuiAtmosphereResolver.isEntryEligibleForInference(
+        isDeleted: entry.isDeleted,
+        isLocked: entry.isLocked,
+        unlockAt: entry.unlockAt,
+        now: now,
+      )) {
+        eligibleEntry = entry;
+        break;
+      }
+    }
     final latestWeather = _entries.isNotEmpty ? _entries.first.weather : null;
     return ShanshuiAtmosphereResolver.resolve(
-      now: DateTime.now(),
+      now: now,
       latestEntryWeather: latestWeather,
+      entryTimestamp: eligibleEntry?.entryDate,
+      entryTitle: eligibleEntry?.title,
+      entryPlainText: eligibleEntry?.plainText,
+      realmPreference: _realmPreference,
     );
   }
 
@@ -414,10 +436,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
                       database: widget.database,
                       mediaService: widget.mediaService,
                       ocrQueueManager: widget.ocrQueueManager,
+                      scenerySettingsService: _scenerySettings,
                     ),
                   ),
                 ).then((_) {
-                  if (mounted) _loadInitial();
+                  if (mounted) {
+                    _loadInitial();
+                    _loadScenerySettings();
+                  }
                 });
               },
             ),
@@ -598,7 +624,12 @@ class _TimelineScreenState extends State<TimelineScreen> {
           Builder(
             builder: (context) {
               final realTimeAtmosphere = _resolveRealTimeAtmosphere();
-              final activeAtmosphere = _pinnedAtmosphere ?? realTimeAtmosphere;
+              final activeAtmosphere = _pinnedAtmosphere != null
+                  ? _pinnedAtmosphere!.copyWith(
+                      realm: realTimeAtmosphere.realm,
+                      isJournalInferred: realTimeAtmosphere.isJournalInferred,
+                    )
+                  : realTimeAtmosphere;
 
               return ShanshuiSceneryCard(
                 atmosphere: activeAtmosphere,
@@ -609,6 +640,9 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   });
                 },
                 onWritePrompt: (prompt) => _handleCreateEntry(prompt),
+                onRealmPreferenceChanged: (pref) {
+                  setState(() => _realmPreference = pref);
+                },
                 onOpenContemplation: () {
                   Navigator.push(
                     context,

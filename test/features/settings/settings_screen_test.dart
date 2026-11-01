@@ -138,7 +138,10 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('settings_create_backup_tile')));
+      final backupTile = find.byKey(const Key('settings_create_backup_tile'));
+      await tester.scrollUntilVisible(backupTile, 200.0);
+      await tester.pumpAndSettle();
+      await tester.tap(backupTile);
       await tester.pumpAndSettle();
 
       expect(find.text('Create Full-Archive Backup'), findsOneWidget);
@@ -305,7 +308,10 @@ Visiting Dotonbori in the evening.
       expect(find.text('No backup created yet'), findsOneWidget);
 
       // Tap "Create Encrypted Backup" tile to open dialog
-      await tester.tap(find.byKey(const Key('settings_create_backup_tile')));
+      final backupTile = find.byKey(const Key('settings_create_backup_tile'));
+      await tester.scrollUntilVisible(backupTile, 200.0);
+      await tester.pumpAndSettle();
+      await tester.tap(backupTile);
       await tester.pumpAndSettle();
 
       expect(find.text('Create Full-Archive Backup'), findsOneWidget);

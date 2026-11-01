@@ -84,6 +84,13 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
     }
   }
 
+  void _onSelectRealm(ShanshuiRealm realm) {
+    setState(() {
+      _atmosphere = _atmosphere.copyWith(realm: realm, isManualPreview: true);
+    });
+    _updateSoundscapeIfActive();
+  }
+
   void _onSelectSeason(ShanshuiSeason season) {
     setState(() {
       _atmosphere = _atmosphere.copyWith(season: season, isManualPreview: true);
@@ -139,7 +146,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            _atmosphere.season.sealText,
+                            _atmosphere.sealText,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
@@ -155,7 +162,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                '${_atmosphere.season.nameZh} · ${_atmosphere.weather.badgeZh}',
+                                '${_atmosphere.titleZh} · ${_atmosphere.weather.badgeZh}',
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Color(0xFFF7F4EB),
@@ -165,7 +172,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                                 ),
                               ),
                               Text(
-                                '「${_atmosphere.season.poem}」',
+                                '「${_atmosphere.poem}」',
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: Color(0xFFC8BFA8),
@@ -271,6 +278,37 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Scenery Realm row
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: ShanshuiRealm.values.map((realm) {
+                          final isSelected = _atmosphere.realm == realm;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Semantics(
+                              button: true,
+                              label: '境域: ${realm.shortNameZh}',
+                              child: ChoiceChip(
+                                key: Key('contemplation_realm_chip_${realm.id}'),
+                                label: Text(realm.shortNameZh),
+                                selected: isSelected,
+                                onSelected: (_) => _onSelectRealm(realm),
+                                selectedColor: tokens.cinnabar,
+                                backgroundColor: const Color(0xFF292420),
+                                labelStyle: TextStyle(
+                                  color: isSelected ? Colors.white : const Color(0xFFC8BFA8),
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+
                     // Seasons row
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,

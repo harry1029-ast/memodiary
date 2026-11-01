@@ -102,6 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final ScenerySettingsService _scenerySettings;
   bool _isSceneryCollapsed = false;
   ShanshuiAtmosphereState? _pinnedAtmosphere;
+  SceneryRealmPreference _realmPreference = SceneryRealmPreference.auto;
 
   late final ThemeSettingsService _themeSettings;
   int _unindexedPhotoCount = 0;
@@ -111,6 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _scenerySettings = widget.scenerySettingsService ?? ScenerySettingsService();
     _themeSettings = widget.themeSettings ?? ThemeSettingsService.instance;
+    _loadScenerySettings();
     _loadBookIntroPreference();
     _loadOcrStatus();
     if (widget.initialStats != null) {
@@ -137,15 +139,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _loadBookIntroPreference() async {
-    final show = await _introSettings.getShouldShowOnLaunch();
+  Future<void> _loadScenerySettings() async {
     final isSceneryCollapsed = await _scenerySettings.getIsCollapsed();
     final pinned = await _scenerySettings.getPinnedAtmosphere();
+    final realmPref = await _scenerySettings.getRealmPreference();
+    if (mounted) {
+      setState(() {
+        _isSceneryCollapsed = isSceneryCollapsed;
+        _pinnedAtmosphere = pinned;
+        _realmPreference = realmPref;
+      });
+    }
+  }
+
+  Future<void> _loadBookIntroPreference() async {
+    final show = await _introSettings.getShouldShowOnLaunch();
     if (mounted) {
       setState(() {
         _showBookIntroOnLaunch = show;
-        _isSceneryCollapsed = isSceneryCollapsed;
-        _pinnedAtmosphere = pinned;
       });
     }
   }
@@ -451,16 +462,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontFamily: InkDiaryTheme.fontNotoSerif,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: tokens.jiaomo,
-              letterSpacing: 0.5,
+          Flexible(
+            child: Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: tokens.jiaomo,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             tag,
             style: TextStyle(fontSize: 10, color: tokens.danmo, letterSpacing: 0.5),
@@ -599,6 +614,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(height: 20),
           ListTile(
+            key: const Key('settings_scenery_realm_tile'),
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: tokens.agedFiber,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.art_track_rounded, color: tokens.cinnabar, size: 20),
+            ),
+            title: Text(
+              '画卷境域 (Scenery Realm)',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: tokens.jiaomo,
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+              ),
+            ),
+            subtitle: Text(
+              _realmPreference == SceneryRealmPreference.auto
+                  ? 'Auto · 随文入境 (根据近作自适应)'
+                  : _realmPreference.nameZh,
+              style: TextStyle(fontSize: 10.5, color: tokens.danmo),
+            ),
+            trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: tokens.danmo),
+            onTap: () => _showRealmPreferenceDialog(tokens),
+          ),
+          const Divider(height: 20),
+          ListTile(
             key: const Key('settings_scenery_pin_atmosphere_tile'),
             contentPadding: EdgeInsets.zero,
             leading: Container(
@@ -656,7 +701,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () async {
               await _scenerySettings.setPinnedAtmosphere(null);
               if (!mounted) return;
-              setState(() => _pinnedAtmosphere = null);
+              setState(() {
+                _pinnedAtmosphere = null;
+                _realmPreference = SceneryRealmPreference.auto;
+              });
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('已恢复实时四时天候同步')),
@@ -664,6 +712,137 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showRealmPreferenceDialog(InkDiaryTokens tokens) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: tokens.xuanGround,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            '画卷境域',
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: tokens.jiaomo,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildRealmDialogOption(
+                  dialogContext: dialogContext,
+                  tokens: tokens,
+                  key: const Key('settings_realm_option_auto'),
+                  preference: SceneryRealmPreference.auto,
+                  title: 'Auto · 随文入境',
+                  subtitle: '根据近24小时日记内容自适应意境',
+                ),
+                _buildRealmDialogOption(
+                  dialogContext: dialogContext,
+                  tokens: tokens,
+                  key: const Key('settings_realm_option_nature'),
+                  preference: SceneryRealmPreference.nature,
+                  title: '林泉',
+                  subtitle: '水墨山水 · 烟波浩渺 (自然)',
+                ),
+                _buildRealmDialogOption(
+                  dialogContext: dialogContext,
+                  tokens: tokens,
+                  key: const Key('settings_realm_option_indoor'),
+                  preference: SceneryRealmPreference.indoor,
+                  title: '雅室',
+                  subtitle: '书房茶室 · 烹茶伴读 (室内茶寮)',
+                ),
+                _buildRealmDialogOption(
+                  dialogContext: dialogContext,
+                  tokens: tokens,
+                  key: const Key('settings_realm_option_outdoor'),
+                  preference: SceneryRealmPreference.outdoor,
+                  title: '市井',
+                  subtitle: '古镇街市 · 烟火人间 (户外古街)',
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('取消', style: TextStyle(color: tokens.danmo)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRealmDialogOption({
+    required BuildContext dialogContext,
+    required InkDiaryTokens tokens,
+    required Key key,
+    required SceneryRealmPreference preference,
+    required String title,
+    required String subtitle,
+  }) {
+    final isSelected = _realmPreference == preference;
+    return Semantics(
+      button: true,
+      label: '设置画卷境域为 $title',
+      child: ListTile(
+        key: key,
+        contentPadding: EdgeInsets.zero,
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: tokens.agedFiber,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            preference == SceneryRealmPreference.auto
+                ? Icons.auto_awesome_outlined
+                : preference == SceneryRealmPreference.nature
+                    ? Icons.landscape_outlined
+                    : preference == SceneryRealmPreference.indoor
+                        ? Icons.meeting_room_outlined
+                        : Icons.storefront_outlined,
+            color: isSelected ? tokens.cinnabar : tokens.danmo,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? tokens.cinnabar : tokens.jiaomo,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(fontSize: 10.5, color: tokens.danmo),
+        ),
+        trailing: isSelected
+            ? Icon(Icons.check_rounded, color: tokens.cinnabar, size: 20)
+            : null,
+        onTap: () async {
+          await _scenerySettings.setRealmPreference(preference);
+          if (dialogContext.mounted) {
+            Navigator.pop(dialogContext);
+          }
+          if (mounted) {
+            setState(() => _realmPreference = preference);
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('已设置画卷境域为：$title')),
+            );
+          }
+        },
       ),
     );
   }
@@ -1034,12 +1213,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Recycle Bin (${stats.deletedEntriesCount})',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 12,
-                    color: tokens.danmo,
+                Flexible(
+                  child: Text(
+                    'Recycle Bin (${stats.deletedEntriesCount})',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 12,
+                      color: tokens.danmo,
+                    ),
                   ),
                 ),
               ],
@@ -1089,12 +1271,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    'OCR Indexing',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 12,
-                      color: tokens.danmo,
+                  Flexible(
+                    child: Text(
+                      'OCR Indexing',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 12,
+                        color: tokens.danmo,
+                      ),
                     ),
                   ),
                 ],
@@ -1193,9 +1378,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Import from .txt / .md',
-                  style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 12, color: tokens.danmo),
+                Flexible(
+                  child: Text(
+                    'Import from .txt / .md',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 12, color: tokens.danmo),
+                  ),
                 ),
               ],
             ),
@@ -1216,9 +1404,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Export All Diaries',
-                  style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 12, color: tokens.danmo),
+                Flexible(
+                  child: Text(
+                    'Export All Diaries',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 12, color: tokens.danmo),
+                  ),
                 ),
               ],
             ),
@@ -1350,12 +1541,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      englishTitle,
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 11,
-                        color: tokens.danmo,
+                    Flexible(
+                      child: Text(
+                        englishTitle,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 11,
+                          color: tokens.danmo,
+                        ),
                       ),
                     ),
                   ],
@@ -1410,29 +1604,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               const CinnabarSealBadge(text: '零云上送', isRound: true),
               const SizedBox(width: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '守拙清规',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.jiaomo,
+              Expanded(
+                child: Row(
+                  children: [
+                    Text(
+                      '守拙清规',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.jiaomo,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '100% Offline & Private',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: tokens.cinnabar,
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '100% Offline & Private',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.cinnabar,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
