@@ -55,3 +55,27 @@ _Avoid_: Null OCR result, empty scan flag
 **Backfill Indexer**:
 The user-triggered, pauseable/resumable maintenance routine (`OcrQueueManager.runBackfill`) that scans historical unindexed photos (`ocr_text IS NULL`) sequentially without blocking launch or UI frames.
 _Avoid_: Background library scanner, batch OCR job
+
+**Scholar's Stationery Chest**:
+The bottom modal drawer (`ScholarChestDrawer`) modeled after an antique Chinese scholar's brocade box with crimson velvet lining, consolidating the diarist's secondary writing tools into tangible physical artifacts.
+_Avoid_: Tools drawer, utility tray, stationery menu, bottom sheet modal
+
+**Stationery Artifact**:
+An interactive skeuomorphic vector control inside the Scholar's Stationery Chest representing a functional subsystem (Fanned Stationery, Porcelain Brush Mountain, Guqin Zither, Brass Fish Lock, and Twin Brushes placeholder).
+_Avoid_: Drawer button, tool icon, chest item
+
+**Integer-Row Height Snapper**:
+The deterministic layout mechanism (`GridSnappedEmbedContainer`) that clamps media embed heights and margins to integer multiples of `rowHeight` ($H_{\text{total}} = N \times \text{rowHeight}$), mathematically protecting ruled baseline alignment across insertions.
+_Avoid_: Image padding adjuster, grid snap wrapper
+
+**Tipped-In Ephemera Card**:
+The physical photographic print presentation style for image and video embeds in classical stationery, featuring paper-toned matte borders, soft drop shadows, and inline video playback.
+_Avoid_: Media box, photo embed container, image card
+
+**Keepsake Scroll View**:
+The read-only full-screen presentation mode that renders diary entries in classical right-to-left columnar calligraphy (`vertical-rl`) with decorative colophons and seals.
+_Avoid_: Vertical reader, print preview screen, calligraphy viewer
+
+**Cinnabar Signature Seal**:
+The diarist's personalized 2–4 character colophon stamp whose text is a persistent user signature, rendered in relief (朱文) or intaglio (白文) according to the active stationery template.
+_Avoid_: Signature stamp, red seal widget, colophon watermark
