@@ -384,6 +384,60 @@ enum ShanshuiWeather {
   final double celestialAlpha;
   final Color? skyOverlay;
 
+  /// Sunlight/moonlight beam strength modifier for the Indoor Moon Window.
+  double get indoorBeamMultiplier {
+    switch (this) {
+      case ShanshuiWeather.sunny:
+        return 1.0;
+      case ShanshuiWeather.cloudy:
+        return 0.40;
+      case ShanshuiWeather.rainy:
+        return 0.15;
+      case ShanshuiWeather.stormy:
+        return 0.05;
+      case ShanshuiWeather.snowy:
+        return 0.50;
+    }
+  }
+
+  /// Ambient room dimming modifier for the Indoor realm under heavy weather.
+  double get indoorRoomDimming {
+    switch (this) {
+      case ShanshuiWeather.sunny:
+        return 0.0;
+      case ShanshuiWeather.cloudy:
+        return 0.10;
+      case ShanshuiWeather.rainy:
+        return 0.20;
+      case ShanshuiWeather.stormy:
+        return 0.35;
+      case ShanshuiWeather.snowy:
+        return 0.08;
+    }
+  }
+
+  /// Resolves the authentic meteorological seal badge for [realm].
+  String badgeZhFor(ShanshuiRealm realm) {
+    switch (realm) {
+      case ShanshuiRealm.nature:
+      case ShanshuiRealm.outdoor:
+        return badgeZh;
+      case ShanshuiRealm.indoor:
+        switch (this) {
+          case ShanshuiWeather.sunny:
+            return '晴窗日暖';
+          case ShanshuiWeather.cloudy:
+            return '云岚漫窗';
+          case ShanshuiWeather.rainy:
+            return '蕉窗听雨';
+          case ShanshuiWeather.stormy:
+            return '风雨惊雷';
+          case ShanshuiWeather.snowy:
+            return '推窗看雪';
+        }
+    }
+  }
+
   const ShanshuiWeather({
     required this.id,
     required this.nameZh,

@@ -2,9 +2,11 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../models/ancient_room_palette.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_palette.dart';
 import '../models/shanshui_scenery_geometry.dart';
+import '../painters/ancient_room_painter.dart';
 import 'shanshui_canvas_painter.dart';
 
 /// Pluggable builder function signature for modular realm painters.
@@ -354,9 +356,17 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
             lightningAlpha: _lightningAlpha,
           );
         }
-        return ShanshuiCanvasPainter(
+        final roomPalette = AncientRoomPalette.of(
+          widget.atmosphere.season,
+          widget.atmosphere.timeOfDay,
+        );
+        _cachedIndoorPicture ??= AncientRoomPainter.recordStaticPicture(
           atmosphere: widget.atmosphere,
-          palette: palette,
+          roomPalette: roomPalette,
+        );
+        return AncientRoomPainter(
+          atmosphere: widget.atmosphere,
+          roomPalette: roomPalette,
           animationTime: _elapsedSeconds,
           particles: _particles,
           weatherDrops: _weatherDrops,
@@ -365,6 +375,7 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
           showCalligraphy: widget.showCalligraphy,
           fullPoem: widget.fullPoem,
           lightningAlpha: _lightningAlpha,
+          cachedStaticPicture: _cachedIndoorPicture,
         );
       case ShanshuiRealm.outdoor:
         if (widget.outdoorPainterBuilder != null) {
