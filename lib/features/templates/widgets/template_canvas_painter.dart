@@ -38,19 +38,6 @@ class TemplateCanvasPainter extends CustomPainter {
 
   double get _effectiveHeaderY => headerHeight - scrollOffset;
 
-  void _paintHeaderDivider(Canvas canvas, Size size) {
-    if (_effectiveHeaderY > 0) {
-      final dividerPaint = Paint()
-        ..color = _isDark ? const Color(0x28FFFFFF) : const Color(0x2478909C)
-        ..strokeWidth = 0.8;
-      canvas.drawLine(
-        Offset(0, _effectiveHeaderY),
-        Offset(size.width, _effectiveHeaderY),
-        dividerPaint,
-      );
-    }
-  }
-
   (double, int) _calculateLineBounds() {
     final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
     final startY = _effectiveHeaderY + _baselineOffset;
@@ -100,8 +87,6 @@ class TemplateCanvasPainter extends CustomPainter {
       ..color = _isDark ? const Color(0x18FFFFFF) : const Color(0x1E4A6572)
       ..strokeWidth = 1.0;
 
-    _paintHeaderDivider(canvas, size);
-
     for (int lineIndex = minLineIndex; ; lineIndex++) {
       final y = startY + lineIndex * rowHeight;
       if (y > size.height) break;
@@ -114,7 +99,7 @@ class TemplateCanvasPainter extends CustomPainter {
       ..color = _isDark ? const Color(0x38EF9A9A) : const Color(0x33E57373)
       ..strokeWidth = 1.2;
 
-    final marginX = style.marginHorizontal.clamp(16.0, 36.0);
+    final marginX = style.resolvedHorizontalMargin;
     final topY = math.max(0.0, _effectiveHeaderY);
     canvas.drawLine(
       Offset(marginX, topY),
@@ -123,10 +108,24 @@ class TemplateCanvasPainter extends CustomPainter {
     );
   }
 
+  List<double> _computeMarginAnchoredX(double width, double marginX, double step) {
+    final xCoords = <double>[];
+    // Backward from marginX - step to 0
+    for (double x = marginX - step; x >= 0; x -= step) {
+      xCoords.add(x);
+    }
+    // Forward from marginX to width
+    for (double x = marginX; x <= width; x += step) {
+      xCoords.add(x);
+    }
+    xCoords.sort();
+    return xCoords;
+  }
+
   void _paintGridPaper(Canvas canvas, Size size) {
     final rowHeight = _rowHeight;
+    final marginX = style.resolvedHorizontalMargin;
     final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
-    final (startY, minLineIndex) = _calculateLineBounds();
 
     final hGridPaint = Paint()
       ..color = _isDark ? const Color(0x18FFFFFF) : const Color(0x1A78909C)
@@ -136,40 +135,39 @@ class TemplateCanvasPainter extends CustomPainter {
       ..color = _isDark ? const Color(0x12FFFFFF) : const Color(0x1478909C)
       ..strokeWidth = 0.6;
 
-    _paintHeaderDivider(canvas, size);
-
-    // Vertical grid guidelines (Hobonichi style: subtle, non-intrusive)
+    // Vertical grid guidelines anchored to marginX across entire width
     final topY = math.max(0.0, _effectiveHeaderY);
-    for (double x = 0; x < size.width; x += rowHeight) {
+    final xCoords = _computeMarginAnchoredX(size.width, marginX, rowHeight);
+    for (final x in xCoords) {
       canvas.drawLine(Offset(x, topY), Offset(x, size.height), vGridPaint);
     }
 
-    // Horizontal grid rules aligned to text baseline
-    for (int lineIndex = minLineIndex; ; lineIndex++) {
-      final y = startY + lineIndex * rowHeight;
+    // Horizontal grid rules forming uniform H x H squares starting below header
+    final minRowIndex = math.max(1, ((clipY - _effectiveHeaderY) / rowHeight).ceil());
+    for (int rowIndex = minRowIndex; ; rowIndex++) {
+      final y = _effectiveHeaderY + rowIndex * rowHeight;
       if (y > size.height) break;
-      if (y < clipY) continue;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), hGridPaint);
     }
   }
 
   void _paintDotGridPaper(Canvas canvas, Size size) {
     final rowHeight = _rowHeight;
+    final marginX = style.resolvedHorizontalMargin;
     final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
-    final (startY, minLineIndex) = _calculateLineBounds();
 
     final dotPaint = Paint()
       ..color = _isDark ? const Color(0x24FFFFFF) : const Color(0x2878909C)
       ..style = PaintingStyle.fill;
 
-    _paintHeaderDivider(canvas, size);
+    final xCoords = _computeMarginAnchoredX(size.width, marginX, rowHeight);
+    final minRowIndex = math.max(1, ((clipY - _effectiveHeaderY) / rowHeight).ceil());
 
-    for (int lineIndex = minLineIndex; ; lineIndex++) {
-      final y = startY + lineIndex * rowHeight;
+    for (int rowIndex = minRowIndex; ; rowIndex++) {
+      final y = _effectiveHeaderY + rowIndex * rowHeight;
       if (y > size.height) break;
-      if (y < clipY) continue;
 
-      for (double x = 0; x < size.width; x += rowHeight) {
+      for (final x in xCoords) {
         canvas.drawCircle(Offset(x, y), 1.2, dotPaint);
       }
     }

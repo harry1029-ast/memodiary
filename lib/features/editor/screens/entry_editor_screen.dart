@@ -21,7 +21,6 @@ import '../services/audio_sanctum_service.dart';
 import '../services/baseline_metrics_calculator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
-import '../widgets/ghost_prompt_view.dart';
 import '../widgets/journal_letterhead.dart';
 import '../widgets/sandboxed_image_embed_builder.dart';
 import '../widgets/sandboxed_video_embed_builder.dart';
@@ -151,6 +150,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         titleController: _titleController,
       );
 
+      final derivedTypography = TypographySettings.fromTemplate(template);
+
       if (mounted) {
         setState(() {
           _currentTemplate = template;
@@ -161,6 +162,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           _mood = entry.mood;
           _weather = entry.weather;
           _unlockAt = entry.unlockAt;
+          _typography = derivedTypography;
           _isLoading = false;
         });
       }
@@ -189,6 +191,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       onTemplateSelected: (newTemplate) async {
         setState(() {
           _currentTemplate = newTemplate;
+          _typography = TypographySettings.fromTemplate(newTemplate);
         });
         await widget.database.updateEntryTemplate(widget.entryId, newTemplate.id);
       },
@@ -378,23 +381,20 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       _spark = _thoughtSparkService.nextSpark();
     });
 
-    // If entry has existing text, offer the refreshed prompt via a gentle floating action
-    if (_controller != null && _controller!.document.toPlainText().trim().isNotEmpty) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '“${_spark.localizedPrompt}”',
-            style: const TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
-          ),
-          action: SnackBarAction(
-            label: '落墨插入',
-            onPressed: () => _handleInsertPrompt(_spark.localizedPrompt),
-          ),
-          duration: const Duration(seconds: 4),
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '“${_spark.localizedPrompt}”',
+          style: const TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
         ),
-      );
-    }
+        action: SnackBarAction(
+          label: '由此题落墨',
+          onPressed: () => _handleInsertPrompt(_spark.localizedPrompt),
+        ),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   void _handleInsertPrompt(String prompt) {
@@ -609,49 +609,38 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 1. In-Paper Journal Letterhead & Ghost Prompt
+                          // 1. In-Paper Journal Letterhead
                           Container(
                             key: _letterheadKey,
                             padding: EdgeInsets.symmetric(
                               horizontal: templateStyle.marginHorizontal.clamp(16.0, 36.0),
                               vertical: 8.0,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                JournalLetterhead(
-                                  entryDate: _entryDate,
-                                  mood: _mood,
-                                  weather: _weather,
-                                  titleController: _titleController,
-                                  onDateChanged: (val) {
-                                    setState(() => _entryDate = val);
-                                    widget.database.updateEntryMetadata(widget.entryId, entryDate: val);
-                                  },
-                                  onMoodChanged: (val) {
-                                    setState(() => _mood = val);
-                                    widget.database.updateEntryMetadata(widget.entryId, mood: val);
-                                  },
-                                  onWeatherChanged: (val) {
-                                    setState(() => _weather = val);
-                                    widget.database.updateEntryMetadata(widget.entryId, weather: val);
-                                  },
-                                ),
-                                GhostPromptView(
-                                  controller: _controller!,
-                                  spark: _spark,
-                                  onAdoptPrompt: () => _handleInsertPrompt(_spark.localizedPrompt),
-                                  onShuffle: _handleShuffleSpark,
-                                ),
-                              ],
+                            child: JournalLetterhead(
+                              entryDate: _entryDate,
+                              mood: _mood,
+                              weather: _weather,
+                              titleController: _titleController,
+                              onDateChanged: (val) {
+                                setState(() => _entryDate = val);
+                                widget.database.updateEntryMetadata(widget.entryId, entryDate: val);
+                              },
+                              onMoodChanged: (val) {
+                                setState(() => _mood = val);
+                                widget.database.updateEntryMetadata(widget.entryId, mood: val);
+                              },
+                              onWeatherChanged: (val) {
+                                setState(() => _weather = val);
+                                widget.database.updateEntryMetadata(widget.entryId, weather: val);
+                              },
                             ),
                           ),
 
-                          // 2. Quill Editor Content with 12px gutter from margin line
+                          // 2. Quill Editor Content with contextual margin alignment
                           Padding(
                             padding: EdgeInsets.only(
-                              left: templateStyle.marginHorizontal.clamp(16.0, 36.0) + 12.0,
-                              right: templateStyle.marginHorizontal.clamp(16.0, 36.0),
+                              left: templateStyle.contentMarginLeft,
+                              right: templateStyle.resolvedHorizontalMargin,
                               bottom: 120.0,
                             ),
                             child: QuillEditor(

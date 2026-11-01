@@ -75,37 +75,55 @@ class PdfTemplateRenderer {
     canvas.strokePath();
   }
 
-  /// Orthogonal millimeter vector grid
+  static List<double> _computeMarginAnchoredX(double width, double marginX, double step) {
+    final xCoords = <double>[];
+    for (double x = marginX - step; x >= 0; x -= step) {
+      xCoords.add(x);
+    }
+    for (double x = marginX; x <= width; x += step) {
+      xCoords.add(x);
+    }
+    xCoords.sort();
+    return xCoords;
+  }
+
+  /// Orthogonal millimeter vector grid anchored to marginX
   static void _paintGridPaper(
     PdfGraphics canvas,
     PdfPoint size,
     TemplateStyle style,
   ) {
     final gridSize = 20.0 * (style.lineSpacing / 1.5).clamp(0.8, 2.0);
+    final marginX = style.resolvedHorizontalMargin;
 
     canvas.setStrokeColor(const PdfColor(0.47, 0.56, 0.61, 0.15));
     canvas.setLineWidth(0.5);
 
-    for (double x = 0; x < size.x; x += gridSize) {
+    final xCoords = _computeMarginAnchoredX(size.x, marginX, gridSize);
+    for (final x in xCoords) {
       canvas.drawLine(x, 0, x, size.y);
     }
+
+    // Horizontal grid lines
     for (double y = 0; y < size.y; y += gridSize) {
       canvas.drawLine(0, y, size.x, y);
     }
     canvas.strokePath();
   }
 
-  /// Minimalist dot grid in PDF vector coordinates
+  /// Minimalist dot grid in PDF vector coordinates anchored to marginX
   static void _paintDotGridPaper(
     PdfGraphics canvas,
     PdfPoint size,
     TemplateStyle style,
   ) {
     final dotSize = 20.0 * (style.lineSpacing / 1.5).clamp(0.8, 2.0);
+    final marginX = style.resolvedHorizontalMargin;
+    final xCoords = _computeMarginAnchoredX(size.x, marginX, dotSize);
 
     canvas.setFillColor(const PdfColor(0.47, 0.56, 0.61, 0.25));
 
-    for (double x = 0; x < size.x; x += dotSize) {
+    for (final x in xCoords) {
       for (double y = 0; y < size.y; y += dotSize) {
         canvas.drawEllipse(x, y, 0.8, 0.8);
       }

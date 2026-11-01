@@ -74,6 +74,15 @@ class TemplateStyle {
     this.fontFamily,
   });
 
+  /// Horizontal margin clamped to valid paper boundaries (16.0 to 36.0 px)
+  double get resolvedHorizontalMargin => marginHorizontal.clamp(16.0, 36.0);
+
+  /// Additional left gutter to clear the vertical red rule on lined stationery
+  double get contentGutter => type == TemplateBackgroundType.lined ? 12.0 : 0.0;
+
+  /// Effective left margin for content, including the lined stationery gutter
+  double get contentMarginLeft => resolvedHorizontalMargin + contentGutter;
+
   factory TemplateStyle.fromTemplate(Template template) {
     return TemplateStyle(
       type: TemplateBackgroundType.fromString(template.backgroundType),

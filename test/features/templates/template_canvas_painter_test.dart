@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_painter.dart';
+import '../../helpers/recording_canvas.dart';
 
 void main() {
   group('TemplateStyle & Hex Parsing Tests', () {
@@ -127,6 +128,119 @@ void main() {
       expect(scrolledPainter.shouldRepaint(basePainter), isTrue);
       expect(headerChangedPainter.shouldRepaint(basePainter), isTrue);
       expect(typographyChangedPainter.shouldRepaint(basePainter), isTrue);
+    });
+
+    test('paints grid paper with vertical lines anchored to marginX and uniform square cells', () {
+      const margin = 24.0;
+      const headerHeight = 90.0;
+      const typography = TypographySettings(fontSize: 16.0, lineSpacing: 1.5);
+      const rowHeight = 24.0; // 16.0 * 1.5
+
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.grid,
+        backgroundColor: Colors.white,
+        lineSpacing: 1.5,
+        marginHorizontal: margin,
+      );
+
+      final painter = TemplateCanvasPainter(
+        style: style,
+        typography: typography,
+        headerHeight: headerHeight,
+      );
+
+      final recordingCanvas = RecordingCanvas();
+      painter.paint(recordingCanvas, const Size(360, 640));
+
+      // 1. Must NOT paint a duplicate header divider at y = headerHeight
+      final hasDuplicateDivider = recordingCanvas.drawnLines.any((line) {
+        final (p1, p2, _) = line;
+        return p1.dy == headerHeight && p2.dy == headerHeight && p1.dx == 0 && p2.dx == 360;
+      });
+      expect(hasDuplicateDivider, isFalse, reason: 'Duplicate header divider should be removed');
+
+      // 2. Must paint a vertical grid line passing through x = margin
+      final verticalLines = recordingCanvas.drawnLines.where((line) {
+        final (p1, p2, _) = line;
+        return p1.dx == p2.dx;
+      }).toList();
+
+      final hasLineAtMarginX = verticalLines.any((line) => (line.$1.dx - margin).abs() < 0.01);
+      expect(hasLineAtMarginX, isTrue, reason: 'Vertical grid line must align with text left margin');
+
+      // 3. Horizontal grid lines must form uniform rowHeight cells starting from headerHeight
+      final horizontalLines = recordingCanvas.drawnLines.where((line) {
+        final (p1, p2, _) = line;
+        return p1.dy == p2.dy;
+      }).toList();
+
+      final firstExpectedY = headerHeight + rowHeight; // 114.0
+      final hasFirstGridRow = horizontalLines.any((line) => (line.$1.dy - firstExpectedY).abs() < 0.01);
+      expect(hasFirstGridRow, isTrue, reason: 'Horizontal grid rule must be at headerHeight + rowHeight');
+    });
+
+    test('paints dot grid paper with dots anchored to marginX and uniform square intervals', () {
+      const margin = 24.0;
+      const headerHeight = 90.0;
+      const typography = TypographySettings(fontSize: 16.0, lineSpacing: 1.5);
+
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.dotGrid,
+        backgroundColor: Colors.white,
+        lineSpacing: 1.5,
+        marginHorizontal: margin,
+      );
+
+      final painter = TemplateCanvasPainter(
+        style: style,
+        typography: typography,
+        headerHeight: headerHeight,
+      );
+
+      final recordingCanvas = RecordingCanvas();
+      painter.paint(recordingCanvas, const Size(360, 640));
+
+      // Must NOT paint duplicate header divider
+      final hasDuplicateDivider = recordingCanvas.drawnLines.any((line) {
+        final (p1, p2, _) = line;
+        return p1.dy == headerHeight && p2.dy == headerHeight;
+      });
+      expect(hasDuplicateDivider, isFalse);
+
+      // Must have dots where x = margin
+      final hasDotAtMargin = recordingCanvas.drawnCircles.any((circle) {
+        final (center, _, _) = circle;
+        return (center.dx - margin).abs() < 0.01;
+      });
+      expect(hasDotAtMargin, isTrue, reason: 'Dot grid must align with marginX');
+    });
+
+    test('paints lined paper without duplicate header divider', () {
+      const margin = 24.0;
+      const headerHeight = 90.0;
+      const typography = TypographySettings(fontSize: 16.0, lineSpacing: 1.5);
+
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: Colors.white,
+        lineSpacing: 1.5,
+        marginHorizontal: margin,
+      );
+
+      final painter = TemplateCanvasPainter(
+        style: style,
+        typography: typography,
+        headerHeight: headerHeight,
+      );
+
+      final recordingCanvas = RecordingCanvas();
+      painter.paint(recordingCanvas, const Size(360, 640));
+
+      final hasDuplicateDivider = recordingCanvas.drawnLines.any((line) {
+        final (p1, p2, _) = line;
+        return p1.dy == headerHeight && p2.dy == headerHeight && p1.dx == 0 && p2.dx == 360;
+      });
+      expect(hasDuplicateDivider, isFalse);
     });
   });
 }

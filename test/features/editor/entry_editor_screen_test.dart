@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -15,6 +15,8 @@ import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/thought_spark_banner.dart';
 import 'package:memodiary/features/editor/widgets/writing_dock.dart';
+import 'package:memodiary/features/templates/models/template_style.dart';
+import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../core/services/dictation_service_test.dart';
 
 void main() {
@@ -62,7 +64,7 @@ void main() {
   });
 
   group('EntryEditorScreen Widget Tests', () {
-    testWidgets('renders full-bleed journal sheet, letterhead, ghost prompt, and writing dock', (tester) async {
+    testWidgets('renders full-bleed journal sheet, letterhead, and writing dock without inline ghost prompt', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: InkDiaryTheme.light,
@@ -79,7 +81,7 @@ void main() {
 
       // Verify new architecture widgets are rendered
       expect(find.byType(JournalLetterhead), findsOneWidget);
-      expect(find.byType(GhostPromptView), findsOneWidget);
+      expect(find.byType(GhostPromptView), findsNothing, reason: 'Inline ghost prompt should be removed from canvas');
       expect(find.byType(QuillEditor), findsOneWidget);
       expect(find.byType(WritingDock), findsOneWidget);
 
@@ -95,7 +97,7 @@ void main() {
       expect(find.byKey(const Key('editor_more_options_btn')), findsOneWidget);
     });
 
-    testWidgets('using ghost prompt inserts it into editor and hides placeholder', (tester) async {
+    testWidgets('tapping sparkle button in WritingDock displays thought spark SnackBar and adopts it into editor', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: InkDiaryTheme.light,
@@ -110,17 +112,110 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap '由此题落墨 · Adopt Prompt'
+      // Tap sparkle tool in WritingDock
+      expect(find.byKey(const Key('writing_dock_spark_btn')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('writing_dock_spark_btn')));
+      await tester.pumpAndSettle();
+
+      // Verify SnackBar with '由此题落墨' appears
       expect(find.textContaining('由此题落墨'), findsOneWidget);
       await tester.tap(find.textContaining('由此题落墨'));
       await tester.pumpAndSettle();
 
-      // Ghost prompt placeholder should vanish because editor now has text
-      expect(find.textContaining('由此题落墨'), findsNothing);
-
       // Verify database gets updated with quoted prompt content
       final entry = await db.getEntryById('editor_test_entry');
       expect(entry!.plainText.contains('【灵感拾遗】'), isTrue);
+    });
+
+    testWidgets('synchronizes typography from template on load and template switch', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: EntryEditorScreen(
+            database: db,
+            mediaSandboxService: sandboxService,
+            entryId: 'editor_test_entry',
+            dictationService: dictationService,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify TemplateCanvasContainer receives typography synchronized with initial template
+      final initialContainer = tester.widget<TemplateCanvasContainer>(
+        find.byType(TemplateCanvasContainer),
+      );
+      expect(initialContainer.typography, isNotNull);
+      expect(initialContainer.typography!.lineSpacing, 1.5);
+
+      // Switch to Lined Paper via menu
+      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('更换素笺模板'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Lined Paper'));
+      await tester.pumpAndSettle();
+
+      final updatedContainer = tester.widget<TemplateCanvasContainer>(
+        find.byType(TemplateCanvasContainer),
+      );
+      expect(updatedContainer.style.type, TemplateBackgroundType.lined);
+      expect(updatedContainer.typography!.lineSpacing, updatedContainer.style.lineSpacing);
+    });
+
+    testWidgets('applies contextual left padding: marginX + 12 on lined paper and marginX on grid paper', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: EntryEditorScreen(
+            database: db,
+            mediaSandboxService: sandboxService,
+            entryId: 'editor_test_entry',
+            dictationService: dictationService,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Switch to Lined Paper
+      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('更换素笺模板'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Lined Paper'));
+      await tester.pumpAndSettle();
+
+      // Find the Padding widget wrapping QuillEditor
+      final linedPaddingWidget = tester.widget<Padding>(
+        find.ancestor(
+          of: find.byType(QuillEditor),
+          matching: find.byType(Padding),
+        ).first,
+      );
+      final linedPadding = linedPaddingWidget.padding as EdgeInsets;
+      // Lined paper should have marginX (24.0) + 12.0 = 36.0
+      expect(linedPadding.left, equals(36.0));
+
+      // Switch to Grid Paper (named 'Weekly Review' in defaults)
+      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('更换素笺模板'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Weekly Review'));
+      await tester.pumpAndSettle();
+
+      final gridPaddingWidget = tester.widget<Padding>(
+        find.ancestor(
+          of: find.byType(QuillEditor),
+          matching: find.byType(Padding),
+        ).first,
+      );
+      final gridPadding = gridPaddingWidget.padding as EdgeInsets;
+      // Grid paper should be exactly marginX (16.0) without the +12 gutter
+      expect(gridPadding.left, equals(16.0));
     });
 
     testWidgets('opening template switcher and typography sheets from options menu', (tester) async {
