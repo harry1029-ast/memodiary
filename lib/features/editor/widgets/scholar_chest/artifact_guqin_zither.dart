@@ -110,12 +110,12 @@ class _ArtifactGuqinZitherState extends State<ArtifactGuqinZither>
                     // 7 golden silk strings
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(7, (i) {
+                      children: List.generate(7, (stringIndex) {
                         return AnimatedBuilder(
                           animation: _vibrationController,
                           builder: (context, _) {
                             final offset = widget.isPlaying
-                                ? (_vibrationController.value * (i % 2 == 0 ? 0.8 : -0.8))
+                                ? (_vibrationController.value * (stringIndex % 2 == 0 ? 0.8 : -0.8))
                                 : 0.0;
                             return Transform.translate(
                               offset: Offset(offset, 0),

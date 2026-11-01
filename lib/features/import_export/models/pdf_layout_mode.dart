@@ -6,3 +6,4 @@ enum PdfLayoutMode {
   /// Classical right-to-left vertical columnar scroll (卷轴竖排).
   verticalScroll,
 }
+

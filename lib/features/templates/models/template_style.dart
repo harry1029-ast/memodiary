@@ -299,6 +299,26 @@ class StationerySuite {
     required this.backgroundType,
     required this.fontFamily,
   });
+
+  /// Converts this curated suite into a full [Template] entity.
+  Template toTemplate() {
+    final tokens = StationeryVisualTokens(
+      substrate: substrate,
+      ruleTint: ruleTint,
+      sealStyle: sealStyle,
+      customBgColor: substrate.defaultColor,
+    );
+    return Template(
+      id: 'suite_$id',
+      name: name,
+      backgroundType: backgroundType.name,
+      backgroundValue: tokens.toBackgroundValue(),
+      fontFamily: fontFamily,
+      lineSpacing: 1.6,
+      marginHorizontal: 24.0,
+      isCustom: false,
+    );
+  }
 }
 
 /// Curated stationery suites available across the app

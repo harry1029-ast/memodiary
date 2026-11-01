@@ -1,5 +1,39 @@
 import 'dart:convert';
 
+/// Typed aspect ratio options for tipped-in media ephemera cards.
+enum MediaAspectRatio {
+  auto('auto', null),
+  standard43('4:3', 4.0 / 3.0),
+  square11('1:1', 1.0);
+
+  final String code;
+  final double? ratio;
+  const MediaAspectRatio(this.code, this.ratio);
+
+  static MediaAspectRatio fromCode(String? code) {
+    switch (code) {
+      case '4:3':
+        return MediaAspectRatio.standard43;
+      case '1:1':
+        return MediaAspectRatio.square11;
+      case 'auto':
+      default:
+        return MediaAspectRatio.auto;
+    }
+  }
+
+  MediaAspectRatio get next {
+    switch (this) {
+      case MediaAspectRatio.auto:
+        return MediaAspectRatio.standard43;
+      case MediaAspectRatio.standard43:
+        return MediaAspectRatio.square11;
+      case MediaAspectRatio.square11:
+        return MediaAspectRatio.auto;
+    }
+  }
+}
+
 /// Represents parsed embed metadata for photos and short videos
 /// supporting backward-compatible serialization in Quill Delta documents.
 class MediaEmbedData {
@@ -13,17 +47,9 @@ class MediaEmbedData {
     this.aspect = 'auto',
   });
 
-  double? get explicitAspectRatio {
-    switch (aspect) {
-      case '4:3':
-        return 4.0 / 3.0;
-      case '1:1':
-        return 1.0;
-      case 'auto':
-      default:
-        return null;
-    }
-  }
+  MediaAspectRatio get aspectRatio => MediaAspectRatio.fromCode(aspect);
+
+  double? get explicitAspectRatio => aspectRatio.ratio;
 
   static MediaEmbedData fromRaw(dynamic raw) {
     if (raw == null) return const MediaEmbedData(path: '');
@@ -65,11 +91,12 @@ class MediaEmbedData {
     String? path,
     String? caption,
     String? aspect,
+    MediaAspectRatio? aspectRatio,
   }) {
     return MediaEmbedData(
       path: path ?? this.path,
       caption: caption ?? this.caption,
-      aspect: aspect ?? this.aspect,
+      aspect: aspectRatio?.code ?? aspect ?? this.aspect,
     );
   }
 }

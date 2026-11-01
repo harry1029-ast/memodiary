@@ -1,6 +1,8 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
+import '../../../templates/models/template_style.dart';
 import '../../../templates/screens/custom_template_editor_screen.dart';
 
 /// Stationery artifact representing the fanned paper tray (叠印花笺).
@@ -140,6 +142,26 @@ class StationeryFanSubPanel extends StatelessWidget {
     this.onCustomTemplateCreated,
   });
 
+  Future<void> _handleSelectSuite(StationerySuite suite) async {
+    final template = suite.toTemplate();
+    final existing = await database.getTemplateById(template.id);
+    if (existing == null) {
+      await database.into(database.templates).insert(
+        TemplatesCompanion.insert(
+          id: template.id,
+          name: template.name,
+          backgroundType: template.backgroundType,
+          backgroundValue: template.backgroundValue,
+          fontFamily: Value(template.fontFamily),
+          lineSpacing: Value(template.lineSpacing),
+          marginHorizontal: Value(template.marginHorizontal),
+          isCustom: Value(template.isCustom),
+        ),
+      );
+    }
+    onSelectTemplate(template);
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
@@ -148,6 +170,46 @@ class StationeryFanSubPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // 1. Curated Stationery Suites
+        Text(
+          '典藏雅笺 · 四时风致',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: tokens.jiaomo,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: StationerySuites.all.map((suite) {
+            final suiteTemplateId = 'suite_${suite.id}';
+            final isSelected = activeTemplateId == suiteTemplateId;
+            return ChoiceChip(
+              key: Key('chest_suite_chip_${suite.id}'),
+              label: Text(suite.name),
+              selected: isSelected,
+              selectedColor: tokens.cinnabar,
+              backgroundColor: tokens.ricePaper,
+              labelStyle: TextStyle(
+                fontFamily: InkDiaryTheme.fontKaiti,
+                fontSize: 12,
+                color: isSelected ? Colors.white : tokens.jiaomo,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              onSelected: (selected) {
+                if (selected) {
+                  _handleSelectSuite(suite);
+                }
+              },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+
+        // 2. Built-in & Custom Library Templates
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -197,14 +259,18 @@ class StationeryFanSubPanel extends StatelessWidget {
               );
             }
 
+            final libraryTemplates = templates
+                .where((templateItem) => !templateItem.id.startsWith('suite_'))
+                .toList();
+
             return Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: templates.map((tmpl) {
-                final isSelected = tmpl.id == activeTemplateId;
+              children: libraryTemplates.map((templateItem) {
+                final isSelected = templateItem.id == activeTemplateId;
                 return ChoiceChip(
-                  key: Key('chest_template_chip_${tmpl.id}'),
-                  label: Text(tmpl.name),
+                  key: Key('chest_template_chip_${templateItem.id}'),
+                  label: Text(templateItem.name),
                   selected: isSelected,
                   selectedColor: tokens.cinnabar,
                   backgroundColor: tokens.ricePaper,
@@ -216,7 +282,7 @@ class StationeryFanSubPanel extends StatelessWidget {
                   ),
                   onSelected: (selected) {
                     if (selected) {
-                      onSelectTemplate(tmpl);
+                      onSelectTemplate(templateItem);
                     }
                   },
                 );

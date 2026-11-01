@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
+import '../../import_export/models/pdf_layout_mode.dart';
 import '../../import_export/widgets/pdf_preview_screen.dart';
 import '../../templates/models/template_style.dart';
 import '../../templates/widgets/template_canvas_painter.dart';
@@ -97,7 +98,7 @@ class KeepsakeScrollView extends StatelessWidget {
           scrolledUnderElevation: 0,
           leading: IconButton(
             key: const Key('keepsake_close_button'),
-            icon: Icon(Icons.arrow_back, color: _inkColor),
+            icon: Icon(Icons.arrow_back, color: _inkColor, size: 22.0),
             tooltip: '返回 · Back',
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -114,7 +115,7 @@ class KeepsakeScrollView extends StatelessWidget {
             if (database != null)
               IconButton(
                 key: const Key('keepsake_export_pdf_button'),
-                icon: Icon(Icons.picture_as_pdf_outlined, color: tokens.cinnabar),
+                icon: Icon(Icons.picture_as_pdf_outlined, color: tokens.cinnabar, size: 22.0),
                 tooltip: '导出墨卷 PDF',
                 onPressed: () {
                   Navigator.of(context).push(
@@ -123,6 +124,7 @@ class KeepsakeScrollView extends StatelessWidget {
                         singleEntry: entry,
                         database: database!,
                         mediaService: mediaService,
+                        initialLayoutMode: PdfLayoutMode.verticalScroll,
                       ),
                     ),
                   );

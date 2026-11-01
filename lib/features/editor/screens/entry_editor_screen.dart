@@ -14,7 +14,6 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../../templates/widgets/template_canvas_container.dart';
-import '../../templates/widgets/template_switcher_sheet.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../models/thought_spark.dart';
 import '../models/typography_settings.dart';
@@ -28,8 +27,6 @@ import '../widgets/scholar_chest/scholar_chest_drawer.dart';
 import '../widgets/journal_letterhead.dart';
 import '../widgets/sandboxed_image_embed_builder.dart';
 import '../widgets/sandboxed_video_embed_builder.dart';
-import '../widgets/soundscape_modal.dart';
-import '../widgets/typography_sheet.dart';
 import '../widgets/writing_dock.dart';
 
 /// Full-Bleed rich-text multimodal diary editor in classical Ink & Paper stationery aesthetic.
@@ -74,7 +71,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   double _headerHeight = 90.0;
 
   Template? _currentTemplate;
-  List<Template> _allTemplates = [];
   TypographySettings _typography = const TypographySettings();
   late ThoughtSpark _spark;
 
@@ -86,6 +82,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   String? _weather;
   DateTime? _unlockAt;
   Entry? _entry;
+  bool _isCenterAligned = false;
 
   @override
   void initState() {
@@ -165,7 +162,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       if (mounted) {
         setState(() {
           _currentTemplate = template;
-          _allTemplates = templates;
           _controller = controller;
           _autosaveManager = autosave;
           _entryDate = entry.entryDate;
@@ -185,6 +181,16 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     }
   }
 
+  void _toggleCenterAlignment() {
+    if (_controller == null) return;
+    setState(() {
+      _isCenterAligned = !_isCenterAligned;
+    });
+    _controller!.formatSelection(
+      _isCenterAligned ? Attribute.centerAlignment : Attribute.leftAlignment,
+    );
+  }
+
   Future<void> _openScholarChest([ScholarArtifactType initialArtifact = ScholarArtifactType.stationeryFan]) async {
     if (_currentTemplate == null) return;
     await ScholarChestDrawer.show(
@@ -194,7 +200,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       typography: _typography,
       audioSanctumService: _audioSanctumService,
       unlockAt: _unlockAt,
-      isCenterAligned: false,
+      isCenterAligned: _isCenterAligned,
       initialArtifact: initialArtifact,
       onSelectTemplate: (newTemplate) async {
         setState(() {
@@ -216,6 +222,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           });
         }
       },
+      onToggleAlignment: _toggleCenterAlignment,
     );
   }
 
@@ -240,58 +247,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       mediaService: widget.mediaSandboxService,
       database: widget.database,
     );
-  }
-
-  Future<void> _handleTemplateSwitch() async {
-    if (_currentTemplate == null) return;
-    final freshTemplates = await widget.database.getAllTemplates();
-    if (!mounted) return;
-    setState(() {
-      _allTemplates = freshTemplates;
-    });
-
-    await TemplateSwitcherSheet.show(
-      context: context,
-      templates: _allTemplates,
-      currentTemplateId: _currentTemplate!.id,
-      database: widget.database,
-      onTemplateSelected: (newTemplate) async {
-        setState(() {
-          _currentTemplate = newTemplate;
-          _typography = TypographySettings.fromTemplate(newTemplate);
-        });
-        await widget.database.updateEntryTemplate(widget.entryId, newTemplate.id);
-      },
-    );
-  }
-
-  Future<void> _handleTypographySettings() async {
-    await TypographySheet.show(
-      context: context,
-      settings: _typography,
-      onChanged: (newSettings) {
-        setState(() {
-          _typography = newSettings;
-        });
-      },
-    );
-  }
-
-  Future<void> _handlePickTimeCapsule() async {
-    final now = DateTime.now();
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _unlockAt ?? now.add(const Duration(days: 30)),
-      firstDate: now.add(const Duration(days: 1)),
-      lastDate: DateTime(2100),
-      helpText: '时光胶囊封缄至 · Seal Until Date',
-    );
-
-    if (pickedDate != null) {
-      HapticFeedback.lightImpact();
-      setState(() => _unlockAt = pickedDate);
-      await widget.database.updateEntryMetadata(widget.entryId, unlockAt: pickedDate);
-    }
   }
 
   Future<void> _handleImagePick() async {
@@ -476,13 +431,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     setState(() {});
   }
 
-  Future<void> _handleOpenSoundscapes() async {
-    await SoundscapeModal.show(
-      context: context,
-      sanctumService: _audioSanctumService,
-    );
-  }
-
   Future<void> _handleSaveAndExit() async {
     HapticFeedback.lightImpact();
     await _autosaveManager?.saveDraft(force: true);
@@ -642,12 +590,27 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               onPressed: _openKeepsakeScroll,
             ),
 
-            // Scholar's Stationery Chest Emblem Button
-            IconButton(
-              key: const Key('top_bar_scholar_chest_button'),
-              icon: Icon(Icons.all_inbox_outlined, color: iconColor, size: 22),
-              tooltip: '文房百宝匣 · 锦盒书案',
-              onPressed: () => _openScholarChest(),
+            // Scholar's Stationery Chest Emblem Button with Live Status Badge
+            ListenableBuilder(
+              listenable: _audioSanctumService,
+              builder: (listenableContext, childWidget) {
+                final isPlayingSoundscape = _audioSanctumService.isPlaying;
+                final isCapsuleLocked = _unlockAt != null && _unlockAt!.isAfter(DateTime.now());
+                final hasBadge = isPlayingSoundscape || isCapsuleLocked;
+
+                return Badge(
+                  isLabelVisible: hasBadge,
+                  backgroundColor: isPlayingSoundscape ? tokens.cinnabar : const Color(0xFFD4AF37),
+                  smallSize: 8,
+                  alignment: const AlignmentDirectional(0.8, -0.8),
+                  child: IconButton(
+                    key: const Key('top_bar_scholar_chest_button'),
+                    icon: Icon(Icons.all_inbox_outlined, color: iconColor, size: 22),
+                    tooltip: '文房百宝匣 · 锦盒书案',
+                    onPressed: () => _openScholarChest(),
+                  ),
+                );
+              },
             ),
 
             // Cinnabar Seal & Complete Save
@@ -656,70 +619,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               icon: Icon(Icons.check, color: tokens.cinnabar, size: 22),
               tooltip: '完成归卷 · Done',
               onPressed: _handleSaveAndExit,
-            ),
-            // Options Menu (Templates, Typography, Time Capsule, Soundscapes)
-            PopupMenuButton<String>(
-              key: const Key('editor_more_options_btn'),
-              icon: Icon(Icons.more_horiz_rounded, color: iconColor, size: 22),
-              tooltip: '更多设置 · Options',
-              onSelected: (optionValue) {
-                switch (optionValue) {
-                  case 'template':
-                    _handleTemplateSwitch();
-                    break;
-                  case 'typography':
-                    _handleTypographySettings();
-                    break;
-                  case 'soundscape':
-                    _handleOpenSoundscapes();
-                    break;
-                  case 'capsule':
-                    _handlePickTimeCapsule();
-                    break;
-                }
-              },
-              itemBuilder: (menuContext) => [
-                PopupMenuItem(
-                  value: 'template',
-                  child: Row(
-                    children: [
-                      Icon(Icons.style_outlined, size: 18, color: tokens.nongmo),
-                      const SizedBox(width: 8),
-                      const Expanded(child: Text('更换素笺模板')),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'typography',
-                  child: Row(
-                    children: [
-                      Icon(Icons.font_download_outlined, size: 18, color: tokens.nongmo),
-                      const SizedBox(width: 8),
-                      const Expanded(child: Text('字法排印')),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'soundscape',
-                  child: Row(
-                    children: [
-                      Icon(Icons.headphones_outlined, size: 18, color: tokens.nongmo),
-                      const SizedBox(width: 8),
-                      const Expanded(child: Text('砚边琴韵')),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'capsule',
-                  child: Row(
-                    children: [
-                      Icon(Icons.hourglass_top_outlined, size: 18, color: tokens.nongmo),
-                      const SizedBox(width: 8),
-                      const Expanded(child: Text('封缄时光胶囊')),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ],
         ),

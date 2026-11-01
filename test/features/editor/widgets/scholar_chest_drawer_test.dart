@@ -131,7 +131,7 @@ void main() {
               audioSanctumService: audioSanctumService,
               initialArtifact: ScholarArtifactType.brushMountain,
               onSelectTemplate: (_) {},
-              onTypographyChanged: (t) => updatedTypography = t,
+              onTypographyChanged: (typography) => updatedTypography = typography,
               onLockChanged: (_) {},
               onToggleAlignment: () => alignmentToggled = true,
             ),
@@ -286,6 +286,66 @@ void main() {
 
       expect(find.byKey(const Key('scholar_chest_drawer')), findsOneWidget);
       expect(find.text('书斋清音 · 琴韵自然'), findsOneWidget);
+    });
+
+    testWidgets('Fanned Stationery exposes curated suites and selects wenfang suite', (tester) async {
+      Template? selectedTemplate;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ScholarChestDrawer(
+              database: db,
+              activeTemplateId: 'template_blank_white',
+              typography: const TypographySettings(fontSize: 16.0),
+              audioSanctumService: audioSanctumService,
+              initialArtifact: ScholarArtifactType.stationeryFan,
+              onSelectTemplate: (template) => selectedTemplate = template,
+              onTypographyChanged: (_) {},
+              onLockChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Curated suites title exists
+      expect(find.text('典藏雅笺 · 四时风致'), findsOneWidget);
+      expect(find.byKey(const Key('chest_suite_chip_wenfang')), findsOneWidget);
+      expect(find.byKey(const Key('chest_suite_chip_lengjin')), findsOneWidget);
+
+      // Select wenfang suite
+      await tester.tap(find.byKey(const Key('chest_suite_chip_wenfang')));
+      await tester.pumpAndSettle();
+
+      expect(selectedTemplate, isNotNull);
+      expect(selectedTemplate!.id, 'suite_wenfang');
+      expect(selectedTemplate!.name, '文房遗韵 · 朱丝宣纸');
+    });
+
+    testWidgets('Poetry alignment button in Brush Mountain toggles editor center alignment', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EntryEditorScreen(
+            database: db,
+            mediaSandboxService: mediaService,
+            entryId: 'test_chest_entry',
+            audioSanctumService: audioSanctumService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open chest and navigate to Brush Mountain
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('chest_artifact_brush_mountain')));
+      await tester.pumpAndSettle();
+
+      // Tap poetry alignment button
+      expect(find.byKey(const Key('chest_poetry_align_button')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('chest_poetry_align_button')));
+      await tester.pumpAndSettle();
     });
   });
 }

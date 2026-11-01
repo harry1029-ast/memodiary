@@ -333,15 +333,16 @@ class AudioSanctumService extends ChangeNotifier {
     }
   }
 
-  /// Plays a short tactile acoustic chime (cleanly suppressed in headless test runners).
+  /// Plays a short tactile acoustic chime (cleanly suppressed in headless test runners or when volume is muted).
   Future<void> playChime(ScholarTactileChime chime) async {
-    if (_isDisposed || !_enablePlatformAudio) return;
+    if (_isDisposed || !_enablePlatformAudio || _volume <= 0.0) return;
     try {
       final chimePlayer = AudioPlayer();
       final wav = ProceduralAudioSynthesizer.generateChimeBuffer(chime);
-      await chimePlayer.setVolume(0.6);
+      final chimeVolume = (_volume * 0.6).clamp(0.0, 1.0);
+      await chimePlayer.setVolume(chimeVolume);
       await chimePlayer.play(BytesSource(wav));
-      chimePlayer.onPlayerComplete.first.then((_) => chimePlayer.dispose());
+      chimePlayer.onPlayerComplete.first.then((completeEvent) => chimePlayer.dispose());
     } catch (_) {
       // Absorb audio engine missing errors in headless/test environments
     }

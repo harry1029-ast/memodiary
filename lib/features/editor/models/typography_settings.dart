@@ -105,12 +105,14 @@ class TypographySettings {
   final String? fontFamily;
   final double fontSize;
   final double lineSpacing;
+  final Color? textColor;
 
   const TypographySettings({
     this.fontId = 'system',
     this.fontFamily,
     this.fontSize = 16.0,
     this.lineSpacing = 1.5,
+    this.textColor,
   });
 
   /// Derives initial typography settings from a Template model
@@ -128,12 +130,14 @@ class TypographySettings {
     String? fontFamily,
     double? fontSize,
     double? lineSpacing,
+    Color? textColor,
   }) {
     return TypographySettings(
       fontId: fontId ?? this.fontId,
       fontFamily: fontFamily ?? this.fontFamily,
       fontSize: fontSize ?? this.fontSize,
       lineSpacing: lineSpacing ?? this.lineSpacing,
+      textColor: textColor ?? this.textColor,
     );
   }
 
@@ -142,7 +146,7 @@ class TypographySettings {
       fontFamily: fontFamily,
       fontSize: fontSize,
       height: lineSpacing,
-      color: color,
+      color: textColor ?? color,
     );
   }
 }

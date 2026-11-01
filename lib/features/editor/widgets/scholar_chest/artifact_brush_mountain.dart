@@ -256,7 +256,83 @@ class BrushMountainSubPanel extends StatelessWidget {
             onTypographyChanged(typography.copyWith(lineSpacing: double.parse(val.toStringAsFixed(1))));
           },
         ),
+
+        // Ink Tone Selection (#1F1D1A 焦墨, #B83B2E 朱砂, #2F5241 竹青)
+        const SizedBox(height: 6),
+        Text('墨色韵调', style: TextStyle(fontSize: 12, color: tokens.danmo)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            _buildInkToneChip(
+              label: '焦墨',
+              color: const Color(0xFF1F1D1A),
+              keyName: 'chest_ink_tone_jiaomo',
+              isSelected: typography.textColor == const Color(0xFF1F1D1A) || typography.textColor == null,
+              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFF1F1D1A))),
+            ),
+            const SizedBox(width: 8),
+            _buildInkToneChip(
+              label: '朱砂',
+              color: const Color(0xFFB83B2E),
+              keyName: 'chest_ink_tone_cinnabar',
+              isSelected: typography.textColor == const Color(0xFFB83B2E),
+              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFFB83B2E))),
+            ),
+            const SizedBox(width: 8),
+            _buildInkToneChip(
+              label: '竹青',
+              color: const Color(0xFF2F5241),
+              keyName: 'chest_ink_tone_bamboo',
+              isSelected: typography.textColor == const Color(0xFF2F5241),
+              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFF2F5241))),
+            ),
+          ],
+        ),
       ],
+    );
+  }
+
+  Widget _buildInkToneChip({
+    required String label,
+    required Color color,
+    required String keyName,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      key: Key(keyName),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isSelected ? 0.16 : 0.04),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? color : color.withValues(alpha: 0.3),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontKaiti,
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

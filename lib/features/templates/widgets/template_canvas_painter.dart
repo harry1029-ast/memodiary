@@ -1,12 +1,43 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../editor/models/typography_settings.dart';
 import '../../editor/services/baseline_metrics_calculator.dart';
 import '../models/template_style.dart';
 
+/// Cache key for immutable static substrate vector recordings
+class _SubstratePictureCacheKey {
+  final double width;
+  final double height;
+  final PaperSubstrate substrate;
+  final Color backgroundColor;
+
+  const _SubstratePictureCacheKey({
+    required this.width,
+    required this.height,
+    required this.substrate,
+    required this.backgroundColor,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _SubstratePictureCacheKey &&
+          runtimeType == other.runtimeType &&
+          width == other.width &&
+          height == other.height &&
+          substrate == other.substrate &&
+          backgroundColor == other.backgroundColor;
+
+  @override
+  int get hashCode => Object.hash(width, height, substrate, backgroundColor);
+}
+
 /// Procedural CustomPainter rendering diary backgrounds, ruled lines, grids,
 /// margins, and paper textures with baseline-locked typographic alignment.
 class TemplateCanvasPainter extends CustomPainter {
+  static final Map<_SubstratePictureCacheKey, ui.Picture> _substratePictureCache = {};
+
   final TemplateStyle style;
   final TypographySettings? typography;
   final double scrollOffset;
@@ -83,6 +114,31 @@ class TemplateCanvasPainter extends CustomPainter {
   }
 
   void _paintSubstrateTexture(Canvas canvas, Size size) {
+    if (style.tokens.substrate == PaperSubstrate.minimal) return;
+
+    final key = _SubstratePictureCacheKey(
+      width: size.width,
+      height: size.height,
+      substrate: style.tokens.substrate,
+      backgroundColor: style.backgroundColor,
+    );
+
+    var picture = _substratePictureCache[key];
+    if (picture == null) {
+      if (_substratePictureCache.length > 20) {
+        _substratePictureCache.remove(_substratePictureCache.keys.first)?.dispose();
+      }
+      final recorder = ui.PictureRecorder();
+      final recordCanvas = Canvas(recorder, Offset.zero & size);
+      _drawProceduralSubstrate(recordCanvas, size);
+      picture = recorder.endRecording();
+      _substratePictureCache[key] = picture;
+    }
+
+    canvas.drawPicture(picture);
+  }
+
+  void _drawProceduralSubstrate(Canvas canvas, Size size) {
     switch (style.tokens.substrate) {
       case PaperSubstrate.coldGold:
         _paintColdGoldFlecks(canvas, size);
@@ -99,7 +155,6 @@ class TemplateCanvasPainter extends CustomPainter {
         _paintObsidianShade(canvas, size);
         break;
       case PaperSubstrate.minimal:
-        // Clean substrate
         break;
     }
   }

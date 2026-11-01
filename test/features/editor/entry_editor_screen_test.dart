@@ -95,7 +95,7 @@ void main() {
       expect(find.text('已保存'), findsOneWidget);
       expect(find.text('Test Diary Title'), findsOneWidget);
       expect(find.byKey(const Key('editor_seal_done_btn')), findsOneWidget);
-      expect(find.byKey(const Key('editor_more_options_btn')), findsOneWidget);
+      expect(find.byKey(const Key('top_bar_scholar_chest_button')), findsOneWidget);
     });
 
     testWidgets('tapping sparkle button in WritingDock displays thought spark SnackBar and adopts it into editor', (tester) async {
@@ -150,13 +150,11 @@ void main() {
       expect(initialContainer.typography, isNotNull);
       expect(initialContainer.typography!.lineSpacing, 1.5);
 
-      // Switch to Lined Paper via menu
-      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      // Switch to Lined Paper via Scholar's Stationery Chest
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
       await tester.pumpAndSettle();
-      await tester.tap(find.textContaining('更换素笺模板'));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Lined Paper'));
+      await tester.ensureVisible(find.byKey(const Key('chest_template_chip_template_lined_paper')));
+      await tester.tap(find.byKey(const Key('chest_template_chip_template_lined_paper')));
       await tester.pumpAndSettle();
 
       final updatedContainer = tester.widget<TemplateCanvasContainer>(
@@ -182,11 +180,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // Switch to Lined Paper
-      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
       await tester.pumpAndSettle();
-      await tester.tap(find.textContaining('更换素笺模板'));
+      await tester.ensureVisible(find.byKey(const Key('chest_template_chip_template_lined_paper')));
+      await tester.tap(find.byKey(const Key('chest_template_chip_template_lined_paper')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Lined Paper'));
+
+      // Dismiss drawer to inspect padding
+      await tester.tap(find.byKey(const Key('chest_dismiss_handle')));
       await tester.pumpAndSettle();
 
       // Find the Padding widget wrapping QuillEditor
@@ -201,11 +202,14 @@ void main() {
       expect(linedPadding.left, equals(36.0));
 
       // Switch to Grid Paper (named 'Weekly Review' in defaults)
-      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
       await tester.pumpAndSettle();
-      await tester.tap(find.textContaining('更换素笺模板'));
+      await tester.ensureVisible(find.byKey(const Key('chest_template_chip_template_weekly_review')));
+      await tester.tap(find.byKey(const Key('chest_template_chip_template_weekly_review')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Weekly Review'));
+
+      // Dismiss drawer to inspect padding
+      await tester.tap(find.byKey(const Key('chest_dismiss_handle')));
       await tester.pumpAndSettle();
 
       final gridPaddingWidget = tester.widget<Padding>(
@@ -219,7 +223,7 @@ void main() {
       expect(gridPadding.left, equals(16.0));
     });
 
-    testWidgets('opening template switcher and typography sheets from options menu', (tester) async {
+    testWidgets('opening template switcher and typography sheets from scholar chest', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: InkDiaryTheme.light,
@@ -234,36 +238,29 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Open options menu in AppBar
-      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      // Open Scholar's Stationery Chest
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
       await tester.pumpAndSettle();
 
-      // Select Templates
-      expect(find.textContaining('更换素笺模板'), findsOneWidget);
-      await tester.tap(find.textContaining('更换素笺模板'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Switch Template'), findsOneWidget);
       // Select Lined Paper
-      await tester.tap(find.text('Lined Paper'));
+      expect(find.byKey(const Key('chest_template_chip_template_lined_paper')), findsOneWidget);
+      await tester.ensureVisible(find.byKey(const Key('chest_template_chip_template_lined_paper')));
+      await tester.tap(find.byKey(const Key('chest_template_chip_template_lined_paper')));
       await tester.pumpAndSettle();
 
       // Verify template changed in database
       final entry = await db.getEntryById('editor_test_entry');
       expect(entry!.templateId, 'template_lined_paper');
 
-      // Re-open options menu for Typography
-      await tester.tap(find.byKey(const Key('editor_more_options_btn')));
+      // Switch artifact to Brush Mountain for Typography without having to leave the chest
+      await tester.ensureVisible(find.byKey(const Key('chest_artifact_brush_mountain')));
+      await tester.tap(find.byKey(const Key('chest_artifact_brush_mountain')));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('字法排印'), findsOneWidget);
-      await tester.tap(find.textContaining('字法排印'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Typography Settings'), findsOneWidget);
-      expect(find.text('Font Family'), findsOneWidget);
-      expect(find.text('Font Size'), findsOneWidget);
-      expect(find.text('Line Spacing'), findsOneWidget);
+      expect(find.text('字法墨韵 · 笔意规制'), findsOneWidget);
+      expect(find.textContaining('字形大小'), findsOneWidget);
+      expect(find.textContaining('行间高距'), findsOneWidget);
+      expect(find.text('墨色韵调'), findsOneWidget);
     });
 
     testWidgets('renders cleanly in dark mode without canvas collapse', (tester) async {

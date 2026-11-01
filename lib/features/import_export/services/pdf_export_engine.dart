@@ -28,6 +28,7 @@ class PdfExportEngine {
     PdfFontResolver? fontResolver,
     PdfLayoutMode layoutMode = PdfLayoutMode.horizontal,
     String? sealText,
+    SignatureSealService? sealService,
   }) async {
     final resolver = fontResolver ?? PdfFontResolver.cjk();
 
@@ -37,7 +38,8 @@ class PdfExportEngine {
     final style = TemplateStyle.fromTemplate(template);
 
     // 2. Resolve diarist colophon signature seal inscription
-    final effectiveSealText = sealText ?? await SignatureSealService().getSealText();
+    final sealManager = sealService ?? SignatureSealService();
+    final effectiveSealText = sealText ?? await sealManager.getSealText();
 
     final doc = pw.Document();
 
@@ -51,8 +53,8 @@ class PdfExportEngine {
         sealText: effectiveSealText,
         pageFormat: pageFormat,
       );
-      for (final p in pages) {
-        doc.addPage(p);
+      for (final page in pages) {
+        doc.addPage(page);
       }
       return doc.save();
     }
@@ -85,14 +87,10 @@ class PdfExportEngine {
           _buildEntryHeader(entry, resolver),
           pw.SizedBox(height: 10),
           ...contentWidgets,
-          pw.SizedBox(height: 16),
-          pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: PdfTemplateRenderer.buildSignatureSeal(
-              style: style,
-              fontResolver: resolver,
-              sealText: effectiveSealText,
-            ),
+          _buildSealColophon(
+            style: style,
+            resolver: resolver,
+            sealText: effectiveSealText,
           ),
         ],
       ),
@@ -111,9 +109,11 @@ class PdfExportEngine {
     String? bookTitle,
     PdfFontResolver? fontResolver,
     String? sealText,
+    SignatureSealService? sealService,
   }) async {
     final resolver = fontResolver ?? PdfFontResolver.cjk();
-    final effectiveSealText = sealText ?? await SignatureSealService().getSealText();
+    final sealManager = sealService ?? SignatureSealService();
+    final effectiveSealText = sealText ?? await sealManager.getSealText();
     final doc = pw.Document();
 
     if (entries.isEmpty) {
@@ -242,14 +242,10 @@ class PdfExportEngine {
             _buildEntryHeader(entry, resolver),
             pw.SizedBox(height: 10),
             ...contentWidgets,
-            pw.SizedBox(height: 16),
-            pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: PdfTemplateRenderer.buildSignatureSeal(
-                style: style,
-                fontResolver: resolver,
-                sealText: effectiveSealText,
-              ),
+            _buildSealColophon(
+              style: style,
+              resolver: resolver,
+              sealText: effectiveSealText,
             ),
           ],
         ),
@@ -257,6 +253,22 @@ class PdfExportEngine {
     }
 
     return doc.save();
+  }
+
+  static pw.Widget _buildSealColophon({
+    required TemplateStyle style,
+    required PdfFontResolver resolver,
+    required String sealText,
+  }) {
+    return pw.Container(
+      margin: const pw.EdgeInsets.only(top: 16),
+      alignment: pw.Alignment.centerRight,
+      child: PdfTemplateRenderer.buildSignatureSeal(
+        style: style,
+        fontResolver: resolver,
+        sealText: sealText,
+      ),
+    );
   }
 
   /// Builds the top metadata banner for an entry (date, mood, weather, title, divider).

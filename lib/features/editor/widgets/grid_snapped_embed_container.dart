@@ -146,75 +146,80 @@ class _GridSnappedEmbedContainerState extends State<GridSnappedEmbedContainer> {
         return Semantics(
           container: true,
           label: '贴片拓影: ${hasCaption ? widget.caption : "无题跋"}',
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Contextual floating action bar directly above card
-              if (!widget.readOnly && _isActionActive)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6.0),
-                  child: _buildActionBar(tokens),
-                ),
-
-              // Integer-snapped outer container
-              GestureDetector(
-                key: const Key('grid_snapped_media_card'),
-                onTap: widget.readOnly
-                    ? null
-                    : () {
-                        setState(() {
-                          _isActionActive = !_isActionActive;
-                        });
-                      },
-                child: Container(
-                  height: totalHeight,
-                  width: contentWidth,
-                  padding: EdgeInsets.symmetric(vertical: padVertical, horizontal: 12.0),
-                  decoration: BoxDecoration(
-                    color: tokens.ricePaper,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _isActionActive ? tokens.cinnabar : tokens.agedFiber,
-                      width: _isActionActive ? 1.5 : 1.0,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: tokens.jiaomo.withValues(alpha: 0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+          child: SizedBox(
+            height: totalHeight,
+            width: contentWidth,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                // Integer-snapped outer container
+                GestureDetector(
+                  key: const Key('grid_snapped_media_card'),
+                  onTap: widget.readOnly
+                      ? null
+                      : () {
+                          setState(() {
+                            _isActionActive = !_isActionActive;
+                          });
+                        },
+                  child: Container(
+                    height: totalHeight,
+                    width: contentWidth,
+                    padding: EdgeInsets.symmetric(vertical: padVertical, horizontal: 12.0),
+                    decoration: BoxDecoration(
+                      color: tokens.ricePaper,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _isActionActive ? tokens.cinnabar : tokens.agedFiber,
+                        width: _isActionActive ? 1.5 : 1.0,
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // Media child inside rounded print border
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: widget.child,
-                        ),
-                      ),
-
-                      // Optional caption text
-                      if (hasCaption) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          widget.caption,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontKaiti,
-                            fontSize: 12,
-                            color: tokens.danmo,
-                            letterSpacing: 0.5,
-                          ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: tokens.jiaomo.withValues(alpha: 0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
-                    ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Media child inside rounded print border
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: widget.child,
+                          ),
+                        ),
+
+                        // Optional caption text
+                        if (hasCaption) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            widget.caption,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontKaiti,
+                              fontSize: 12,
+                              color: tokens.danmo,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+
+                // Contextual floating action bar overlaid cleanly without shifting text baselines
+                if (!widget.readOnly && _isActionActive)
+                  Positioned(
+                    top: math.max(6.0, padVertical * 0.3),
+                    child: _buildActionBar(tokens),
+                  ),
+              ],
+            ),
           ),
         );
       },
@@ -300,3 +305,4 @@ class _GridSnappedEmbedContainerState extends State<GridSnappedEmbedContainer> {
     );
   }
 }
+
