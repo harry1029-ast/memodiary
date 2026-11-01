@@ -16,6 +16,10 @@ _Avoid_: Prompt banner, inspiration card
 The full-screen interactive modal displaying the complete 3:2 living Shanshui painting with touch ripples, calligraphy colophon, and atmospheric controls.
 _Avoid_: Fullscreen canvas, scenery dialog, zoom view
 
+**Scenery Realm**:
+The spatial setting dimension (`ShanshuiRealm`) rendered inside the Shanshui Scenery Card and Contemplation View across three classical domains: **Nature** (`nature` · 林泉 wilderness), **Indoor** (`indoor` · 雅室 scholar tea hall), and **Outdoor** (`outdoor` · 市井 ancient market street), either inferred automatically from recent accessible entries (`随文入境`) or pinned manually by the diarist.
+_Avoid_: Scene mode, location theme, indoor/outdoor toggle
+
 **Photobook Document**:
 The canonical document model (`AlbumStudioDocument`) representing an editable travel photobook, containing ordered studio pages, layout slot assignments, background styling, and unplaced photo tray references.
 _Avoid_: Album spread list, photobook layout JSON, scrapbook model

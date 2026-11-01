@@ -24,3 +24,4 @@ class RecordingCanvas implements Canvas {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
+
