@@ -37,6 +37,14 @@ enum SoundscapePreset {
   });
 }
 
+/// Tactile micro-chimes triggered when interacting with the Scholar's Stationery Chest.
+enum ScholarTactileChime {
+  paperRustle,
+  ceramicBrushTap,
+  guqinPluck,
+  brassLockClick,
+}
+
 /// Synthesizes 16-bit mono PCM WAV audio buffers in memory with zero external
 /// asset bloat and a 50ms linear seam crossfade for click-free gapless looping.
 class ProceduralAudioSynthesizer {
@@ -47,6 +55,78 @@ class ProceduralAudioSynthesizer {
   static const int fadeDurationMs = 50; // 50ms linear fade-in/out per safeguard
 
   static final Map<SoundscapePreset, Uint8List> _cache = {};
+  static final Map<ScholarTactileChime, Uint8List> _chimeCache = {};
+
+  /// Generates or retrieves a cached tactile micro-chime WAV byte buffer.
+  static Uint8List generateChimeBuffer(ScholarTactileChime chime) {
+    if (_chimeCache.containsKey(chime)) {
+      return _chimeCache[chime]!;
+    }
+
+    final int durationMs;
+    switch (chime) {
+      case ScholarTactileChime.paperRustle:
+        durationMs = 140;
+        break;
+      case ScholarTactileChime.ceramicBrushTap:
+        durationMs = 90;
+        break;
+      case ScholarTactileChime.guqinPluck:
+        durationMs = 280;
+        break;
+      case ScholarTactileChime.brassLockClick:
+        durationMs = 120;
+        break;
+    }
+
+    final totalSamples = (sampleRate * durationMs) ~/ 1000;
+    final pcmSamples = Int16List(totalSamples);
+    final rng = Random(chime.index + 42);
+
+    for (int i = 0; i < totalSamples; i++) {
+      final t = i / sampleRate;
+      double sample = 0.0;
+
+      switch (chime) {
+        case ScholarTactileChime.paperRustle:
+          final white = rng.nextDouble() * 2.0 - 1.0;
+          final decay = exp(-t * 22.0);
+          sample = white * decay * 0.35;
+          break;
+
+        case ScholarTactileChime.ceramicBrushTap:
+          const pingFreq = 1860.0;
+          final decay = exp(-t * 40.0);
+          sample = sin(2 * pi * pingFreq * t) * decay * 0.45;
+          break;
+
+        case ScholarTactileChime.guqinPluck:
+          const fundamental = 293.66; // D4
+          final decay = exp(-t * 12.0);
+          sample = (sin(2 * pi * fundamental * t) * 0.6 +
+                  sin(2 * pi * fundamental * 2 * t) * 0.25 +
+                  sin(2 * pi * fundamental * 3 * t) * 0.15) *
+              decay *
+              0.5;
+          break;
+
+        case ScholarTactileChime.brassLockClick:
+          final click1 = (t < 0.03) ? (rng.nextDouble() * 2 - 1) * exp(-t * 80.0) : 0.0;
+          final click2 = (t > 0.045 && t < 0.075)
+              ? (rng.nextDouble() * 2 - 1) * exp(-(t - 0.045) * 80.0)
+              : 0.0;
+          sample = (click1 + click2) * 0.55;
+          break;
+      }
+
+      final scaled = (sample * 32767.0).round().clamp(-32768, 32767);
+      pcmSamples[i] = scaled;
+    }
+
+    final bytes = _encodeWavHeaderAndPcm(pcmSamples, sampleRate);
+    _chimeCache[chime] = bytes;
+    return bytes;
+  }
 
   /// Returns a cached or freshly synthesized WAV byte buffer for [preset].
   static Uint8List generateWavBuffer(
@@ -253,8 +333,23 @@ class AudioSanctumService extends ChangeNotifier {
     }
   }
 
+  /// Plays a short tactile acoustic chime (cleanly suppressed in headless test runners).
+  Future<void> playChime(ScholarTactileChime chime) async {
+    if (_isDisposed || !_enablePlatformAudio) return;
+    try {
+      final chimePlayer = AudioPlayer();
+      final wav = ProceduralAudioSynthesizer.generateChimeBuffer(chime);
+      await chimePlayer.setVolume(0.6);
+      await chimePlayer.play(BytesSource(wav));
+      chimePlayer.onPlayerComplete.first.then((_) => chimePlayer.dispose());
+    } catch (_) {
+      // Absorb audio engine missing errors in headless/test environments
+    }
+  }
+
   @override
   void dispose() {
+    if (_isDisposed) return;
     _isDisposed = true;
     final player = _lazyPlayer ?? _audioPlayer;
     if (player != null) {

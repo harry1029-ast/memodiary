@@ -386,6 +386,16 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Updates or clears the entry's Time Capsule unlockAt timestamp
+  Future<int> updateEntryUnlockAt(String entryId, DateTime? unlockAt) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        unlockAt: Value(unlockAt),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
   /// Records a media attachment linked to an entry with strictly relative path
   Future<int> attachMediaToEntry({
     required String id,

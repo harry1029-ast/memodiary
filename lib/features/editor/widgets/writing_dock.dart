@@ -13,6 +13,7 @@ class WritingDock extends StatefulWidget {
   final VoidCallback? onPickVideo;
   final VoidCallback onToggleDictation;
   final VoidCallback? onShuffleSpark;
+  final VoidCallback? onOpenChest;
   final bool isDictating;
   final Color? backgroundColor;
 
@@ -23,6 +24,7 @@ class WritingDock extends StatefulWidget {
     this.onPickVideo,
     required this.onToggleDictation,
     this.onShuffleSpark,
+    this.onOpenChest,
     this.isDictating = false,
     this.backgroundColor,
   });
@@ -73,6 +75,27 @@ class _WritingDockState extends State<WritingDock> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Thumb-reachable pull handle for Scholar's Stationery Chest
+              if (widget.onOpenChest != null)
+                GestureDetector(
+                  key: const Key('dock_scholar_chest_button'),
+                  onTap: widget.onOpenChest,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    height: 14,
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 36,
+                      height: 3.5,
+                      decoration: BoxDecoration(
+                        color: tokens.agedFiber,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+
               // Tier 2: Smoothly animated inline formatting ribbon
               AnimatedSize(
                 duration: const Duration(milliseconds: 240),

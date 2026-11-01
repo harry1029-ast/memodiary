@@ -22,6 +22,7 @@ import '../services/baseline_metrics_calculator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/cinnabar_signature_seal.dart';
+import '../widgets/scholar_chest/scholar_chest_drawer.dart';
 import '../widgets/journal_letterhead.dart';
 import '../widgets/sandboxed_image_embed_builder.dart';
 import '../widgets/sandboxed_video_embed_builder.dart';
@@ -101,8 +102,12 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _titleController.dispose();
     _editorFocusNode.dispose();
     _editorScrollController.dispose();
-    _dictationService.dispose();
-    _audioSanctumService.dispose();
+    if (widget.dictationService == null) {
+      _dictationService.dispose();
+    }
+    if (widget.audioSanctumService == null) {
+      _audioSanctumService.dispose();
+    }
     super.dispose();
   }
 
@@ -174,6 +179,40 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         Navigator.pop(context);
       }
     }
+  }
+
+  Future<void> _openScholarChest([ScholarArtifactType initialArtifact = ScholarArtifactType.stationeryFan]) async {
+    if (_currentTemplate == null) return;
+    await ScholarChestDrawer.show(
+      context: context,
+      database: widget.database,
+      activeTemplateId: _currentTemplate!.id,
+      typography: _typography,
+      audioSanctumService: _audioSanctumService,
+      unlockAt: _unlockAt,
+      isCenterAligned: false,
+      initialArtifact: initialArtifact,
+      onSelectTemplate: (newTemplate) async {
+        setState(() {
+          _currentTemplate = newTemplate;
+          _typography = TypographySettings.fromTemplate(newTemplate);
+        });
+        await widget.database.updateEntryTemplate(widget.entryId, newTemplate.id);
+      },
+      onTypographyChanged: (newTypography) {
+        setState(() {
+          _typography = newTypography;
+        });
+      },
+      onLockChanged: (newUnlockAt) async {
+        await widget.database.updateEntryUnlockAt(widget.entryId, newUnlockAt);
+        if (mounted) {
+          setState(() {
+            _unlockAt = newUnlockAt;
+          });
+        }
+      },
+    );
   }
 
   Future<void> _handleTemplateSwitch() async {
@@ -499,6 +538,83 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             },
           ),
           actions: [
+            // Ambient soundscape pill indicator (when playing)
+            ListenableBuilder(
+              listenable: _audioSanctumService,
+              builder: (context, _) {
+                if (!_audioSanctumService.isPlaying) return const SizedBox.shrink();
+                return GestureDetector(
+                  key: const Key('top_bar_soundscape_pill'),
+                  onTap: () => _openScholarChest(ScholarArtifactType.guqinZither),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 14, horizontal: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: tokens.cinnabar.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: tokens.cinnabar.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.music_note, size: 12, color: tokens.cinnabar),
+                        const SizedBox(width: 3),
+                        Text(
+                          '清音',
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontKaiti,
+                            fontSize: 10,
+                            color: tokens.cinnabar,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            // Time Capsule lock pill indicator (when locked in the future)
+            if (_unlockAt != null && _unlockAt!.isAfter(DateTime.now()))
+              GestureDetector(
+                key: const Key('top_bar_lock_pill'),
+                onTap: () => _openScholarChest(ScholarArtifactType.fishLock),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 14, horizontal: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD4AF37).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFD4AF37)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.lock, size: 11, color: Color(0xFF8A5A2B)),
+                      const SizedBox(width: 3),
+                      Text(
+                        '封缄',
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontKaiti,
+                          fontSize: 10,
+                          color: const Color(0xFF8A5A2B),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Scholar's Stationery Chest Emblem Button
+            IconButton(
+              key: const Key('top_bar_scholar_chest_button'),
+              icon: Icon(Icons.all_inbox_outlined, color: iconColor, size: 22),
+              tooltip: '文房百宝匣 · 锦盒书案',
+              onPressed: () => _openScholarChest(),
+            ),
+
             // Cinnabar Seal & Complete Save
             IconButton(
               key: const Key('editor_seal_done_btn'),
@@ -719,6 +835,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               onPickVideo: _handleVideoPick,
               onToggleDictation: () => setState(() => _isDictating = !_isDictating),
               onShuffleSpark: _handleShuffleSpark,
+              onOpenChest: () => _openScholarChest(),
               isDictating: _isDictating,
               backgroundColor: paperColor.withValues(alpha: 0.95),
             ),
