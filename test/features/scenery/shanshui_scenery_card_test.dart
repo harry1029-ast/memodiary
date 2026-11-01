@@ -18,6 +18,7 @@ void main() {
 
     Widget buildTestHarness({
       required ShanshuiAtmosphereState atmosphere,
+      ShanshuiAtmosphereState? realTimeAtmosphere,
       VoidCallback? onOpenContemplation,
       ValueChanged<SceneryRealmPreference>? onRealmPreferenceChanged,
       double width = 400,
@@ -30,6 +31,7 @@ void main() {
               width: width,
               child: ShanshuiSceneryCard(
                 atmosphere: atmosphere,
+                realTimeAtmosphere: realTimeAtmosphere,
                 activePrompt: '瓦檐下一滴落雨的声响。',
                 onRefreshPrompt: () {},
                 onWritePrompt: (_) {},
@@ -143,20 +145,20 @@ void main() {
         await tester.pumpAndSettle();
 
         // Verify bottom sheet options
-        expect(find.byKey(const Key('realm_option_auto')), findsOneWidget);
-        expect(find.byKey(const Key('realm_option_nature')), findsOneWidget);
-        expect(find.byKey(const Key('realm_option_indoor')), findsOneWidget);
-        expect(find.byKey(const Key('realm_option_outdoor')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_realm_option_auto')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_realm_option_nature')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_realm_option_indoor')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_realm_option_outdoor')), findsOneWidget);
 
         expect(find.textContaining('Auto (随文入境)'), findsOneWidget);
         expect(find.textContaining('Indoor (雅室)'), findsOneWidget);
 
         // Tap Indoor option
-        await tester.tap(find.byKey(const Key('realm_option_indoor')));
+        await tester.tap(find.byKey(const Key('scenery_realm_option_indoor')));
         await tester.pumpAndSettle();
 
         // Sheet closed
-        expect(find.byKey(const Key('realm_option_indoor')), findsNothing);
+        expect(find.byKey(const Key('scenery_realm_option_indoor')), findsNothing);
 
         // Callback invoked & persisted
         expect(changedPref, equals(SceneryRealmPreference.indoor));
@@ -165,6 +167,61 @@ void main() {
         // Card immediately updated
         expect(find.text('春 · 桃夭茶寮'), findsOneWidget);
         expect(find.text('雅室'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'reverting to Auto immediately restores inferred realm from realTimeAtmosphere without stale manual realm',
+      (tester) async {
+        SceneryRealmPreference? changedPref;
+        const initialAtmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.outdoor,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+          isJournalInferred: true,
+        );
+        const realTimeAtmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.outdoor,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+          isJournalInferred: true,
+        );
+
+        await tester.pumpWidget(
+          buildTestHarness(
+            atmosphere: initialAtmosphere,
+            realTimeAtmosphere: realTimeAtmosphere,
+            onRealmPreferenceChanged: (pref) => changedPref = pref,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('随文入境 · 市井'), findsOneWidget);
+
+        // 1. Manually select Indoor
+        await tester.tap(find.byKey(const Key('scenery_realm_badge')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('scenery_realm_option_indoor')));
+        await tester.pumpAndSettle();
+
+        expect(changedPref, equals(SceneryRealmPreference.indoor));
+        expect(find.text('雅室'), findsOneWidget);
+        expect(find.text('随文入境 · 市井'), findsNothing);
+
+        // 2. Select Auto again
+        await tester.tap(find.byKey(const Key('scenery_realm_badge')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('scenery_realm_option_auto')));
+        await tester.pumpAndSettle();
+
+        expect(changedPref, equals(SceneryRealmPreference.auto));
+        expect(mockStorage.data['memodiary_scenery_realm_preference'], equals('auto'));
+
+        // Card immediately resets back to real-time inferred realm
+        expect(find.text('随文入境 · 市井'), findsOneWidget);
+        expect(find.text('雅室'), findsNothing);
       },
     );
 

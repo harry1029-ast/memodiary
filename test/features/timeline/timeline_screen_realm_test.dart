@@ -203,7 +203,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Tap Outdoor (市井)
-        await tester.tap(find.byKey(const Key('realm_option_outdoor')));
+        await tester.tap(find.byKey(const Key('scenery_realm_option_outdoor')));
         await tester.pumpAndSettle();
 
         // Card should now display Outdoor (市井) as manually selected

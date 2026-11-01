@@ -10,6 +10,7 @@ import 'thought_spark_dock.dart';
 /// collapsible into a slender ~42px Xuan status strip for minimalists.
 class ShanshuiSceneryCard extends StatefulWidget {
   final ShanshuiAtmosphereState atmosphere;
+  final ShanshuiAtmosphereState? realTimeAtmosphere;
   final String activePrompt;
   final VoidCallback onRefreshPrompt;
   final ValueChanged<String> onWritePrompt;
@@ -22,6 +23,7 @@ class ShanshuiSceneryCard extends StatefulWidget {
   const ShanshuiSceneryCard({
     super.key,
     required this.atmosphere,
+    this.realTimeAtmosphere,
     required this.activePrompt,
     required this.onRefreshPrompt,
     required this.onWritePrompt,
@@ -56,7 +58,8 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
   @override
   void didUpdateWidget(ShanshuiSceneryCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.atmosphere != oldWidget.atmosphere) {
+    if (widget.atmosphere != oldWidget.atmosphere ||
+        widget.realTimeAtmosphere != oldWidget.realTimeAtmosphere) {
       _localAtmosphere = null;
     }
   }
@@ -98,78 +101,81 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
       ),
       builder: (sheetContext) {
         return SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.3,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      '画卷境域',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: tokens.jiaomo,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '画卷境域',
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontNotoSerif,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: tokens.jiaomo,
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close_rounded, size: 20, color: tokens.danmo),
+                          onPressed: () => Navigator.pop(sheetContext),
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      icon: Icon(Icons.close_rounded, size: 20, color: tokens.danmo),
-                      onPressed: () => Navigator.pop(sheetContext),
+                    Text(
+                      '随文入境根据近作自动切换，亦可手动锁定画卷境域',
+                      style: TextStyle(fontSize: 11, color: tokens.danmo),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildRealmOptionTile(
+                      sheetContext: sheetContext,
+                      tokens: tokens,
+                      key: const Key('scenery_realm_option_auto'),
+                      preference: SceneryRealmPreference.auto,
+                      title: 'Auto (随文入境)',
+                      subtitle: '根据近24小时日记内容自适应意境',
+                      isSelected: currentPref == SceneryRealmPreference.auto,
+                    ),
+                    _buildRealmOptionTile(
+                      sheetContext: sheetContext,
+                      tokens: tokens,
+                      key: const Key('scenery_realm_option_nature'),
+                      preference: SceneryRealmPreference.nature,
+                      title: 'Nature (林泉)',
+                      subtitle: '水墨山水 · 烟波浩渺',
+                      isSelected: currentPref == SceneryRealmPreference.nature,
+                    ),
+                    _buildRealmOptionTile(
+                      sheetContext: sheetContext,
+                      tokens: tokens,
+                      key: const Key('scenery_realm_option_indoor'),
+                      preference: SceneryRealmPreference.indoor,
+                      title: 'Indoor (雅室)',
+                      subtitle: '书房茶室 · 烹茶伴读',
+                      isSelected: currentPref == SceneryRealmPreference.indoor,
+                    ),
+                    _buildRealmOptionTile(
+                      sheetContext: sheetContext,
+                      tokens: tokens,
+                      key: const Key('scenery_realm_option_outdoor'),
+                      preference: SceneryRealmPreference.outdoor,
+                      title: 'Outdoor (市井)',
+                      subtitle: '古镇街市 · 烟火人间',
+                      isSelected: currentPref == SceneryRealmPreference.outdoor,
                     ),
                   ],
                 ),
-                Text(
-                  '随文入境根据近作自动切换，亦可手动锁定画卷境域',
-                  style: TextStyle(fontSize: 11, color: tokens.danmo),
-                ),
-                const SizedBox(height: 12),
-                _buildRealmOptionTile(
-                  sheetContext: sheetContext,
-                  tokens: tokens,
-                  key: const Key('realm_option_auto'),
-                  preference: SceneryRealmPreference.auto,
-                  title: 'Auto (随文入境)',
-                  subtitle: '根据近24小时日记内容自适应意境',
-                  isSelected: currentPref == SceneryRealmPreference.auto,
-                ),
-                _buildRealmOptionTile(
-                  sheetContext: sheetContext,
-                  tokens: tokens,
-                  key: const Key('realm_option_nature'),
-                  preference: SceneryRealmPreference.nature,
-                  title: 'Nature (林泉)',
-                  subtitle: '水墨山水 · 烟波浩渺',
-                  isSelected: currentPref == SceneryRealmPreference.nature,
-                ),
-                _buildRealmOptionTile(
-                  sheetContext: sheetContext,
-                  tokens: tokens,
-                  key: const Key('realm_option_indoor'),
-                  preference: SceneryRealmPreference.indoor,
-                  title: 'Indoor (雅室)',
-                  subtitle: '书房茶室 · 烹茶伴读',
-                  isSelected: currentPref == SceneryRealmPreference.indoor,
-                ),
-                _buildRealmOptionTile(
-                  sheetContext: sheetContext,
-                  tokens: tokens,
-                  key: const Key('realm_option_outdoor'),
-                  preference: SceneryRealmPreference.outdoor,
-                  title: 'Outdoor (市井)',
-                  subtitle: '古镇街市 · 烟火人间',
-                  isSelected: currentPref == SceneryRealmPreference.outdoor,
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      );
-    },
+        );
+      },
     );
   }
 
@@ -195,13 +201,7 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
-            preference == SceneryRealmPreference.auto
-                ? Icons.auto_awesome_outlined
-                : preference == SceneryRealmPreference.nature
-                    ? Icons.landscape_outlined
-                    : preference == SceneryRealmPreference.indoor
-                        ? Icons.meeting_room_outlined
-                        : Icons.storefront_outlined,
+            preference.icon,
             color: isSelected ? tokens.cinnabar : tokens.danmo,
             size: 20,
           ),
@@ -227,8 +227,10 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
           if (mounted) {
             setState(() {
               if (preference == SceneryRealmPreference.auto) {
+                final target = widget.realTimeAtmosphere ?? widget.atmosphere;
                 _localAtmosphere = widget.atmosphere.copyWith(
-                  isJournalInferred: widget.atmosphere.isJournalInferred,
+                  realm: target.realm,
+                  isJournalInferred: target.isJournalInferred,
                 );
               } else {
                 final realm = switch (preference) {
@@ -313,11 +315,14 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard> {
   Widget build(BuildContext context) {
     final tokens = Theme.of(context).extension<InkDiaryTokens>() ?? InkDiaryTokens.light;
 
-    if (_isCollapsed) {
-      return _buildCollapsedStrip(tokens);
-    }
+    final child = _isCollapsed
+        ? _buildCollapsedStrip(tokens)
+        : _buildExpandedCard(tokens);
 
-    return _buildExpandedCard(tokens);
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.3,
+      child: child,
+    );
   }
 
   Widget _buildCollapsedStrip(InkDiaryTokens tokens) {

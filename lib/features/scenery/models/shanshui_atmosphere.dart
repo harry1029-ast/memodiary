@@ -71,6 +71,20 @@ enum SceneryRealmPreference {
     required this.nameEn,
   });
 
+  /// Canonical icon representing this realm preference in switcher sheets and settings.
+  IconData get icon {
+    switch (this) {
+      case SceneryRealmPreference.auto:
+        return Icons.auto_awesome_outlined;
+      case SceneryRealmPreference.nature:
+        return Icons.landscape_outlined;
+      case SceneryRealmPreference.indoor:
+        return Icons.meeting_room_outlined;
+      case SceneryRealmPreference.outdoor:
+        return Icons.storefront_outlined;
+    }
+  }
+
   static SceneryRealmPreference? fromId(String? rawId) {
     if (rawId == null) return null;
     for (final candidate in SceneryRealmPreference.values) {

@@ -81,7 +81,7 @@ class OutdoorStreetPainter extends CustomPainter {
     } else {
       OutdoorStreetStaticArchitecture.paintStaticArchitecture(
         canvas,
-        size,
+        const Size(1500, 1000),
         atmosphere: atmosphere,
         streetPalette: streetPalette,
       );

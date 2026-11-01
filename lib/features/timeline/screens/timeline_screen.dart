@@ -633,6 +633,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
               return ShanshuiSceneryCard(
                 atmosphere: activeAtmosphere,
+                realTimeAtmosphere: realTimeAtmosphere,
                 activePrompt: _thoughtSparks[_sparkIndex],
                 onRefreshPrompt: () {
                   setState(() {

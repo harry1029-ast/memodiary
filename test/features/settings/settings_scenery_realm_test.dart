@@ -120,7 +120,6 @@ void main() {
         mockStorage.data['memodiary_scenery_pinned_season'] = 'winter';
         mockStorage.data['memodiary_scenery_pinned_time'] = 'night';
         mockStorage.data['memodiary_scenery_pinned_weather'] = 'snowy';
-        mockStorage.data['memodiary_scenery_pinned_realm'] = 'indoor';
         mockStorage.data['memodiary_scenery_realm_preference'] = 'indoor';
 
         await pumpSettings(tester);
@@ -139,7 +138,6 @@ void main() {
 
         // Storage cleared
         expect(mockStorage.data['memodiary_scenery_realm_preference'], isNull);
-        expect(mockStorage.data['memodiary_scenery_pinned_realm'], isNull);
 
         // Subtitle restored to Auto · 随文入境
         expect(find.textContaining('Auto · 随文入境'), findsOneWidget);

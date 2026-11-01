@@ -19,8 +19,6 @@ class AncientRoomPainter extends CustomPainter {
   final double animationTime;
   final List<ShanshuiParticle> particles;
   final List<ShanshuiWeatherDrop> weatherDrops;
-  final List<dynamic>? cranes;
-  final List<dynamic>? ripples;
   final bool showCalligraphy;
   final bool fullPoem;
   final double lightningAlpha;
@@ -32,8 +30,6 @@ class AncientRoomPainter extends CustomPainter {
     required this.animationTime,
     required this.particles,
     required this.weatherDrops,
-    this.cranes,
-    this.ripples,
     this.showCalligraphy = false,
     this.fullPoem = false,
     this.lightningAlpha = 0.0,
@@ -69,7 +65,7 @@ class AncientRoomPainter extends CustomPainter {
     } else {
       AncientRoomStaticArchitecture.paintStaticArchitecture(
         canvas,
-        size,
+        const Size(1500, 1000),
         atmosphere: atmosphere,
         roomPalette: roomPalette,
       );

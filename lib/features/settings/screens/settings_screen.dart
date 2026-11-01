@@ -804,13 +804,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
-            preference == SceneryRealmPreference.auto
-                ? Icons.auto_awesome_outlined
-                : preference == SceneryRealmPreference.nature
-                    ? Icons.landscape_outlined
-                    : preference == SceneryRealmPreference.indoor
-                        ? Icons.meeting_room_outlined
-                        : Icons.storefront_outlined,
+            preference.icon,
             color: isSelected ? tokens.cinnabar : tokens.danmo,
             size: 20,
           ),

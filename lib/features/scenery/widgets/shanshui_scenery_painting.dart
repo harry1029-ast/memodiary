@@ -372,8 +372,6 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
           animationTime: _elapsedSeconds,
           particles: _particles,
           weatherDrops: _weatherDrops,
-          cranes: _cranes,
-          ripples: _ripples,
           showCalligraphy: widget.showCalligraphy,
           fullPoem: widget.fullPoem,
           lightningAlpha: _lightningAlpha,
