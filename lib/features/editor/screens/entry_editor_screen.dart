@@ -21,6 +21,7 @@ import '../services/audio_sanctum_service.dart';
 import '../services/baseline_metrics_calculator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
+import '../widgets/cinnabar_signature_seal.dart';
 import '../widgets/journal_letterhead.dart';
 import '../widgets/sandboxed_image_embed_builder.dart';
 import '../widgets/sandboxed_video_embed_builder.dart';
@@ -674,33 +675,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                     ),
                   ),
 
-                  // Traditional watermark seal at lower right corner
+                  // Live Cinnabar Signature Seal at colophon
                   Positioned(
                     bottom: 24,
                     right: 20,
                     child: IgnorePointer(
                       child: Opacity(
-                        opacity: 0.16,
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: tokens.cinnabar, width: 1.6),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '澄心\n寄墨',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: InkDiaryTheme.fontNotoSerif,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: tokens.cinnabar,
-                                height: 1.15,
-                              ),
-                            ),
-                          ),
+                        opacity: 0.38,
+                        child: CinnabarSignatureSeal(
+                          sealStyle: templateStyle.tokens.sealStyle,
                         ),
                       ),
                     ),

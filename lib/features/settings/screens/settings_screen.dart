@@ -26,6 +26,8 @@ import '../../intro/screens/book_intro_screen.dart';
 import '../../intro/services/book_intro_settings_service.dart';
 import '../../scenery/models/shanshui_atmosphere.dart';
 import '../../scenery/services/scenery_settings_service.dart';
+import '../../editor/widgets/cinnabar_signature_seal.dart';
+import '../services/signature_seal_service.dart';
 
 /// Settings, Permissions Status, Storage Optimizer, and Offline Privacy screen
 /// elevated into classical Ink & Paper literati aesthetic.
@@ -40,6 +42,7 @@ class SettingsScreen extends StatefulWidget {
   final ThemeSettingsService? themeSettings;
   final ScenerySettingsService? scenerySettingsService;
   final OcrQueueManager? ocrQueueManager;
+  final SignatureSealService? signatureSealService;
 
   const SettingsScreen({
     super.key,
@@ -53,6 +56,7 @@ class SettingsScreen extends StatefulWidget {
     this.themeSettings,
     this.scenerySettingsService,
     this.ocrQueueManager,
+    this.signatureSealService,
   });
 
   static Future<Map<String, PermissionStatus>> defaultPermissionChecker() async {
@@ -105,6 +109,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   SceneryRealmPreference _realmPreference = SceneryRealmPreference.auto;
 
   late final ThemeSettingsService _themeSettings;
+  late final SignatureSealService _signatureSealService;
+  String _signatureSealText = SignatureSealService.defaultSealText;
   int _unindexedPhotoCount = 0;
 
   @override
@@ -112,9 +118,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _scenerySettings = widget.scenerySettingsService ?? ScenerySettingsService();
     _themeSettings = widget.themeSettings ?? ThemeSettingsService.instance;
+    _signatureSealService = widget.signatureSealService ?? SignatureSealService();
     _loadScenerySettings();
     _loadBookIntroPreference();
     _loadOcrStatus();
+    _loadSignatureSealText();
     if (widget.initialStats != null) {
       _stats = widget.initialStats;
       _isLoadingStats = false;
@@ -122,6 +130,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _loadLastBackupTimestamp();
     } else {
       _loadAll();
+    }
+  }
+
+  Future<void> _loadSignatureSealText() async {
+    final text = await _signatureSealService.getSealText();
+    if (mounted) {
+      setState(() => _signatureSealText = text);
     }
   }
 
@@ -427,6 +442,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // 0.5. Appearance & Theme Section
           _buildSectionHeader('墨韵气象 · 外观模式', 'Appearance & Theme', tokens),
           _buildAppearanceCard(tokens),
+          const SizedBox(height: 20),
+
+          // 0.6. Signature Seal Section
+          _buildSectionHeader('落款朱砂印 · 印式名讳', 'Signature Seal', tokens),
+          _buildSignatureSealCard(tokens),
           const SizedBox(height: 20),
 
           // 1. Storage & Optimizer Section
@@ -1106,6 +1126,170 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSignatureSealCard(InkDiaryTokens tokens) {
+    return XuanPaperCard(
+      key: const Key('settings_signature_seal_card'),
+      margin: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: tokens.agedFiber,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.draw_outlined,
+              color: tokens.cinnabar,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '落款朱砂印名讳',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: tokens.jiaomo,
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '卷末压角印刻印文：$_signatureSealText',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: tokens.danmo,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          CinnabarSignatureSeal(
+            overrideText: _signatureSealText,
+            size: 36,
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            key: const Key('settings_edit_signature_seal_button'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: tokens.cinnabar,
+              side: BorderSide(color: tokens.cinnabar.withValues(alpha: 0.5)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            ),
+            onPressed: () => _showSignatureSealDialog(tokens),
+            child: const Text('更易印文'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSignatureSealDialog(InkDiaryTokens tokens) async {
+    final controller = TextEditingController(text: _signatureSealText);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final currentText = controller.text.trim();
+            final isValid = currentText.length >= 2 && currentText.length <= 4;
+
+            return AlertDialog(
+              backgroundColor: tokens.ricePaper,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: tokens.agedFiber),
+              ),
+              title: Text(
+                '更易落款印文 · 2至4字',
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.jiaomo,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '印文将以传统朱文或白文雅致钤盖于日记卷末。',
+                    style: TextStyle(fontSize: 12, color: tokens.danmo),
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: CinnabarSignatureSeal(
+                      overrideText: currentText.isEmpty
+                          ? SignatureSealService.defaultSealText
+                          : currentText,
+                      size: 52,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    key: const Key('signature_seal_input'),
+                    controller: controller,
+                    maxLength: 4,
+                    decoration: InputDecoration(
+                      hintText: '如：心迹安放、澄心寄墨',
+                      filled: true,
+                      fillColor: tokens.xuanGround,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: tokens.agedFiber),
+                      ),
+                      counterText: '${controller.text.characters.length}/4',
+                    ),
+                    onChanged: (_) => setDialogState(() {}),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  key: const Key('signature_seal_reset_button'),
+                  onPressed: () async {
+                    await _signatureSealService.setSealText(SignatureSealService.defaultSealText);
+                    if (mounted) {
+                      setState(() => _signatureSealText = SignatureSealService.defaultSealText);
+                    }
+                    if (dialogCtx.mounted) {
+                      Navigator.pop(dialogCtx);
+                    }
+                  },
+                  child: Text('恢复默认', style: TextStyle(color: tokens.danmo)),
+                ),
+                FilledButton(
+                  key: const Key('signature_seal_save_button'),
+                  style: FilledButton.styleFrom(backgroundColor: tokens.cinnabar),
+                  onPressed: isValid
+                      ? () async {
+                          await _signatureSealService.setSealText(currentText);
+                          if (mounted) {
+                            setState(() => _signatureSealText = currentText);
+                          }
+                          if (dialogCtx.mounted) {
+                            Navigator.pop(dialogCtx);
+                          }
+                        }
+                      : null,
+                  child: const Text('定稿钤印'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

@@ -9,6 +9,7 @@ import '../../helpers/mock_secure_storage.dart';
 import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
 import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
+import 'package:memodiary/features/settings/services/signature_seal_service.dart';
 import 'package:memodiary/features/settings/services/storage_optimizer_service.dart';
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -430,6 +431,67 @@ Visiting Dotonbori in the evening.
       expect(find.text('已恢复实时四时天候同步'), findsOneWidget);
       expect(mockStorage.data['memodiary_scenery_pinned_season'], isNull);
       expect(mockStorage.data['memodiary_scenery_pinned_time'], isNull);
+    });
+
+    testWidgets('renders signature seal card, opens edit dialog, updates inscription, and saves', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final mockStorage = MockSecureStorage();
+      final sealService = SignatureSealService(storage: mockStorage);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            mediaService: mediaService,
+            fileSelector: mockFileSelector,
+            signatureSealService: sealService,
+            initialStats: const StorageStats(
+              activeEntriesCount: 0,
+              deletedEntriesCount: 0,
+              totalMediaFiles: 0,
+              totalMediaBytes: 0,
+              orphanMediaFiles: 0,
+              orphanMediaBytes: 0,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Card is rendered with default seal text
+      expect(find.byKey(const Key('settings_signature_seal_card')), findsOneWidget);
+      expect(find.text('卷末压角印刻印文：心迹安放'), findsOneWidget);
+
+      // Tap edit button to open dialog
+      final editBtn = find.byKey(const Key('settings_edit_signature_seal_button'));
+      expect(editBtn, findsOneWidget);
+      await tester.tap(editBtn);
+      await tester.pumpAndSettle();
+
+      // Dialog is open
+      expect(find.text('更易落款印文 · 2至4字'), findsOneWidget);
+      final inputFinder = find.byKey(const Key('signature_seal_input'));
+      expect(inputFinder, findsOneWidget);
+
+      // Enter new seal text
+      await tester.enterText(inputFinder, '春山如笑');
+      await tester.pumpAndSettle();
+
+      // Tap save
+      final saveBtn = find.byKey(const Key('signature_seal_save_button'));
+      expect(saveBtn, findsOneWidget);
+      await tester.tap(saveBtn);
+      await tester.pumpAndSettle();
+
+      // Card is updated
+      expect(find.text('卷末压角印刻印文：春山如笑'), findsOneWidget);
+      expect(await sealService.getSealText(), equals('春山如笑'));
     });
   });
 }

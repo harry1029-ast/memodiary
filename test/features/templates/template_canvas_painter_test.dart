@@ -26,6 +26,38 @@ void main() {
       expect(TemplateBackgroundType.dotGrid.toDbValue, 'dot_grid');
       expect(TemplateBackgroundType.dotGrid.label, 'Dot Grid');
     });
+
+    test('StationeryVisualTokens parses legacy hex and structured JSON round-trip', () {
+      // Legacy hex
+      final legacyTokens = StationeryVisualTokens.fromBackgroundValue('#FFFFFF');
+      expect(legacyTokens.substrate, PaperSubstrate.xuan);
+      expect(legacyTokens.customBgColor, const Color(0xFFFFFFFF));
+
+      final darkTokens = StationeryVisualTokens.fromBackgroundValue('#1E2022');
+      expect(darkTokens.substrate, PaperSubstrate.obsidian);
+      expect(darkTokens.ruleTint, RuleInkTint.slate);
+
+      // JSON tokens
+      const original = StationeryVisualTokens(
+        substrate: PaperSubstrate.coldGold,
+        ruleTint: RuleInkTint.charcoal,
+        sealStyle: SealCarvingStyle.baiwen,
+      );
+      final encoded = original.toBackgroundValue();
+      final decoded = StationeryVisualTokens.fromBackgroundValue(encoded);
+      expect(decoded.substrate, PaperSubstrate.coldGold);
+      expect(decoded.ruleTint, RuleInkTint.charcoal);
+      expect(decoded.sealStyle, SealCarvingStyle.baiwen);
+      expect(decoded.customBgColor, isNull);
+    });
+
+    test('StationerySuites exposes curated presets with 4 distinct styles', () {
+      expect(StationerySuites.all.length, 4);
+      expect(StationerySuites.wenfang.substrate, PaperSubstrate.xuan);
+      expect(StationerySuites.lengjin.substrate, PaperSubstrate.coldGold);
+      expect(StationerySuites.zhuqing.substrate, PaperSubstrate.minimal);
+      expect(StationerySuites.songyan.substrate, PaperSubstrate.obsidian);
+    });
   });
 
   group('TemplateCanvasPainter Rendering Tests', () {
@@ -241,6 +273,60 @@ void main() {
         return p1.dy == headerHeight && p2.dy == headerHeight && p1.dx == 0 && p2.dx == 360;
       });
       expect(hasDuplicateDivider, isFalse);
+    });
+
+    test('paints Cold Gold flecks and Xuan paper fibers without throwing', () {
+      const substrates = [PaperSubstrate.coldGold, PaperSubstrate.xuan, PaperSubstrate.obsidian];
+      for (final sub in substrates) {
+        final style = TemplateStyle(
+          type: TemplateBackgroundType.lined,
+          backgroundColor: sub.defaultColor,
+          lineSpacing: 1.5,
+          marginHorizontal: 24.0,
+          tokens: StationeryVisualTokens(
+            substrate: sub,
+            ruleTint: RuleInkTint.charcoal,
+          ),
+        );
+        final painter = TemplateCanvasPainter(style: style);
+        final recorder = PictureRecorder();
+        final canvas = Canvas(recorder);
+        expect(() => painter.paint(canvas, const Size(360, 640)), returnsNormally);
+        recorder.endRecording().dispose();
+      }
+    });
+
+    test('snapped grid centers symmetrically when available width is not exact multiple of rowHeight', () {
+      const margin = 20.0;
+      const width = 375.0; // availWidth = 335. 335 / 24 = 13.95 -> 13 cols = 312px. Remainder = 23px.
+      const rowHeight = 24.0;
+      const typography = TypographySettings(fontSize: 16.0, lineSpacing: 1.5);
+      expect(typography.fontSize * typography.lineSpacing, equals(rowHeight));
+
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.grid,
+        backgroundColor: Colors.white,
+        lineSpacing: 1.5,
+        marginHorizontal: margin,
+      );
+
+      final painter = TemplateCanvasPainter(
+        style: style,
+        typography: typography,
+      );
+
+      final recordingCanvas = RecordingCanvas();
+      painter.paint(recordingCanvas, const Size(width, 640));
+
+      // Symmetrically centered: inset = 20 + 23/2 = 31.5. xStart = 31.5, xEnd = 343.5.
+      final verticalLines = recordingCanvas.drawnLines.where((line) => line.$1.dx == line.$2.dx).toList();
+      expect(verticalLines, isNotEmpty);
+      final firstX = verticalLines.map((line) => line.$1.dx).reduce((a, b) => a < b ? a : b);
+      final lastX = verticalLines.map((line) => line.$1.dx).reduce((a, b) => a > b ? a : b);
+
+      expect((firstX - 31.5).abs() < 0.01, isTrue, reason: 'First vertical line snapped symmetrically');
+      expect((lastX - 343.5).abs() < 0.01, isTrue, reason: 'Last vertical line snapped symmetrically');
+      expect((lastX - firstX - 312.0).abs() < 0.01, isTrue, reason: 'Total grid span is exactly 13 * 24px');
     });
   });
 }

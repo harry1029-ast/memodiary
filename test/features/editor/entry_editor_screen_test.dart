@@ -287,8 +287,10 @@ void main() {
       // Verify no old ThoughtSparkBanner is present
       expect(find.byType(ThoughtSparkBanner), findsNothing);
 
-      // Verify seal watermark is present
-      expect(find.text('澄心\n寄墨'), findsOneWidget);
+      // Verify Cinnabar Signature Seal is present
+      expect(find.byKey(const Key('cinnabar_signature_seal')), findsOneWidget);
+      expect(find.text('心'), findsOneWidget);
+      expect(find.text('放'), findsOneWidget);
     });
   });
 }

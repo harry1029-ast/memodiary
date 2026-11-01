@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/screens/custom_template_editor_screen.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 
@@ -131,6 +132,55 @@ void main() {
       final customTemplates = await db.getCustomTemplates();
       final created = customTemplates.firstWhere((template) => template.name == 'Zen Dot Grid');
       expect(created.backgroundType, equals('dot_grid'));
+    });
+
+    testWidgets('allows selecting substrate, rule tint, and seal carving style and persists visual tokens', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CustomTemplateEditorScreen(database: db),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const Key('template_name_input')),
+        'Cold Gold Studio',
+      );
+      await tester.pumpAndSettle();
+
+      // Select Cold Gold substrate
+      final coldGoldChip = find.byKey(const Key('substrate_coldGold'));
+      await tester.ensureVisible(coldGoldChip);
+      await tester.pumpAndSettle();
+      await tester.tap(coldGoldChip);
+      await tester.pumpAndSettle();
+
+      // Select Charcoal rule ink tint
+      final charcoalChip = find.byKey(const Key('rule_tint_charcoal'));
+      await tester.ensureVisible(charcoalChip);
+      await tester.pumpAndSettle();
+      await tester.tap(charcoalChip);
+      await tester.pumpAndSettle();
+
+      // Select Baiwen seal style
+      final baiwenChip = find.byKey(const Key('seal_style_baiwen'));
+      await tester.ensureVisible(baiwenChip);
+      await tester.pumpAndSettle();
+      await tester.tap(baiwenChip);
+      await tester.pumpAndSettle();
+
+      // Save
+      await tester.tap(find.byKey(const Key('save_custom_template_button')));
+      await tester.pumpAndSettle();
+
+      final customTemplates = await db.getCustomTemplates();
+      final created = customTemplates.firstWhere((t) => t.name == 'Cold Gold Studio');
+      expect(created, isNotNull);
+
+      final tokens = StationeryVisualTokens.fromBackgroundValue(created.backgroundValue);
+      expect(tokens.substrate, equals(PaperSubstrate.coldGold));
+      expect(tokens.ruleTint, equals(RuleInkTint.charcoal));
+      expect(tokens.sealStyle, equals(SealCarvingStyle.baiwen));
     });
   });
 }

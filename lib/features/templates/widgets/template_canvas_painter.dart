@@ -55,6 +55,10 @@ class TemplateCanvasPainter extends CustomPainter {
     final bgPaint = Paint()..color = style.backgroundColor;
     canvas.drawRect(rect, bgPaint);
 
+    // 2. Procedural substrate texture overlays
+    _paintSubstrateTexture(canvas, size);
+
+    // 3. Grid / Lined / Geometry layer
     switch (style.type) {
       case TemplateBackgroundType.color:
         // Plain solid background
@@ -78,13 +82,113 @@ class TemplateCanvasPainter extends CustomPainter {
     }
   }
 
+  void _paintSubstrateTexture(Canvas canvas, Size size) {
+    switch (style.tokens.substrate) {
+      case PaperSubstrate.coldGold:
+        _paintColdGoldFlecks(canvas, size);
+        break;
+      case PaperSubstrate.xuan:
+        _paintXuanFibers(canvas, size);
+        break;
+      case PaperSubstrate.kraft:
+        if (style.type != TemplateBackgroundType.paperTexture) {
+          _paintKraftTexture(canvas, size);
+        }
+        break;
+      case PaperSubstrate.obsidian:
+        _paintObsidianShade(canvas, size);
+        break;
+      case PaperSubstrate.minimal:
+        // Clean substrate
+        break;
+    }
+  }
+
+  void _paintColdGoldFlecks(Canvas canvas, Size size) {
+    final fleckPaint = Paint()
+      ..color = const Color(0x35E0B354)
+      ..style = PaintingStyle.fill;
+
+    final fleckAccentPaint = Paint()
+      ..color = const Color(0x45D4AF37)
+      ..style = PaintingStyle.fill;
+
+    const step = 38.0;
+    for (double y = 14; y < size.height; y += step) {
+      for (double x = 12; x < size.width; x += step) {
+        final hash = ((x * 37 + y * 53) % 100).toInt();
+        if (hash > 42) continue; // Sparse distribution
+
+        final offsetX = ((hash * 13) % 25) - 12.0;
+        final offsetY = ((hash * 19) % 21) - 10.0;
+        final radius = (hash % 3 == 0) ? 1.8 : 1.1;
+        final paint = (hash % 2 == 0) ? fleckAccentPaint : fleckPaint;
+
+        canvas.drawCircle(Offset(x + offsetX, y + offsetY), radius, paint);
+      }
+    }
+  }
+
+  void _paintXuanFibers(Canvas canvas, Size size) {
+    final fiberPaint = Paint()
+      ..color = const Color(0x074A3728)
+      ..strokeWidth = 0.8;
+
+    const step = 48.0;
+    for (double y = 16; y < size.height; y += step) {
+      for (double x = 16; x < size.width; x += step) {
+        final hash = ((x * 19 + y * 41) % 100).toInt();
+        if (hash > 35) continue;
+
+        final dx = ((hash * 7) % 15) - 7.0;
+        final dy = ((hash * 11) % 11) - 5.0;
+        final len = ((hash * 13) % 10) + 4.0;
+        canvas.drawLine(
+          Offset(x + dx, y + dy),
+          Offset(x + dx + len, y + dy + (hash % 2 == 0 ? 0.8 : -0.8)),
+          fiberPaint,
+        );
+      }
+    }
+  }
+
+  void _paintObsidianShade(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final vignettePaint = Paint()
+      ..shader = RadialGradient(
+        center: Alignment.center,
+        radius: 1.1,
+        colors: const [
+          Colors.transparent,
+          Color(0x28000000),
+        ],
+      ).createShader(rect);
+    canvas.drawRect(rect, vignettePaint);
+  }
+
+  void _paintKraftTexture(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final vignettePaint = Paint()
+      ..shader = RadialGradient(
+        center: Alignment.center,
+        radius: 0.95,
+        colors: const [
+          Colors.transparent,
+          Color(0x184E342E),
+        ],
+      ).createShader(rect);
+    canvas.drawRect(rect, vignettePaint);
+  }
+
   void _paintLinedPaper(Canvas canvas, Size size) {
     final rowHeight = _rowHeight;
     final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
     final (startY, minLineIndex) = _calculateLineBounds();
 
     final linePaint = Paint()
-      ..color = _isDark ? const Color(0x18FFFFFF) : const Color(0x1E4A6572)
+      ..color = _isDark
+          ? const Color(0x18FFFFFF)
+          : style.tokens.ruleTint.color
       ..strokeWidth = 1.0;
 
     for (int lineIndex = minLineIndex; ; lineIndex++) {
@@ -94,9 +198,13 @@ class TemplateCanvasPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
     }
 
-    // Left vertical margin line (classic notebook red rule)
+    // Left vertical margin line (classic notebook red rule or tint)
     final marginPaint = Paint()
-      ..color = _isDark ? const Color(0x38EF9A9A) : const Color(0x33E57373)
+      ..color = _isDark
+          ? const Color(0x38EF9A9A)
+          : (style.tokens.ruleTint == RuleInkTint.vermilion
+              ? const Color(0x52C04851)
+              : const Color(0x33E57373))
       ..strokeWidth = 1.2;
 
     final marginX = style.resolvedHorizontalMargin;
@@ -108,18 +216,17 @@ class TemplateCanvasPainter extends CustomPainter {
     );
   }
 
-  List<double> _computeMarginAnchoredX(double width, double marginX, double step) {
+  (List<double>, double, double) _computeSnappedGridX(double width, double marginX, double step) {
+    final availWidth = width - 2 * marginX;
+    final numCols = math.max(1, (availWidth / step).floor());
+    final gridWidth = numCols * step;
+    final xStart = marginX + (availWidth - gridWidth) / 2.0;
+
     final xCoords = <double>[];
-    // Backward from marginX - step to 0
-    for (double x = marginX - step; x >= 0; x -= step) {
-      xCoords.add(x);
+    for (int i = 0; i <= numCols; i++) {
+      xCoords.add(xStart + i * step);
     }
-    // Forward from marginX to width
-    for (double x = marginX; x <= width; x += step) {
-      xCoords.add(x);
-    }
-    xCoords.sort();
-    return xCoords;
+    return (xCoords, xStart, xStart + gridWidth);
   }
 
   void _paintGridPaper(Canvas canvas, Size size) {
@@ -128,16 +235,19 @@ class TemplateCanvasPainter extends CustomPainter {
     final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
 
     final hGridPaint = Paint()
-      ..color = _isDark ? const Color(0x18FFFFFF) : const Color(0x1A78909C)
+      ..color = _isDark ? const Color(0x18FFFFFF) : style.tokens.ruleTint.color
       ..strokeWidth = 0.8;
 
     final vGridPaint = Paint()
-      ..color = _isDark ? const Color(0x12FFFFFF) : const Color(0x1478909C)
+      ..color = _isDark
+          ? const Color(0x12FFFFFF)
+          : style.tokens.ruleTint.color.withValues(alpha: (style.tokens.ruleTint.color.a * 0.85))
       ..strokeWidth = 0.6;
 
-    // Vertical grid guidelines anchored to marginX across entire width
     final topY = math.max(0.0, _effectiveHeaderY);
-    final xCoords = _computeMarginAnchoredX(size.width, marginX, rowHeight);
+    final (xCoords, xStart, xEnd) = _computeSnappedGridX(size.width, marginX, rowHeight);
+
+    // Vertical grid guidelines snapped within inner grid frame
     for (final x in xCoords) {
       canvas.drawLine(Offset(x, topY), Offset(x, size.height), vGridPaint);
     }
@@ -147,7 +257,7 @@ class TemplateCanvasPainter extends CustomPainter {
     for (int rowIndex = minRowIndex; ; rowIndex++) {
       final y = _effectiveHeaderY + rowIndex * rowHeight;
       if (y > size.height) break;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), hGridPaint);
+      canvas.drawLine(Offset(xStart, y), Offset(xEnd, y), hGridPaint);
     }
   }
 
@@ -157,10 +267,10 @@ class TemplateCanvasPainter extends CustomPainter {
     final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
 
     final dotPaint = Paint()
-      ..color = _isDark ? const Color(0x24FFFFFF) : const Color(0x2878909C)
+      ..color = _isDark ? const Color(0x24FFFFFF) : style.tokens.ruleTint.color
       ..style = PaintingStyle.fill;
 
-    final xCoords = _computeMarginAnchoredX(size.width, marginX, rowHeight);
+    final (xCoords, _, _) = _computeSnappedGridX(size.width, marginX, rowHeight);
     final minRowIndex = math.max(1, ((clipY - _effectiveHeaderY) / rowHeight).ceil());
 
     for (int rowIndex = minRowIndex; ; rowIndex++) {
@@ -174,20 +284,8 @@ class TemplateCanvasPainter extends CustomPainter {
   }
 
   void _paintPaperTexture(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-
     // 1. Soft vignette aging effect around borders
-    final vignettePaint = Paint()
-      ..shader = RadialGradient(
-        center: Alignment.center,
-        radius: 0.95,
-        colors: const [
-          Colors.transparent,
-          Color(0x184E342E),
-        ],
-      ).createShader(rect);
-
-    canvas.drawRect(rect, vignettePaint);
+    _paintKraftTexture(canvas, size);
 
     // 2. Procedural paper fibers & specks (deterministic pseudo-random loop)
     final fiberPaint = Paint()
@@ -236,6 +334,9 @@ class TemplateCanvasPainter extends CustomPainter {
         oldDelegate.style.backgroundColor != style.backgroundColor ||
         oldDelegate.style.lineSpacing != style.lineSpacing ||
         oldDelegate.style.marginHorizontal != style.marginHorizontal ||
+        oldDelegate.style.tokens.substrate != style.tokens.substrate ||
+        oldDelegate.style.tokens.ruleTint != style.tokens.ruleTint ||
+        oldDelegate.style.tokens.sealStyle != style.tokens.sealStyle ||
         oldDelegate.scrollOffset != scrollOffset ||
         oldDelegate.headerHeight != headerHeight ||
         oldDelegate.typography?.fontId != typography?.fontId ||
