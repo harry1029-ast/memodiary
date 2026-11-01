@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/scenery/models/shanshui_atmosphere.dart';
+import 'package:memodiary/features/scenery/painters/outdoor_street_painter.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_canvas_painter.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_painting.dart';
 
@@ -225,6 +226,73 @@ void main() {
 
       // Lake ripples spawned in nature
       expect(stateKey.currentState!.rippleCount, greaterThan(natureRipplesBefore));
+
+      // Rebuild with Outdoor
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                height: 200,
+                child: ShanshuiSceneryPainting(
+                  key: stateKey,
+                  atmosphere: const ShanshuiAtmosphereState(
+                    realm: ShanshuiRealm.outdoor,
+                    season: ShanshuiSeason.spring,
+                    timeOfDay: ShanshuiTimeOfDay.day,
+                    weather: ShanshuiWeather.sunny,
+                  ),
+                  enableAmbientAnimation: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final outdoorParticlesBefore = stateKey.currentState!.particleCount;
+      final outdoorRipplesBefore = stateKey.currentState!.rippleCount;
+      await tester.tap(find.byType(ShanshuiSceneryPainting));
+      await tester.pump();
+
+      // Both ripples and festive particles spawned on outdoor tap
+      expect(stateKey.currentState!.rippleCount, greaterThan(outdoorRipplesBefore));
+      expect(stateKey.currentState!.particleCount, greaterThan(outdoorParticlesBefore));
+    });
+
+    testWidgets('dispatches to OutdoorStreetPainter for outdoor realm by default', (tester) async {
+      const atmosphere = ShanshuiAtmosphereState(
+        realm: ShanshuiRealm.outdoor,
+        season: ShanshuiSeason.summer,
+        timeOfDay: ShanshuiTimeOfDay.day,
+        weather: ShanshuiWeather.sunny,
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                height: 200,
+                child: ShanshuiSceneryPainting(
+                  atmosphere: atmosphere,
+                  enableAmbientAnimation: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final customPaint = tester.widget<CustomPaint>(
+        find.descendant(
+          of: find.byType(AspectRatio),
+          matching: find.byType(CustomPaint),
+        ),
+      );
+      expect(customPaint.painter, isA<OutdoorStreetPainter>());
     });
   });
 }

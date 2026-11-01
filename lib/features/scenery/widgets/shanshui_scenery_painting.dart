@@ -3,10 +3,12 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../models/ancient_room_palette.dart';
+import '../models/outdoor_street_palette.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_palette.dart';
 import '../models/shanshui_scenery_geometry.dart';
 import '../painters/ancient_room_painter.dart';
+import '../painters/outdoor_street_painter.dart';
 import 'shanshui_canvas_painter.dart';
 
 /// Pluggable builder function signature for modular realm painters.
@@ -392,17 +394,25 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
             lightningAlpha: _lightningAlpha,
           );
         }
-        return ShanshuiCanvasPainter(
+        final streetPalette = OutdoorStreetPalette.of(
+          widget.atmosphere.season,
+          widget.atmosphere.timeOfDay,
+        );
+        _cachedOutdoorPicture ??= OutdoorStreetPainter.recordStaticPicture(
           atmosphere: widget.atmosphere,
-          palette: palette,
+          streetPalette: streetPalette,
+        );
+        return OutdoorStreetPainter(
+          atmosphere: widget.atmosphere,
+          streetPalette: streetPalette,
           animationTime: _elapsedSeconds,
           particles: _particles,
           weatherDrops: _weatherDrops,
-          cranes: _cranes,
           ripples: _ripples,
           showCalligraphy: widget.showCalligraphy,
           fullPoem: widget.fullPoem,
           lightningAlpha: _lightningAlpha,
+          cachedStaticPicture: _cachedOutdoorPicture,
         );
     }
   }
