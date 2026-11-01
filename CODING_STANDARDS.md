@@ -79,6 +79,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
 - **Accessible Semantics on Canvas Overlays**: Transparent touch targets placed atop a `CustomPainter` (e.g. an empty `InkWell` over a custom canvas) must be explicitly wrapped in `Semantics(button: true, label: '<Action description>')`. Never leave transparent touch targets unlabelled for screen readers.
 - **Complex Vector Painter Modularity & ui.Picture Separation**: Custom painters with rich static and dynamic geometry (e.g., Scenery Realms, Photobook Canvas) must decouple static backgrounds into a dedicated static architecture helper recorded once into an immutable `ui.Picture` layer, and dynamic 60 FPS actors into a separate painter class, keeping individual source files under 500 lines to prevent context bloat and stream limits.
 - **Immediate SnackBar Feedback Dismissal**: When presenting immediate user feedback upon state mutation, always invoke `ScaffoldMessenger.of(context).hideCurrentSnackBar()` prior to `showSnackBar()` to prevent queued duration stalls in interactive flows and widget test harnesses.
+- **Displacement over Coexistence (Legacy Scaffolding Cleanup)**: When a specification or architecture decision explicitly mandates replacing an interaction seam, modal, or toolbar menu with a unified component, remove the deprecated UI component and migrate its corresponding widget test assertions to exercise the replacement seam in the same change set. Never preserve dead legacy UI scaffolding to satisfy un-migrated test assertions.
 
 ---
 
@@ -94,6 +95,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
 - **Deterministic Test Payloads**:
   - File format fixtures (such as MP4 or WebP) must declare valid magic-byte headers deterministically (e.g. 32-byte `ftyp` box header `[0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, ...]`) so format parsers pass instantaneously without flaky mocking.
   - Pure-Dart cryptographic loops (PBKDF2) must support configurable low iteration counts in unit test configurations (e.g. `iterations: 1000` or `2000`) while defaulting to $200,000$ in production.
+- **Scrollable Sheet Tap Assurance**: When writing widget tests that interact with elements inside scrollable modal bottom sheets, bottom drawers, or scroll views (`SingleChildScrollView`, `ListView`), precede interactive taps with `await tester.ensureVisible(finder);` (or `WidgetTesterScrollHelpers.tapVisible`) to prevent offscreen coordinate warnings and hit-test misses on standard headless viewports ($800 \times 600$).
 
 ---
 
