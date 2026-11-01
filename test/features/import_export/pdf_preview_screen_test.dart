@@ -188,6 +188,30 @@ void main() {
       expect(find.byType(PdfPreviewScreen), findsOneWidget);
       expect(find.text('Autumn Walk in the Park'), findsOneWidget);
     });
+
+    testWidgets('renders layout mode toggle for single entry and allows switching to verticalScroll', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PdfPreviewScreen(
+            singleEntry: testEntry1,
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(find.byKey(const Key('pdf_layout_mode_toggle')), findsOneWidget);
+      expect(find.text('横排素笺'), findsOneWidget);
+      expect(find.text('卷轴竖排'), findsOneWidget);
+
+      // Tap 卷轴竖排
+      await tester.tap(find.text('卷轴竖排'));
+      await tester.pump();
+
+      expect(find.byType(PdfPreview), findsOneWidget);
+    });
   });
 }
 

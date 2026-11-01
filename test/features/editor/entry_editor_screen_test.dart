@@ -9,6 +9,7 @@ import 'package:memodiary/core/services/dictation_service.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
+import 'package:memodiary/features/editor/widgets/keepsake_scroll_view.dart';
 import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
 import 'package:memodiary/features/editor/widgets/entry_metadata_bar.dart';
 import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
@@ -291,6 +292,41 @@ void main() {
       expect(find.byKey(const Key('cinnabar_signature_seal')), findsOneWidget);
       expect(find.text('心'), findsOneWidget);
       expect(find.text('放'), findsOneWidget);
+    });
+
+    testWidgets('tapping top_bar_keepsake_scroll_button opens KeepsakeScrollView without mutating delta', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: EntryEditorScreen(
+            database: db,
+            mediaSandboxService: sandboxService,
+            entryId: 'editor_test_entry',
+            dictationService: dictationService,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final keepsakeBtn = find.byKey(const Key('top_bar_keepsake_scroll_button'));
+      expect(keepsakeBtn, findsOneWidget);
+
+      await tester.tap(keepsakeBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(KeepsakeScrollView), findsOneWidget);
+      expect(find.textContaining('卷轴赏鉴'), findsOneWidget);
+
+      // Verify close button dismisses KeepsakeScrollView
+      await tester.tap(find.byKey(const Key('keepsake_close_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(KeepsakeScrollView), findsNothing);
+
+      // Verify database delta is untouched
+      final entry = await db.getEntryById('editor_test_entry');
+      expect(entry!.contentDelta, equals('[]'));
     });
   });
 }

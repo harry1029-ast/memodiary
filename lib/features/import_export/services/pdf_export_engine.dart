@@ -4,10 +4,13 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../../settings/services/signature_seal_service.dart';
 import '../../templates/models/template_style.dart';
+import '../models/pdf_layout_mode.dart';
 import 'pdf_entry_serializer.dart';
 import 'pdf_font_resolver.dart';
 import 'pdf_template_renderer.dart';
+import 'pdf_vertical_scroll_builder.dart';
 
 /// Core high-fidelity PDF export engine.
 /// Compiles entries into single-entry or consolidated multi-entry journal books
@@ -23,6 +26,8 @@ class PdfExportEngine {
     required MediaSandboxService mediaService,
     PdfPageFormat pageFormat = PdfPageFormat.a4,
     PdfFontResolver? fontResolver,
+    PdfLayoutMode layoutMode = PdfLayoutMode.horizontal,
+    String? sealText,
   }) async {
     final resolver = fontResolver ?? PdfFontResolver.cjk();
 
@@ -31,7 +36,28 @@ class PdfExportEngine {
         (await database.getAllTemplates()).first;
     final style = TemplateStyle.fromTemplate(template);
 
-    // 2. Convert Quill Delta into flowable PDF widgets
+    // 2. Resolve diarist colophon signature seal inscription
+    final effectiveSealText = sealText ?? await SignatureSealService().getSealText();
+
+    final doc = pw.Document();
+
+    // 3. Classical Right-to-Left Vertical Keepsake Scroll mode
+    if (layoutMode == PdfLayoutMode.verticalScroll) {
+      final pages = await PdfVerticalScrollBuilder.buildVerticalScrollPages(
+        entry: entry,
+        style: style,
+        mediaService: mediaService,
+        fontResolver: resolver,
+        sealText: effectiveSealText,
+        pageFormat: pageFormat,
+      );
+      for (final p in pages) {
+        doc.addPage(p);
+      }
+      return doc.save();
+    }
+
+    // 4. Standard Horizontal Stationery mode (default)
     final contentWidgets = await PdfEntrySerializer.convertDeltaToWidgets(
       contentDeltaJson: entry.contentDelta,
       fallbackPlainText: entry.plainText,
@@ -39,9 +65,6 @@ class PdfExportEngine {
       style: style,
       fontResolver: resolver,
     );
-
-    // 3. Build Document
-    final doc = pw.Document();
 
     doc.addPage(
       pw.MultiPage(
@@ -62,6 +85,15 @@ class PdfExportEngine {
           _buildEntryHeader(entry, resolver),
           pw.SizedBox(height: 10),
           ...contentWidgets,
+          pw.SizedBox(height: 16),
+          pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: PdfTemplateRenderer.buildSignatureSeal(
+              style: style,
+              fontResolver: resolver,
+              sealText: effectiveSealText,
+            ),
+          ),
         ],
       ),
     );
@@ -78,8 +110,10 @@ class PdfExportEngine {
     PdfPageFormat pageFormat = PdfPageFormat.a4,
     String? bookTitle,
     PdfFontResolver? fontResolver,
+    String? sealText,
   }) async {
     final resolver = fontResolver ?? PdfFontResolver.cjk();
+    final effectiveSealText = sealText ?? await SignatureSealService().getSealText();
     final doc = pw.Document();
 
     if (entries.isEmpty) {
@@ -208,6 +242,15 @@ class PdfExportEngine {
             _buildEntryHeader(entry, resolver),
             pw.SizedBox(height: 10),
             ...contentWidgets,
+            pw.SizedBox(height: 16),
+            pw.Align(
+              alignment: pw.Alignment.centerRight,
+              child: PdfTemplateRenderer.buildSignatureSeal(
+                style: style,
+                fontResolver: resolver,
+                sealText: effectiveSealText,
+              ),
+            ),
           ],
         ),
       );

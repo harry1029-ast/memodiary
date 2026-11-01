@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
+import 'package:drift/drift.dart' show Value;
 
 import '../../../core/database/app_database.dart';
 import '../../../core/services/dictation_service.dart';
@@ -22,6 +23,7 @@ import '../services/baseline_metrics_calculator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/cinnabar_signature_seal.dart';
+import '../widgets/keepsake_scroll_view.dart';
 import '../widgets/scholar_chest/scholar_chest_drawer.dart';
 import '../widgets/journal_letterhead.dart';
 import '../widgets/sandboxed_image_embed_builder.dart';
@@ -83,6 +85,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   int? _mood;
   String? _weather;
   DateTime? _unlockAt;
+  Entry? _entry;
 
   @override
   void initState() {
@@ -118,6 +121,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         if (mounted) Navigator.pop(context);
         return;
       }
+      _entry = entry;
 
       final templates = await widget.database.select(widget.database.templates).get();
       final template = templates.firstWhere(
@@ -212,6 +216,29 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           });
         }
       },
+    );
+  }
+
+  void _openKeepsakeScroll() {
+    if (_entry == null || _currentTemplate == null) return;
+    final templateStyle = TemplateStyle.fromTemplate(_currentTemplate!);
+    final currentDelta = jsonEncode(_controller?.document.toDelta().toJson() ?? []);
+    final currentPlain = _controller?.document.toPlainText() ?? _entry!.plainText;
+    final currentTitle = _titleController.text.trim();
+
+    final previewEntry = _entry!.copyWith(
+      title: Value(currentTitle),
+      contentDelta: currentDelta,
+      plainText: currentPlain,
+      templateId: _currentTemplate!.id,
+    );
+
+    KeepsakeScrollView.show(
+      context: context,
+      entry: previewEntry,
+      style: templateStyle,
+      mediaService: widget.mediaSandboxService,
+      database: widget.database,
     );
   }
 
@@ -606,6 +633,14 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                   ),
                 ),
               ),
+
+            // Keepsake Scroll View Action
+            IconButton(
+              key: const Key('top_bar_keepsake_scroll_button'),
+              icon: Icon(Icons.auto_stories_outlined, color: iconColor, size: 22),
+              tooltip: '卷轴赏鉴 · Keepsake Scroll',
+              onPressed: _openKeepsakeScroll,
+            ),
 
             // Scholar's Stationery Chest Emblem Button
             IconButton(

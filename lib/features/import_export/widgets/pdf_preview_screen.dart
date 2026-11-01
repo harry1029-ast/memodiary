@@ -3,18 +3,21 @@ import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../models/pdf_layout_mode.dart';
 import '../services/pdf_export_engine.dart';
 import '../services/pdf_font_resolver.dart';
 
 /// Screen hosting interactive [PdfPreview] with direct PDF printing,
-/// file saving, sharing, and template-preserving page layout rendering.
-class PdfPreviewScreen extends StatelessWidget {
+/// file saving, sharing, and template-preserving page layout rendering
+/// in either Horizontal Stationery or Vertical Keepsake Scroll modes.
+class PdfPreviewScreen extends StatefulWidget {
   final Entry? singleEntry;
   final List<Entry>? entries;
   final AppDatabase database;
   final MediaSandboxService? mediaService;
   final String? documentTitle;
   final PdfFontResolver? fontResolver;
+  final PdfLayoutMode initialLayoutMode;
 
   const PdfPreviewScreen({
     super.key,
@@ -24,21 +27,35 @@ class PdfPreviewScreen extends StatelessWidget {
     this.mediaService,
     this.documentTitle,
     this.fontResolver,
+    this.initialLayoutMode = PdfLayoutMode.horizontal,
   });
 
   @override
+  State<PdfPreviewScreen> createState() => _PdfPreviewScreenState();
+}
+
+class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
+  late PdfLayoutMode _layoutMode;
+
+  @override
+  void initState() {
+    super.initState();
+    _layoutMode = widget.initialLayoutMode;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final title = documentTitle ??
-        (singleEntry != null
-            ? (singleEntry!.title?.trim().isNotEmpty ?? false
-                ? singleEntry!.title!.trim()
+    final title = widget.documentTitle ??
+        (widget.singleEntry != null
+            ? (widget.singleEntry!.title?.trim().isNotEmpty ?? false
+                ? widget.singleEntry!.title!.trim()
                 : 'MemoDiary Entry')
             : 'MemoDiary Journal Book');
 
-    final effectiveMediaService = mediaService ?? MediaSandboxService();
+    final effectiveMediaService = widget.mediaService ?? MediaSandboxService();
 
-    final pdfFileName = singleEntry != null
-        ? 'memodiary_${singleEntry!.id.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_')}.pdf'
+    final pdfFileName = widget.singleEntry != null
+        ? 'memodiary_${widget.singleEntry!.id.replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '_')}.pdf'
         : 'memodiary_journal.pdf';
 
     return Scaffold(
@@ -49,30 +66,59 @@ class PdfPreviewScreen extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        actions: [
+          if (widget.singleEntry != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+              child: SegmentedButton<PdfLayoutMode>(
+                key: const Key('pdf_layout_mode_toggle'),
+                segments: const [
+                  ButtonSegment(
+                    value: PdfLayoutMode.horizontal,
+                    label: Text('横排素笺', style: TextStyle(fontSize: 11)),
+                  ),
+                  ButtonSegment(
+                    value: PdfLayoutMode.verticalScroll,
+                    label: Text('卷轴竖排', style: TextStyle(fontSize: 11)),
+                  ),
+                ],
+                selected: {_layoutMode},
+                onSelectionChanged: (val) {
+                  setState(() => _layoutMode = val.first);
+                },
+              ),
+            ),
+        ],
       ),
       body: PdfPreview(
+        key: ValueKey(_layoutMode),
         build: (format) async {
-          if (singleEntry != null) {
+          if (widget.singleEntry != null) {
             return PdfExportEngine.generatePdfForEntry(
-              entry: singleEntry!,
-              database: database,
+              entry: widget.singleEntry!,
+              database: widget.database,
               mediaService: effectiveMediaService,
-              pageFormat: format,
-              fontResolver: fontResolver,
+              pageFormat: _layoutMode == PdfLayoutMode.verticalScroll
+                  ? format.landscape
+                  : format,
+              fontResolver: widget.fontResolver,
+              layoutMode: _layoutMode,
             );
           } else {
-            final list = entries ?? await database.getTimelineEntries(limit: 100);
+            final list = widget.entries ?? await widget.database.getTimelineEntries(limit: 100);
             return PdfExportEngine.generateConsolidatedPdf(
               entries: list,
-              database: database,
+              database: widget.database,
               mediaService: effectiveMediaService,
               pageFormat: format,
               bookTitle: title,
-              fontResolver: fontResolver,
+              fontResolver: widget.fontResolver,
             );
           }
         },
-        initialPageFormat: PdfPageFormat.a4,
+        initialPageFormat: _layoutMode == PdfLayoutMode.verticalScroll
+            ? PdfPageFormat.a4.landscape
+            : PdfPageFormat.a4,
         allowPrinting: true,
         allowSharing: true,
         canChangePageFormat: true,
@@ -93,4 +139,3 @@ class PdfPreviewScreen extends StatelessWidget {
     );
   }
 }
-

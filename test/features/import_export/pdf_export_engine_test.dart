@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/import_export/models/pdf_layout_mode.dart';
 import 'package:memodiary/features/import_export/services/pdf_export_engine.dart';
 
 void main() {
@@ -143,6 +144,96 @@ void main() {
 
       expect(bytes, isNotEmpty);
       expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
+
+    test('generatePdfForEntry in verticalScroll mode generates valid %PDF- bytes', () async {
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'entry_vertical_scroll_1',
+          notebookId: 'default',
+          templateId: 'template_lined_paper',
+          title: const Value('春江花月夜'),
+          contentDelta: jsonEncode([
+            {'insert': '「春江花月夜」\n'},
+            {'insert': '孤篇压全唐——何处春江无月明…\n'},
+            {'insert': '江流宛转绕芳甸，月照花林皆似霰。\n'},
+          ]),
+          plainText: '「春江花月夜」\n孤篇压全唐——何处春江无月明…\n江流宛转绕芳甸，月照花林皆似霰。',
+          entryDate: DateTime(2026, 11, 2),
+          mood: const Value(5),
+          weather: const Value('霁月'),
+        ),
+      );
+
+      final entry = await db.getEntryById('entry_vertical_scroll_1');
+      expect(entry, isNotNull);
+
+      final bytes = await PdfExportEngine.generatePdfForEntry(
+        entry: entry!,
+        database: db,
+        mediaService: mediaService,
+        layoutMode: PdfLayoutMode.verticalScroll,
+        sealText: '心迹安放',
+      );
+
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
+
+    test('generatePdfForEntry faithfully renders 4-layer StationeryVisualTokens with Cold Gold flecks', () async {
+      await db.createCustomTemplate(
+        id: 'custom_cold_gold',
+        name: '冷金洒粉笺',
+        backgroundType: 'paperTexture',
+        backgroundValue: jsonEncode({
+          'color': '#F8F4E9',
+          'substrate': 'coldGold',
+          'ruleTint': 'vermilion',
+          'sealStyle': 'baiwen',
+        }),
+        fontFamily: 'Noto Serif SC',
+        lineSpacing: 1.6,
+        marginHorizontal: 30.0,
+      );
+
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'entry_cold_gold_1',
+          notebookId: 'default',
+          templateId: 'custom_cold_gold',
+          title: const Value('文房墨趣'),
+          contentDelta: jsonEncode([
+            {'insert': '素笺冷金，朱砂落款。\n'},
+          ]),
+          plainText: '素笺冷金，朱砂落款。',
+          entryDate: DateTime(2026, 11, 2),
+        ),
+      );
+
+      final entry = await db.getEntryById('entry_cold_gold_1');
+      expect(entry, isNotNull);
+
+      // Verify horizontal stationery with cold gold tokens
+      final horizontalBytes = await PdfExportEngine.generatePdfForEntry(
+        entry: entry!,
+        database: db,
+        mediaService: mediaService,
+        layoutMode: PdfLayoutMode.horizontal,
+        sealText: '墨香存古',
+      );
+      expect(horizontalBytes, isNotEmpty);
+      expect(String.fromCharCodes(horizontalBytes.take(5)), equals('%PDF-'));
+
+      // Verify vertical scroll with cold gold tokens
+      final verticalBytes = await PdfExportEngine.generatePdfForEntry(
+        entry: entry,
+        database: db,
+        mediaService: mediaService,
+        layoutMode: PdfLayoutMode.verticalScroll,
+        sealText: '墨香存古',
+      );
+      expect(verticalBytes, isNotEmpty);
+      expect(String.fromCharCodes(verticalBytes.take(5)), equals('%PDF-'));
     });
   });
 }

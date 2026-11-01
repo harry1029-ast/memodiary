@@ -210,6 +210,67 @@ void main() {
       final bytes = await doc.save();
       expect(bytes, isNotEmpty);
     });
+
+    test('pdfRuleColor returns distinct non-null colors for all RuleInkTint values', () {
+      for (final tint in RuleInkTint.values) {
+        final color = PdfTemplateRenderer.pdfRuleColor(tint);
+        expect(color, isNotNull);
+      }
+    });
+
+    test('buildSignatureSeal renders zhuwen and baiwen seals into PDF document', () async {
+      final doc = pw.Document();
+      const zhuwenStyle = TemplateStyle(
+        type: TemplateBackgroundType.paperTexture,
+        backgroundColor: material.Color(0xFFFAF7F0),
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: StationeryVisualTokens(
+          substrate: PaperSubstrate.coldGold,
+          ruleTint: RuleInkTint.vermilion,
+          sealStyle: SealCarvingStyle.zhuwen,
+        ),
+      );
+
+      const baiwenStyle = TemplateStyle(
+        type: TemplateBackgroundType.color,
+        backgroundColor: material.Color(0xFFFFFFFF),
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: StationeryVisualTokens(
+          substrate: PaperSubstrate.minimal,
+          ruleTint: RuleInkTint.charcoal,
+          sealStyle: SealCarvingStyle.baiwen,
+        ),
+      );
+
+      doc.addPage(
+        pw.Page(
+          pageTheme: pw.PageTheme(
+            pageFormat: PdfPageFormat.a4,
+            buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, zhuwenStyle),
+          ),
+          build: (context) => pw.Column(
+            children: [
+              PdfTemplateRenderer.buildSignatureSeal(
+                style: zhuwenStyle,
+                fontResolver: fontResolver,
+                sealText: '心迹安放',
+              ),
+              PdfTemplateRenderer.buildSignatureSeal(
+                style: baiwenStyle,
+                fontResolver: fontResolver,
+                sealText: '墨香',
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final bytes = await doc.save();
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
   });
 }
 
