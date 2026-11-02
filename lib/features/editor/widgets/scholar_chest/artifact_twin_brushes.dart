@@ -360,3 +360,69 @@ class TwinBambooBrushesPainter extends CustomPainter {
   bool shouldRepaint(covariant TwinBambooBrushesPainter oldDelegate) =>
       oldDelegate.hoverProgress != hoverProgress;
 }
+
+/// In-chest contextual sub-panel for the Twin Bamboo Brushes artifact
+class TwinBrushesSubPanel extends StatelessWidget {
+  final VoidCallback? onClose;
+
+  const TwinBrushesSubPanel({
+    super.key,
+    this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('chest_subpanel_twin_brushes'),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SizedBox(width: 24),
+              const Icon(Icons.brush_outlined, size: 24, color: Color(0xFFFFDF85)),
+              if (onClose != null)
+                GestureDetector(
+                  key: const Key('chest_subpanel_close_button'),
+                  onTap: onClose,
+                  child: Semantics(
+                    button: true,
+                    label: '收拢面板',
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      color: Colors.transparent,
+                      child: const Icon(Icons.close, size: 16, color: Color(0xFFD4C5B0)),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(width: 24),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '笔锋运墨动效 · 敬请期待',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFF3D99B),
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            '双管并提，疾涩相参，运笔入微之境将随墨潮而至。',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: Color(0xFFD4C5B0),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

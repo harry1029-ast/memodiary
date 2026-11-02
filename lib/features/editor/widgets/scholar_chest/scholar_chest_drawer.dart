@@ -90,11 +90,36 @@ class ScholarChestDrawer extends StatefulWidget {
 
 class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
   ScholarArtifactType? _activeArtifact;
+  late String _activeTemplateId;
+  late TypographySettings _currentTypography;
+  DateTime? _unlockAt;
+  late bool _isCenterAligned;
 
   @override
   void initState() {
     super.initState();
     _activeArtifact = widget.initialArtifact;
+    _activeTemplateId = widget.activeTemplateId;
+    _currentTypography = widget.typography;
+    _unlockAt = widget.unlockAt;
+    _isCenterAligned = widget.isCenterAligned;
+  }
+
+  @override
+  void didUpdateWidget(covariant ScholarChestDrawer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.activeTemplateId != widget.activeTemplateId) {
+      _activeTemplateId = widget.activeTemplateId;
+    }
+    if (oldWidget.typography != widget.typography) {
+      _currentTypography = widget.typography;
+    }
+    if (oldWidget.unlockAt != widget.unlockAt) {
+      _unlockAt = widget.unlockAt;
+    }
+    if (oldWidget.isCenterAligned != widget.isCenterAligned) {
+      _isCenterAligned = widget.isCenterAligned;
+    }
   }
 
   void _selectArtifact(ScholarArtifactType type, ScholarTactileChime chime) {
@@ -305,8 +330,8 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
                                             child: ArtifactFishLock(
                                               isSelected: _activeArtifact ==
                                                   ScholarArtifactType.fishLock,
-                                              isLocked: widget.unlockAt != null &&
-                                                  widget.unlockAt!.isAfter(DateTime.now()),
+                                              isLocked: _unlockAt != null &&
+                                                  _unlockAt!.isAfter(DateTime.now()),
                                               onTap: () => _selectArtifact(
                                                 ScholarArtifactType.fishLock,
                                                 ScholarTactileChime.brassLockClick,
@@ -340,60 +365,40 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
         return const SizedBox.shrink();
 
       case ScholarArtifactType.twinBrushes:
-        return Container(
-          key: const Key('chest_subpanel_twin_brushes'),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const SizedBox(width: 24),
-                  const Icon(Icons.brush_outlined, size: 24, color: Color(0xFFFFDF85)),
-                  GestureDetector(
-                    onTap: () => setState(() => _activeArtifact = null),
-                    child: const Icon(Icons.close, size: 16, color: Color(0xFFD4C5B0)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                '笔锋运墨动效 · 敬请期待',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFF3D99B),
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                '双管并提，疾涩相参，运笔入微之境将随墨潮而至。',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  color: Color(0xFFD4C5B0),
-                ),
-              ),
-            ],
-          ),
+        return TwinBrushesSubPanel(
+          onClose: () => setState(() => _activeArtifact = null),
         );
 
       case ScholarArtifactType.stationeryFan:
         return StationeryFanSubPanel(
           database: widget.database,
-          activeTemplateId: widget.activeTemplateId,
-          onSelectTemplate: widget.onSelectTemplate,
+          activeTemplateId: _activeTemplateId,
+          onSelectTemplate: (selectedTemplate) {
+            setState(() {
+              _activeTemplateId = selectedTemplate.id;
+              _currentTypography = TypographySettings.fromTemplate(selectedTemplate);
+            });
+            widget.onSelectTemplate(selectedTemplate);
+          },
           onClose: () => setState(() => _activeArtifact = null),
         );
 
       case ScholarArtifactType.brushMountain:
         return BrushMountainSubPanel(
-          typography: widget.typography,
-          onTypographyChanged: widget.onTypographyChanged,
-          isCenterAligned: widget.isCenterAligned,
-          onToggleAlignment: widget.onToggleAlignment,
+          typography: _currentTypography,
+          onTypographyChanged: (updatedTypography) {
+            setState(() {
+              _currentTypography = updatedTypography;
+            });
+            widget.onTypographyChanged(updatedTypography);
+          },
+          isCenterAligned: _isCenterAligned,
+          onToggleAlignment: () {
+            setState(() {
+              _isCenterAligned = !_isCenterAligned;
+            });
+            widget.onToggleAlignment?.call();
+          },
           onClose: () => setState(() => _activeArtifact = null),
         );
 
@@ -405,8 +410,13 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
 
       case ScholarArtifactType.fishLock:
         return FishLockSubPanel(
-          unlockAt: widget.unlockAt,
-          onLockChanged: widget.onLockChanged,
+          unlockAt: _unlockAt,
+          onLockChanged: (updatedUnlockAt) {
+            setState(() {
+              _unlockAt = updatedUnlockAt;
+            });
+            widget.onLockChanged(updatedUnlockAt);
+          },
           onClose: () => setState(() => _activeArtifact = null),
         );
     }

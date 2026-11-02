@@ -152,29 +152,35 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.auto_stories, size: 16, color: Color(0xFFFFDF85)),
-                const SizedBox(width: 6),
-                const Text(
-                  '文房雅笺 · 素笺谱系',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFF3D99B),
+            Expanded(
+              child: Row(
+                children: [
+                  const Icon(Icons.auto_stories, size: 16, color: Color(0xFFFFDF85)),
+                  const SizedBox(width: 6),
+                  const Text(
+                    '文房雅笺 · 素笺谱系',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFF3D99B),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  '“笺换风骨，意蕴随迁”',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 11,
-                    color: Color(0xFFD4C5B0),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '“笺换风骨，意蕴随迁”',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontFamily: InkDiaryTheme.fontKaiti,
+                        fontSize: 11,
+                        color: Color(0xFFD4C5B0),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             Row(
               children: [
