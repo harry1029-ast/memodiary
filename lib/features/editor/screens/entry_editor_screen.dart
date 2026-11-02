@@ -630,15 +630,45 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             Expanded(
               child: LayoutBuilder(
                 builder: (layoutContext, layoutConstraints) {
-                  final canvasSize = Size(layoutConstraints.maxWidth, layoutConstraints.maxHeight);
+                  final mediaQuery = MediaQuery.of(layoutContext);
+                  final unconstrainedScreenHeight = mediaQuery.size.height -
+                      mediaQuery.padding.top -
+                      mediaQuery.padding.bottom -
+                      kToolbarHeight -
+                      56.0;
+                  final baseCanvasHeight = math.max(layoutConstraints.maxHeight, unconstrainedScreenHeight);
+                  final scrollExtent = _editorScrollController.hasClients
+                      ? _editorScrollController.position.maxScrollExtent
+                      : 0.0;
+                  final totalPaperHeight = math.max(baseCanvasHeight, baseCanvasHeight + scrollExtent);
+                  final canvasSize = Size(layoutConstraints.maxWidth, totalPaperHeight);
+
                   final metrics = StationeryLayoutCalculator.calculate(
                     canvasSize: canvasSize,
                     style: templateStyle,
                     typography: _typography,
+                    compactMargins: true,
                   );
                   final activeRowHeight = metrics.lineStridePx;
-                  final horizontalLeft = metrics.innerFrameRect.left;
-                  final horizontalRight = math.max(0.0, layoutConstraints.maxWidth - metrics.innerFrameRect.right);
+
+                  // Inner content padding from Paper Heart border
+                  final double innerContentPaddingLeft;
+                  if (templateStyle.type == TemplateBackgroundType.grid ||
+                      templateStyle.type == TemplateBackgroundType.dotGrid) {
+                    innerContentPaddingLeft = 0.0;
+                  } else if (templateStyle.type == TemplateBackgroundType.lined) {
+                    innerContentPaddingLeft = 32.0;
+                  } else {
+                    innerContentPaddingLeft = 20.0;
+                  }
+                  final double innerContentPaddingRight = (templateStyle.type == TemplateBackgroundType.grid ||
+                          templateStyle.type == TemplateBackgroundType.dotGrid)
+                      ? 0.0
+                      : 20.0;
+
+                  final horizontalLeft = metrics.innerFrameRect.left + innerContentPaddingLeft;
+                  final horizontalRight = math.max(0.0, layoutConstraints.maxWidth - metrics.innerFrameRect.right) +
+                      innerContentPaddingRight;
 
                   return Stack(
                     fit: StackFit.expand,
@@ -655,6 +685,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                               typography: _typography,
                               scrollOffset: scrollOffset,
                               headerHeight: _headerHeight,
+                              layoutMetrics: metrics,
                               customPadding: EdgeInsets.zero,
                               child: const SizedBox.expand(),
                             );
@@ -679,9 +710,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                                 key: _letterheadKey,
                                 lineStridePx: activeRowHeight,
                                 child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: templateStyle.marginHorizontal.clamp(16.0, 36.0),
-                                    vertical: 8.0,
+                                  padding: EdgeInsets.only(
+                                    left: horizontalLeft,
+                                    right: horizontalRight,
+                                    top: 8.0,
+                                    bottom: 8.0,
                                   ),
                                   child: JournalLetterhead(
                                     entryDate: _entryDate,

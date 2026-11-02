@@ -214,7 +214,7 @@ void main() {
       );
       final linedPadding = linedPaddingWidget.padding as EdgeInsets;
 
-      // Verify horizontal padding on lined paper matches innerFrameRect exactly
+      // Verify horizontal padding on lined paper includes inner breathing room beyond margin line
       final linedMetrics = StationeryLayoutCalculator.calculateMetrics(
         canvasWidth: 800.0,
         canvasHeight: 600.0,
@@ -223,8 +223,8 @@ void main() {
         fontSize: 16.0,
         lineSpacing: 1.5,
       );
-      expect(linedPadding.left, equals(linedMetrics.innerFrameRect.left));
-      expect(linedPadding.right, equals(800.0 - linedMetrics.innerFrameRect.right));
+      expect(linedPadding.left, equals(linedMetrics.innerFrameRect.left + 32.0));
+      expect(linedPadding.right, equals(800.0 - linedMetrics.innerFrameRect.right + 20.0));
 
       // 3. Switch to Grid Paper (named 'Weekly Review' in defaults)
       await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));

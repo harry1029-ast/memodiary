@@ -173,5 +173,18 @@ void main() {
       expect(metricsFirst.hashCode, equals(metricsSecond.hashCode));
       expect(metricsFirst, isNot(equals(metricsDifferent)));
     });
+
+    test('compactMargins reduces wasted vertical space while preserving Heaven >= Earth', () {
+      final compactMetrics = StationeryLayoutCalculator.calculateMetrics(
+        canvasWidth: 390.0,
+        canvasHeight: 780.0,
+        backgroundType: TemplateBackgroundType.lined,
+        compactMargins: true,
+      );
+
+      final totalWasted = compactMetrics.heavenMarginPx + compactMetrics.earthMarginPx;
+      expect(totalWasted, lessThan(80.0));
+      expect(compactMetrics.heavenMarginPx, greaterThanOrEqualTo(compactMetrics.earthMarginPx));
+    });
   });
 }

@@ -48,12 +48,14 @@ class TemplateCanvasPainter extends CustomPainter {
   final TypographySettings? typography;
   final double scrollOffset;
   final double headerHeight;
+  final StationeryLayoutMetrics? layoutMetrics;
 
   const TemplateCanvasPainter({
     required this.style,
     this.typography,
     this.scrollOffset = 0.0,
     this.headerHeight = 0.0,
+    this.layoutMetrics,
   });
 
   bool get _isDark =>
@@ -70,12 +72,13 @@ class TemplateCanvasPainter extends CustomPainter {
     // 2. Procedural substrate texture overlays (cached in ui.Picture)
     _paintSubstrateTexture(canvas, size);
 
-    // 3. Compute deterministic layout metrics
-    final metrics = StationeryLayoutCalculator.calculate(
-      canvasSize: size,
-      style: style,
-      typography: typography,
-    );
+    // 3. Compute or use deterministic layout metrics
+    final metrics = layoutMetrics ??
+        StationeryLayoutCalculator.calculate(
+          canvasSize: size,
+          style: style,
+          typography: typography,
+        );
 
     // 4. Double Outer Border (文武双栏) and conditional Fishtail Mark (版心黑鱼尾)
     StationeryCanvasFraming.paintFraming(
@@ -261,7 +264,7 @@ class TemplateCanvasPainter extends CustomPainter {
               : const Color(0x33E57373))
       ..strokeWidth = 1.2;
 
-    final marginX = innerRect.left + 12.0;
+    final marginX = innerRect.left + 24.0;
     final topMarginY = math.max(effectiveHeaderY, innerRect.top);
     if (topMarginY < innerRect.bottom) {
       canvas.drawLine(
@@ -391,6 +394,7 @@ class TemplateCanvasPainter extends CustomPainter {
         oldDelegate.style.tokens.sealStyle != style.tokens.sealStyle ||
         oldDelegate.scrollOffset != scrollOffset ||
         oldDelegate.headerHeight != headerHeight ||
+        oldDelegate.layoutMetrics != layoutMetrics ||
         oldDelegate.typography?.fontId != typography?.fontId ||
         oldDelegate.typography?.fontFamily != typography?.fontFamily ||
         oldDelegate.typography?.fontSize != typography?.fontSize ||

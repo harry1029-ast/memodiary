@@ -75,6 +75,7 @@ class StationeryLayoutCalculator {
     required Size canvasSize,
     required TemplateStyle style,
     TypographySettings? typography,
+    bool compactMargins = false,
   }) {
     return calculateMetrics(
       canvasWidth: canvasSize.width,
@@ -83,6 +84,7 @@ class StationeryLayoutCalculator {
       horizontalMargin: style.resolvedHorizontalMargin,
       lineSpacing: style.lineSpacing,
       typography: typography,
+      compactMargins: compactMargins,
     );
   }
 
@@ -95,6 +97,7 @@ class StationeryLayoutCalculator {
     double lineSpacing = 1.5,
     double? fontSize,
     TypographySettings? typography,
+    bool compactMargins = false,
   }) {
     final resolvedFontSize = fontSize ?? typography?.fontSize ?? 16.0;
 
@@ -119,32 +122,52 @@ class StationeryLayoutCalculator {
     final left = math.max(0.0, ((canvasWidth - snappedWidth) / 2.0).roundToDouble());
 
     // Vertical geometry
-    // Heaven Margin enforces minimum 52.0px snapped cleanly to lineStridePx, Earth Margin minimum 44.0px
-    double heavenMarginPx = (52.0 / lineStridePx).ceil() * lineStridePx;
-    if (heavenMarginPx < 2.0 * lineStridePx) {
-      heavenMarginPx = 2.0 * lineStridePx;
-    }
+    // In compact (in-editor) mode, maximize writing rows and restrain margins.
+    // In standard (export/standalone) mode, Heaven Margin enforces minimum 52.0px and Earth 44.0px.
+    final minHeaven = compactMargins ? 16.0 : 52.0;
+    final minEarth = compactMargins ? 16.0 : 44.0;
 
-    final availableHeight = canvasHeight - heavenMarginPx - 44.0;
-    int rowCount = math.max(1, (availableHeight / lineStridePx).floor());
+    int rowCount;
+    double heavenMarginPx;
+    double earthMarginPx;
 
-    double earthMarginPx = canvasHeight - (heavenMarginPx + rowCount * lineStridePx);
+    if (compactMargins) {
+      final availableHeight = canvasHeight - minHeaven - minEarth;
+      rowCount = math.max(1, (availableHeight / lineStridePx).floor());
+      final totalMargin = canvasHeight - (rowCount * lineStridePx);
 
-    // Preserve classical Heaven-over-Earth balance (heavenMarginPx >= earthMarginPx)
-    while (rowCount > 1 && (earthMarginPx < 44.0 || heavenMarginPx < earthMarginPx)) {
-      if (earthMarginPx < 44.0) {
-        rowCount--;
-        earthMarginPx = canvasHeight - (heavenMarginPx + rowCount * lineStridePx);
-      } else if (heavenMarginPx < earthMarginPx) {
-        heavenMarginPx += lineStridePx;
-        rowCount--;
-        earthMarginPx = canvasHeight - (heavenMarginPx + rowCount * lineStridePx);
+      heavenMarginPx = (totalMargin * 0.55).roundToDouble();
+      earthMarginPx = totalMargin - heavenMarginPx;
+      if (earthMarginPx < minEarth && totalMargin >= minHeaven + minEarth) {
+        earthMarginPx = minEarth;
+        heavenMarginPx = totalMargin - earthMarginPx;
+      }
+    } else {
+      heavenMarginPx = (minHeaven / lineStridePx).ceil() * lineStridePx;
+      if (heavenMarginPx < 2.0 * lineStridePx) {
+        heavenMarginPx = 2.0 * lineStridePx;
+      }
+
+      final availableHeight = canvasHeight - heavenMarginPx - minEarth;
+      rowCount = math.max(1, (availableHeight / lineStridePx).floor());
+      earthMarginPx = canvasHeight - (heavenMarginPx + rowCount * lineStridePx);
+
+      // Preserve classical Heaven-over-Earth balance (heavenMarginPx >= earthMarginPx)
+      while (rowCount > 1 && (earthMarginPx < minEarth || heavenMarginPx < earthMarginPx)) {
+        if (earthMarginPx < minEarth) {
+          rowCount--;
+          earthMarginPx = canvasHeight - (heavenMarginPx + rowCount * lineStridePx);
+        } else if (heavenMarginPx < earthMarginPx) {
+          heavenMarginPx += lineStridePx;
+          rowCount--;
+          earthMarginPx = canvasHeight - (heavenMarginPx + rowCount * lineStridePx);
+        }
       }
     }
 
     // Safety fallback if canvasHeight is smaller than standard page proportions
     if (heavenMarginPx + rowCount * lineStridePx > canvasHeight && rowCount > 1) {
-      rowCount = math.max(1, ((canvasHeight - 96.0) / lineStridePx).floor());
+      rowCount = math.max(1, ((canvasHeight - (minHeaven + minEarth)) / lineStridePx).floor());
       earthMarginPx = math.max(0.0, canvasHeight - (heavenMarginPx + rowCount * lineStridePx));
     }
 

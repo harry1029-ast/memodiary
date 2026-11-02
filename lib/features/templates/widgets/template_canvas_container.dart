@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../editor/models/typography_settings.dart';
 import '../models/template_style.dart';
+import '../services/stationery_layout_calculator.dart';
 import 'template_canvas_painter.dart';
 
 /// Container that renders procedural paper styling behind its child.
@@ -10,6 +11,7 @@ class TemplateCanvasContainer extends StatelessWidget {
   final TypographySettings? typography;
   final double scrollOffset;
   final double headerHeight;
+  final StationeryLayoutMetrics? layoutMetrics;
 
   /// Optional override for canvas padding.
   ///
@@ -24,6 +26,7 @@ class TemplateCanvasContainer extends StatelessWidget {
     this.typography,
     this.scrollOffset = 0.0,
     this.headerHeight = 0.0,
+    this.layoutMetrics,
     this.customPadding,
   });
 
@@ -35,6 +38,7 @@ class TemplateCanvasContainer extends StatelessWidget {
         typography: typography,
         scrollOffset: scrollOffset,
         headerHeight: headerHeight,
+        layoutMetrics: layoutMetrics,
       ),
       child: Padding(
         padding: customPadding ??
