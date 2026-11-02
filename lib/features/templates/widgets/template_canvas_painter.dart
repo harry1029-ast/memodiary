@@ -36,6 +36,11 @@ class _SubstratePictureCacheKey {
 
 /// Procedural CustomPainter rendering diary backgrounds, ruled lines, grids,
 /// margins, and paper textures bounded strictly within [StationeryLayoutMetrics.innerFrameRect].
+///
+/// Geometry Invariant:
+/// - [StationeryLayoutMetrics.innerFrameRect] encloses the Paper Heart (版心) and Double Outer Border.
+/// - The top rows are reserved for JournalLetterhead; rulings and grids render strictly
+///   below `effectiveHeaderY = innerRect.top + headerHeight`.
 class TemplateCanvasPainter extends CustomPainter {
   static final Map<_SubstratePictureCacheKey, ui.Picture> _substratePictureCache = {};
 

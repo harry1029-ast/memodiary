@@ -5,6 +5,11 @@ import '../../editor/services/baseline_metrics_calculator.dart';
 import '../models/template_style.dart';
 
 /// Immutable value object representing bounded Paper Heart geometry and margins.
+///
+/// Geometry Contract:
+/// - [innerFrameRect] defines the outer Paper Heart (版心) bounds.
+/// - The top rows (headerHeight) inside [innerFrameRect] are reserved for JournalLetterhead.
+/// - Horizontal baselines and vertical grid rulings begin strictly at `innerFrameRect.top + headerHeight`.
 class StationeryLayoutMetrics {
   final double fontSize;
   final double lineStridePx;

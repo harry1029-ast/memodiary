@@ -143,6 +143,115 @@ void main() {
             'Found violations in:\n${violations.join('\n')}',
       );
     });
+
+    test('Non-grandfathered Dart files in lib/ maintain strict file size limit (< 450 LOC)', () {
+      const maxAllowedLoc = 450;
+      const grandfatheredFilesExceeding450Loc = <String>{
+        'lib/core/database/app_database.dart',
+        'lib/core/services/media_sandbox_service.dart',
+        'lib/core/theme/ink_diary_theme.dart',
+        'lib/features/albums/data/album_repository.dart',
+        'lib/features/albums/models/album_studio_models.dart',
+        'lib/features/albums/screens/album_book_overview_screen.dart',
+        'lib/features/albums/screens/album_page_editor_screen.dart',
+        'lib/features/albums/screens/album_workspace_screen.dart',
+        'lib/features/albums/services/album_studio_controller.dart',
+        'lib/features/albums/services/album_studio_pdf_renderer.dart',
+        'lib/features/albums/services/album_theme_catalog.dart',
+        'lib/features/albums/widgets/page_background_painter.dart',
+        'lib/features/analytics/screens/analytics_dashboard_screen.dart',
+        'lib/features/editor/screens/entry_editor_screen.dart',
+        'lib/features/editor/widgets/journal_letterhead.dart',
+        'lib/features/editor/widgets/soundscape_modal.dart',
+        'lib/features/editor/widgets/typography_sheet.dart',
+        'lib/features/import_export/services/backup_crypto.dart',
+        'lib/features/import_export/services/backup_restore_service.dart',
+        'lib/features/import_export/services/date_parser_engine.dart',
+        'lib/features/import_export/services/offline_cjk_ttf_generator.dart',
+        'lib/features/import_export/services/pdf_entry_serializer.dart',
+        'lib/features/import_export/widgets/backup_dialogs.dart',
+        'lib/features/intro/widgets/book_3d_stage.dart',
+        'lib/features/intro/widgets/living_ink_background_painter.dart',
+        'lib/features/scenery/models/ancient_room_palette.dart',
+        'lib/features/scenery/models/outdoor_street_palette.dart',
+        'lib/features/scenery/models/shanshui_atmosphere.dart',
+        'lib/features/scenery/models/shanshui_palette.dart',
+        'lib/features/scenery/painters/ancient_room_painter.dart',
+        'lib/features/scenery/painters/outdoor_street_painter.dart',
+        'lib/features/scenery/painters/outdoor_street_static_architecture.dart',
+        'lib/features/scenery/widgets/shanshui_canvas_painter.dart',
+        'lib/features/scenery/widgets/shanshui_scenery_card.dart',
+        'lib/features/search/screens/search_screen.dart',
+        'lib/features/search/services/event_suggestion_service.dart',
+        'lib/features/search/services/natural_language_search_parser.dart',
+        'lib/features/settings/screens/settings_screen.dart',
+        'lib/features/templates/screens/custom_template_editor_screen.dart',
+        'lib/features/templates/widgets/template_switcher_sheet.dart',
+        'lib/features/timeline/screens/entry_detail_screen.dart',
+        'lib/features/timeline/screens/timeline_screen.dart',
+        'lib/features/weekly_review/screens/weekly_debrief_detail_screen.dart',
+        'lib/features/weekly_review/screens/weekly_review_screen.dart',
+      };
+
+      final dartFiles = libDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
+
+      final violations = <String>[];
+
+      for (final file in dartFiles) {
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        if (grandfatheredFilesExceeding450Loc.contains(relPath)) {
+          continue;
+        }
+
+        final lineCount = file.readAsLinesSync().length;
+        if (lineCount >= maxAllowedLoc) {
+          violations.add('$relPath: $lineCount LOC (max allowed: < $maxAllowedLoc LOC)');
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'All newly authored files in lib/ must remain strictly under 450 lines '
+            'per GEMINI.md and CODING_STANDARDS.md § 3. Found files exceeding limit:\n'
+            '${violations.join('\n')}',
+      );
+    });
+
+    test('lib/ enforces displacement over coexistence with zero deprecated backward compatibility markers', () {
+      final backwardCompatibilityRegex = RegExp(
+        r'(@deprecated|backwards compatibility|backward compatibility)',
+        caseSensitive: false,
+      );
+
+      final dartFiles = libDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
+
+      final violations = <String>[];
+
+      for (final file in dartFiles) {
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        final lines = file.readAsLinesSync();
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+          final line = lines[lineIndex];
+          if (backwardCompatibilityRegex.hasMatch(line)) {
+            violations.add('$relPath:${lineIndex + 1}: ${line.trim()}');
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Deprecated backward compatibility wrappers violate CODING_STANDARDS.md § 3 '
+            '(Displacement over Coexistence). Found:\n${violations.join('\n')}',
+      );
+    });
   });
 }
 
