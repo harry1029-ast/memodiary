@@ -13,6 +13,7 @@ import '../../../core/services/dictation_service.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
+import '../../templates/services/stationery_layout_calculator.dart';
 import '../../templates/widgets/template_canvas_container.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../models/thought_spark.dart';
@@ -22,6 +23,8 @@ import '../services/baseline_metrics_calculator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/cinnabar_signature_seal.dart';
+import '../widgets/editor_quill_styles_builder.dart';
+import '../widgets/integer_snapped_letterhead.dart';
 import '../widgets/keepsake_scroll_view.dart';
 import '../widgets/scholar_chest/scholar_chest_drawer.dart';
 import '../widgets/journal_letterhead.dart';
@@ -626,78 +629,87 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           children: [
             // Full-bleed paper canvas wrapping Letterhead + GhostPrompt + QuillEditor
             Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Positioned.fill(
-                    child: AnimatedBuilder(
-                      animation: _editorScrollController,
-                      builder: (context, _) {
-                        final scrollOffset = _editorScrollController.hasClients
-                            ? _editorScrollController.offset
-                            : 0.0;
-                        return TemplateCanvasContainer(
-                          style: templateStyle,
-                          typography: _typography,
-                          scrollOffset: scrollOffset,
-                          headerHeight: _headerHeight,
-                          customPadding: EdgeInsets.zero,
-                          child: const SizedBox.expand(),
-                        );
-                      },
-                    ),
-                  ),
-                  Theme(
-                    data: paperBaseTheme.copyWith(
-                      textTheme: paperBaseTheme.textTheme.apply(
-                        bodyColor: inkColor,
-                        displayColor: inkColor,
+              child: LayoutBuilder(
+                builder: (layoutContext, layoutConstraints) {
+                  final canvasSize = Size(layoutConstraints.maxWidth, layoutConstraints.maxHeight);
+                  final metrics = StationeryLayoutCalculator.calculate(
+                    canvasSize: canvasSize,
+                    style: templateStyle,
+                    typography: _typography,
+                  );
+                  final activeRowHeight = metrics.lineStridePx;
+                  final horizontalLeft = metrics.innerFrameRect.left;
+                  final horizontalRight = math.max(0.0, layoutConstraints.maxWidth - metrics.innerFrameRect.right);
+
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Positioned.fill(
+                        child: AnimatedBuilder(
+                          animation: _editorScrollController,
+                          builder: (canvasContext, scrollChild) {
+                            final scrollOffset = _editorScrollController.hasClients
+                                ? _editorScrollController.offset
+                                : 0.0;
+                            return TemplateCanvasContainer(
+                              style: templateStyle,
+                              typography: _typography,
+                              scrollOffset: scrollOffset,
+                              headerHeight: _headerHeight,
+                              customPadding: EdgeInsets.zero,
+                              child: const SizedBox.expand(),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    child: SingleChildScrollView(
-                      controller: _editorScrollController,
-                      padding: EdgeInsets.zero,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 1. In-Paper Journal Letterhead
-                          Container(
-                            key: _letterheadKey,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: templateStyle.marginHorizontal.clamp(16.0, 36.0),
-                              vertical: 8.0,
-                            ),
-                            child: JournalLetterhead(
-                              entryDate: _entryDate,
-                              mood: _mood,
-                              weather: _weather,
-                              titleController: _titleController,
-                              onDateChanged: (val) {
-                                setState(() => _entryDate = val);
-                                widget.database.updateEntryMetadata(widget.entryId, entryDate: val);
-                              },
-                              onMoodChanged: (val) {
-                                setState(() => _mood = val);
-                                widget.database.updateEntryMetadata(widget.entryId, mood: val);
-                              },
-                              onWeatherChanged: (val) {
-                                setState(() => _weather = val);
-                                widget.database.updateEntryMetadata(widget.entryId, weather: val);
-                              },
-                            ),
+                      Theme(
+                        data: paperBaseTheme.copyWith(
+                          textTheme: paperBaseTheme.textTheme.apply(
+                            bodyColor: inkColor,
+                            displayColor: inkColor,
                           ),
+                        ),
+                        child: SingleChildScrollView(
+                          controller: _editorScrollController,
+                          padding: EdgeInsets.zero,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // 1. In-Paper Journal Letterhead wrapped inside IntegerSnappedLetterhead
+                              IntegerSnappedLetterhead(
+                                key: _letterheadKey,
+                                lineStridePx: activeRowHeight,
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: templateStyle.marginHorizontal.clamp(16.0, 36.0),
+                                    vertical: 8.0,
+                                  ),
+                                  child: JournalLetterhead(
+                                    entryDate: _entryDate,
+                                    mood: _mood,
+                                    weather: _weather,
+                                    titleController: _titleController,
+                                    onDateChanged: (selectedDate) {
+                                      setState(() => _entryDate = selectedDate);
+                                      widget.database.updateEntryMetadata(widget.entryId, entryDate: selectedDate);
+                                    },
+                                    onMoodChanged: (selectedMood) {
+                                      setState(() => _mood = selectedMood);
+                                      widget.database.updateEntryMetadata(widget.entryId, mood: selectedMood);
+                                    },
+                                    onWeatherChanged: (selectedWeather) {
+                                      setState(() => _weather = selectedWeather);
+                                      widget.database.updateEntryMetadata(widget.entryId, weather: selectedWeather);
+                                    },
+                                  ),
+                                ),
+                              ),
 
-                          // 2. Quill Editor Content with contextual margin alignment
-                          Builder(
-                            builder: (context) {
-                              final activeRowHeight = BaselineMetricsCalculator.calculateLineHeight(
-                                _typography.toTextStyle(color: inkColor),
-                              );
-
-                              return Padding(
+                              // 2. Quill Editor Content with contextual margin alignment
+                              Padding(
                                 padding: EdgeInsets.only(
-                                  left: templateStyle.contentMarginLeft,
-                                  right: templateStyle.resolvedHorizontalMargin,
+                                  left: horizontalLeft,
+                                  right: horizontalRight,
                                   bottom: 120.0,
                                 ),
                                 child: QuillEditor(
@@ -712,45 +724,47 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                                       SandboxedImageEmbedBuilder(
                                         mediaSandboxService: widget.mediaSandboxService,
                                         onImageRemoved: () => _autosaveManager?.saveDraft(),
-                                        onEmbedMutated: (_) => _autosaveManager?.saveDraft(),
+                                        onEmbedMutated: (mutatedBlock) => _autosaveManager?.saveDraft(),
                                         rowHeight: activeRowHeight,
                                       ),
                                       SandboxedVideoEmbedBuilder(
                                         mediaSandboxService: widget.mediaSandboxService,
                                         onVideoRemoved: () => _autosaveManager?.saveDraft(),
-                                        onEmbedMutated: (_) => _autosaveManager?.saveDraft(),
+                                        onEmbedMutated: (mutatedBlock) => _autosaveManager?.saveDraft(),
                                         rowHeight: activeRowHeight,
                                       ),
                                     ],
-                                    customStyles: _buildQuillStyles(
+                                    customStyles: EditorQuillStylesBuilder.build(
                                       typography: _typography,
                                       inkColor: inkColor,
                                       isPaperDark: isPaperDark,
+                                      lineStridePx: activeRowHeight,
+                                      backgroundType: templateStyle.type,
                                     ),
                                   ),
                                 ),
-                              );
-                            },
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Live Cinnabar Signature Seal at colophon
-                  Positioned(
-                    bottom: 24,
-                    right: 20,
-                    child: IgnorePointer(
-                      child: Opacity(
-                        opacity: 0.38,
-                        child: CinnabarSignatureSeal(
-                          sealStyle: templateStyle.tokens.sealStyle,
                         ),
                       ),
-                    ),
-                  ),
-                ],
+
+                      // Live Cinnabar Signature Seal at colophon
+                      Positioned(
+                        bottom: 24,
+                        right: 20,
+                        child: IgnorePointer(
+                          child: Opacity(
+                            opacity: 0.38,
+                            child: CinnabarSignatureSeal(
+                              sealStyle: templateStyle.tokens.sealStyle,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
 
@@ -794,89 +808,31 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     });
   }
 
-  DefaultStyles _buildQuillStyles({
+  @visibleForTesting
+  StrutStyle get activeStrutStyle {
+    final activeRowHeight = BaselineMetricsCalculator.calculateLineHeight(
+      _typography.toTextStyle(),
+    );
+    return EditorQuillStylesBuilder.buildStrutStyle(
+      fontSize: _typography.fontSize,
+      lineStridePx: activeRowHeight,
+    );
+  }
+
+  @visibleForTesting
+  DefaultStyles buildQuillStyles({
     required TypographySettings typography,
     required Color inkColor,
     required bool isPaperDark,
+    required double lineStridePx,
+    required TemplateBackgroundType backgroundType,
   }) {
-    final baseStyle = typography.toTextStyle(color: inkColor);
-    final rowHeight = BaselineMetricsCalculator.calculateLineHeight(baseStyle);
-
-    final h1FontSize = 22.0;
-    final h1TextHeight = h1FontSize * 1.2;
-    final h1Padding = math.max(0.0, (rowHeight * 2 - h1TextHeight) / 2);
-
-    final h2FontSize = 18.0;
-    final h2TextHeight = h2FontSize * 1.2;
-    final h2Padding = math.max(0.0, (rowHeight * 2 - h2TextHeight) / 2);
-
-    final h3FontSize = 16.0;
-    final h3TextHeight = h3FontSize * 1.2;
-    final h3Padding = math.max(0.0, (rowHeight - h3TextHeight) / 2);
-
-    return DefaultStyles(
-      placeHolder: DefaultTextBlockStyle(
-        typography.toTextStyle(
-          color: isPaperDark ? const Color(0xFFA69F93) : const Color(0x7F212121),
-        ),
-        const HorizontalSpacing(0, 0),
-        const VerticalSpacing(0, 0),
-        const VerticalSpacing(0, 0),
-        null,
-      ),
-      paragraph: DefaultTextBlockStyle(
-        baseStyle,
-        const HorizontalSpacing(0, 0),
-        const VerticalSpacing(0, 0),
-        const VerticalSpacing(0, 0),
-        null,
-      ),
-      h1: DefaultTextBlockStyle(
-        baseStyle.copyWith(
-          fontSize: h1FontSize,
-          height: 1.2,
-          fontWeight: FontWeight.bold,
-          color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
-        ),
-        const HorizontalSpacing(0, 0),
-        VerticalSpacing(h1Padding, h1Padding),
-        const VerticalSpacing(0, 0),
-        null,
-      ),
-      h2: DefaultTextBlockStyle(
-        baseStyle.copyWith(
-          fontSize: h2FontSize,
-          height: 1.2,
-          fontWeight: FontWeight.bold,
-          color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
-        ),
-        const HorizontalSpacing(0, 0),
-        VerticalSpacing(h2Padding, h2Padding),
-        const VerticalSpacing(0, 0),
-        null,
-      ),
-      h3: DefaultTextBlockStyle(
-        baseStyle.copyWith(
-          fontSize: h3FontSize,
-          height: 1.2,
-          fontWeight: FontWeight.bold,
-          color: isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E),
-        ),
-        const HorizontalSpacing(0, 0),
-        VerticalSpacing(h3Padding, h3Padding),
-        const VerticalSpacing(0, 0),
-        null,
-      ),
-      quote: DefaultTextBlockStyle(
-        baseStyle.copyWith(
-          fontStyle: FontStyle.italic,
-          color: isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF424242),
-        ),
-        const HorizontalSpacing(0, 0),
-        const VerticalSpacing(0, 0),
-        const VerticalSpacing(0, 0),
-        null,
-      ),
+    return EditorQuillStylesBuilder.build(
+      typography: typography,
+      inkColor: inkColor,
+      isPaperDark: isPaperDark,
+      lineStridePx: lineStridePx,
+      backgroundType: backgroundType,
     );
   }
 }

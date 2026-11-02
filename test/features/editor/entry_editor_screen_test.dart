@@ -10,13 +10,16 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/widgets/keepsake_scroll_view.dart';
+import 'package:memodiary/features/editor/widgets/editor_quill_styles_builder.dart';
 import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
 import 'package:memodiary/features/editor/widgets/entry_metadata_bar.dart';
 import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
+import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/thought_spark_banner.dart';
 import 'package:memodiary/features/editor/widgets/writing_dock.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
+import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../core/services/dictation_service_test.dart';
 
@@ -164,7 +167,7 @@ void main() {
       expect(updatedContainer.typography!.lineSpacing, updatedContainer.style.lineSpacing);
     });
 
-    testWidgets('applies contextual left padding: marginX + 12 on lined paper and marginX on grid paper', (tester) async {
+    testWidgets('synchronizes editor horizontal margins directly to innerFrameRect and clamps letterhead height', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: InkDiaryTheme.light,
@@ -179,7 +182,19 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Switch to Lined Paper
+      // 1. Verify IntegerSnappedLetterhead height on canvas is an integer multiple of lineStridePx
+      final letterheadFinder = find.byType(IntegerSnappedLetterhead);
+      expect(letterheadFinder, findsOneWidget);
+      final letterheadWidget = tester.widget<IntegerSnappedLetterhead>(letterheadFinder);
+      final letterheadSize = tester.getSize(letterheadFinder);
+      expect(letterheadSize.height % letterheadWidget.lineStridePx, equals(0.0));
+
+      final canvasContainer = tester.widget<TemplateCanvasContainer>(
+        find.byType(TemplateCanvasContainer),
+      );
+      expect(canvasContainer.headerHeight, equals(letterheadSize.height));
+
+      // 2. Switch to Lined Paper
       await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const Key('chest_template_chip_template_lined_paper')));
@@ -198,10 +213,20 @@ void main() {
         ).first,
       );
       final linedPadding = linedPaddingWidget.padding as EdgeInsets;
-      // Lined paper should have marginX (24.0) + 12.0 = 36.0
-      expect(linedPadding.left, equals(36.0));
 
-      // Switch to Grid Paper (named 'Weekly Review' in defaults)
+      // Verify horizontal padding on lined paper matches innerFrameRect exactly
+      final linedMetrics = StationeryLayoutCalculator.calculateMetrics(
+        canvasWidth: 800.0,
+        canvasHeight: 600.0,
+        backgroundType: TemplateBackgroundType.lined,
+        horizontalMargin: 24.0,
+        fontSize: 16.0,
+        lineSpacing: 1.5,
+      );
+      expect(linedPadding.left, equals(linedMetrics.innerFrameRect.left));
+      expect(linedPadding.right, equals(800.0 - linedMetrics.innerFrameRect.right));
+
+      // 3. Switch to Grid Paper (named 'Weekly Review' in defaults)
       await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(const Key('chest_template_chip_template_weekly_review')));
@@ -219,8 +244,78 @@ void main() {
         ).first,
       );
       final gridPadding = gridPaddingWidget.padding as EdgeInsets;
-      // Grid paper should be exactly marginX (16.0) without the +12 gutter
-      expect(gridPadding.left, equals(16.0));
+
+      final gridMetrics = StationeryLayoutCalculator.calculateMetrics(
+        canvasWidth: 800.0,
+        canvasHeight: 600.0,
+        backgroundType: TemplateBackgroundType.grid,
+        horizontalMargin: 16.0,
+        fontSize: 16.0,
+        lineSpacing: 1.5,
+      );
+      expect(gridPadding.left, equals(gridMetrics.innerFrameRect.left));
+      expect(gridPadding.right, equals(800.0 - gridMetrics.innerFrameRect.right));
+    });
+
+    testWidgets('enforces StrutStyle forceStrutHeight on editor styles and toggles grid letterSpacing cleanly without mutating delta', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: EntryEditorScreen(
+            database: db,
+            mediaSandboxService: sandboxService,
+            entryId: 'editor_test_entry',
+            dictationService: dictationService,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify StrutStyle on editor styles
+      final strutStyle = EditorQuillStylesBuilder.buildStrutStyle(
+        fontSize: 16.0,
+        lineStridePx: 24.0,
+      );
+      expect(strutStyle.forceStrutHeight, isTrue);
+
+      final initialEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
+      final initialParagraphStyle = initialEditor.config.customStyles!.paragraph!.style;
+      expect(initialParagraphStyle.height, equals(24.0 / 16.0));
+
+      // Switch to Grid template
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('chest_template_chip_template_weekly_review')));
+      await tester.tap(find.byKey(const Key('chest_template_chip_template_weekly_review')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('chest_dismiss_handle')));
+      await tester.pumpAndSettle();
+
+      final gridEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
+      final gridParagraphStyle = gridEditor.config.customStyles!.paragraph!.style;
+      // letterSpacing = lineStridePx - fontSize = 24.0 - 16.0 = 8.0
+      expect(gridParagraphStyle.letterSpacing, equals(8.0));
+
+      // Switch back to Lined template
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('chest_template_chip_template_lined_paper')));
+      await tester.tap(find.byKey(const Key('chest_template_chip_template_lined_paper')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('chest_dismiss_handle')));
+      await tester.pumpAndSettle();
+
+      final linedEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
+      final linedParagraphStyle = linedEditor.config.customStyles!.paragraph!.style;
+      // letterSpacing restores to 0.0
+      expect(linedParagraphStyle.letterSpacing, equals(0.0));
+
+      // Verify database contentDelta remains byte-for-byte identical
+      final entry = await db.getEntryById('editor_test_entry');
+      expect(entry!.contentDelta, equals('[]'));
     });
 
     testWidgets('opening template switcher and typography sheets from scholar chest', (tester) async {
