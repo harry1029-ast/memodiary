@@ -3,19 +3,24 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
 import '../../../core/theme/ink_diary_theme.dart';
+import 'writing_dock_formatting_ribbon.dart';
 
 /// Progressive two-tier bottom writing dock anchored above the soft keyboard.
 /// Tier 1 presents 5 high-frequency tools: Aa Formatting, Photo, Video, Dictation, Spark.
 /// Tier 2 smoothly unfolds on-demand as an inline formatting ribbon.
+/// Supports collapsible mode into a slim drag handle tab and paper-adaptive scholar styling.
 class WritingDock extends StatefulWidget {
   final QuillController controller;
   final VoidCallback onPickImage;
   final VoidCallback? onPickVideo;
   final VoidCallback onToggleDictation;
   final VoidCallback? onShuffleSpark;
-  final VoidCallback? onOpenChest;
   final bool isDictating;
   final Color? backgroundColor;
+  final Color? inkColor;
+  final bool isPaperDark;
+  final bool initiallyCollapsed;
+  final ValueChanged<bool>? onCollapsedChanged;
 
   const WritingDock({
     super.key,
@@ -24,9 +29,12 @@ class WritingDock extends StatefulWidget {
     this.onPickVideo,
     required this.onToggleDictation,
     this.onShuffleSpark,
-    this.onOpenChest,
     this.isDictating = false,
     this.backgroundColor,
+    this.inkColor,
+    this.isPaperDark = false,
+    this.initiallyCollapsed = false,
+    this.onCollapsedChanged,
   });
 
   @override
@@ -35,47 +43,39 @@ class WritingDock extends StatefulWidget {
 
 class _WritingDockState extends State<WritingDock> {
   bool _isFormattingOpen = false;
+  late bool _isManuallyCollapsed;
 
-  void _toggleFormat(Attribute attribute) {
-    HapticFeedback.selectionClick();
-    final isToggled = widget.controller.getSelectionStyle().containsKey(attribute.key);
-    if (isToggled) {
-      widget.controller.formatSelection(Attribute.clone(attribute, null));
-    } else {
-      widget.controller.formatSelection(attribute);
-    }
+  @override
+  void initState() {
+    super.initState();
+    _isManuallyCollapsed = widget.initiallyCollapsed;
   }
 
-  void _insertInterlinearNote() {
-    HapticFeedback.selectionClick();
-    final selection = widget.controller.selection;
-    if (!selection.isValid || selection.isCollapsed) {
-      final int offset = (selection.isValid && selection.baseOffset >= 0)
-          ? selection.baseOffset
-          : 0;
-      widget.controller.replaceText(offset, 0, '{夹注:}', null);
-      widget.controller.updateSelection(
-        TextSelection.collapsed(offset: offset + 4),
-        ChangeSource.local,
-      );
-    } else {
-      final plainText = widget.controller.document.toPlainText();
-      final start = selection.start.clamp(0, plainText.length);
-      final end = selection.end.clamp(0, plainText.length);
-      final selectedText = plainText.substring(start, end);
-      final replacement = '{夹注:$selectedText}';
-      widget.controller.replaceText(start, end - start, replacement, null);
-      widget.controller.updateSelection(
-        TextSelection.collapsed(offset: start + replacement.length),
-        ChangeSource.local,
-      );
+  void _toggleCollapse() {
+    HapticFeedback.lightImpact();
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    if (isKeyboardOpen && !_isManuallyCollapsed) {
+      FocusScope.of(context).unfocus();
     }
+    setState(() {
+      _isManuallyCollapsed = !_isManuallyCollapsed;
+    });
+    widget.onCollapsedChanged?.call(_isManuallyCollapsed);
   }
 
   @override
   Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
-    final effectiveBackground = widget.backgroundColor ?? tokens.xuanGround.withValues(alpha: 0.96);
+    final effectiveBackground = widget.backgroundColor ??
+        (widget.isPaperDark
+            ? tokens.xuanGround.withValues(alpha: 0.96)
+            : tokens.xuanPureLeaf.withValues(alpha: 0.96));
+
+    final effectiveInkColor = widget.inkColor ??
+        (widget.isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF2D2D2D));
+
+    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final isCollapsed = _isManuallyCollapsed && !isKeyboardOpen;
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
@@ -98,61 +98,136 @@ class _WritingDockState extends State<WritingDock> {
         ),
         child: SafeArea(
           top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Thumb-reachable pull handle for Scholar's Stationery Chest
-              if (widget.onOpenChest != null)
-                GestureDetector(
-                  key: const Key('dock_scholar_chest_button'),
-                  onTap: widget.onOpenChest,
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    height: 14,
-                    width: double.infinity,
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 36,
-                      height: 3.5,
-                      decoration: BoxDecoration(
-                        color: tokens.agedFiber,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Tier 2: Smoothly animated inline formatting ribbon
-              AnimatedSize(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeInOutCubic,
-                alignment: Alignment.bottomCenter,
-                child: _isFormattingOpen ? _buildFormattingRibbon(tokens) : const SizedBox.shrink(),
-              ),
-
-              // Tier 1: 5 Primary High-Frequency Tools
-              _buildPrimaryToolbar(tokens),
-            ],
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeInOutCubic,
+            alignment: Alignment.bottomCenter,
+            child: isCollapsed
+                ? _buildHandleBar(
+                    key: const Key('writing_dock_collapsed_tab'),
+                    height: 28,
+                    isCollapsed: true,
+                    tokens: tokens,
+                    effectiveInkColor: effectiveInkColor,
+                  )
+                : _buildExpandedContent(tokens, effectiveInkColor),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildPrimaryToolbar(InkDiaryTokens tokens) {
+  Widget _buildHandleBar({
+    required Key key,
+    required double height,
+    required bool isCollapsed,
+    required InkDiaryTokens tokens,
+    required Color effectiveInkColor,
+  }) {
+    return GestureDetector(
+      key: key,
+      behavior: HitTestBehavior.opaque,
+      onTap: _toggleCollapse,
+      onVerticalDragUpdate: (dragDetails) {
+        final delta = dragDetails.primaryDelta;
+        if (delta == null) return;
+        if (isCollapsed && delta < -6) {
+          _toggleCollapse();
+        } else if (!isCollapsed && delta > 6) {
+          _toggleCollapse();
+        }
+      },
+      onVerticalDragEnd: (dragDetails) {
+        final velocity = dragDetails.primaryVelocity;
+        if (velocity == null) return;
+        if (isCollapsed && velocity < -80) {
+          _toggleCollapse();
+        } else if (!isCollapsed && velocity > 80) {
+          _toggleCollapse();
+        }
+      },
+      child: Container(
+        height: height,
+        width: double.infinity,
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: isCollapsed ? 32 : 36,
+              height: 3.5,
+              decoration: BoxDecoration(
+                color: tokens.deckleBorder,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 4),
+            AnimatedRotation(
+              turns: isCollapsed ? 0.5 : 0.0,
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeInOutCubic,
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: effectiveInkColor.withValues(alpha: 0.65),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedContent(InkDiaryTokens tokens, Color effectiveInkColor) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildHandleBar(
+          key: const Key('writing_dock_collapse_toggle'),
+          height: 18,
+          isCollapsed: false,
+          tokens: tokens,
+          effectiveInkColor: effectiveInkColor,
+        ),
+
+        // Tier 2: Smoothly animated inline formatting ribbon
+        AnimatedSize(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeInOutCubic,
+          alignment: Alignment.bottomCenter,
+          child: _isFormattingOpen
+              ? WritingDockFormattingRibbon(
+                  controller: widget.controller,
+                  tokens: tokens,
+                  inkColor: effectiveInkColor,
+                  isPaperDark: widget.isPaperDark,
+                )
+              : const SizedBox.shrink(),
+        ),
+
+        // Tier 1: 5 Primary High-Frequency Tools
+        _buildPrimaryToolbar(tokens, effectiveInkColor),
+      ],
+    );
+  }
+
+  Widget _buildPrimaryToolbar(InkDiaryTokens tokens, Color effectiveInkColor) {
+    final activeBackdrop = tokens.agedFiber.withValues(alpha: widget.isPaperDark ? 0.65 : 0.85);
+
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // 1. [Aa 字法] (Formatting Drawer Toggle)
+          // 1. [Aa 字法] (Formatting Drawer Toggle with Paper-Adaptive Ink)
           _buildPrimaryToolBtn(
             key: const Key('writing_dock_format_btn'),
             icon: Icons.text_fields_rounded,
             tooltip: '字法排印 · Formatting',
             isActive: _isFormattingOpen,
-            tokens: tokens,
+            color: effectiveInkColor,
+            activeBackground: activeBackdrop,
             onTap: () {
               HapticFeedback.lightImpact();
               setState(() => _isFormattingOpen = !_isFormattingOpen);
@@ -165,7 +240,7 @@ class _WritingDockState extends State<WritingDock> {
             icon: Icons.add_photo_alternate_outlined,
             tooltip: '插入图画 · Insert Photo',
             isActive: false,
-            tokens: tokens,
+            color: effectiveInkColor,
             onTap: widget.onPickImage,
           ),
 
@@ -176,30 +251,29 @@ class _WritingDockState extends State<WritingDock> {
               icon: Icons.videocam_outlined,
               tooltip: '插入短影 · Short Video (≤60s)',
               isActive: false,
-              tokens: tokens,
+              color: effectiveInkColor,
               onTap: widget.onPickVideo!,
             ),
 
-          // 4. [🎙️ 听写] (Speech Dictation)
+          // 4. [🎙️ 听写] (Speech Dictation with Cinnabar Accent)
           _buildPrimaryToolBtn(
             key: const Key('writing_dock_dictation_btn'),
             icon: widget.isDictating ? Icons.mic : Icons.mic_none,
             tooltip: '原声听写 · Voice Dictation',
             isActive: widget.isDictating,
-            activeColor: Colors.white,
-            activeBackground: tokens.cinnabar,
-            tokens: tokens,
+            color: widget.isDictating ? Colors.white : const Color(0xFFB83B2E),
+            activeBackground: const Color(0xFFB83B2E),
             onTap: widget.onToggleDictation,
           ),
 
-          // 5. [✨ 灵感] (Thought Spark Prompt)
+          // 5. [✨ 灵感] (Thought Spark Prompt with Amber Gold Accent)
           if (widget.onShuffleSpark != null)
             _buildPrimaryToolBtn(
               key: const Key('writing_dock_spark_btn'),
               icon: Icons.auto_awesome_outlined,
               tooltip: '灵感拾遗 · Thought Spark',
               isActive: false,
-              tokens: tokens,
+              color: const Color(0xFFD4AF37),
               onTap: widget.onShuffleSpark!,
             ),
         ],
@@ -212,16 +286,13 @@ class _WritingDockState extends State<WritingDock> {
     required IconData icon,
     required String tooltip,
     required bool isActive,
-    required InkDiaryTokens tokens,
+    required Color color,
     required VoidCallback onTap,
-    Color? activeColor,
     Color? activeBackground,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: isActive
-            ? (activeBackground ?? tokens.agedFiber)
-            : Colors.transparent,
+        color: isActive ? (activeBackground ?? Colors.transparent) : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
       ),
       child: IconButton(
@@ -229,205 +300,11 @@ class _WritingDockState extends State<WritingDock> {
         icon: Icon(
           icon,
           size: 21,
-          color: isActive
-              ? (activeColor ?? tokens.jiaomo)
-              : tokens.nongmo,
+          color: color,
         ),
         onPressed: onTap,
         tooltip: tooltip,
         constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
-        padding: EdgeInsets.zero,
-      ),
-    );
-  }
-
-  Widget _buildFormattingRibbon(InkDiaryTokens tokens) {
-    return Container(
-      height: 42,
-      decoration: BoxDecoration(
-        color: tokens.agedFiber.withValues(alpha: 0.35),
-        border: Border(
-          bottom: BorderSide(
-            color: tokens.agedFiber,
-            width: 0.8,
-          ),
-        ),
-      ),
-      child: ListenableBuilder(
-        listenable: widget.controller,
-        builder: (context, _) {
-          final style = widget.controller.getSelectionStyle();
-
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              children: [
-                // Bold
-                _buildFormatTextBtn(
-                  label: 'B',
-                  isBold: true,
-                  isActive: style.containsKey(Attribute.bold.key),
-                  onTap: () => _toggleFormat(Attribute.bold),
-                  tooltip: '加粗 · Bold',
-                  tokens: tokens,
-                ),
-                // Italic
-                _buildFormatTextBtn(
-                  label: 'I',
-                  isItalic: true,
-                  isActive: style.containsKey(Attribute.italic.key),
-                  onTap: () => _toggleFormat(Attribute.italic),
-                  tooltip: '斜体 · Italic',
-                  tokens: tokens,
-                ),
-                // Underline
-                _buildFormatTextBtn(
-                  label: 'U',
-                  isUnderline: true,
-                  isActive: style.containsKey(Attribute.underline.key),
-                  onTap: () => _toggleFormat(Attribute.underline),
-                  tooltip: '下划线 · Underline',
-                  tokens: tokens,
-                ),
-
-                _buildDivider(tokens),
-
-                // Heading 1
-                _buildFormatTextBtn(
-                  label: 'T',
-                  isHeading: true,
-                  isActive: style.containsKey(Attribute.h1.key),
-                  onTap: () => _toggleFormat(Attribute.h1),
-                  tooltip: '大标题 · Heading 1',
-                  tokens: tokens,
-                ),
-                // Heading 2
-                _buildFormatTextBtn(
-                  label: 'Tt',
-                  isHeading: false,
-                  isActive: style.containsKey(Attribute.h2.key),
-                  onTap: () => _toggleFormat(Attribute.h2),
-                  tooltip: '次标题 · Heading 2',
-                  tokens: tokens,
-                ),
-                // Blockquote
-                _buildFormatIconBtn(
-                  icon: Icons.format_quote,
-                  isActive: style.containsKey(Attribute.blockQuote.key),
-                  onTap: () => _toggleFormat(Attribute.blockQuote),
-                  tooltip: '引用 · Quote',
-                  tokens: tokens,
-                ),
-
-                _buildDivider(tokens),
-
-                // Bullet List
-                _buildFormatIconBtn(
-                  icon: Icons.format_list_bulleted,
-                  isActive: style.containsKey(Attribute.ul.key),
-                  onTap: () => _toggleFormat(Attribute.ul),
-                  tooltip: '无序列表 · Bullet List',
-                  tokens: tokens,
-                ),
-                // Numbered List
-                _buildFormatIconBtn(
-                  icon: Icons.format_list_numbered,
-                  isActive: style.containsKey(Attribute.ol.key),
-                  onTap: () => _toggleFormat(Attribute.ol),
-                  tooltip: '有序列表 · Numbered List',
-                  tokens: tokens,
-                ),
-
-                _buildDivider(tokens),
-
-                // Interlinear Note (双行夹注)
-                _buildFormatTextBtn(
-                  buttonKey: const Key('writing_dock_interlinear_note_btn'),
-                  label: '〘注〙',
-                  isActive: false,
-                  onTap: _insertInterlinearNote,
-                  tooltip: '双行夹注 · Interlinear Note',
-                  tokens: tokens,
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildDivider(InkDiaryTokens tokens) {
-    return Container(
-      width: 1,
-      height: 18,
-      margin: const EdgeInsets.symmetric(horizontal: 5),
-      color: tokens.agedFiber,
-    );
-  }
-
-  Widget _buildFormatTextBtn({
-    Key? buttonKey,
-    required String label,
-    required bool isActive,
-    required VoidCallback onTap,
-    required String tooltip,
-    required InkDiaryTokens tokens,
-    bool isBold = false,
-    bool isItalic = false,
-    bool isUnderline = false,
-    bool isHeading = false,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      decoration: BoxDecoration(
-        color: isActive ? tokens.agedFiber : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: IconButton(
-        key: buttonKey,
-        icon: Text(
-          label,
-          style: TextStyle(
-            fontFamily: InkDiaryTheme.fontNotoSerif,
-            fontSize: isHeading ? 15 : (label.length > 2 ? 11.5 : 13.5),
-            fontWeight: isBold || isHeading ? FontWeight.bold : FontWeight.w500,
-            fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
-            decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,
-            color: isActive ? tokens.jiaomo : tokens.nongmo,
-          ),
-        ),
-        onPressed: onTap,
-        tooltip: tooltip,
-        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-        padding: EdgeInsets.zero,
-      ),
-    );
-  }
-
-  Widget _buildFormatIconBtn({
-    required IconData icon,
-    required bool isActive,
-    required VoidCallback onTap,
-    required String tooltip,
-    required InkDiaryTokens tokens,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      decoration: BoxDecoration(
-        color: isActive ? tokens.agedFiber : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: IconButton(
-        icon: Icon(
-          icon,
-          size: 18,
-          color: isActive ? tokens.jiaomo : tokens.nongmo,
-        ),
-        onPressed: onTap,
-        tooltip: tooltip,
-        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
         padding: EdgeInsets.zero,
       ),
     );

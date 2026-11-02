@@ -1238,7 +1238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextField(
-                    key: const Key('signature_seal_input'),
+                    key: const Key('settings_signature_seal_input'),
                     controller: controller,
                     maxLength: 4,
                     decoration: InputDecoration(
@@ -1257,7 +1257,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               actions: [
                 TextButton(
-                  key: const Key('signature_seal_reset_button'),
+                  key: const Key('settings_signature_seal_reset_button'),
                   onPressed: () async {
                     await _signatureSealService.setSealText(SignatureSealService.defaultSealText);
                     if (mounted) {
@@ -1270,7 +1270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Text('恢复默认', style: TextStyle(color: tokens.danmo)),
                 ),
                 FilledButton(
-                  key: const Key('signature_seal_save_button'),
+                  key: const Key('settings_signature_seal_save_button'),
                   style: FilledButton.styleFrom(backgroundColor: tokens.cinnabar),
                   onPressed: isValid
                       ? () async {

@@ -78,6 +78,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   bool _isLoading = true;
   bool _isDictating = false;
+  bool _isDockCollapsed = false;
 
   DateTime _entryDate = DateTime.now();
   int? _mood;
@@ -458,7 +459,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     final paperBaseTheme = isPaperDark ? ThemeData.dark() : ThemeData.light();
     final paperColor = templateStyle.backgroundColor;
     final inkColor = isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF212121);
-    final iconColor = isPaperDark ? const Color(0xFFDCD6CA) : tokens.nongmo;
+    final iconColor = isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF2D2D2D);
 
     _updateHeaderHeight();
 
@@ -815,9 +816,12 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               onPickVideo: _handleVideoPick,
               onToggleDictation: () => setState(() => _isDictating = !_isDictating),
               onShuffleSpark: _handleShuffleSpark,
-              onOpenChest: () => _openScholarChest(),
               isDictating: _isDictating,
               backgroundColor: paperColor.withValues(alpha: 0.95),
+              inkColor: inkColor,
+              isPaperDark: isPaperDark,
+              initiallyCollapsed: _isDockCollapsed,
+              onCollapsedChanged: (collapsed) => _isDockCollapsed = collapsed,
             ),
           ],
         ),

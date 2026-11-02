@@ -476,7 +476,7 @@ Visiting Dotonbori in the evening.
 
       // Dialog is open
       expect(find.text('更易落款印文 · 2至4字'), findsOneWidget);
-      final inputFinder = find.byKey(const Key('signature_seal_input'));
+      final inputFinder = find.byKey(const Key('settings_signature_seal_input'));
       expect(inputFinder, findsOneWidget);
 
       // Enter new seal text
@@ -484,7 +484,7 @@ Visiting Dotonbori in the evening.
       await tester.pumpAndSettle();
 
       // Tap save
-      final saveBtn = find.byKey(const Key('signature_seal_save_button'));
+      final saveBtn = find.byKey(const Key('settings_signature_seal_save_button'));
       expect(saveBtn, findsOneWidget);
       await tester.tap(saveBtn);
       await tester.pumpAndSettle();

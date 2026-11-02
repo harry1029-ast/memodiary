@@ -226,7 +226,7 @@ void main() {
   });
 
   group('EntryEditorScreen Dual Chest Triggers & Indicator Pills Tests', () {
-    testWidgets('opens ScholarChestDrawer from top bar emblem button and WritingDock pull handle', (tester) async {
+    testWidgets('opens ScholarChestDrawer from top bar emblem button', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: EntryEditorScreen(
@@ -252,13 +252,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('scholar_chest_drawer')), findsNothing);
 
-      // 2. Open from dock pull handle
-      final dockBtn = find.byKey(const Key('dock_scholar_chest_button'));
-      expect(dockBtn, findsOneWidget);
-      await tester.tap(dockBtn);
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('scholar_chest_drawer')), findsOneWidget);
+      // 2. Verify writing dock collapse toggle is present on dock
+      expect(find.byKey(const Key('writing_dock_collapse_toggle')), findsOneWidget);
     });
 
     testWidgets('displays soundscape pill when music is playing and opens Guqin zither', (tester) async {
