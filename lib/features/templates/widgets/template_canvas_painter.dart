@@ -2,8 +2,9 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../editor/models/typography_settings.dart';
-import '../../editor/services/baseline_metrics_calculator.dart';
 import '../models/template_style.dart';
+import '../services/stationery_layout_calculator.dart';
+import 'stationery_canvas_framing.dart';
 
 /// Cache key for immutable static substrate vector recordings
 class _SubstratePictureCacheKey {
@@ -34,7 +35,7 @@ class _SubstratePictureCacheKey {
 }
 
 /// Procedural CustomPainter rendering diary backgrounds, ruled lines, grids,
-/// margins, and paper textures with baseline-locked typographic alignment.
+/// margins, and paper textures bounded strictly within [StationeryLayoutMetrics.innerFrameRect].
 class TemplateCanvasPainter extends CustomPainter {
   static final Map<_SubstratePictureCacheKey, ui.Picture> _substratePictureCache = {};
 
@@ -53,62 +54,51 @@ class TemplateCanvasPainter extends CustomPainter {
   bool get _isDark =>
       ThemeData.estimateBrightnessForColor(style.backgroundColor) == Brightness.dark;
 
-  double get _rowHeight {
-    if (typography != null) {
-      return BaselineMetricsCalculator.calculateLineHeight(typography!.toTextStyle());
-    }
-    return 28.0 * (style.lineSpacing / 1.5).clamp(0.8, 2.5);
-  }
-
-  double get _baselineOffset {
-    if (typography != null) {
-      return BaselineMetricsCalculator.calculateBaselineOffset(typography!.toTextStyle());
-    }
-    return _rowHeight * 0.78;
-  }
-
-  double get _effectiveHeaderY => headerHeight - scrollOffset;
-
-  (double, int) _calculateLineBounds() {
-    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
-    final startY = _effectiveHeaderY + _baselineOffset;
-    final minLineIndex = startY < clipY
-        ? ((clipY - startY) / _rowHeight).ceil()
-        : 0;
-    return (startY, minLineIndex);
-  }
-
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
 
-    // 1. Draw base canvas background
+    // 1. Base canvas background
     final bgPaint = Paint()..color = style.backgroundColor;
     canvas.drawRect(rect, bgPaint);
 
-    // 2. Procedural substrate texture overlays
+    // 2. Procedural substrate texture overlays (cached in ui.Picture)
     _paintSubstrateTexture(canvas, size);
 
-    // 3. Grid / Lined / Geometry layer
+    // 3. Compute deterministic layout metrics
+    final metrics = StationeryLayoutCalculator.calculate(
+      canvasSize: size,
+      style: style,
+      typography: typography,
+    );
+
+    // 4. Double Outer Border (文武双栏) and conditional Fishtail Mark (版心黑鱼尾)
+    StationeryCanvasFraming.paintFraming(
+      canvas: canvas,
+      metrics: metrics,
+      style: style,
+      scrollOffsetY: scrollOffset,
+    );
+
+    // 5. Grid / Lined / Geometry layer confined strictly inside innerFrameRect
     switch (style.type) {
       case TemplateBackgroundType.color:
-        // Plain solid background
         break;
 
       case TemplateBackgroundType.lined:
-        _paintLinedPaper(canvas, size);
+        _paintLinedPaper(canvas, size, metrics);
         break;
 
       case TemplateBackgroundType.grid:
-        _paintGridPaper(canvas, size);
+        _paintGridPaper(canvas, size, metrics);
         break;
 
       case TemplateBackgroundType.dotGrid:
-        _paintDotGridPaper(canvas, size);
+        _paintDotGridPaper(canvas, size, metrics);
         break;
 
       case TemplateBackgroundType.paperTexture:
-        _paintPaperTexture(canvas, size);
+        _paintPaperTexture(canvas, size, metrics);
         break;
     }
   }
@@ -172,7 +162,7 @@ class TemplateCanvasPainter extends CustomPainter {
     for (double y = 14; y < size.height; y += step) {
       for (double x = 12; x < size.width; x += step) {
         final hash = ((x * 37 + y * 53) % 100).toInt();
-        if (hash > 42) continue; // Sparse distribution
+        if (hash > 42) continue;
 
         final offsetX = ((hash * 13) % 25) - 12.0;
         final offsetY = ((hash * 19) % 21) - 10.0;
@@ -235,10 +225,8 @@ class TemplateCanvasPainter extends CustomPainter {
     canvas.drawRect(rect, vignettePaint);
   }
 
-  void _paintLinedPaper(Canvas canvas, Size size) {
-    final rowHeight = _rowHeight;
-    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
-    final (startY, minLineIndex) = _calculateLineBounds();
+  void _paintLinedPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
+    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
 
     final linePaint = Paint()
       ..color = _isDark
@@ -246,14 +234,19 @@ class TemplateCanvasPainter extends CustomPainter {
           : style.tokens.ruleTint.color
       ..strokeWidth = 1.0;
 
-    for (int lineIndex = minLineIndex; ; lineIndex++) {
-      final y = startY + lineIndex * rowHeight;
+    // Horizontal baseline rules strictly bounded within innerFrameRect
+    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
+      final y = innerRect.top + rowIndex * metrics.lineStridePx;
       if (y > size.height) break;
-      if (y < clipY) continue;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), linePaint);
+      if (y < 0) continue;
+      canvas.drawLine(
+        Offset(innerRect.left, y),
+        Offset(innerRect.right, y),
+        linePaint,
+      );
     }
 
-    // Left vertical margin line (classic notebook red rule or tint)
+    // Left vertical margin rule strictly inside innerFrameRect
     final marginPaint = Paint()
       ..color = _isDark
           ? const Color(0x38EF9A9A)
@@ -262,32 +255,16 @@ class TemplateCanvasPainter extends CustomPainter {
               : const Color(0x33E57373))
       ..strokeWidth = 1.2;
 
-    final marginX = style.resolvedHorizontalMargin;
-    final topY = math.max(0.0, _effectiveHeaderY);
+    final marginX = innerRect.left + 12.0;
     canvas.drawLine(
-      Offset(marginX, topY),
-      Offset(marginX, size.height),
+      Offset(marginX, math.max(0.0, innerRect.top)),
+      Offset(marginX, math.min(size.height, innerRect.bottom)),
       marginPaint,
     );
   }
 
-  (List<double>, double, double) _computeSnappedGridX(double width, double marginX, double step) {
-    final availWidth = width - 2 * marginX;
-    final numCols = math.max(1, (availWidth / step).floor());
-    final gridWidth = numCols * step;
-    final xStart = marginX + (availWidth - gridWidth) / 2.0;
-
-    final xCoords = <double>[];
-    for (int i = 0; i <= numCols; i++) {
-      xCoords.add(xStart + i * step);
-    }
-    return (xCoords, xStart, xStart + gridWidth);
-  }
-
-  void _paintGridPaper(Canvas canvas, Size size) {
-    final rowHeight = _rowHeight;
-    final marginX = style.resolvedHorizontalMargin;
-    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
+  void _paintGridPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
+    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
 
     final hGridPaint = Paint()
       ..color = _isDark ? const Color(0x18FFFFFF) : style.tokens.ruleTint.color
@@ -299,50 +276,61 @@ class TemplateCanvasPainter extends CustomPainter {
           : style.tokens.ruleTint.color.withValues(alpha: (style.tokens.ruleTint.color.a * 0.85))
       ..strokeWidth = 0.6;
 
-    final topY = math.max(0.0, _effectiveHeaderY);
-    final (xCoords, xStart, xEnd) = _computeSnappedGridX(size.width, marginX, rowHeight);
+    final topY = math.max(0.0, innerRect.top);
+    final bottomY = math.min(size.height, innerRect.bottom);
 
-    // Vertical grid guidelines snapped within inner grid frame
-    for (final x in xCoords) {
-      canvas.drawLine(Offset(x, topY), Offset(x, size.height), vGridPaint);
+    // Vertical grid guidelines strictly within innerFrameRect
+    for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
+      final x = innerRect.left + colIndex * metrics.cellAdvancePx;
+      canvas.drawLine(Offset(x, topY), Offset(x, bottomY), vGridPaint);
     }
 
-    // Horizontal grid rules forming uniform H x H squares starting below header
-    final minRowIndex = math.max(1, ((clipY - _effectiveHeaderY) / rowHeight).ceil());
-    for (int rowIndex = minRowIndex; ; rowIndex++) {
-      final y = _effectiveHeaderY + rowIndex * rowHeight;
+    // Horizontal grid rules
+    final isManuscript = StationeryCanvasFraming.shouldRenderFishtail(
+      style: style,
+      columnCount: metrics.columnCount,
+    );
+    final midCol = metrics.columnCount ~/ 2;
+    final midColLeft = innerRect.left + midCol * metrics.cellAdvancePx;
+    final midColRight = midColLeft + metrics.cellAdvancePx;
+
+    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
+      final y = innerRect.top + rowIndex * metrics.lineStridePx;
       if (y > size.height) break;
-      canvas.drawLine(Offset(xStart, y), Offset(xEnd, y), hGridPaint);
+      if (y < 0) continue;
+
+      if (isManuscript) {
+        // Leave central folding column unruled horizontally
+        canvas.drawLine(Offset(innerRect.left, y), Offset(midColLeft, y), hGridPaint);
+        canvas.drawLine(Offset(midColRight, y), Offset(innerRect.right, y), hGridPaint);
+      } else {
+        canvas.drawLine(Offset(innerRect.left, y), Offset(innerRect.right, y), hGridPaint);
+      }
     }
   }
 
-  void _paintDotGridPaper(Canvas canvas, Size size) {
-    final rowHeight = _rowHeight;
-    final marginX = style.resolvedHorizontalMargin;
-    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
+  void _paintDotGridPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
+    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
 
     final dotPaint = Paint()
       ..color = _isDark ? const Color(0x24FFFFFF) : style.tokens.ruleTint.color
       ..style = PaintingStyle.fill;
 
-    final (xCoords, _, _) = _computeSnappedGridX(size.width, marginX, rowHeight);
-    final minRowIndex = math.max(1, ((clipY - _effectiveHeaderY) / rowHeight).ceil());
-
-    for (int rowIndex = minRowIndex; ; rowIndex++) {
-      final y = _effectiveHeaderY + rowIndex * rowHeight;
+    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
+      final y = innerRect.top + rowIndex * metrics.lineStridePx;
       if (y > size.height) break;
+      if (y < 0) continue;
 
-      for (final x in xCoords) {
+      for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
+        final x = innerRect.left + colIndex * metrics.cellAdvancePx;
         canvas.drawCircle(Offset(x, y), 1.2, dotPaint);
       }
     }
   }
 
-  void _paintPaperTexture(Canvas canvas, Size size) {
-    // 1. Soft vignette aging effect around borders
+  void _paintPaperTexture(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
     _paintKraftTexture(canvas, size);
 
-    // 2. Procedural paper fibers & specks (deterministic pseudo-random loop)
     final fiberPaint = Paint()
       ..color = const Color(0x0C3E2723)
       ..strokeWidth = 1.0;
@@ -361,23 +349,18 @@ class TemplateCanvasPainter extends CustomPainter {
       }
     }
 
-    // 3. Faint warm kraft guidelines aligned to baseline
     final guidePaint = Paint()
       ..color = const Color(0x148D6E63)
       ..strokeWidth = 0.9;
 
-    final rowHeight = _rowHeight;
-    final marginX = style.marginHorizontal.clamp(16.0, 36.0);
-    final clipY = _effectiveHeaderY > 0 ? _effectiveHeaderY : 0.0;
-    final (startY, minLineIndex) = _calculateLineBounds();
-
-    for (int lineIndex = minLineIndex; ; lineIndex++) {
-      final y = startY + lineIndex * rowHeight;
+    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
+    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
+      final y = innerRect.top + rowIndex * metrics.lineStridePx;
       if (y > size.height) break;
-      if (y < clipY) continue;
+      if (y < 0) continue;
       canvas.drawLine(
-        Offset(marginX, y),
-        Offset(size.width - marginX, y),
+        Offset(innerRect.left, y),
+        Offset(innerRect.right, y),
         guidePaint,
       );
     }

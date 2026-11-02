@@ -4,12 +4,13 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../templates/models/template_style.dart';
+import '../../templates/services/stationery_layout_calculator.dart';
+import '../../templates/widgets/stationery_canvas_framing.dart';
 import 'pdf_font_resolver.dart';
 
 /// Procedural vector canvas background renderer for PDF documents.
-/// Draws full-bleed ruled notebook lines, graph paper grids, kraft textures,
-/// substrate textures (cold gold flecks), and custom template styling
-/// in PDF vector coordinate space at zero asset cost.
+/// Draws bounded Paper Heart framing, Double Outer Border (文武双栏),
+/// Fishtail Mark (版心黑鱼尾), and substrate textures in PDF vector coordinate space.
 class PdfTemplateRenderer {
   const PdfTemplateRenderer._();
 
@@ -21,36 +22,39 @@ class PdfTemplateRenderer {
       ignoreMargins: true,
       child: pw.CustomPaint(
         painter: (canvas, size) {
-          // 1. Draw base page rectangle
-          canvas.setFillColor(pdfBgColor);
-          canvas.drawRect(0, 0, size.x, size.y);
-          canvas.fillPath();
+          canvas
+            ..setFillColor(pdfBgColor)
+            ..drawRect(0, 0, size.x, size.y)
+            ..fillPath();
 
-          // 2. Procedural substrate texture (Cold Gold Flecks)
           if (style.tokens.substrate == PaperSubstrate.coldGold) {
             _paintColdGoldFlecks(canvas, size);
           }
 
-          // 3. Draw vector pattern matching TemplateBackgroundType
+          final metrics = StationeryLayoutCalculator.calculateMetrics(
+            canvasWidth: size.x,
+            canvasHeight: size.y,
+            backgroundType: style.type,
+            horizontalMargin: style.resolvedHorizontalMargin,
+            lineSpacing: style.lineSpacing,
+          );
+
+          _paintFraming(canvas, size, style, metrics);
+
           switch (style.type) {
             case TemplateBackgroundType.color:
-              // Clean solid background fill
               break;
-
             case TemplateBackgroundType.lined:
-              _paintLinedPaper(canvas, size, style);
+              _paintLinedPaper(canvas, size, style, metrics);
               break;
-
             case TemplateBackgroundType.grid:
-              _paintGridPaper(canvas, size, style);
+              _paintGridPaper(canvas, size, style, metrics);
               break;
-
             case TemplateBackgroundType.dotGrid:
-              _paintDotGridPaper(canvas, size, style);
+              _paintDotGridPaper(canvas, size, style, metrics);
               break;
-
             case TemplateBackgroundType.paperTexture:
-              _paintPaperTexture(canvas, size, style);
+              _paintPaperTexture(canvas, size, style, metrics);
               break;
           }
         },
@@ -59,27 +63,26 @@ class PdfTemplateRenderer {
   }
 
   /// Maps [RuleInkTint] to vector PDF stroke colors.
-  static PdfColor pdfRuleColor(RuleInkTint tint) {
-    switch (tint) {
-      case RuleInkTint.vermilion:
-        return const PdfColor(0.75, 0.22, 0.17, 0.30);
-      case RuleInkTint.charcoal:
-        return const PdfColor(0.18, 0.24, 0.30, 0.22);
-      case RuleInkTint.jade:
-        return const PdfColor(0.18, 0.42, 0.34, 0.25);
-      case RuleInkTint.slate:
-        return const PdfColor(0.29, 0.40, 0.45, 0.18);
-    }
+  static PdfColor pdfRuleColor(RuleInkTint tint, {double? alphaMultiplier}) {
+    final (red, green, blue, baseAlpha) = switch (tint) {
+      RuleInkTint.vermilion => (0.75, 0.22, 0.17, 0.30),
+      RuleInkTint.charcoal => (0.18, 0.24, 0.30, 0.22),
+      RuleInkTint.jade => (0.18, 0.42, 0.34, 0.25),
+      RuleInkTint.slate => (0.29, 0.40, 0.45, 0.18),
+    };
+    final alpha = alphaMultiplier != null
+        ? (baseAlpha * alphaMultiplier / 0.3).clamp(0.1, 0.95)
+        : baseAlpha;
+    return PdfColor(red, green, blue, alpha);
   }
 
   /// Procedural Cold Gold flecks scattered across the paper.
   static void _paintColdGoldFlecks(PdfGraphics canvas, PdfPoint size) {
     final random = math.Random(1337);
     final count = (size.x * size.y / 7000.0).clamp(60, 240).toInt();
-    final goldColor = const PdfColor(0.85, 0.70, 0.22, 0.40);
-    canvas.setFillColor(goldColor);
+    canvas.setFillColor(const PdfColor(0.85, 0.70, 0.22, 0.40));
 
-    for (int i = 0; i < count; i++) {
+    for (int index = 0; index < count; index++) {
       final x = random.nextDouble() * size.x;
       final y = random.nextDouble() * size.y;
       final rx = 0.5 + random.nextDouble() * 1.6;
@@ -89,114 +92,183 @@ class PdfTemplateRenderer {
     canvas.fillPath();
   }
 
-  /// Ruled notebook lines with left red margin rule
+  /// Paints Double Outer Border and conditional Fishtail Mark in PDF vector coordinates.
+  static void _paintFraming(
+    PdfGraphics canvas,
+    PdfPoint size,
+    TemplateStyle style,
+    StationeryLayoutMetrics metrics,
+  ) {
+    if (!StationeryCanvasFraming.shouldDrawDoubleBorder(style)) return;
+
+    final frameLeft = metrics.innerFrameRect.left;
+    final frameBottom = metrics.earthMarginPx;
+    final frameWidth = metrics.innerFrameRect.width;
+    final frameHeight = metrics.innerFrameRect.height;
+    final frameTop = frameBottom + frameHeight;
+
+    final outerColor = pdfRuleColor(style.tokens.ruleTint, alphaMultiplier: 0.85);
+    final innerColor = pdfRuleColor(style.tokens.ruleTint, alphaMultiplier: 0.70);
+
+    // Outer stroke (2.0px inflated by 4.0px) and inner stroke (0.9px)
+    canvas
+      ..setStrokeColor(outerColor)
+      ..setLineWidth(2.0)
+      ..drawRect(frameLeft - 4.0, frameBottom - 4.0, frameWidth + 8.0, frameHeight + 8.0)
+      ..strokePath()
+      ..setStrokeColor(innerColor)
+      ..setLineWidth(0.9)
+      ..drawRect(frameLeft, frameBottom, frameWidth, frameHeight)
+      ..strokePath();
+
+    // Fishtail Mark on manuscript grid with columnCount >= 7
+    if (StationeryCanvasFraming.shouldRenderFishtail(style: style, columnCount: metrics.columnCount)) {
+      final midCol = metrics.columnCount ~/ 2;
+      final colLeft = frameLeft + midCol * metrics.cellAdvancePx;
+      final colRight = colLeft + metrics.cellAdvancePx;
+      final midX = (colLeft + colRight) / 2.0;
+
+      final tailTopY = frameTop - metrics.lineStridePx * 0.2;
+      final tailHeight = metrics.lineStridePx * 0.75;
+      final tailBottomY = tailTopY - tailHeight;
+      final tailLeft = colLeft + 2.0;
+      final tailRight = colRight - 2.0;
+
+      final fishtailColor = style.tokens.ruleTint == RuleInkTint.vermilion
+          ? const PdfColor(0.75, 0.22, 0.17, 0.85)
+          : const PdfColor(0.25, 0.26, 0.27, 0.85);
+
+      canvas
+        ..moveTo(tailLeft, tailTopY)
+        ..lineTo(midX, tailTopY - tailHeight * 0.45)
+        ..lineTo(tailRight, tailTopY)
+        ..lineTo(tailRight, tailBottomY + tailHeight * 0.15)
+        ..lineTo(midX, tailBottomY)
+        ..lineTo(tailLeft, tailBottomY + tailHeight * 0.15)
+        ..closePath()
+        ..setFillColor(fishtailColor)
+        ..fillPath();
+    }
+  }
+
+  /// Ruled notebook lines strictly bounded within innerFrameRect
   static void _paintLinedPaper(
     PdfGraphics canvas,
     PdfPoint size,
     TemplateStyle style,
+    StationeryLayoutMetrics metrics,
   ) {
-    final rowHeight = 24.0 * (style.lineSpacing / 1.5).clamp(0.8, 2.5);
-    final ruleColor = pdfRuleColor(style.tokens.ruleTint);
+    final frameLeft = metrics.innerFrameRect.left;
+    final frameRight = metrics.innerFrameRect.right;
+    final frameBottom = metrics.earthMarginPx;
+    final frameTop = frameBottom + metrics.innerFrameRect.height;
 
-    // Horizontal notebook rules
-    canvas.setStrokeColor(ruleColor);
-    canvas.setLineWidth(0.6);
-    for (double y = 40.0; y < size.y - 40.0; y += rowHeight) {
-      canvas.drawLine(0, y, size.x, y);
+    canvas
+      ..setStrokeColor(pdfRuleColor(style.tokens.ruleTint))
+      ..setLineWidth(0.6);
+    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
+      final y = frameTop - rowIndex * metrics.lineStridePx;
+      canvas.drawLine(frameLeft, y, frameRight, y);
     }
     canvas.strokePath();
 
-    // Classic notebook vertical margin line
-    final marginX = style.marginHorizontal.clamp(20.0, 60.0);
-    canvas.setStrokeColor(
-      style.tokens.ruleTint == RuleInkTint.vermilion
+    final marginX = frameLeft + 12.0;
+    canvas
+      ..setStrokeColor(style.tokens.ruleTint == RuleInkTint.vermilion
           ? const PdfColor(0.85, 0.30, 0.25, 0.45)
-          : const PdfColor(0.90, 0.45, 0.45, 0.25),
-    );
-    canvas.setLineWidth(1.0);
-    canvas.drawLine(marginX, 0, marginX, size.y);
-    canvas.strokePath();
+          : const PdfColor(0.90, 0.45, 0.45, 0.25))
+      ..setLineWidth(1.0)
+      ..drawLine(marginX, frameBottom, marginX, frameTop)
+      ..strokePath();
   }
 
-  static List<double> _computeMarginAnchoredX(double width, double marginX, double step) {
-    final xCoords = <double>[];
-    for (double x = marginX - step; x >= 0; x -= step) {
-      xCoords.add(x);
-    }
-    for (double x = marginX; x <= width; x += step) {
-      xCoords.add(x);
-    }
-    xCoords.sort();
-    return xCoords;
-  }
-
-  /// Orthogonal millimeter vector grid anchored to marginX
+  /// Orthogonal manuscript grid strictly bounded within innerFrameRect
   static void _paintGridPaper(
     PdfGraphics canvas,
     PdfPoint size,
     TemplateStyle style,
+    StationeryLayoutMetrics metrics,
   ) {
-    final gridSize = 20.0 * (style.lineSpacing / 1.5).clamp(0.8, 2.0);
-    final marginX = style.resolvedHorizontalMargin;
-    final ruleColor = pdfRuleColor(style.tokens.ruleTint);
+    final frameLeft = metrics.innerFrameRect.left;
+    final frameRight = metrics.innerFrameRect.right;
+    final frameBottom = metrics.earthMarginPx;
+    final frameTop = frameBottom + metrics.innerFrameRect.height;
 
-    canvas.setStrokeColor(ruleColor);
-    canvas.setLineWidth(0.5);
+    canvas
+      ..setStrokeColor(pdfRuleColor(style.tokens.ruleTint))
+      ..setLineWidth(0.5);
 
-    final xCoords = _computeMarginAnchoredX(size.x, marginX, gridSize);
-    for (final x in xCoords) {
-      canvas.drawLine(x, 0, x, size.y);
+    for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
+      final x = frameLeft + colIndex * metrics.cellAdvancePx;
+      canvas.drawLine(x, frameBottom, x, frameTop);
     }
 
-    // Horizontal grid lines
-    for (double y = 0; y < size.y; y += gridSize) {
-      canvas.drawLine(0, y, size.x, y);
+    final isManuscript = StationeryCanvasFraming.shouldRenderFishtail(
+      style: style,
+      columnCount: metrics.columnCount,
+    );
+    final midCol = metrics.columnCount ~/ 2;
+    final midColLeft = frameLeft + midCol * metrics.cellAdvancePx;
+    final midColRight = midColLeft + metrics.cellAdvancePx;
+
+    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
+      final y = frameTop - rowIndex * metrics.lineStridePx;
+      if (isManuscript) {
+        canvas.drawLine(frameLeft, y, midColLeft, y);
+        canvas.drawLine(midColRight, y, frameRight, y);
+      } else {
+        canvas.drawLine(frameLeft, y, frameRight, y);
+      }
     }
     canvas.strokePath();
   }
 
-  /// Minimalist dot grid in PDF vector coordinates anchored to marginX
+  /// Minimalist dot grid in PDF vector coordinates strictly bounded within innerFrameRect
   static void _paintDotGridPaper(
     PdfGraphics canvas,
     PdfPoint size,
     TemplateStyle style,
+    StationeryLayoutMetrics metrics,
   ) {
-    final dotSize = 20.0 * (style.lineSpacing / 1.5).clamp(0.8, 2.0);
-    final marginX = style.resolvedHorizontalMargin;
-    final xCoords = _computeMarginAnchoredX(size.x, marginX, dotSize);
-    final dotColor = pdfRuleColor(style.tokens.ruleTint);
+    final frameLeft = metrics.innerFrameRect.left;
+    final frameBottom = metrics.earthMarginPx;
+    final frameTop = frameBottom + metrics.innerFrameRect.height;
 
-    canvas.setFillColor(dotColor);
-
-    for (final x in xCoords) {
-      for (double y = 0; y < size.y; y += dotSize) {
+    canvas.setFillColor(pdfRuleColor(style.tokens.ruleTint));
+    for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
+      final x = frameLeft + colIndex * metrics.cellAdvancePx;
+      for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
+        final y = frameTop - rowIndex * metrics.lineStridePx;
         canvas.drawEllipse(x, y, 0.8, 0.8);
       }
     }
     canvas.fillPath();
   }
 
-  /// Vintage kraft paper with top and bottom decorative accent bars
+  /// Vintage kraft paper with guidelines strictly bounded within innerFrameRect
   static void _paintPaperTexture(
     PdfGraphics canvas,
     PdfPoint size,
     TemplateStyle style,
+    StationeryLayoutMetrics metrics,
   ) {
-    // 1. Top and bottom warm kraft accent bars
-    canvas.setFillColor(const PdfColor(0.31, 0.20, 0.18, 0.08));
-    canvas.drawRect(0, size.y - 8, size.x, 8);
-    canvas.drawRect(0, 0, size.x, 8);
-    canvas.fillPath();
+    canvas
+      ..setFillColor(const PdfColor(0.31, 0.20, 0.18, 0.08))
+      ..drawRect(0, size.y - 8, size.x, 8)
+      ..drawRect(0, 0, size.x, 8)
+      ..fillPath();
 
-    // 2. Faint kraft horizontal guidelines
-    final rowHeight = 28.0 * (style.lineSpacing / 1.5).clamp(0.8, 2.5);
-    final marginX = style.marginHorizontal.clamp(16.0, 48.0);
-    final ruleColor = pdfRuleColor(style.tokens.ruleTint);
-    canvas.setStrokeColor(ruleColor);
-    canvas.setLineWidth(0.6);
+    final frameLeft = metrics.innerFrameRect.left;
+    final frameRight = metrics.innerFrameRect.right;
+    final frameBottom = metrics.earthMarginPx;
+    final frameTop = frameBottom + metrics.innerFrameRect.height;
 
-    for (double y = 40.0; y < size.y - 40.0; y += rowHeight) {
-      canvas.drawLine(marginX, y, size.x - marginX, y);
+    canvas
+      ..setStrokeColor(pdfRuleColor(style.tokens.ruleTint))
+      ..setLineWidth(0.6);
+    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
+      final y = frameTop - rowIndex * metrics.lineStridePx;
+      canvas.drawLine(frameLeft, y, frameRight, y);
     }
     canvas.strokePath();
   }
@@ -215,7 +287,6 @@ class PdfTemplateRenderer {
     final isBaiwen = style.tokens.sealStyle == SealCarvingStyle.baiwen;
     final cinnabar = const PdfColor(0.73, 0.15, 0.10);
     final text = sealText.trim().isEmpty ? '心迹安放' : sealText.trim();
-
     final (colRight, colLeft) = _partitionSealText(text);
 
     return pw.Container(
@@ -224,10 +295,7 @@ class PdfTemplateRenderer {
       padding: pw.EdgeInsets.all(size * 0.08),
       decoration: pw.BoxDecoration(
         color: isBaiwen ? cinnabar : null,
-        border: pw.Border.all(
-          color: cinnabar,
-          width: size * 0.05,
-        ),
+        border: pw.Border.all(color: cinnabar, width: size * 0.05),
         borderRadius: pw.BorderRadius.circular(size * 0.08),
       ),
       child: pw.Row(
@@ -242,15 +310,9 @@ class PdfTemplateRenderer {
 
   static (List<String>, List<String>) _partitionSealText(String text) {
     final chars = text.runes.map((rune) => String.fromCharCode(rune)).toList();
-    if (chars.length == 2) {
-      return ([chars[0]], [chars[1]]);
-    }
-    if (chars.length == 3) {
-      return ([chars[0], chars[1]], [chars[2], '印']);
-    }
-    if (chars.length >= 4) {
-      return ([chars[0], chars[1]], [chars[2], chars[3]]);
-    }
+    if (chars.length == 2) return ([chars[0]], [chars[1]]);
+    if (chars.length == 3) return ([chars[0], chars[1]], [chars[2], '印']);
+    if (chars.length >= 4) return ([chars[0], chars[1]], [chars[2], chars[3]]);
     return ([chars.first], ['印']);
   }
 
@@ -267,8 +329,8 @@ class PdfTemplateRenderer {
       mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
       children: chars
           .map(
-            (ch) => pw.Text(
-              resolver.sanitizeText(ch),
+            (char) => pw.Text(
+              resolver.sanitizeText(char),
               style: pw.TextStyle(
                 font: resolver.boldFont,
                 fontSize: fontSize,
@@ -297,9 +359,7 @@ class PdfTemplateRenderer {
       margin: const pw.EdgeInsets.only(bottom: 12),
       padding: const pw.EdgeInsets.only(bottom: 4),
       decoration: const pw.BoxDecoration(
-        border: pw.Border(
-          bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
-        ),
+        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -336,9 +396,7 @@ class PdfTemplateRenderer {
       margin: const pw.EdgeInsets.only(top: 12),
       padding: const pw.EdgeInsets.only(top: 4),
       decoration: const pw.BoxDecoration(
-        border: pw.Border(
-          top: pw.BorderSide(color: PdfColors.grey300, width: 0.5),
-        ),
+        border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,

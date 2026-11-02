@@ -271,6 +271,95 @@ void main() {
       expect(bytes, isNotEmpty);
       expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
     });
+
+    test('builds vector PDF with Double Outer Border and Fishtail Mark on manuscript grid', () async {
+      final doc = pw.Document();
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.grid,
+        backgroundColor: material.Color(0xFFFBF8F1),
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: StationeryVisualTokens(
+          substrate: PaperSubstrate.xuan,
+          ruleTint: RuleInkTint.vermilion,
+        ),
+      );
+
+      doc.addPage(
+        pw.Page(
+          pageTheme: pw.PageTheme(
+            pageFormat: PdfPageFormat.a4,
+            buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, style),
+          ),
+          build: (context) => pw.Center(
+            child: pw.Text('Classical Manuscript Grid with Fishtail Mark'),
+          ),
+        ),
+      );
+
+      final bytes = await doc.save();
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
+
+    test('builds vector PDF with compact dimensions where columnCount < 7 cleanly', () async {
+      final doc = pw.Document();
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.grid,
+        backgroundColor: material.Color(0xFFFFFFFF),
+        lineSpacing: 1.5,
+        marginHorizontal: 20.0,
+      );
+
+      // Narrow custom page format causing columnCount < 7
+      const compactFormat = PdfPageFormat(160.0, 400.0);
+
+      doc.addPage(
+        pw.Page(
+          pageTheme: pw.PageTheme(
+            pageFormat: compactFormat,
+            buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, style),
+          ),
+          build: (context) => pw.Center(
+            child: pw.Text('Compact Width Sheet'),
+          ),
+        ),
+      );
+
+      final bytes = await doc.save();
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
+
+    test('builds vector PDF on Obsidian Night dark substrate with adapted framing', () async {
+      final doc = pw.Document();
+      final obsidianStyle = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: PaperSubstrate.obsidian.defaultColor,
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: const StationeryVisualTokens(
+          substrate: PaperSubstrate.obsidian,
+          ruleTint: RuleInkTint.slate,
+        ),
+      );
+
+      doc.addPage(
+        pw.Page(
+          pageTheme: pw.PageTheme(
+            pageFormat: PdfPageFormat.a4,
+            buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, obsidianStyle),
+          ),
+          build: (context) => pw.Center(
+            child: pw.Text('Obsidian Night Dark PDF Sheet'),
+          ),
+        ),
+      );
+
+      final bytes = await doc.save();
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
   });
 }
 
