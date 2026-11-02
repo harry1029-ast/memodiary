@@ -12,6 +12,7 @@ class TemplateCanvasContainer extends StatelessWidget {
   final double scrollOffset;
   final double headerHeight;
   final StationeryLayoutMetrics? layoutMetrics;
+  final bool isThumbnail;
 
   /// Optional override for canvas padding.
   ///
@@ -28,6 +29,7 @@ class TemplateCanvasContainer extends StatelessWidget {
     this.headerHeight = 0.0,
     this.layoutMetrics,
     this.customPadding,
+    this.isThumbnail = false,
   });
 
   @override
@@ -39,6 +41,7 @@ class TemplateCanvasContainer extends StatelessWidget {
         scrollOffset: scrollOffset,
         headerHeight: headerHeight,
         layoutMetrics: layoutMetrics,
+        isThumbnail: isThumbnail,
       ),
       child: Padding(
         padding: customPadding ??

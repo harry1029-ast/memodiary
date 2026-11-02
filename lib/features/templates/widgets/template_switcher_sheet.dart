@@ -357,6 +357,7 @@ class _TemplateSwitcherSheetState extends State<TemplateSwitcherSheet> {
                                 borderRadius: BorderRadius.circular(14),
                                 child: TemplateCanvasContainer(
                                   style: style,
+                                  isThumbnail: true,
                                   customPadding: const EdgeInsets.all(8),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,

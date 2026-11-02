@@ -5,6 +5,7 @@ import '../../editor/models/typography_settings.dart';
 import '../models/template_style.dart';
 import '../services/stationery_layout_calculator.dart';
 import 'stationery_canvas_framing.dart';
+import 'template_thumbnail_painter.dart';
 
 /// Cache key for immutable static substrate vector recordings
 class _SubstratePictureCacheKey {
@@ -49,6 +50,7 @@ class TemplateCanvasPainter extends CustomPainter {
   final double scrollOffset;
   final double headerHeight;
   final StationeryLayoutMetrics? layoutMetrics;
+  final bool isThumbnail;
 
   const TemplateCanvasPainter({
     required this.style,
@@ -56,6 +58,7 @@ class TemplateCanvasPainter extends CustomPainter {
     this.scrollOffset = 0.0,
     this.headerHeight = 0.0,
     this.layoutMetrics,
+    this.isThumbnail = false,
   });
 
   bool get _isDark =>
@@ -72,7 +75,20 @@ class TemplateCanvasPainter extends CustomPainter {
     // 2. Procedural substrate texture overlays (cached in ui.Picture)
     _paintSubstrateTexture(canvas, size);
 
-    // 3. Compute or use deterministic layout metrics
+    // 3. Thumbnail / Card Mode (< 160px) bypasses manuscript framing
+    final isThumbnailMode = isThumbnail ||
+        (layoutMetrics == null && (size.width < 160 || size.height < 160));
+    if (isThumbnailMode) {
+      TemplateThumbnailPainter.paintPattern(
+        canvas: canvas,
+        size: size,
+        style: style,
+        isDark: _isDark,
+      );
+      return;
+    }
+
+    // 4. Compute or use deterministic layout metrics
     final metrics = layoutMetrics ??
         StationeryLayoutCalculator.calculate(
           canvasSize: size,
@@ -80,7 +96,7 @@ class TemplateCanvasPainter extends CustomPainter {
           typography: typography,
         );
 
-    // 4. Double Outer Border (文武双栏) and conditional Fishtail Mark (版心黑鱼尾)
+    // 5. Double Outer Border (文武双栏) and conditional Fishtail Mark (版心黑鱼尾)
     StationeryCanvasFraming.paintFraming(
       canvas: canvas,
       metrics: metrics,
@@ -88,7 +104,7 @@ class TemplateCanvasPainter extends CustomPainter {
       scrollOffsetY: scrollOffset,
     );
 
-    // 5. Grid / Lined / Geometry layer confined strictly inside innerFrameRect
+    // 6. Grid / Lined / Geometry layer confined strictly inside innerFrameRect
     switch (style.type) {
       case TemplateBackgroundType.color:
         break;
@@ -395,6 +411,7 @@ class TemplateCanvasPainter extends CustomPainter {
         oldDelegate.scrollOffset != scrollOffset ||
         oldDelegate.headerHeight != headerHeight ||
         oldDelegate.layoutMetrics != layoutMetrics ||
+        oldDelegate.isThumbnail != isThumbnail ||
         oldDelegate.typography?.fontId != typography?.fontId ||
         oldDelegate.typography?.fontFamily != typography?.fontFamily ||
         oldDelegate.typography?.fontSize != typography?.fontSize ||

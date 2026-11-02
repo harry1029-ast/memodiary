@@ -313,6 +313,7 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
                             borderRadius: BorderRadius.circular(9),
                             child: TemplateCanvasContainer(
                               style: templateStyle,
+                              isThumbnail: true,
                               customPadding: const EdgeInsets.all(6),
                               child: Stack(
                                 children: [
