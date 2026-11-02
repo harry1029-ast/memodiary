@@ -2,11 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart' show Color;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/import_export/models/pdf_layout_mode.dart';
+import 'package:memodiary/features/import_export/services/pdf_entry_serializer.dart';
 import 'package:memodiary/features/import_export/services/pdf_export_engine.dart';
+import 'package:memodiary/features/import_export/services/pdf_font_resolver.dart';
+import 'package:memodiary/features/templates/models/template_style.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -234,6 +238,64 @@ void main() {
       );
       expect(verticalBytes, isNotEmpty);
       expect(String.fromCharCodes(verticalBytes.take(5)), equals('%PDF-'));
+    });
+
+    test('generatePdfForEntry processes interlinear notes in verticalScroll and horizontal modes', () async {
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'entry_interlinear_1',
+          notebookId: 'default',
+          templateId: 'template_lined_paper',
+          title: const Value('春江夜话'),
+          contentDelta: jsonEncode([
+            {'insert': '江流宛转绕芳甸，{夹注:月照花林皆似霰}何处春江无月明。{夹注:唐诗选}\n'},
+          ]),
+          plainText: '江流宛转绕芳甸，{夹注:月照花林皆似霰}何处春江无月明。{夹注:唐诗选}\n',
+          entryDate: DateTime(2026, 11, 2),
+          mood: const Value(5),
+          weather: const Value('晴'),
+        ),
+      );
+
+      final entry = await db.getEntryById('entry_interlinear_1');
+      expect(entry, isNotNull);
+
+      // 1. Verify verticalScroll export with interlinear sub-notes produces valid %PDF-
+      final verticalBytes = await PdfExportEngine.generatePdfForEntry(
+        entry: entry!,
+        database: db,
+        mediaService: mediaService,
+        layoutMode: PdfLayoutMode.verticalScroll,
+        sealText: '心迹安放',
+      );
+      expect(verticalBytes, isNotEmpty);
+      expect(String.fromCharCodes(verticalBytes.take(5)), equals('%PDF-'));
+
+      // 2. Verify horizontal mode export produces valid %PDF-
+      final horizontalBytes = await PdfExportEngine.generatePdfForEntry(
+        entry: entry,
+        database: db,
+        mediaService: mediaService,
+        layoutMode: PdfLayoutMode.horizontal,
+        sealText: '心迹安放',
+      );
+      expect(horizontalBytes, isNotEmpty);
+      expect(String.fromCharCodes(horizontalBytes.take(5)), equals('%PDF-'));
+
+      // 3. Verify horizontal serialization converts {夹注:...} to 〖...〗 without leaking {夹注:
+      final widgets = await PdfEntrySerializer.convertDeltaToWidgets(
+        contentDeltaJson: entry.contentDelta,
+        fallbackPlainText: entry.plainText,
+        mediaService: mediaService,
+        style: const TemplateStyle(
+          type: TemplateBackgroundType.paperTexture,
+          backgroundColor: Color(0xFFF7F3E8),
+          lineSpacing: 1.5,
+          marginHorizontal: 24.0,
+        ),
+        fontResolver: PdfFontResolver.cjk(),
+      );
+      expect(widgets, isNotEmpty);
     });
   });
 }

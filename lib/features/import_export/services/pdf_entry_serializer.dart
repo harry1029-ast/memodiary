@@ -77,7 +77,11 @@ class PdfEntrySerializer {
       // Fallback: render plain text line by line
       final lines = fallbackPlainText.split('\n');
       for (final line in lines) {
-        final sanitized = fontResolver.sanitizeText(line.trimRight());
+        final cleanLine = line.replaceAllMapped(
+          RegExp(r'\{夹注:(.*?)\}'),
+          (match) => '〖${match.group(1)}〗',
+        );
+        final sanitized = fontResolver.sanitizeText(cleanLine.trimRight());
         if (sanitized.isNotEmpty) {
           widgets.add(
             pw.Padding(
@@ -155,6 +159,10 @@ class PdfEntrySerializer {
 
       // 2. Text String
       if (insert is String) {
+        final cleanInsert = insert.replaceAllMapped(
+          RegExp(r'\{夹注:(.*?)\}'),
+          (match) => '〖${match.group(1)}〗',
+        );
         final isBold = attributes['bold'] == true;
         final isItalic = attributes['italic'] == true;
         final isUnderline = attributes['underline'] == true;
@@ -168,9 +176,9 @@ class PdfEntrySerializer {
           );
         }
 
-        final segments = insert.split('\n');
-        for (int i = 0; i < segments.length; i++) {
-          final seg = segments[i];
+        final segments = cleanInsert.split('\n');
+        for (int index = 0; index < segments.length; index++) {
+          final seg = segments[index];
           if (seg.isNotEmpty) {
             currentSpans.add(
               _InlineSpan(
@@ -184,7 +192,7 @@ class PdfEntrySerializer {
             );
           }
 
-          if (i < segments.length - 1) {
+          if (index < segments.length - 1) {
             // Newline encountered: determine block format
             final block = _LineBlock(spans: List.from(currentSpans));
             currentSpans.clear();

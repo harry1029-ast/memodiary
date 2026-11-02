@@ -288,7 +288,11 @@ class PdfExportEngine {
     }
 
     final rawTitle = entry.title?.trim() ?? '';
-    final title = fontResolver.sanitizeText(rawTitle);
+    final cleanTitle = rawTitle.replaceAllMapped(
+      RegExp(r'\{夹注:(.*?)\}'),
+      (match) => '〖${match.group(1)}〗',
+    );
+    final title = fontResolver.sanitizeText(cleanTitle);
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,

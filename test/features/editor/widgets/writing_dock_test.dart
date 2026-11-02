@@ -130,6 +130,72 @@ void main() {
       await tester.tap(find.byKey(const Key('writing_dock_spark_btn')));
       expect(sparkShuffled, isTrue);
     });
+
+    testWidgets('formatting ribbon contains interlinear note action with accessible semantics', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Open formatting ribbon
+      await tester.tap(find.byKey(const Key('writing_dock_format_btn')));
+      await tester.pumpAndSettle();
+
+      final noteBtnFinder = find.byKey(const Key('writing_dock_interlinear_note_btn'));
+      expect(noteBtnFinder, findsOneWidget);
+      expect(find.text('〘注〙'), findsOneWidget);
+
+      final iconBtn = tester.widget<IconButton>(noteBtnFinder);
+      expect(iconBtn.tooltip, equals('双行夹注 · Interlinear Note'));
+    });
+
+    testWidgets('tapping interlinear note at collapsed cursor inserts {夹注:} and positions cursor inside at offset + 4', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Open formatting ribbon
+      await tester.tap(find.byKey(const Key('writing_dock_format_btn')));
+      await tester.pumpAndSettle();
+
+      // Collapse selection at offset 6 (after "Hello ")
+      controller.updateSelection(
+        const TextSelection.collapsed(offset: 6),
+        ChangeSource.local,
+      );
+
+      // Tap interlinear note button
+      await tester.tap(find.byKey(const Key('writing_dock_interlinear_note_btn')));
+      await tester.pumpAndSettle();
+
+      final plainText = controller.document.toPlainText();
+      expect(plainText, startsWith('Hello {夹注:}Literati World'));
+      expect(controller.selection.isCollapsed, isTrue);
+      // Offset was 6, insertion is {夹注:}, caret placed at offset + 4 = 10
+      expect(controller.selection.baseOffset, equals(10));
+    });
+
+    testWidgets('tapping interlinear note with active selection wraps selected text and positions cursor after brace', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // Open formatting ribbon
+      await tester.tap(find.byKey(const Key('writing_dock_format_btn')));
+      await tester.pumpAndSettle();
+
+      // Selection is [0, 5] -> "Hello"
+      controller.updateSelection(
+        const TextSelection(baseOffset: 0, extentOffset: 5),
+        ChangeSource.local,
+      );
+
+      // Tap interlinear note button
+      await tester.tap(find.byKey(const Key('writing_dock_interlinear_note_btn')));
+      await tester.pumpAndSettle();
+
+      final plainText = controller.document.toPlainText();
+      expect(plainText, startsWith('{夹注:Hello} Literati World'));
+      expect(controller.selection.isCollapsed, isTrue);
+      // Wrapped "{夹注:Hello}". Length is 11, cursor after '}' at index 11
+      expect(controller.selection.baseOffset, equals('{夹注:Hello}'.length));
+    });
   });
 }
 

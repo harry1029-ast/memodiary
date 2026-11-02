@@ -16,7 +16,7 @@ sealed class _PdfKeepsakeItem {
 }
 
 class _PdfKeepsakeColumnItem extends _PdfKeepsakeItem {
-  final List<String> tokens;
+  final List<VerticalRenderToken> tokens;
   final bool isTitle;
 
   _PdfKeepsakeColumnItem({
@@ -158,18 +158,71 @@ class PdfVerticalScrollBuilder {
             mainAxisAlignment: col.isTitle ? pw.MainAxisAlignment.center : pw.MainAxisAlignment.start,
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: col.tokens.map((token) {
-              final sanitized = resolver.sanitizeText(token);
-              return pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
-                child: pw.Text(
-                  sanitized,
-                  style: pw.TextStyle(
-                    font: font,
-                    fontSize: fontSize,
-                    color: PdfColors.black,
+              if (token is VerticalInterlinearPairToken) {
+                final noteFontSize = (fontSize * 0.58).clamp(6.0, 9.0);
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
+                  child: pw.Row(
+                    children: [
+                      pw.Expanded(
+                        child: pw.Text(
+                          resolver.sanitizeText(token.leftChar),
+                          textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(
+                            font: resolver.regularFont,
+                            fontSize: noteFontSize,
+                            color: PdfColors.grey700,
+                          ),
+                        ),
+                      ),
+                      pw.Expanded(
+                        child: pw.Text(
+                          resolver.sanitizeText(token.rightChar),
+                          textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(
+                            font: resolver.regularFont,
+                            fontSize: noteFontSize,
+                            color: PdfColors.grey700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              );
+                );
+              }
+
+              if (token is VerticalGlyphToken) {
+                final sanitized = resolver.sanitizeText(token.glyph);
+                if (token.isCornerPunctuation) {
+                  return pw.Container(
+                    width: col.estimatedWidth,
+                    alignment: pw.Alignment.topRight,
+                    padding: const pw.EdgeInsets.only(right: 2.0),
+                    child: pw.Text(
+                      sanitized,
+                      style: pw.TextStyle(
+                        font: font,
+                        fontSize: fontSize,
+                        color: PdfColors.black,
+                      ),
+                    ),
+                  );
+                }
+
+                return pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
+                  child: pw.Text(
+                    sanitized,
+                    style: pw.TextStyle(
+                      font: font,
+                      fontSize: fontSize,
+                      color: PdfColors.black,
+                    ),
+                  ),
+                );
+              }
+
+              return pw.SizedBox();
             }).toList(),
           ),
         );
@@ -273,7 +326,7 @@ class PdfVerticalScrollBuilder {
 
     // 1. Title Column
     if (entry.title != null && entry.title!.trim().isNotEmpty) {
-      final titleTokens = VerticalTypographyMapper.tokenizeForVertical(entry.title!.trim());
+      final titleTokens = VerticalTypographyMapper.tokenize(entry.title!.trim());
       items.add(_PdfKeepsakeColumnItem(tokens: titleTokens, isTitle: true));
     }
 
@@ -297,7 +350,7 @@ class PdfVerticalScrollBuilder {
       for (final line in lines) {
         final trimmed = line.trim();
         if (trimmed.isEmpty) continue;
-        final tokens = VerticalTypographyMapper.tokenizeForVertical(trimmed);
+        final tokens = VerticalTypographyMapper.tokenize(trimmed);
         _partitionTokens(tokens, maxCharsPerCol, items);
       }
     } else {
@@ -331,7 +384,7 @@ class PdfVerticalScrollBuilder {
           for (final para in paras) {
             final trimmed = para.trim();
             if (trimmed.isEmpty) continue;
-            final tokens = VerticalTypographyMapper.tokenizeForVertical(trimmed);
+            final tokens = VerticalTypographyMapper.tokenize(trimmed);
             _partitionTokens(tokens, maxCharsPerCol, items);
           }
         }
@@ -344,14 +397,14 @@ class PdfVerticalScrollBuilder {
   }
 
   static void _partitionTokens(
-    List<String> tokens,
+    List<VerticalRenderToken> tokens,
     int maxPerCol,
     List<_PdfKeepsakeItem> out,
   ) {
     if (tokens.isEmpty) return;
-    for (int i = 0; i < tokens.length; i += maxPerCol) {
-      final end = (i + maxPerCol < tokens.length) ? i + maxPerCol : tokens.length;
-      out.add(_PdfKeepsakeColumnItem(tokens: tokens.sublist(i, end)));
+    for (int index = 0; index < tokens.length; index += maxPerCol) {
+      final end = (index + maxPerCol < tokens.length) ? index + maxPerCol : tokens.length;
+      out.add(_PdfKeepsakeColumnItem(tokens: tokens.sublist(index, end)));
     }
   }
 
