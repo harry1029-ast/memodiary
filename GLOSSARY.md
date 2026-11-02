@@ -79,3 +79,19 @@ _Avoid_: Vertical reader, print preview screen, calligraphy viewer
 **Cinnabar Signature Seal**:
 The diarist's personalized 2–4 character colophon stamp whose text is a persistent user signature, rendered in relief (朱文) or intaglio (白文) according to the active stationery template.
 _Avoid_: Signature stamp, red seal widget, colophon watermark
+
+**Paper Heart**:
+The strictly bounded, integer-snapped rectangular area (`innerFrameRect` · 版心) within the Journal Sheet that encloses all ruling geometries and text flow, isolating content from Heaven and Earth margins.
+_Avoid_: Text viewport, inner canvas, content area
+
+**Heaven and Earth Margins**:
+The traditional top (Heaven · 天头, $\ge 52\text{px}$) and bottom (Earth · 地脚, $\ge 44\text{px}$) border zones flanking the Paper Heart, reserving dedicated structural space for front-matter and colophons without introducing fractional phase shifts into line strides.
+_Avoid_: Header padding, footer margin, canvas insets
+
+**Double Outer Border**:
+The classical stationery framing format (`文武双栏` / 四周双栏) composed of an outer heavier stroke and inner lighter stroke enclosing the Paper Heart, preventing ruling lines from bleeding to screen edges.
+_Avoid_: Canvas border, frame border, sheet outline
+
+**Interlinear Sub-Note**:
+The classical Chinese annotation format (`双行夹注` · Jiāzhù) rendering commentary as two parallel sub-columns of small-scale characters within a single column stride, parsed from `{夹注:...}` syntax.
+_Avoid_: Side note, footnote, inline comment
