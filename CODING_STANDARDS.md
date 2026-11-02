@@ -48,6 +48,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
 - **WYSIWYG Export Transform Parity**: Any headless document exporter (PDF generator, raster image synthesizer) consuming interactive canvas models must reproduce all user canvas transformations (pan offsets `panOffsetX`/`panOffsetY`, zoom scale, rotation, layer stacking order) with 1:1 mathematical parity.
 - **Dominant-Axis Downsampling**: Image transcoders downsampling arbitrary user photos must evaluate input aspect ratios and constrain along the dominant dimension (`origW >= origH ? targetWidth : targetHeight`) rather than fixing a single dimension, protecting against memory spikes on extreme panoramic or portrait aspect ratios.
 - **No Silent In-Memory Fallbacks in Production UI**: Screen and container widgets must never instantiate in-memory databases (`AppDatabase.memory()`) or unconfigured services inside state getters to satisfy optional constructor parameters. Pass required dependencies explicitly via constructors or inherit from provider/context. Silent fallbacks mask missing wiring bugs and create split state during navigation.
+- **Modal Route State Encapsulation**: Widgets presented via `showModalBottomSheet` or `showDialog` that contain interactive controls (sliders, tab selectors, toggles, chips) must maintain internal mutable state within their own `StatefulWidget` (or consume a shared reactive notifier/InheritedNotifier) and invoke `setState()` when user interactions occur. Never rely on the caller screen's `setState()` to rebuild an active modal route.
 
 ---
 
@@ -96,6 +97,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
   - File format fixtures (such as MP4 or WebP) must declare valid magic-byte headers deterministically (e.g. 32-byte `ftyp` box header `[0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70, ...]`) so format parsers pass instantaneously without flaky mocking.
   - Pure-Dart cryptographic loops (PBKDF2) must support configurable low iteration counts in unit test configurations (e.g. `iterations: 1000` or `2000`) while defaulting to $200,000$ in production.
 - **Scrollable Sheet Tap Assurance**: When writing widget tests that interact with elements inside scrollable modal bottom sheets, bottom drawers, or scroll views (`SingleChildScrollView`, `ListView`), precede interactive taps with `await tester.ensureVisible(finder);` (or `WidgetTesterScrollHelpers.tapVisible`) to prevent offscreen coordinate warnings and hit-test misses on standard headless viewports ($800 \times 600$).
+- **Interactive UI Mutation over Bare Callback Dispatch**: Widget tests for interactive modal sheets, sliders, dropdowns, and selection chips must assert on the **resulting visual UI state** (e.g. active highlight border, checkmark icon, updated slider value label) while the component remains open, not merely verify that an event callback was invoked. Testing only callback dispatch masks modal route state-isolation bugs.
 
 ---
 
