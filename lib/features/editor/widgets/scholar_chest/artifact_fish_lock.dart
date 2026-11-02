@@ -28,94 +28,76 @@ class ArtifactFishLock extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeOutCubic,
-          height: 96,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
           decoration: BoxDecoration(
             color: const Color(0xFF6B1A1E),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? const Color(0xFFD4AF37) : const Color(0xFF8B262A),
+              color: isSelected
+                  ? const Color(0xFFD4AF37)
+                  : const Color(0xFF8B262A),
               width: isSelected ? 2.0 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isSelected ? 0.35 : 0.2),
+                color: Colors.black.withValues(
+                  alpha: isSelected ? 0.35 : 0.2,
+                ),
                 blurRadius: isSelected ? 8 : 4,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
             children: [
-              // Brass fish padlock graphic
-              SizedBox(
-                height: 42,
-                width: 60,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Brass Shackle
-                    Positioned(
-                      top: 4,
-                      child: Container(
-                        width: 22,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(0xFFD4AF37),
-                            width: 2.2,
-                          ),
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
-                        ),
+              Positioned.fill(
+                bottom: 20,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(
+                    begin: 0.0,
+                    end: (isSelected || isLocked) ? 1.0 : 0.0,
+                  ),
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, turnProgress, _) {
+                    return CustomPaint(
+                      painter: BrassFishLockPainter(
+                        turnProgress: turnProgress,
+                        isLocked: isLocked,
                       ),
-                    ),
-                    // Fish-shaped lock body
-                    Positioned(
-                      bottom: 4,
-                      child: Container(
-                        width: 48,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFC49838),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE8C872), width: 1.0),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x33000000),
-                              blurRadius: 3,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Icon(
-                            isLocked ? Icons.lock : Icons.lock_open,
-                            size: 11,
-                            color: const Color(0xFF2C1E0A),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: 6),
-              // Plaque
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1A17),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: const Color(0xFFD4AF37), width: 0.8),
-                ),
-                child: Text(
-                  '古法鱼锁',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFE6C875),
+              Positioned(
+                left: 4,
+                right: 4,
+                bottom: 2,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1A17),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFF8C7148),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      '古法鱼锁',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontKaiti,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFE6C875),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -127,23 +109,142 @@ class ArtifactFishLock extends StatelessWidget {
   }
 }
 
-/// In-chest sub-panel for the Brass Fish Lock artifact
+/// Renders the sculpted Antique Brass Carp Padlock (古法黄铜鱼锁) and turning key with red silk tassel.
+class BrassFishLockPainter extends CustomPainter {
+  final double turnProgress;
+  final bool isLocked;
+
+  BrassFishLockPainter({
+    required this.turnProgress,
+    required this.isLocked,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final canvasWidth = size.width;
+    final canvasHeight = size.height;
+
+    final brassPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFF2D58B), Color(0xFFC4963C), Color(0xFF7B571A)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Rect.fromLTWH(0, 0, canvasWidth, canvasHeight));
+
+    // 1. Top Shackle Bar (lifts slightly when unlocked, locks down when locked)
+    canvas.save();
+    canvas.translate(0, isLocked ? 2.5 : -3.0 * turnProgress);
+    final shacklePath = Path()
+      ..moveTo(canvasWidth * 0.28, canvasHeight * 0.44)
+      ..lineTo(canvasWidth * 0.28, canvasHeight * 0.22)
+      ..lineTo(canvasWidth * 0.68, canvasHeight * 0.22)
+      ..lineTo(canvasWidth * 0.68, canvasHeight * 0.44);
+    canvas.drawPath(
+      shacklePath,
+      Paint()
+        ..color = const Color(0xFFD6AF5B)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.restore();
+
+    // 2. Sculpted Auspicious Carp Body (古铜鱼锁)
+    final fishPath = Path()
+      ..moveTo(canvasWidth * 0.12, canvasHeight * 0.55)
+      ..quadraticBezierTo(
+        canvasWidth * 0.26, canvasHeight * 0.34,
+        canvasWidth * 0.54, canvasHeight * 0.38,
+      )
+      ..quadraticBezierTo(
+        canvasWidth * 0.72, canvasHeight * 0.40,
+        canvasWidth * 0.84, canvasHeight * 0.30,
+      )
+      ..lineTo(canvasWidth * 0.80, canvasHeight * 0.55)
+      ..lineTo(canvasWidth * 0.84, canvasHeight * 0.78)
+      ..quadraticBezierTo(
+        canvasWidth * 0.72, canvasHeight * 0.68,
+        canvasWidth * 0.54, canvasHeight * 0.72,
+      )
+      ..quadraticBezierTo(
+        canvasWidth * 0.26, canvasHeight * 0.75,
+        canvasWidth * 0.12, canvasHeight * 0.55,
+      )
+      ..close();
+    canvas.drawPath(fishPath, brassPaint);
+    canvas.drawPath(
+      fishPath,
+      Paint()
+        ..color = const Color(0xFF4A320D)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1,
+    );
+
+    // Vigilant Fish Eye ("鱼目终夜不瞑")
+    canvas.drawCircle(
+      Offset(canvasWidth * 0.24, canvasHeight * 0.52),
+      3.0,
+      Paint()..color = const Color(0xFF2A1A08),
+    );
+    canvas.drawCircle(
+      Offset(canvasWidth * 0.24, canvasHeight * 0.52),
+      1.1,
+      Paint()..color = const Color(0xFFF6DE9C),
+    );
+
+    // 3. Brass Key & Crimson Tassel (rotates on lock / selection)
+    final keyPivot = Offset(canvasWidth * 0.56, canvasHeight * 0.56);
+    canvas.save();
+    canvas.translate(keyPivot.dx, keyPivot.dy);
+    canvas.rotate(0.36 * turnProgress);
+    canvas.translate(-keyPivot.dx, -keyPivot.dy);
+
+    canvas.drawCircle(
+      keyPivot,
+      3.8,
+      Paint()..color = const Color(0xFF3E280B),
+    );
+    canvas.drawLine(
+      keyPivot,
+      Offset(canvasWidth * 0.84, canvasHeight * 0.74),
+      Paint()
+        ..color = const Color(0xFFE7C46E)
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round,
+    );
+    // Red silk tassel
+    canvas.drawLine(
+      Offset(canvasWidth * 0.84, canvasHeight * 0.74),
+      Offset(canvasWidth * 0.88, canvasHeight * 0.88),
+      Paint()
+        ..color = const Color(0xFFC82820)
+        ..strokeWidth = 2.0
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant BrassFishLockPainter oldDelegate) =>
+      oldDelegate.turnProgress != turnProgress ||
+      oldDelegate.isLocked != isLocked;
+}
+
+/// In-chest sub-panel for the Fish Lock Time Capsule controls
 class FishLockSubPanel extends StatelessWidget {
   final DateTime? unlockAt;
   final ValueChanged<DateTime?> onLockChanged;
 
   const FishLockSubPanel({
     super.key,
-    this.unlockAt,
+    required this.unlockAt,
     required this.onLockChanged,
   });
 
-  bool get isLocked => unlockAt != null && unlockAt!.isAfter(DateTime.now());
-
   @override
   Widget build(BuildContext context) {
-    final tokens = InkDiaryTheme.tokensOf(context);
-    final now = DateTime.now();
+    final isLocked = unlockAt != null && unlockAt!.isAfter(DateTime.now());
+    final dateFormat = DateFormat('yyyy年MM月dd日');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,126 +253,86 @@ class FishLockSubPanel extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '岁月锦囊 · 封缄之期',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: tokens.jiaomo,
-              ),
+            Row(
+              children: [
+                Icon(
+                  isLocked ? Icons.lock : Icons.lock_open_outlined,
+                  size: 16,
+                  color: const Color(0xFFC04851),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '岁月锦囊 · 封缄之期',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF2C1E0A),
+                  ),
+                ),
+              ],
             ),
             if (isLocked)
               TextButton.icon(
                 key: const Key('chest_lock_clear_button'),
-                style: TextButton.styleFrom(
-                  foregroundColor: tokens.cinnabar,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                ),
                 icon: const Icon(Icons.lock_open, size: 14),
-                label: const Text('解除封缄', style: TextStyle(fontSize: 12)),
+                label: const Text('解除封缄', style: TextStyle(fontSize: 11)),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFC04851),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                ),
                 onPressed: () => onLockChanged(null),
               ),
           ],
         ),
         const SizedBox(height: 6),
 
-        // Current lock status banner
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: isLocked ? tokens.cinnabar.withValues(alpha: 0.08) : tokens.ricePaper,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isLocked ? tokens.cinnabar.withValues(alpha: 0.4) : tokens.agedFiber,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                isLocked ? Icons.lock : Icons.lock_outline,
-                size: 16,
-                color: isLocked ? tokens.cinnabar : tokens.danmo,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  isLocked
-                      ? '已封缄至 ${DateFormat('yyyy年M月d日').format(unlockAt!)} 解封'
-                      : '当前未封缄 · 随笔随览',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 12,
-                    color: isLocked ? tokens.cinnabar : tokens.danmo,
-                  ),
-                ),
-              ),
-            ],
+        Text(
+          isLocked
+              ? '已封缄至 ${dateFormat.format(unlockAt!)} 解封'
+              : '当前未封缄 · 随笔随览',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontKaiti,
+            fontSize: 12,
+            color: isLocked ? const Color(0xFFC04851) : const Color(0xFF7A6B5D),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // Quick Presets
+        // Lock preset chips
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            ActionChip(
+            _buildLockPresetChip(
               key: const Key('chest_lock_preset_1month'),
-              label: const Text('封缄一月 (+30天)'),
-              backgroundColor: tokens.ricePaper,
-              labelStyle: TextStyle(
-                fontFamily: InkDiaryTheme.fontKaiti,
-                fontSize: 12,
-                color: tokens.jiaomo,
-              ),
-              onPressed: () {
-                onLockChanged(now.add(const Duration(days: 30)));
-              },
+              label: '一月后 · 待春发',
+              duration: const Duration(days: 30),
             ),
-            ActionChip(
-              key: const Key('chest_lock_preset_newyear'),
-              label: const Text('封至元旦'),
-              backgroundColor: tokens.ricePaper,
-              labelStyle: TextStyle(
-                fontFamily: InkDiaryTheme.fontKaiti,
-                fontSize: 12,
-                color: tokens.jiaomo,
-              ),
-              onPressed: () {
-                final nextYear = DateTime(now.year + 1, 1, 1);
-                onLockChanged(nextYear);
-              },
+            _buildLockPresetChip(
+              key: const Key('chest_lock_preset_100days'),
+              label: '百日后 · 忆今朝',
+              duration: const Duration(days: 100),
             ),
-            ActionChip(
+            _buildLockPresetChip(
               key: const Key('chest_lock_preset_1year'),
-              label: const Text('封缄一年 (+365天)'),
-              backgroundColor: tokens.ricePaper,
-              labelStyle: TextStyle(
-                fontFamily: InkDiaryTheme.fontKaiti,
-                fontSize: 12,
-                color: tokens.jiaomo,
-              ),
-              onPressed: () {
-                onLockChanged(now.add(const Duration(days: 365)));
-              },
+              label: '翌年今日 · 见旧墨',
+              duration: const Duration(days: 365),
             ),
             ActionChip(
-              key: const Key('chest_lock_preset_custom'),
-              avatar: Icon(Icons.calendar_month, size: 14, color: tokens.cinnabar),
-              label: const Text('自选吉日'),
-              backgroundColor: tokens.ricePaper,
-              labelStyle: TextStyle(
-                fontFamily: InkDiaryTheme.fontKaiti,
-                fontSize: 12,
-                color: tokens.cinnabar,
-              ),
+              avatar: const Icon(Icons.event_outlined, size: 14),
+              label: const Text('自择良辰', style: TextStyle(fontSize: 11.5)),
+              backgroundColor: const Color(0xFFF7F3E8),
               onPressed: () async {
+                final now = DateTime.now();
                 final picked = await showDatePicker(
                   context: context,
-                  initialDate: now.add(const Duration(days: 7)),
+                  initialDate: now.add(const Duration(days: 30)),
                   firstDate: now.add(const Duration(days: 1)),
-                  lastDate: now.add(const Duration(days: 365 * 10)),
+                  lastDate: now.add(const Duration(days: 3650)),
                 );
                 if (picked != null) {
                   onLockChanged(picked);
@@ -281,6 +342,21 @@ class FishLockSubPanel extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildLockPresetChip({
+    required Key key,
+    required String label,
+    required Duration duration,
+  }) {
+    return ActionChip(
+      key: key,
+      label: Text(label, style: const TextStyle(fontSize: 11.5)),
+      backgroundColor: const Color(0xFFF7F3E8),
+      onPressed: () {
+        onLockChanged(DateTime.now().add(duration));
+      },
     );
   }
 }

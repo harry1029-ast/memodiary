@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
 import '../../services/audio_sanctum_service.dart';
@@ -29,7 +30,7 @@ class _ArtifactGuqinZitherState extends State<ArtifactGuqinZither>
     super.initState();
     _vibrationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 260),
+      duration: const Duration(milliseconds: 300),
     );
     if (widget.isPlaying) {
       _triggerVibration();
@@ -66,92 +67,82 @@ class _ArtifactGuqinZitherState extends State<ArtifactGuqinZither>
       selected: widget.isSelected,
       child: GestureDetector(
         key: const Key('chest_artifact_guqin_zither'),
-        onTap: widget.onTap,
+        onTap: () {
+          _triggerVibration();
+          widget.onTap?.call();
+        },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeOutCubic,
           height: 96,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: const Color(0xFF6B1A1E),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: widget.isSelected ? const Color(0xFFD4AF37) : const Color(0xFF8B262A),
+              color: widget.isSelected
+                  ? const Color(0xFFD4AF37)
+                  : const Color(0xFF8B262A),
               width: widget.isSelected ? 2.0 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: widget.isSelected ? 0.35 : 0.2),
+                color: Colors.black.withValues(
+                  alpha: widget.isSelected ? 0.35 : 0.2,
+                ),
                 blurRadius: widget.isSelected ? 8 : 4,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Guqin body & strings graphic
-              SizedBox(
-                height: 42,
-                width: 64,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Paulownia wood instrument body
-                    Container(
-                      width: 58,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF382315),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFF5A3A22), width: 1.0),
+          child: AnimatedBuilder(
+            animation: _vibrationController,
+            builder: (context, _) {
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    bottom: 20,
+                    child: CustomPaint(
+                      painter: GuqinZitherPainter(
+                        pluckProgress: _vibrationController.value,
                       ),
                     ),
-                    // 7 golden silk strings
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: List.generate(7, (stringIndex) {
-                        return AnimatedBuilder(
-                          animation: _vibrationController,
-                          builder: (context, _) {
-                            final offset = widget.isPlaying
-                                ? (_vibrationController.value * (stringIndex % 2 == 0 ? 0.8 : -0.8))
-                                : 0.0;
-                            return Transform.translate(
-                              offset: Offset(offset, 0),
-                              child: Container(
-                                width: 1,
-                                height: 26,
-                                color: const Color(0xFFE6C875),
-                              ),
-                            );
-                          },
-                        );
-                      }),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 6),
-              // Plaque
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1A17),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: const Color(0xFFD4AF37), width: 0.8),
-                ),
-                child: Text(
-                  '桐木古琴',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFE6C875),
                   ),
-                ),
-              ),
-            ],
+                  Positioned(
+                    left: 6,
+                    right: 6,
+                    bottom: 2,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E1A17),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: widget.isSelected
+                                ? const Color(0xFFD4AF37)
+                                : const Color(0xFF8C7148),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          '桐木古琴',
+                          style: TextStyle(
+                            fontFamily: InkDiaryTheme.fontKaiti,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFE6C875),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -159,139 +150,275 @@ class _ArtifactGuqinZitherState extends State<ArtifactGuqinZither>
   }
 }
 
-/// In-chest sub-panel for the Guqin Zither artifact
-class GuqinZitherSubPanel extends StatelessWidget {
+/// Renders the 7-String Paulownia Guqin Zither with silk runner, mother-of-pearl dots & vibrating strings.
+class GuqinZitherPainter extends CustomPainter {
+  final double pluckProgress;
+
+  GuqinZitherPainter({required this.pluckProgress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final canvasWidth = size.width;
+    final canvasHeight = size.height;
+
+    // Emerald Brocade Table Runner
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          canvasWidth * 0.05,
+          canvasHeight * 0.14,
+          canvasWidth * 0.90,
+          canvasHeight * 0.70,
+        ),
+        const Radius.circular(6),
+      ),
+      Paint()
+        ..color = const Color(0xFF102A22)
+        ..style = PaintingStyle.fill,
+    );
+
+    // Shaped Classical Paulownia Wood Guqin Body
+    final bodyPath = Path()
+      ..moveTo(canvasWidth * 0.04, canvasHeight * 0.28)
+      ..quadraticBezierTo(
+        canvasWidth * 0.28, canvasHeight * 0.22,
+        canvasWidth * 0.48, canvasHeight * 0.29,
+      )
+      ..quadraticBezierTo(
+        canvasWidth * 0.72, canvasHeight * 0.25,
+        canvasWidth * 0.94, canvasHeight * 0.32,
+      )
+      ..lineTo(canvasWidth * 0.94, canvasHeight * 0.68)
+      ..quadraticBezierTo(
+        canvasWidth * 0.72, canvasHeight * 0.75,
+        canvasWidth * 0.48, canvasHeight * 0.71,
+      )
+      ..quadraticBezierTo(
+        canvasWidth * 0.28, canvasHeight * 0.78,
+        canvasWidth * 0.04, canvasHeight * 0.72,
+      )
+      ..close();
+
+    final woodPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFF4A2A1A), Color(0xFF2B160D), Color(0xFF1B0C06)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, canvasWidth, canvasHeight));
+    canvas.drawPath(bodyPath, woodPaint);
+    canvas.drawPath(
+      bodyPath,
+      Paint()
+        ..color = const Color(0xFF8C5B3E)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1,
+    );
+
+    // 13 Mother-of-Pearl Harmonic Dots (螺钿十三徽)
+    final pearlPaint = Paint()..color = const Color(0xFFF6EFE2);
+    for (int dotIndex = 0; dotIndex < 11; dotIndex++) {
+      final dotX = canvasWidth * (0.14 + dotIndex * 0.066);
+      canvas.drawCircle(Offset(dotX, canvasHeight * 0.32), 1.3, pearlPaint);
+    }
+
+    // 7 Taut Silk Strings with vibrating sine oscillation
+    final stringPaint = Paint()
+      ..color = const Color(0xFFE8D3A7).withValues(alpha: 0.90)
+      ..strokeWidth = 0.9
+      ..style = PaintingStyle.stroke;
+
+    for (int stringIndex = 0; stringIndex < 7; stringIndex++) {
+      final stringY = canvasHeight * (0.37 + stringIndex * 0.044);
+      final vibrationOffset = (stringIndex.isEven ? 1.0 : -1.0) *
+          2.0 * pluckProgress * math.sin((stringIndex + 1) * 1.3);
+      final stringPath = Path()
+        ..moveTo(canvasWidth * 0.09, stringY)
+        ..quadraticBezierTo(
+          canvasWidth * 0.50, stringY + vibrationOffset,
+          canvasWidth * 0.90, stringY,
+        );
+      canvas.drawPath(stringPath, stringPaint);
+    }
+
+    // Red Silk Tassel hanging from tuning end (朱红琴穗)
+    final tasselPath = Path()
+      ..moveTo(canvasWidth * 0.92, canvasHeight * 0.50)
+      ..quadraticBezierTo(
+        canvasWidth * 0.95, canvasHeight * 0.62,
+        canvasWidth * 0.97, canvasHeight * 0.82,
+      );
+    canvas.drawPath(
+      tasselPath,
+      Paint()
+        ..color = const Color(0xFFD13426)
+        ..strokeWidth = 2.0
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant GuqinZitherPainter oldDelegate) =>
+      oldDelegate.pluckProgress != pluckProgress;
+}
+
+/// In-chest sub-panel for the Guqin Zither ambient audio controls
+class GuqinZitherSubPanel extends StatefulWidget {
   final AudioSanctumService audioSanctumService;
 
-  const GuqinZitherSubPanel({
-    super.key,
-    required this.audioSanctumService,
-  });
+  const GuqinZitherSubPanel({super.key, required this.audioSanctumService});
+
+  @override
+  State<GuqinZitherSubPanel> createState() => _GuqinZitherSubPanelState();
+}
+
+class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
+  late double _volume;
+
+  @override
+  void initState() {
+    super.initState();
+    _volume = widget.audioSanctumService.volume;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final tokens = InkDiaryTheme.tokensOf(context);
+    final isPlaying = widget.audioSanctumService.isPlaying;
+    final activePreset = widget.audioSanctumService.activePreset;
 
-    return ListenableBuilder(
-      listenable: audioSanctumService,
-      builder: (context, _) {
-        final active = audioSanctumService.activePreset;
-        final isPlaying = audioSanctumService.isPlaying;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Icon(
+                  isPlaying ? Icons.graphic_eq : Icons.music_note_outlined,
+                  size: 16,
+                  color: const Color(0xFFC04851),
+                ),
+                const SizedBox(width: 6),
                 Text(
                   '书斋清音 · 琴韵自然',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: tokens.jiaomo,
+                    color: const Color(0xFF2C1E0A),
                   ),
                 ),
-                if (isPlaying)
-                  TextButton.icon(
-                    key: const Key('chest_soundscape_stop_button'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: tokens.cinnabar,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    ),
-                    icon: const Icon(Icons.stop_circle_outlined, size: 14),
-                    label: const Text('静默收琴', style: TextStyle(fontSize: 12)),
-                    onPressed: () => audioSanctumService.stop(),
+              ],
+            ),
+            if (isPlaying)
+              TextButton.icon(
+                key: const Key('chest_soundscape_stop_button'),
+                icon: const Icon(Icons.stop_circle_outlined, size: 14),
+                label: const Text('停歇清音', style: TextStyle(fontSize: 11)),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFC04851),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
                   ),
-              ],
-            ),
-            const SizedBox(height: 8),
+                ),
+                onPressed: () async {
+                  await widget.audioSanctumService.stop();
+                  setState(() {});
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
 
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildPresetChip(
-                  context,
-                  key: const Key('chest_soundscape_chip_rain'),
-                  label: '蕉窗听雨',
-                  preset: SoundscapePreset.gentleRain,
-                  active: active,
-                  tokens: tokens,
-                ),
-                _buildPresetChip(
-                  context,
-                  key: const Key('chest_soundscape_chip_bamboo'),
-                  label: '松下抚琴',
-                  preset: SoundscapePreset.bambooBreeze,
-                  active: active,
-                  tokens: tokens,
-                ),
-                _buildPresetChip(
-                  context,
-                  key: const Key('chest_soundscape_chip_library'),
-                  label: '书斋炉暖',
-                  preset: SoundscapePreset.vintageLibrary,
-                  active: active,
-                  tokens: tokens,
-                ),
-              ],
+        // Soundscape preset chips
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildPresetChip(
+              key: const Key('chest_soundscape_chip_rain'),
+              label: '蕉窗听雨',
+              preset: SoundscapePreset.gentleRain,
+              activePreset: activePreset,
             ),
-            const SizedBox(height: 12),
-
-            // Volume Slider
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('琴音音量 (${(audioSanctumService.volume * 100).round()}%)',
-                    style: const TextStyle(fontSize: 12)),
-                Icon(Icons.volume_up, size: 16, color: tokens.danmo),
-              ],
+            _buildPresetChip(
+              key: const Key('chest_soundscape_chip_wind'),
+              label: '深山松风',
+              preset: SoundscapePreset.bambooBreeze,
+              activePreset: activePreset,
             ),
-            Slider(
-              key: const Key('chest_soundscape_volume_slider'),
-              value: audioSanctumService.volume,
-              min: 0.0,
-              max: 1.0,
-              divisions: 10,
-              activeColor: tokens.cinnabar,
-              onChanged: (val) => audioSanctumService.setVolume(val),
+            _buildPresetChip(
+              key: const Key('chest_soundscape_chip_stream'),
+              label: '芸窗缃帙',
+              preset: SoundscapePreset.vintageLibrary,
+              activePreset: activePreset,
+            ),
+            _buildPresetChip(
+              key: const Key('chest_soundscape_chip_bell'),
+              label: '砚池墨渧',
+              preset: SoundscapePreset.mechanicalKeyboard,
+              activePreset: activePreset,
             ),
           ],
-        );
-      },
+        ),
+        const SizedBox(height: 12),
+
+        // Volume slider
+        Row(
+          children: [
+            Icon(Icons.volume_down, size: 16, color: const Color(0xFF7A6B5D)),
+            Expanded(
+              child: Slider(
+                key: const Key('chest_soundscape_volume_slider'),
+                value: _volume,
+                min: 0.0,
+                max: 1.0,
+                activeColor: const Color(0xFFC04851),
+                inactiveColor: const Color(0xFFD4C8B8),
+                onChanged: (volumeValue) {
+                  setState(() => _volume = volumeValue);
+                  widget.audioSanctumService.setVolume(volumeValue);
+                },
+              ),
+            ),
+            Icon(Icons.volume_up, size: 16, color: const Color(0xFF7A6B5D)),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildPresetChip(
-    BuildContext context, {
+  Widget _buildPresetChip({
     required Key key,
     required String label,
     required SoundscapePreset preset,
-    required SoundscapePreset? active,
-    required InkDiaryTokens tokens,
+    required SoundscapePreset? activePreset,
   }) {
-    final isSelected = active == preset;
+    final isSelected =
+        widget.audioSanctumService.isPlaying && activePreset == preset;
     return ChoiceChip(
       key: key,
-      label: Text(label),
-      selected: isSelected,
-      selectedColor: tokens.cinnabar,
-      backgroundColor: tokens.ricePaper,
-      labelStyle: TextStyle(
-        fontFamily: InkDiaryTheme.fontKaiti,
-        fontSize: 12,
-        color: isSelected ? Colors.white : tokens.jiaomo,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      label: Text(
+        label,
+        style: TextStyle(
+          fontFamily: InkDiaryTheme.fontNotoSerif,
+          fontSize: 11.5,
+          color: isSelected ? Colors.white : const Color(0xFF2C1E0A),
+        ),
       ),
-      onSelected: (selected) {
-        if (selected) {
-          audioSanctumService.play(preset);
+      selected: isSelected,
+      selectedColor: const Color(0xFFC04851),
+      backgroundColor: const Color(0xFFF7F3E8),
+      onSelected: (_) async {
+        if (isSelected) {
+          await widget.audioSanctumService.stop();
         } else {
-          audioSanctumService.stop();
+          await widget.audioSanctumService.play(preset);
         }
+        setState(() {});
       },
     );
   }

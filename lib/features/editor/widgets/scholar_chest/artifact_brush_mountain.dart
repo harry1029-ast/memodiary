@@ -26,85 +26,72 @@ class ArtifactBrushMountain extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeOutCubic,
-          height: 96,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
           decoration: BoxDecoration(
             color: const Color(0xFF6B1A1E),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected ? const Color(0xFFD4AF37) : const Color(0xFF8B262A),
+              color: isSelected
+                  ? const Color(0xFFD4AF37)
+                  : const Color(0xFF8B262A),
               width: isSelected ? 2.0 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isSelected ? 0.35 : 0.2),
+                color: Colors.black.withValues(
+                  alpha: isSelected ? 0.35 : 0.2,
+                ),
                 blurRadius: isSelected ? 8 : 4,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
             children: [
-              // Porcelain Mountain & Brush Graphic
-              SizedBox(
-                height: 42,
-                width: 64,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // 3-peak cobalt rest
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          _buildPeak(14, 18),
-                          _buildPeak(18, 26, isCenter: true),
-                          _buildPeak(14, 18),
-                        ],
+              Positioned.fill(
+                bottom: 20,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0.0, end: isSelected ? 1.0 : 0.0),
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, liftProgress, _) {
+                    return CustomPaint(
+                      painter: PorcelainBrushRestPainter(
+                        liftProgress: liftProgress,
                       ),
-                    ),
-                    // Floating or resting brush
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 240),
-                      top: isSelected ? 2 : 12,
-                      child: Container(
-                        width: 58,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF8A5A2B),
-                          borderRadius: BorderRadius.circular(2),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x33000000),
-                              blurRadius: 3,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: 6),
-              // Plaque
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1A17),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: const Color(0xFFD4AF37), width: 0.8),
-                ),
-                child: Text(
-                  '青花笔架',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFFE6C875),
+              Positioned(
+                left: 4,
+                right: 4,
+                bottom: 2,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1A17),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isSelected
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFF8C7148),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      '青花笔架',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontKaiti,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFE6C875),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -114,28 +101,92 @@ class ArtifactBrushMountain extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildPeak(double width, double height, {bool isCenter = false}) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8F1F5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(width / 2)),
-        border: Border.all(color: const Color(0xFF1A4778), width: 1.2),
-      ),
-      child: Center(
-        child: Container(
-          width: 3,
-          height: height * 0.45,
-          color: const Color(0xFF1A4778),
-        ),
-      ),
-    );
-  }
 }
 
-/// In-chest sub-panel for the Porcelain Brush Mountain artifact
+/// Renders the Three-Peak Blue-and-White Porcelain Mountain (青花三峰笔山) and resting calligraphy brush.
+class PorcelainBrushRestPainter extends CustomPainter {
+  final double liftProgress;
+
+  PorcelainBrushRestPainter({required this.liftProgress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final canvasWidth = size.width;
+    final canvasHeight = size.height;
+
+    // 1. Resting Bamboo Calligraphy Brush (lifts up off porcelain peaks on hover/selection)
+    canvas.save();
+    canvas.translate(0, -7.0 * liftProgress);
+    canvas.rotate(-0.05 * liftProgress);
+
+    final shaftPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFDAB77B), Color(0xFF9A6F37)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(canvasWidth * 0.08, canvasHeight * 0.22, canvasWidth * 0.60, 5.5));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(canvasWidth * 0.08, canvasHeight * 0.22, canvasWidth * 0.60, 5.5),
+        const Radius.circular(2.5),
+      ),
+      shaftPaint,
+    );
+
+    // Brush ferrule & tip
+    canvas.drawRect(
+      Rect.fromLTWH(canvasWidth * 0.68, canvasHeight * 0.215, canvasWidth * 0.06, 6.5),
+      Paint()..color = const Color(0xFF231D19),
+    );
+    final brushTip = Path()
+      ..moveTo(canvasWidth * 0.74, canvasHeight * 0.22)
+      ..quadraticBezierTo(canvasWidth * 0.84, canvasHeight * 0.23, canvasWidth * 0.91, canvasHeight * 0.25)
+      ..quadraticBezierTo(canvasWidth * 0.84, canvasHeight * 0.27, canvasWidth * 0.74, canvasHeight * 0.28)
+      ..close();
+    canvas.drawPath(brushTip, Paint()..color = const Color(0xFFF7F4EE));
+    canvas.restore();
+
+    // 2. Three-Peak Blue-and-White Porcelain Mountain (青花三峰笔山)
+    final mountainPath = Path()
+      ..moveTo(canvasWidth * 0.10, canvasHeight * 0.88)
+      ..lineTo(canvasWidth * 0.10, canvasHeight * 0.66)
+      ..quadraticBezierTo(canvasWidth * 0.19, canvasHeight * 0.32, canvasWidth * 0.28, canvasHeight * 0.60)
+      ..quadraticBezierTo(canvasWidth * 0.36, canvasHeight * 0.76, canvasWidth * 0.42, canvasHeight * 0.52)
+      ..quadraticBezierTo(canvasWidth * 0.50, canvasHeight * 0.06, canvasWidth * 0.58, canvasHeight * 0.52)
+      ..quadraticBezierTo(canvasWidth * 0.64, canvasHeight * 0.76, canvasWidth * 0.72, canvasHeight * 0.60)
+      ..quadraticBezierTo(canvasWidth * 0.81, canvasHeight * 0.32, canvasWidth * 0.90, canvasHeight * 0.66)
+      ..lineTo(canvasWidth * 0.90, canvasHeight * 0.88)
+      ..close();
+
+    final porcelainPaint = Paint()
+      ..shader = const LinearGradient(
+        colors: [Color(0xFFFFFFFF), Color(0xFFE6EEF6), Color(0xFFBDD0E4)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, canvasWidth, canvasHeight));
+    canvas.drawPath(mountainPath, porcelainPaint);
+
+    final cobaltStroke = Paint()
+      ..color = const Color(0xFF1F4E8C)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.3;
+    canvas.drawPath(mountainPath, cobaltStroke);
+
+    // Cobalt decorative peak arcs
+    final arcPath = Path()
+      ..moveTo(canvasWidth * 0.44, canvasHeight * 0.42)
+      ..quadraticBezierTo(canvasWidth * 0.50, canvasHeight * 0.33, canvasWidth * 0.56, canvasHeight * 0.42)
+      ..moveTo(canvasWidth * 0.42, canvasHeight * 0.54)
+      ..quadraticBezierTo(canvasWidth * 0.50, canvasHeight * 0.45, canvasWidth * 0.58, canvasHeight * 0.54);
+    canvas.drawPath(arcPath, cobaltStroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant PorcelainBrushRestPainter oldDelegate) =>
+      oldDelegate.liftProgress != liftProgress;
+}
+
+/// In-chest sub-panel for the Brush Mountain typography controls
 class BrushMountainSubPanel extends StatelessWidget {
   final TypographySettings typography;
   final ValueChanged<TypographySettings> onTypographyChanged;
@@ -152,8 +203,6 @@ class BrushMountainSubPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = InkDiaryTheme.tokensOf(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -161,105 +210,149 @@ class BrushMountainSubPanel extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '字法墨韵 · 笔意规制',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: tokens.jiaomo,
-              ),
+            Row(
+              children: [
+                Icon(Icons.text_fields, size: 16, color: const Color(0xFFC04851)),
+                const SizedBox(width: 6),
+                Text(
+                  '字法墨韵 · 笔意规制',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF2C1E0A),
+                  ),
+                ),
+              ],
             ),
-            // Poetry layout alignment toggle
             IconButton(
               key: const Key('chest_poetry_align_button'),
               icon: Icon(
-                isCenterAligned ? Icons.format_align_center : Icons.format_align_left,
+                isCenterAligned
+                    ? Icons.format_align_center
+                    : Icons.format_align_left,
                 size: 18,
-                color: isCenterAligned ? tokens.cinnabar : tokens.danmo,
+                color: const Color(0xFFC04851),
               ),
-              tooltip: isCenterAligned ? '切换齐头排版' : '切换居中诗意排版',
+              tooltip: '诗意居中排印',
               onPressed: onToggleAlignment,
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
 
         // Font Family Selector
-        DropdownButtonFormField<String>(
-          key: const Key('chest_font_family_dropdown'),
-          initialValue: typography.fontFamily ?? 'System',
-          isDense: true,
-          decoration: InputDecoration(
-            labelText: '字体式样',
-            filled: true,
-            fillColor: tokens.ricePaper,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide(color: tokens.agedFiber),
+        Row(
+          children: [
+            Text(
+              '墨宝字型',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 12,
+                color: const Color(0xFF7A6B5D),
+              ),
             ),
-          ),
-          items: [
-            const DropdownMenuItem(value: 'System', child: Text('系统字体')),
-            ...TypographyCatalog.options.map((opt) {
-              return DropdownMenuItem(
-                value: opt.fontFamily ?? opt.id,
-                child: Text(opt.name, style: TextStyle(fontFamily: opt.fontFamily)),
-              );
-            }),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F3E8),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFD4C8B8)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    key: const Key('chest_font_family_dropdown'),
+                    value: typography.fontFamily ?? InkDiaryTheme.fontNotoSerif,
+                    isDense: true,
+                    items: [
+                      DropdownMenuItem(
+                        value: InkDiaryTheme.fontNotoSerif,
+                        child: Text(
+                          '思源雅宋 (Noto Serif)',
+                          style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif),
+                        ),
+                      ),
+                      DropdownMenuItem(
+                        value: InkDiaryTheme.fontKaiti,
+                        child: Text(
+                          '古法楷书 (Kaiti)',
+                          style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
+                        ),
+                      ),
+                    ],
+                    onChanged: (selectedFont) {
+                      if (selectedFont != null) {
+                        onTypographyChanged(
+                          typography.copyWith(fontFamily: selectedFont),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
           ],
-          onChanged: (val) {
-            onTypographyChanged(
-              typography.copyWith(fontFamily: val == 'System' ? null : val),
-            );
-          },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
 
         // Font Size Slider
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('字形大小 (${typography.fontSize.round()} pt)', style: const TextStyle(fontSize: 12)),
-            Text('${typography.fontSize.round()} pt', style: TextStyle(color: tokens.cinnabar, fontWeight: FontWeight.bold)),
+            Text(
+              '字形大小 (${typography.fontSize.toInt()}pt)',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF7A6B5D)),
+            ),
+            Expanded(
+              child: Slider(
+                key: const Key('chest_font_size_slider'),
+                value: typography.fontSize,
+                min: 12.0,
+                max: 28.0,
+                divisions: 16,
+                activeColor: const Color(0xFFC04851),
+                inactiveColor: const Color(0xFFD4C8B8),
+                onChanged: (newSize) {
+                  onTypographyChanged(typography.copyWith(fontSize: newSize));
+                },
+              ),
+            ),
           ],
-        ),
-        Slider(
-          key: const Key('chest_font_size_slider'),
-          value: typography.fontSize.clamp(14.0, 24.0),
-          min: 14.0,
-          max: 24.0,
-          divisions: 10,
-          activeColor: tokens.cinnabar,
-          onChanged: (val) {
-            onTypographyChanged(typography.copyWith(fontSize: val.roundToDouble()));
-          },
         ),
 
         // Line Spacing Slider
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('行间高距 (${typography.lineSpacing.toStringAsFixed(1)}x)', style: const TextStyle(fontSize: 12)),
-            Text('${typography.lineSpacing.toStringAsFixed(1)}x', style: TextStyle(color: tokens.cinnabar, fontWeight: FontWeight.bold)),
+            Text(
+              '行间高距 (${typography.lineSpacing.toStringAsFixed(1)}x)',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF7A6B5D)),
+            ),
+            Expanded(
+              child: Slider(
+                key: const Key('chest_line_spacing_slider'),
+                value: typography.lineSpacing,
+                min: 1.0,
+                max: 2.4,
+                divisions: 14,
+                activeColor: const Color(0xFFC04851),
+                inactiveColor: const Color(0xFFD4C8B8),
+                onChanged: (newSpacing) {
+                  onTypographyChanged(
+                    typography.copyWith(lineSpacing: newSpacing),
+                  );
+                },
+              ),
+            ),
           ],
         ),
-        Slider(
-          key: const Key('chest_line_spacing_slider'),
-          value: typography.lineSpacing.clamp(1.2, 2.2),
-          min: 1.2,
-          max: 2.2,
-          divisions: 10,
-          activeColor: tokens.cinnabar,
-          onChanged: (val) {
-            onTypographyChanged(typography.copyWith(lineSpacing: double.parse(val.toStringAsFixed(1))));
-          },
-        ),
 
-        // Ink Tone Selection (#1F1D1A 焦墨, #B83B2E 朱砂, #2F5241 竹青)
+        // Ink Tone Selection
         const SizedBox(height: 6),
-        Text('墨色韵调', style: TextStyle(fontSize: 12, color: tokens.danmo)),
+        const Text(
+          '墨色韵调',
+          style: TextStyle(fontSize: 12, color: Color(0xFF7A6B5D)),
+        ),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -267,8 +360,11 @@ class BrushMountainSubPanel extends StatelessWidget {
               label: '焦墨',
               color: const Color(0xFF1F1D1A),
               keyName: 'chest_ink_tone_jiaomo',
-              isSelected: typography.textColor == const Color(0xFF1F1D1A) || typography.textColor == null,
-              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFF1F1D1A))),
+              isSelected: typography.textColor == const Color(0xFF1F1D1A) ||
+                  typography.textColor == null,
+              onTap: () => onTypographyChanged(
+                typography.copyWith(textColor: const Color(0xFF1F1D1A)),
+              ),
             ),
             const SizedBox(width: 8),
             _buildInkToneChip(
@@ -276,7 +372,9 @@ class BrushMountainSubPanel extends StatelessWidget {
               color: const Color(0xFFB83B2E),
               keyName: 'chest_ink_tone_cinnabar',
               isSelected: typography.textColor == const Color(0xFFB83B2E),
-              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFFB83B2E))),
+              onTap: () => onTypographyChanged(
+                typography.copyWith(textColor: const Color(0xFFB83B2E)),
+              ),
             ),
             const SizedBox(width: 8),
             _buildInkToneChip(
@@ -284,7 +382,9 @@ class BrushMountainSubPanel extends StatelessWidget {
               color: const Color(0xFF2F5241),
               keyName: 'chest_ink_tone_bamboo',
               isSelected: typography.textColor == const Color(0xFF2F5241),
-              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFF2F5241))),
+              onTap: () => onTypographyChanged(
+                typography.copyWith(textColor: const Color(0xFF2F5241)),
+              ),
             ),
           ],
         ),
@@ -315,11 +415,7 @@ class BrushMountainSubPanel extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
             const SizedBox(width: 5),
             Text(
               label,
