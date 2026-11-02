@@ -46,6 +46,32 @@ class _WritingDockState extends State<WritingDock> {
     }
   }
 
+  void _insertInterlinearNote() {
+    HapticFeedback.selectionClick();
+    final selection = widget.controller.selection;
+    if (!selection.isValid || selection.isCollapsed) {
+      final int offset = (selection.isValid && selection.baseOffset >= 0)
+          ? selection.baseOffset
+          : 0;
+      widget.controller.replaceText(offset, 0, '{夹注:}', null);
+      widget.controller.updateSelection(
+        TextSelection.collapsed(offset: offset + 4),
+        ChangeSource.local,
+      );
+    } else {
+      final plainText = widget.controller.document.toPlainText();
+      final start = selection.start.clamp(0, plainText.length);
+      final end = selection.end.clamp(0, plainText.length);
+      final selectedText = plainText.substring(start, end);
+      final replacement = '{夹注:$selectedText}';
+      widget.controller.replaceText(start, end - start, replacement, null);
+      widget.controller.updateSelection(
+        TextSelection.collapsed(offset: start + replacement.length),
+        ChangeSource.local,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
@@ -312,6 +338,18 @@ class _WritingDockState extends State<WritingDock> {
                   tooltip: '有序列表 · Numbered List',
                   tokens: tokens,
                 ),
+
+                _buildDivider(tokens),
+
+                // Interlinear Note (双行夹注)
+                _buildFormatTextBtn(
+                  buttonKey: const Key('writing_dock_interlinear_note_btn'),
+                  label: '〘注〙',
+                  isActive: false,
+                  onTap: _insertInterlinearNote,
+                  tooltip: '双行夹注 · Interlinear Note',
+                  tokens: tokens,
+                ),
               ],
             ),
           );
@@ -330,6 +368,7 @@ class _WritingDockState extends State<WritingDock> {
   }
 
   Widget _buildFormatTextBtn({
+    Key? buttonKey,
     required String label,
     required bool isActive,
     required VoidCallback onTap,
@@ -347,11 +386,12 @@ class _WritingDockState extends State<WritingDock> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: IconButton(
+        key: buttonKey,
         icon: Text(
           label,
           style: TextStyle(
             fontFamily: InkDiaryTheme.fontNotoSerif,
-            fontSize: isHeading ? 15 : 13.5,
+            fontSize: isHeading ? 15 : (label.length > 2 ? 11.5 : 13.5),
             fontWeight: isBold || isHeading ? FontWeight.bold : FontWeight.w500,
             fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
             decoration: isUnderline ? TextDecoration.underline : TextDecoration.none,

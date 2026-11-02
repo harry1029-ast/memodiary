@@ -172,5 +172,102 @@ void main() {
       expect(find.byType(KeepsakeScrollView), findsNothing);
       expect(popped, isTrue);
     });
+
+    testWidgets('renders dual-subcolumn interlinear notes and positions ideographic stops in upper-right quadrant', (tester) async {
+      final noteDeltaOps = [
+        {'insert': '江流宛转绕芳甸，{夹注:月照花林皆似霰}何处春江无月明。{夹注:唐诗选}\n'},
+      ];
+      final noteEntry = Entry(
+        id: 'entry_note_001',
+        notebookId: 'nb_001',
+        templateId: 'test_tpl',
+        title: '春江夹注',
+        contentDelta: jsonEncode(noteDeltaOps),
+        plainText: '江流宛转绕芳甸，{夹注:月照花林皆似霰}何处春江无月明。{夹注:唐诗选}\n',
+        entryDate: DateTime(2026, 11, 2),
+        mood: 5,
+        weather: '晴',
+        isWeeklyReview: false,
+        weekNumber: null,
+        isLocked: false,
+        unlockAt: null,
+        createdAt: DateTime(2026, 11, 2),
+        updatedAt: DateTime(2026, 11, 2),
+        isDeleted: false,
+      );
+
+      await tester.pumpWidget(createSubject(entry: noteEntry, style: mockStyle));
+      await tester.pumpAndSettle();
+
+      // Assert that raw delimiters {夹注: and } are NOT present anywhere in the tree
+      expect(find.text('{夹注:'), findsNothing);
+      expect(find.text('}'), findsNothing);
+      expect(find.textContaining('{夹注:'), findsNothing);
+
+      // Verify dual-subcolumn Row with TextDirection.rtl exists
+      final rtlRows = find.byWidgetPredicate(
+        (widget) => widget is Row && widget.textDirection == TextDirection.rtl,
+      );
+      expect(rtlRows, findsWidgets);
+
+      // Verify note characters are rendered
+      expect(find.text('皆'), findsOneWidget);
+      expect(find.text('霰'), findsOneWidget);
+      expect(find.text('唐'), findsOneWidget);
+      expect(find.text('诗'), findsOneWidget);
+      expect(find.text('选'), findsOneWidget);
+
+      // Verify ideographic stops (。) positioned with Alignment(0.45, -0.45)
+      final cornerStops = find.byWidgetPredicate(
+        (widget) =>
+            widget is Container &&
+            widget.alignment == const Alignment(0.45, -0.45),
+      );
+      expect(cornerStops, findsWidgets);
+    });
+
+    testWidgets('adapts interlinear note and column ink cleanly on obsidian substrate', (tester) async {
+      const obsidianStyle = TemplateStyle(
+        type: TemplateBackgroundType.paperTexture,
+        backgroundColor: Color(0xFF1E1E1E),
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: StationeryVisualTokens(
+          substrate: PaperSubstrate.obsidian,
+          ruleTint: RuleInkTint.charcoal,
+          sealStyle: SealCarvingStyle.baiwen,
+        ),
+      );
+
+      final obsidianDeltaOps = [
+        {'insert': '夜墨素笺{夹注:松烟清冽}静坐沉思。\n'},
+      ];
+      final obsidianEntry = Entry(
+        id: 'entry_obsidian_001',
+        notebookId: 'nb_001',
+        templateId: 'test_obsidian',
+        title: '幽窗夜墨',
+        contentDelta: jsonEncode(obsidianDeltaOps),
+        plainText: '夜墨素笺{夹注:松烟清冽}静坐沉思。\n',
+        entryDate: DateTime(2026, 11, 2),
+        mood: 5,
+        weather: '寒夜',
+        isWeeklyReview: false,
+        weekNumber: null,
+        isLocked: false,
+        unlockAt: null,
+        createdAt: DateTime(2026, 11, 2),
+        updatedAt: DateTime(2026, 11, 2),
+        isDeleted: false,
+      );
+
+      await tester.pumpWidget(createSubject(entry: obsidianEntry, style: obsidianStyle));
+      await tester.pumpAndSettle();
+
+      // On dark theme, inkColor is Color(0xFFF0ECE3)
+      final textWidgets = tester.widgetList<Text>(find.byType(Text));
+      final noteTextWidget = textWidgets.firstWhere((widget) => widget.data == '冽');
+      expect(noteTextWidget.style?.color, equals(const Color(0xFFF0ECE3).withValues(alpha: 0.75)));
+    });
   });
 }

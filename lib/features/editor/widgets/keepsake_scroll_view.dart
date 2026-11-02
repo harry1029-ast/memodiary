@@ -16,7 +16,7 @@ import 'keepsake/keepsake_media_card.dart';
 sealed class _KeepsakeItem {}
 
 class _KeepsakeTextItem extends _KeepsakeItem {
-  final List<String> tokens;
+  final List<VerticalRenderToken> tokens;
   final bool isTitle;
   final bool isHeader;
   final bool isQuote;
@@ -204,7 +204,7 @@ class KeepsakeScrollView extends StatelessWidget {
 
     // 1. Entry Title Column (if provided)
     if (entry.title != null && entry.title!.trim().isNotEmpty) {
-      final titleTokens = VerticalTypographyMapper.tokenizeForVertical(entry.title!.trim());
+      final titleTokens = VerticalTypographyMapper.tokenize(entry.title!.trim());
       items.add(
         _KeepsakeTextItem(
           tokens: titleTokens,
@@ -234,7 +234,7 @@ class KeepsakeScrollView extends StatelessWidget {
       for (final line in lines) {
         final trimmed = line.trimRight();
         if (trimmed.isEmpty) continue;
-        final tokens = VerticalTypographyMapper.tokenizeForVertical(trimmed);
+        final tokens = VerticalTypographyMapper.tokenize(trimmed);
         _partitionTokensIntoColumns(tokens, maxCharsPerCol, items);
       }
       return items;
@@ -284,7 +284,7 @@ class KeepsakeScrollView extends StatelessWidget {
         for (final para in paragraphs) {
           final trimmed = para.trim();
           if (trimmed.isEmpty) continue;
-          final tokens = VerticalTypographyMapper.tokenizeForVertical(trimmed);
+          final tokens = VerticalTypographyMapper.tokenize(trimmed);
           _partitionTokensIntoColumns(
             tokens,
             maxCharsPerCol,
@@ -300,7 +300,7 @@ class KeepsakeScrollView extends StatelessWidget {
   }
 
   void _partitionTokensIntoColumns(
-    List<String> tokens,
+    List<VerticalRenderToken> tokens,
     int maxPerCol,
     List<_KeepsakeItem> out, {
     bool isHeader = false,
@@ -308,9 +308,9 @@ class KeepsakeScrollView extends StatelessWidget {
   }) {
     if (tokens.isEmpty) return;
 
-    for (int i = 0; i < tokens.length; i += maxPerCol) {
-      final end = (i + maxPerCol < tokens.length) ? i + maxPerCol : tokens.length;
-      final chunk = tokens.sublist(i, end);
+    for (int index = 0; index < tokens.length; index += maxPerCol) {
+      final end = (index + maxPerCol < tokens.length) ? index + maxPerCol : tokens.length;
+      final chunk = tokens.sublist(index, end);
       out.add(
         _KeepsakeTextItem(
           tokens: chunk,
