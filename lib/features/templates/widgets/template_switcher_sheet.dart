@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/ink_diary_theme.dart';
+import '../models/template_constants.dart';
 import '../models/template_style.dart';
 import '../screens/custom_template_editor_screen.dart';
 import 'template_canvas_container.dart';
+import 'template_delete_dialog.dart';
 
 /// Modal bottom sheet allowing users to preview, select, create, edit, and delete templates.
 /// Swapping or deleting templates strictly alters presentation; entry Delta content remains immutable.
@@ -113,38 +115,16 @@ class _TemplateSwitcherSheetState extends State<TemplateSwitcherSheet> {
   }
 
   Future<void> _handleDeleteCustom(Template template) async {
-    if (widget.database == null || !template.isCustom) return;
+    if (widget.database == null || !isTemplateDeletable(template)) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Custom Template?'),
-        content: Text(
-          '确定删除「${template.name}」？所有使用该信笺的手稿将自动回退为澄心素宣，字句原意毫发无损。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('取消'),
-          ),
-          FilledButton.tonal(
-            key: const Key('confirm_delete_custom_template_button'),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              foregroundColor: Colors.red.shade700,
-            ),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
+    final confirmed = await showTemplateDeleteDialog(context, template);
 
     if (confirmed == true && mounted) {
       await widget.database!.deleteCustomTemplate(template.id);
       await _refreshTemplates();
       if (_activeTemplateId == template.id && _templates.isNotEmpty) {
         final fallback = _templates.firstWhere(
-          (t) => t.id == 'template_minimalist_white',
+          (fallbackItem) => fallbackItem.id == 'template_minimalist_white',
           orElse: () => _templates.first,
         );
         setState(() => _activeTemplateId = fallback.id);
@@ -504,7 +484,7 @@ class _TemplateSwitcherSheetState extends State<TemplateSwitcherSheet> {
                         ),
 
                         // Custom Template Actions
-                        if (template.isCustom && widget.database != null)
+                        if (isTemplateDeletable(template) && widget.database != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 2),
                             child: Row(

@@ -743,7 +743,11 @@ class AppDatabase extends _$AppDatabase {
     if (existing == null) {
       throw ArgumentError('Template not found: $templateId');
     }
-    if (!existing.isCustom) {
+    if (!existing.isCustom ||
+        existing.id == 'template_minimalist_white' ||
+        existing.id == 'template_lined_paper' ||
+        existing.id == 'template_weekly_review' ||
+        existing.id == 'template_retro_kraft') {
       throw StateError('Default system templates cannot be deleted.');
     }
 
