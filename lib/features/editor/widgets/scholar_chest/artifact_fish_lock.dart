@@ -131,14 +131,13 @@ class BrassFishLockPainter extends CustomPainter {
         end: Alignment.bottomRight,
       ).createShader(Rect.fromLTWH(0, 0, canvasWidth, canvasHeight));
 
-    // 1. Top Shackle Bar (lifts slightly when unlocked, locks down when locked)
+    // 1. Horizontal Brass Shackle Bolt (古法横开锁梁)
     canvas.save();
-    canvas.translate(0, isLocked ? 2.5 : -3.0 * turnProgress);
+    canvas.translate(isLocked ? 0.0 : -4.0 * turnProgress, 0);
     final shacklePath = Path()
-      ..moveTo(canvasWidth * 0.28, canvasHeight * 0.44)
-      ..lineTo(canvasWidth * 0.28, canvasHeight * 0.22)
-      ..lineTo(canvasWidth * 0.68, canvasHeight * 0.22)
-      ..lineTo(canvasWidth * 0.68, canvasHeight * 0.44);
+      ..moveTo(canvasWidth * 0.20, canvasHeight * 0.28)
+      ..lineTo(canvasWidth * 0.82, canvasHeight * 0.28)
+      ..lineTo(canvasWidth * 0.82, canvasHeight * 0.44);
     canvas.drawPath(
       shacklePath,
       Paint()
@@ -312,10 +311,14 @@ class FishLockSubPanel extends StatelessWidget {
               label: '一月后 · 待春发',
               duration: const Duration(days: 30),
             ),
-            _buildLockPresetChip(
-              key: const Key('chest_lock_preset_100days'),
-              label: '百日后 · 忆今朝',
-              duration: const Duration(days: 100),
+            ActionChip(
+              key: const Key('chest_lock_preset_newyear'),
+              label: const Text('封至元旦', style: TextStyle(fontSize: 11.5)),
+              backgroundColor: const Color(0xFFF7F3E8),
+              onPressed: () {
+                final now = DateTime.now();
+                onLockChanged(DateTime(now.year + 1, 1, 1));
+              },
             ),
             _buildLockPresetChip(
               key: const Key('chest_lock_preset_1year'),
@@ -323,6 +326,7 @@ class FishLockSubPanel extends StatelessWidget {
               duration: const Duration(days: 365),
             ),
             ActionChip(
+              key: const Key('chest_lock_preset_custom'),
               avatar: const Icon(Icons.event_outlined, size: 14),
               label: const Text('自择良辰', style: TextStyle(fontSize: 11.5)),
               backgroundColor: const Color(0xFFF7F3E8),

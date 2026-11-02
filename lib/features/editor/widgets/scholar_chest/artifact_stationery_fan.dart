@@ -261,22 +261,18 @@ class StationeryFanSubPanel extends StatelessWidget {
           runSpacing: 8,
           children: [
             _buildSuiteChip(
-              context: context,
               key: const Key('chest_suite_chip_wenfang'),
               suite: StationerySuites.wenfang,
             ),
             _buildSuiteChip(
-              context: context,
               key: const Key('chest_suite_chip_lengjin'),
               suite: StationerySuites.lengjin,
             ),
             _buildSuiteChip(
-              context: context,
               key: const Key('chest_suite_chip_zhuqing'),
               suite: StationerySuites.zhuqing,
             ),
             _buildSuiteChip(
-              context: context,
               key: const Key('chest_suite_chip_moye'),
               suite: StationerySuites.songyan,
             ),
@@ -304,14 +300,15 @@ class StationeryFanSubPanel extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               ),
               onPressed: () async {
-                final created = await Navigator.push<bool>(
+                final created = await Navigator.push<Template>(
                   context,
                   MaterialPageRoute(
                     builder: (navContext) =>
                         CustomTemplateEditorScreen(database: database),
                   ),
                 );
-                if (created == true) {
+                if (created != null) {
+                  onSelectTemplate(created);
                   onCustomTemplateCreated?.call();
                 }
               },
@@ -338,6 +335,7 @@ class StationeryFanSubPanel extends StatelessWidget {
                   key: Key('chest_template_chip_${templateItem.id}'),
                   label: Text(
                     templateItem.name,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontFamily: InkDiaryTheme.fontNotoSerif,
                       fontSize: 12,
@@ -364,7 +362,6 @@ class StationeryFanSubPanel extends StatelessWidget {
   }
 
   Widget _buildSuiteChip({
-    required BuildContext context,
     required Key key,
     required StationerySuite suite,
   }) {
@@ -383,7 +380,7 @@ class StationeryFanSubPanel extends StatelessWidget {
       selected: isSelected,
       selectedColor: const Color(0xFFC04851),
       backgroundColor: const Color(0xFFF7F3E8),
-      onSelected: (_) => onSelectTemplate(suiteTemplate),
+      onSelected: (selected) => onSelectTemplate(suiteTemplate),
     );
   }
 }

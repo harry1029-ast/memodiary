@@ -132,6 +132,11 @@ class PorcelainBrushRestPainter extends CustomPainter {
       ),
       shaftPaint,
     );
+    // Spotted bamboo markings (湘妃斑竹)
+    final bambooSpotPaint = Paint()..color = const Color(0x6652361B);
+    canvas.drawCircle(Offset(canvasWidth * 0.22, canvasHeight * 0.245), 0.9, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.40, canvasHeight * 0.245), 1.0, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.54, canvasHeight * 0.25), 0.9, bambooSpotPaint);
 
     // Brush ferrule & tip
     canvas.drawRect(

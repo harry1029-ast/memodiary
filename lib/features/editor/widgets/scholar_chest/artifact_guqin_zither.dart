@@ -216,9 +216,9 @@ class GuqinZitherPainter extends CustomPainter {
 
     // 13 Mother-of-Pearl Harmonic Dots (螺钿十三徽)
     final pearlPaint = Paint()..color = const Color(0xFFF6EFE2);
-    for (int dotIndex = 0; dotIndex < 11; dotIndex++) {
-      final dotX = canvasWidth * (0.14 + dotIndex * 0.066);
-      canvas.drawCircle(Offset(dotX, canvasHeight * 0.32), 1.3, pearlPaint);
+    for (int dotIndex = 0; dotIndex < 13; dotIndex++) {
+      final dotX = canvasWidth * (0.12 + dotIndex * 0.062);
+      canvas.drawCircle(Offset(dotX, canvasHeight * 0.32), 1.2, pearlPaint);
     }
 
     // 7 Taut Silk Strings with vibrating sine oscillation
@@ -412,7 +412,7 @@ class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
       selected: isSelected,
       selectedColor: const Color(0xFFC04851),
       backgroundColor: const Color(0xFFF7F3E8),
-      onSelected: (_) async {
+      onSelected: (selected) async {
         if (isSelected) {
           await widget.audioSanctumService.stop();
         } else {

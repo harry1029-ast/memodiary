@@ -213,7 +213,13 @@ class TwinBambooBrushesPainter extends CustomPainter {
       Paint()..color = const Color(0xFF1F1B18),
     );
 
-    // Brown wolf-hair brush tip
+    // Spotted bamboo markings (湘妃斑竹)
+    final bambooSpotPaint = Paint()..color = const Color(0x6652361B);
+    canvas.drawCircle(Offset(canvasWidth * 0.20, canvasHeight * 0.24), 1.2, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.34, canvasHeight * 0.23), 1.4, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.48, canvasHeight * 0.25), 1.2, bambooSpotPaint);
+
+    // Purple wolf-hair brush tip (紫毫 · 狼毫濃墨)
     final tipPath1 = Path()
       ..moveTo(canvasWidth * 0.68, canvasHeight * 0.20)
       ..quadraticBezierTo(
@@ -229,7 +235,7 @@ class TwinBambooBrushesPainter extends CustomPainter {
         canvasHeight * 0.28,
       )
       ..close();
-    canvas.drawPath(tipPath1, Paint()..color = const Color(0xFF885A33));
+    canvas.drawPath(tipPath1, Paint()..color = const Color(0xFF422129));
     canvas.restore();
 
     // Lower Goat-Hair Brush (秋山 · 兼毫行書)
@@ -262,6 +268,11 @@ class TwinBambooBrushesPainter extends CustomPainter {
       ),
       shaftPaint2,
     );
+
+    // Spotted bamboo markings on lower shaft
+    canvas.drawCircle(Offset(canvasWidth * 0.18, canvasHeight * 0.58), 1.3, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.32, canvasHeight * 0.57), 1.5, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.46, canvasHeight * 0.59), 1.2, bambooSpotPaint);
 
     // Dark horn end-cap
     canvas.drawRRect(
