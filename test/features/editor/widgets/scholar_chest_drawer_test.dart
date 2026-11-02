@@ -60,9 +60,9 @@ void main() {
                     activeTemplateId: 'template_blank_white',
                     typography: const TypographySettings(fontSize: 16.0),
                     audioSanctumService: audioSanctumService,
-                    onSelectTemplate: (_) {},
-                    onTypographyChanged: (_) {},
-                    onLockChanged: (_) {},
+                    onSelectTemplate: (template) {},
+                    onTypographyChanged: (typography) {},
+                    onLockChanged: (lock) {},
                   );
                 },
                 child: const Text('Open Chest'),
@@ -103,9 +103,9 @@ void main() {
               typography: const TypographySettings(fontSize: 16.0),
               audioSanctumService: audioSanctumService,
               initialArtifact: ScholarArtifactType.twinBrushes,
-              onSelectTemplate: (_) {},
-              onTypographyChanged: (_) {},
-              onLockChanged: (_) {},
+              onSelectTemplate: (template) {},
+              onTypographyChanged: (typography) {},
+              onLockChanged: (lock) {},
             ),
           ),
         ),
@@ -130,9 +130,9 @@ void main() {
               typography: const TypographySettings(fontSize: 16.0, lineSpacing: 1.5),
               audioSanctumService: audioSanctumService,
               initialArtifact: ScholarArtifactType.brushMountain,
-              onSelectTemplate: (_) {},
+              onSelectTemplate: (template) {},
               onTypographyChanged: (typography) => updatedTypography = typography,
-              onLockChanged: (_) {},
+              onLockChanged: (lock) {},
               onToggleAlignment: () => alignmentToggled = true,
             ),
           ),
@@ -152,7 +152,7 @@ void main() {
       // Change font family
       await tester.tap(find.byKey(const Key('chest_font_family_dropdown')));
       await tester.pumpAndSettle();
-      await tester.tap(find.textContaining('Noto Serif').first);
+      await tester.tap(find.textContaining('Noto Serif').last, warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(updatedTypography, isNotNull);
     });
@@ -167,9 +167,9 @@ void main() {
               typography: const TypographySettings(fontSize: 16.0),
               audioSanctumService: audioSanctumService,
               initialArtifact: ScholarArtifactType.guqinZither,
-              onSelectTemplate: (_) {},
-              onTypographyChanged: (_) {},
-              onLockChanged: (_) {},
+              onSelectTemplate: (template) {},
+              onTypographyChanged: (typography) {},
+              onLockChanged: (lock) {},
             ),
           ),
         ),
@@ -205,9 +205,9 @@ void main() {
               typography: const TypographySettings(fontSize: 16.0),
               audioSanctumService: audioSanctumService,
               initialArtifact: ScholarArtifactType.fishLock,
-              onSelectTemplate: (_) {},
-              onTypographyChanged: (_) {},
-              onLockChanged: (dt) => lockedAt = dt,
+              onSelectTemplate: (template) {},
+              onTypographyChanged: (typography) {},
+              onLockChanged: (dateTime) => lockedAt = dateTime,
             ),
           ),
         ),
@@ -288,7 +288,7 @@ void main() {
       expect(find.text('书斋清音 · 琴韵自然'), findsOneWidget);
     });
 
-    testWidgets('Fanned Stationery exposes curated suites and selects wenfang suite', (tester) async {
+    testWidgets('Fanned Stationery exposes card carousel, selects template, and collapses on toggle', (tester) async {
       Template? selectedTemplate;
 
       await tester.pumpWidget(
@@ -301,26 +301,31 @@ void main() {
               audioSanctumService: audioSanctumService,
               initialArtifact: ScholarArtifactType.stationeryFan,
               onSelectTemplate: (template) => selectedTemplate = template,
-              onTypographyChanged: (_) {},
-              onLockChanged: (_) {},
+              onTypographyChanged: (typography) {},
+              onLockChanged: (lock) {},
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Curated suites title exists
-      expect(find.text('典藏雅笺 · 四时风致'), findsOneWidget);
-      expect(find.byKey(const Key('chest_suite_chip_wenfang')), findsOneWidget);
-      expect(find.byKey(const Key('chest_suite_chip_lengjin')), findsOneWidget);
+      // Card carousel header exists
+      expect(find.text('文房雅笺 · 素笺谱系'), findsOneWidget);
+      expect(find.text('“笺换风骨，意蕴随迁”'), findsOneWidget);
+      expect(find.byKey(const Key('chest_create_template_button')), findsOneWidget);
+      expect(find.byKey(const Key('chest_template_chip_template_lined_paper')), findsOneWidget);
 
-      // Select wenfang suite
-      await tester.tap(find.byKey(const Key('chest_suite_chip_wenfang')));
+      // Select lined paper template card
+      await tester.tap(find.byKey(const Key('chest_template_chip_template_lined_paper')));
       await tester.pumpAndSettle();
 
       expect(selectedTemplate, isNotNull);
-      expect(selectedTemplate!.id, 'suite_wenfang');
-      expect(selectedTemplate!.name, '文房遗韵 · 朱丝宣纸');
+      expect(selectedTemplate!.id, 'template_lined_paper');
+
+      // Tapping active artifact toggles/collapses sub-panel
+      await tester.tap(find.byKey(const Key('chest_artifact_stationery_fan')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('chest_sub_panel_container')), findsNothing);
     });
 
     testWidgets('Poetry alignment button in Brush Mountain toggles editor center alignment', (tester) async {

@@ -1,12 +1,14 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
 import '../../../templates/models/template_style.dart';
 import '../../../templates/screens/custom_template_editor_screen.dart';
+import '../../../templates/widgets/template_canvas_container.dart';
+import 'fan_spread_stationery_painter.dart';
 
 /// Stationery artifact representing the fanned paper tray (叠印花笺).
-/// Allows diarists to switch curated stationery suites and custom templates.
+/// Allows diarists to preview and switch stationery templates.
 class ArtifactStationeryFan extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
@@ -57,7 +59,7 @@ class ArtifactStationeryFan extends StatelessWidget {
                   tween: Tween<double>(begin: 0.0, end: isSelected ? 1.0 : 0.0),
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOutCubic,
-                  builder: (context, fanProgress, _) {
+                  builder: (context, fanProgress, child) {
                     return CustomPaint(
                       painter: FanSpreadStationeryPainter(
                         fanProgress: fanProgress,
@@ -106,123 +108,13 @@ class ArtifactStationeryFan extends StatelessWidget {
   }
 }
 
-/// Renders 3 authentic fan-spread classical stationery sheets (松烟夜墨, 冷金洒金, 朱丝栏宣纸).
-class FanSpreadStationeryPainter extends CustomPainter {
-  final double fanProgress;
-
-  FanSpreadStationeryPainter({required this.fanProgress});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centerX = size.width * 0.5;
-    final bottomY = size.height * 0.90;
-    final sheetWidth = size.width * 0.64;
-    final sheetHeight = size.height * 0.72;
-
-    // Sheet 3 (Back): Night Ink Sheet (松烟夜墨)
-    canvas.save();
-    canvas.translate(centerX, bottomY);
-    canvas.rotate((-10 - 12 * fanProgress) * math.pi / 180);
-    canvas.translate(-centerX - 5 * fanProgress, -bottomY - 4 * fanProgress);
-    final backRect = Rect.fromCenter(
-      center: Offset(centerX, size.height * 0.48),
-      width: sheetWidth,
-      height: sheetHeight,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(backRect, const Radius.circular(5)),
-      Paint()..color = const Color(0xFF23272B),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(backRect, const Radius.circular(5)),
-      Paint()
-        ..color = const Color(0xFFD4AF37).withValues(alpha: 0.45)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
-    canvas.restore();
-
-    // Sheet 2 (Middle): Cold Gold-Flecked Parchment (冷金宣笺)
-    canvas.save();
-    canvas.translate(centerX, bottomY);
-    canvas.rotate((-2 - 2 * fanProgress) * math.pi / 180);
-    canvas.translate(-centerX, -bottomY - 6 * fanProgress);
-    final midRect = Rect.fromCenter(
-      center: Offset(centerX, size.height * 0.48),
-      width: sheetWidth,
-      height: sheetHeight,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(midRect, const Radius.circular(5)),
-      Paint()..color = const Color(0xFFF3E6CE),
-    );
-    // Gold specks
-    final speckPaint = Paint()..color = const Color(0xFFC89D32);
-    canvas.drawCircle(
-      Offset(midRect.left + 10, midRect.top + 16),
-      1.6,
-      speckPaint,
-    );
-    canvas.drawCircle(
-      Offset(midRect.right - 12, midRect.top + 28),
-      1.4,
-      speckPaint,
-    );
-    canvas.drawCircle(
-      Offset(midRect.left + 20, midRect.bottom - 24),
-      1.8,
-      speckPaint,
-    );
-    canvas.restore();
-
-    // Sheet 1 (Front): Cinnabar Vermilion-Ruled Xuan Paper (朱丝栏宣纸)
-    canvas.save();
-    canvas.translate(centerX, bottomY);
-    canvas.rotate((8 + 12 * fanProgress) * math.pi / 180);
-    canvas.translate(-centerX + 5 * fanProgress, -bottomY - 5 * fanProgress);
-    final frontRect = Rect.fromCenter(
-      center: Offset(centerX, size.height * 0.50),
-      width: sheetWidth,
-      height: sheetHeight,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(frontRect, const Radius.circular(5)),
-      Paint()..color = const Color(0xFFFAF7F2),
-    );
-    // Cinnabar outer border & vertical columns
-    final vermilionPaint = Paint()
-      ..color = const Color(0xFFB83B2E).withValues(alpha: 0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    final innerRect = frontRect.deflate(5);
-    canvas.drawRect(innerRect, vermilionPaint);
-    for (int colIndex = 1; colIndex <= 3; colIndex++) {
-      final lineX = innerRect.left + (innerRect.width / 4) * colIndex;
-      canvas.drawLine(
-        Offset(lineX, innerRect.top),
-        Offset(lineX, innerRect.bottom),
-        vermilionPaint,
-      );
-    }
-    // Red seal stamp on front sheet
-    canvas.drawRect(
-      Rect.fromLTWH(innerRect.right - 10, innerRect.bottom - 12, 7, 7),
-      Paint()..color = const Color(0xFFB83B2E),
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant FanSpreadStationeryPainter oldDelegate) =>
-      oldDelegate.fanProgress != fanProgress;
-}
-
-/// In-chest sub-panel for the Fanned Stationery artifact
-class StationeryFanSubPanel extends StatelessWidget {
+/// In-chest sub-panel for the Fanned Stationery artifact featuring Image 2's card carousel.
+class StationeryFanSubPanel extends StatefulWidget {
   final AppDatabase database;
   final String activeTemplateId;
   final ValueChanged<Template> onSelectTemplate;
   final VoidCallback? onCustomTemplateCreated;
+  final VoidCallback? onClose;
 
   const StationeryFanSubPanel({
     super.key,
@@ -230,7 +122,25 @@ class StationeryFanSubPanel extends StatelessWidget {
     required this.activeTemplateId,
     required this.onSelectTemplate,
     this.onCustomTemplateCreated,
+    this.onClose,
   });
+
+  @override
+  State<StationeryFanSubPanel> createState() => _StationeryFanSubPanelState();
+}
+
+class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
+  late Future<List<Template>> _templatesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTemplates();
+  }
+
+  void _loadTemplates() {
+    _templatesFuture = widget.database.getAllTemplates();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -238,149 +148,252 @@ class StationeryFanSubPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Curated suites header
-        Row(
-          children: [
-            Icon(Icons.auto_stories, size: 16, color: const Color(0xFFC04851)),
-            const SizedBox(width: 6),
-            Text(
-              '典藏雅笺 · 四时风致',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF2C1E0A),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _buildSuiteChip(
-              key: const Key('chest_suite_chip_wenfang'),
-              suite: StationerySuites.wenfang,
-            ),
-            _buildSuiteChip(
-              key: const Key('chest_suite_chip_lengjin'),
-              suite: StationerySuites.lengjin,
-            ),
-            _buildSuiteChip(
-              key: const Key('chest_suite_chip_zhuqing'),
-              suite: StationerySuites.zhuqing,
-            ),
-            _buildSuiteChip(
-              key: const Key('chest_suite_chip_moye'),
-              suite: StationerySuites.songyan,
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+        // Sub-panel Header with Title, Poetic Subtitle & Action
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '文房雅笺 · 笺纸谱系',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF2C1E0A),
-              ),
-            ),
-            TextButton.icon(
-              key: const Key('chest_create_template_button'),
-              icon: const Icon(Icons.palette_outlined, size: 14),
-              label: const Text('创制新笺', style: TextStyle(fontSize: 11)),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFC04851),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              ),
-              onPressed: () async {
-                final created = await Navigator.push<Template>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (navContext) =>
-                        CustomTemplateEditorScreen(database: database),
+            Row(
+              children: [
+                const Icon(Icons.auto_stories, size: 16, color: Color(0xFFFFDF85)),
+                const SizedBox(width: 6),
+                const Text(
+                  '文房雅笺 · 素笺谱系',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFF3D99B),
                   ),
-                );
-                if (created != null) {
-                  onSelectTemplate(created);
-                  onCustomTemplateCreated?.call();
-                }
-              },
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  '“笺换风骨，意蕴随迁”',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontKaiti,
+                    fontSize: 11,
+                    color: Color(0xFFD4C5B0),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                GestureDetector(
+                  key: const Key('chest_create_template_button'),
+                  onTap: () async {
+                    final createdTemplate = await Navigator.push<Template>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (navContext) =>
+                            CustomTemplateEditorScreen(database: widget.database),
+                      ),
+                    );
+                    if (createdTemplate != null) {
+                      setState(_loadTemplates);
+                      widget.onSelectTemplate(createdTemplate);
+                      widget.onCustomTemplateCreated?.call();
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF381F1D),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFD25447).withValues(alpha: 0.6),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 12, color: Color(0xFFFFDF85)),
+                        SizedBox(width: 3),
+                        Text(
+                          '定制雅笺',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFF5E6C8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (widget.onClose != null) ...[
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    key: const Key('chest_subpanel_close_button'),
+                    onTap: widget.onClose,
+                    child: Semantics(
+                      button: true,
+                      label: '收拢面板',
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        color: Colors.transparent,
+                        child: const Icon(Icons.close, size: 16, color: Color(0xFFD4C5B0)),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        FutureBuilder<List<Template>>(
-          future: database.getAllTemplates(),
-          builder: (context, snapshot) {
-            final templates = snapshot.data ?? [];
-            if (templates.isEmpty) {
-              return const SizedBox.shrink();
-            }
-            final libraryTemplates = templates
-                .where((templateItem) => !templateItem.id.startsWith('suite_'))
-                .toList();
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: libraryTemplates.map((templateItem) {
-                final isSelected = templateItem.id == activeTemplateId;
-                return ChoiceChip(
-                  key: Key('chest_template_chip_${templateItem.id}'),
-                  label: Text(
-                    templateItem.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 12,
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF2C1E0A),
-                    ),
+        const SizedBox(height: 10),
+
+        // Horizontal Card Carousel (Restored from Image 2)
+        SizedBox(
+          height: 154,
+          child: FutureBuilder<List<Template>>(
+            future: _templatesFuture,
+            builder: (context, snapshot) {
+              final templates = snapshot.data ?? [];
+              if (templates.isEmpty) {
+                return const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD4AF37)),
                   ),
-                  selected: isSelected,
-                  selectedColor: const Color(0xFFC04851),
-                  backgroundColor: const Color(0xFFF7F3E8),
-                  onSelected: (selected) {
-                    if (selected) {
-                      onSelectTemplate(templateItem);
-                    }
-                  },
                 );
-              }).toList(),
-            );
-          },
+              }
+              final displayTemplates = templates
+                  .where((templateItem) => !templateItem.id.startsWith('suite_'))
+                  .toList();
+
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: displayTemplates.length,
+                separatorBuilder: (sepContext, sepIndex) => const SizedBox(width: 10),
+                itemBuilder: (itemContext, itemIndex) {
+                  final templateItem = displayTemplates[itemIndex];
+                  final isSelected = templateItem.id == widget.activeTemplateId;
+                  final templateStyle = TemplateStyle.fromTemplate(templateItem);
+
+                  return GestureDetector(
+                    key: Key('chest_template_chip_${templateItem.id}'),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      widget.onSelectTemplate(templateItem);
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 86,
+                          height: 116,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFFFFDF85)
+                                  : const Color(0xFFD4AF37).withValues(alpha: 0.35),
+                              width: isSelected ? 2.0 : 1.0,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(0xFFFFDF85).withValues(alpha: 0.25),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(9),
+                            child: TemplateCanvasContainer(
+                              style: templateStyle,
+                              customPadding: const EdgeInsets.all(6),
+                              child: Stack(
+                                children: [
+                                  Align(
+                                    alignment: Alignment.topLeft,
+                                    child: Text(
+                                      'Aa',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isSelected
+                                            ? const Color(0xFFB83B2E)
+                                            : const Color(0xFF2C1E0A),
+                                        fontFamily: templateStyle.fontFamily,
+                                      ),
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    Align(
+                                      alignment: Alignment.topRight,
+                                      child: Container(
+                                        width: 15,
+                                        height: 15,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFB83B2E),
+                                          borderRadius: BorderRadius.circular(3),
+                                        ),
+                                        child: const Icon(
+                                          Icons.check,
+                                          size: 11,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.06),
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                      child: Text(
+                                        templateItem.backgroundType,
+                                        style: const TextStyle(
+                                          fontSize: 8,
+                                          color: Color(0xFF68645E),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        SizedBox(
+                          width: 86,
+                          child: Text(
+                            templateItem.name,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontNotoSerif,
+                              fontSize: 11,
+                              fontWeight:
+                                  isSelected ? FontWeight.bold : FontWeight.normal,
+                              color: isSelected
+                                  ? const Color(0xFFFFDF85)
+                                  : const Color(0xFFF5E6C8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSuiteChip({
-    required Key key,
-    required StationerySuite suite,
-  }) {
-    final suiteTemplate = suite.toTemplate();
-    final isSelected = activeTemplateId == suiteTemplate.id;
-    return ChoiceChip(
-      key: key,
-      label: Text(
-        suite.name,
-        style: TextStyle(
-          fontFamily: InkDiaryTheme.fontNotoSerif,
-          fontSize: 11.5,
-          color: isSelected ? Colors.white : const Color(0xFF2C1E0A),
-        ),
-      ),
-      selected: isSelected,
-      selectedColor: const Color(0xFFC04851),
-      backgroundColor: const Color(0xFFF7F3E8),
-      onSelected: (selected) => onSelectTemplate(suiteTemplate),
     );
   }
 }

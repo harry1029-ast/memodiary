@@ -38,7 +38,7 @@ class _ArtifactGuqinZitherState extends State<ArtifactGuqinZither>
   }
 
   void _triggerVibration() {
-    _vibrationController.forward(from: 0.0).then((_) {
+    _vibrationController.forward(from: 0.0).then((completed) {
       if (mounted) {
         _vibrationController.reverse();
       }
@@ -97,7 +97,7 @@ class _ArtifactGuqinZitherState extends State<ArtifactGuqinZither>
           ),
           child: AnimatedBuilder(
             animation: _vibrationController,
-            builder: (context, _) {
+            builder: (context, child) {
               return Stack(
                 children: [
                   Positioned.fill(
@@ -265,8 +265,13 @@ class GuqinZitherPainter extends CustomPainter {
 /// In-chest sub-panel for the Guqin Zither ambient audio controls
 class GuqinZitherSubPanel extends StatefulWidget {
   final AudioSanctumService audioSanctumService;
+  final VoidCallback? onClose;
 
-  const GuqinZitherSubPanel({super.key, required this.audioSanctumService});
+  const GuqinZitherSubPanel({
+    super.key,
+    required this.audioSanctumService,
+    this.onClose,
+  });
 
   @override
   State<GuqinZitherSubPanel> createState() => _GuqinZitherSubPanelState();
@@ -298,37 +303,48 @@ class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
                 Icon(
                   isPlaying ? Icons.graphic_eq : Icons.music_note_outlined,
                   size: 16,
-                  color: const Color(0xFFC04851),
+                  color: const Color(0xFFFFDF85),
                 ),
                 const SizedBox(width: 6),
-                Text(
+                const Text(
                   '书斋清音 · 琴韵自然',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF2C1E0A),
+                    color: Color(0xFFF3D99B),
                   ),
                 ),
               ],
             ),
-            if (isPlaying)
-              TextButton.icon(
-                key: const Key('chest_soundscape_stop_button'),
-                icon: const Icon(Icons.stop_circle_outlined, size: 14),
-                label: const Text('停歇清音', style: TextStyle(fontSize: 11)),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFC04851),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+            Row(
+              children: [
+                if (isPlaying)
+                  TextButton.icon(
+                    key: const Key('chest_soundscape_stop_button'),
+                    icon: const Icon(Icons.stop_circle_outlined, size: 14),
+                    label: const Text('停歇清音', style: TextStyle(fontSize: 11)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFFFDF85),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                    ),
+                    onPressed: () async {
+                      await widget.audioSanctumService.stop();
+                      setState(() {});
+                    },
                   ),
-                ),
-                onPressed: () async {
-                  await widget.audioSanctumService.stop();
-                  setState(() {});
-                },
-              ),
+                if (widget.onClose != null) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: widget.onClose,
+                    child: const Icon(Icons.close, size: 16, color: Color(0xFFD4C5B0)),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -338,30 +354,10 @@ class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildPresetChip(
-              key: const Key('chest_soundscape_chip_rain'),
-              label: '蕉窗听雨',
-              preset: SoundscapePreset.gentleRain,
-              activePreset: activePreset,
-            ),
-            _buildPresetChip(
-              key: const Key('chest_soundscape_chip_wind'),
-              label: '深山松风',
-              preset: SoundscapePreset.bambooBreeze,
-              activePreset: activePreset,
-            ),
-            _buildPresetChip(
-              key: const Key('chest_soundscape_chip_stream'),
-              label: '芸窗缃帙',
-              preset: SoundscapePreset.vintageLibrary,
-              activePreset: activePreset,
-            ),
-            _buildPresetChip(
-              key: const Key('chest_soundscape_chip_bell'),
-              label: '砚池墨渧',
-              preset: SoundscapePreset.mechanicalKeyboard,
-              activePreset: activePreset,
-            ),
+            _buildPresetChip(key: const Key('chest_soundscape_chip_rain'), label: '蕉窗听雨', preset: SoundscapePreset.gentleRain, activePreset: activePreset),
+            _buildPresetChip(key: const Key('chest_soundscape_chip_wind'), label: '深山松风', preset: SoundscapePreset.bambooBreeze, activePreset: activePreset),
+            _buildPresetChip(key: const Key('chest_soundscape_chip_stream'), label: '芸窗缃帙', preset: SoundscapePreset.vintageLibrary, activePreset: activePreset),
+            _buildPresetChip(key: const Key('chest_soundscape_chip_bell'), label: '砚池墨渧', preset: SoundscapePreset.mechanicalKeyboard, activePreset: activePreset),
           ],
         ),
         const SizedBox(height: 12),
@@ -369,22 +365,22 @@ class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
         // Volume slider
         Row(
           children: [
-            Icon(Icons.volume_down, size: 16, color: const Color(0xFF7A6B5D)),
+            const Icon(Icons.volume_down, size: 16, color: Color(0xFFD4C5B0)),
             Expanded(
               child: Slider(
                 key: const Key('chest_soundscape_volume_slider'),
                 value: _volume,
                 min: 0.0,
                 max: 1.0,
-                activeColor: const Color(0xFFC04851),
-                inactiveColor: const Color(0xFFD4C8B8),
+                activeColor: const Color(0xFFD4AF37),
+                inactiveColor: const Color(0xFFD4AF37).withValues(alpha: 0.3),
                 onChanged: (volumeValue) {
                   setState(() => _volume = volumeValue);
                   widget.audioSanctumService.setVolume(volumeValue);
                 },
               ),
             ),
-            Icon(Icons.volume_up, size: 16, color: const Color(0xFF7A6B5D)),
+            const Icon(Icons.volume_up, size: 16, color: Color(0xFFD4C5B0)),
           ],
         ),
       ],
@@ -406,12 +402,17 @@ class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
         style: TextStyle(
           fontFamily: InkDiaryTheme.fontNotoSerif,
           fontSize: 11.5,
-          color: isSelected ? Colors.white : const Color(0xFF2C1E0A),
+          color: isSelected ? const Color(0xFFFFDF85) : const Color(0xFFF5E6C8),
         ),
       ),
       selected: isSelected,
-      selectedColor: const Color(0xFFC04851),
-      backgroundColor: const Color(0xFFF7F3E8),
+      selectedColor: const Color(0xFFD4AF37).withValues(alpha: 0.28),
+      backgroundColor: const Color(0xFF2A1812),
+      side: BorderSide(
+        color: isSelected
+            ? const Color(0xFFFFDF85)
+            : const Color(0xFFD4AF37).withValues(alpha: 0.3),
+      ),
       onSelected: (selected) async {
         if (isSelected) {
           await widget.audioSanctumService.stop();

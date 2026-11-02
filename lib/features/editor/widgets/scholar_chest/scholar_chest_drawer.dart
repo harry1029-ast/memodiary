@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../../core/theme/ink_diary_theme.dart';
 import '../../models/typography_settings.dart';
 import '../../services/audio_sanctum_service.dart';
 import 'artifact_brush_mountain.dart';
@@ -9,6 +8,7 @@ import 'artifact_fish_lock.dart';
 import 'artifact_guqin_zither.dart';
 import 'artifact_stationery_fan.dart';
 import 'artifact_twin_brushes.dart';
+import 'crimson_velvet_bed_painter.dart';
 
 enum ScholarArtifactType {
   twinBrushes,
@@ -20,7 +20,7 @@ enum ScholarArtifactType {
 
 /// The unified Scholar's Stationery Chest (文房百宝匣 · 锦盒书案) modal drawer.
 /// Consolidates stationery templates, typography, soundscapes, and time capsules
-/// into an antique brocade-rimmed velvet tray with interactive artifacts and tactile chimes.
+/// into an antique walnut-gold framed tray with interactive curio artifacts.
 class ScholarChestDrawer extends StatefulWidget {
   final AppDatabase database;
   final String activeTemplateId;
@@ -28,7 +28,7 @@ class ScholarChestDrawer extends StatefulWidget {
   final AudioSanctumService audioSanctumService;
   final DateTime? unlockAt;
   final bool isCenterAligned;
-  final ScholarArtifactType initialArtifact;
+  final ScholarArtifactType? initialArtifact;
   final ValueChanged<Template> onSelectTemplate;
   final ValueChanged<TypographySettings> onTypographyChanged;
   final ValueChanged<DateTime?> onLockChanged;
@@ -58,7 +58,7 @@ class ScholarChestDrawer extends StatefulWidget {
     required AudioSanctumService audioSanctumService,
     DateTime? unlockAt,
     bool isCenterAligned = false,
-    ScholarArtifactType initialArtifact = ScholarArtifactType.stationeryFan,
+    ScholarArtifactType? initialArtifact = ScholarArtifactType.stationeryFan,
     required ValueChanged<Template> onSelectTemplate,
     required ValueChanged<TypographySettings> onTypographyChanged,
     required ValueChanged<DateTime?> onLockChanged,
@@ -68,7 +68,7 @@ class ScholarChestDrawer extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ScholarChestDrawer(
+      builder: (modalContext) => ScholarChestDrawer(
         database: database,
         activeTemplateId: activeTemplateId,
         typography: typography,
@@ -89,7 +89,7 @@ class ScholarChestDrawer extends StatefulWidget {
 }
 
 class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
-  late ScholarArtifactType _activeArtifact;
+  ScholarArtifactType? _activeArtifact;
 
   @override
   void initState() {
@@ -100,27 +100,34 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
   void _selectArtifact(ScholarArtifactType type, ScholarTactileChime chime) {
     HapticFeedback.lightImpact();
     widget.audioSanctumService.playChime(chime);
-    setState(() => _activeArtifact = type);
+    setState(() {
+      if (_activeArtifact == type) {
+        _activeArtifact = null; // Toggle collapse
+      } else {
+        _activeArtifact = type;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final tokens = InkDiaryTheme.tokensOf(context);
-
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
       child: Container(
         key: const Key('scholar_chest_drawer'),
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          maxHeight: MediaQuery.of(context).size.height * 0.88,
         ),
         decoration: const BoxDecoration(
-          color: Color(0xFF4A3428), // Woven brocade rim
-          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+          color: Color(0xFF34281E), // Rich antique mahogany/walnut ground
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          border: Border(
+            top: BorderSide(color: Color(0xFF6B5335), width: 1.5),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black45,
-              blurRadius: 16,
+              color: Colors.black54,
+              blurRadius: 18,
               offset: Offset(0, -4),
             ),
           ],
@@ -128,169 +135,182 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Top Lacquer dismissal handle
+            // 1. Protruding Top Clasp Handle (▼ 文房百宝匣 · 锦盒书案)
             GestureDetector(
               key: const Key('chest_dismiss_handle'),
               onTap: () => Navigator.pop(context),
               child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                width: 44,
-                height: 4.5,
+                margin: const EdgeInsets.only(top: 8, bottom: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD4AF37),
-                  borderRadius: BorderRadius.circular(3),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3E3027), Color(0xFF281E18)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFF8C7148),
+                    width: 1.5,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('▼', style: TextStyle(fontSize: 11, color: Color(0xFFE5C384))),
+                    SizedBox(width: 8),
+                    Text(
+                      '文房百宝匣 · 锦盒书案',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFF2E5CE),
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    CircleAvatar(radius: 3.5, backgroundColor: Color(0xFFD93829)),
+                    SizedBox(width: 6),
+                    Text(
+                      '下拉收拢 / 点器物设雅',
+                      style: TextStyle(fontSize: 11, color: Color(0xFFD4C5B0)),
+                    ),
+                  ],
                 ),
               ),
             ),
 
-            // Brocade header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFD4AF37),
-                          shape: BoxShape.circle,
-                        ),
+            // 2. Contextual Sub-Panel Floating Above the Chest (Top)
+            if (_activeArtifact != null)
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+                  child: Container(
+                    key: const Key('chest_sub_panel_container'),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E130F).withValues(alpha: 0.98),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFFD4AF37).withValues(alpha: 0.45),
+                        width: 1.2,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '文房百宝匣 · 锦盒书案',
-                        style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontNotoSerif,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFFF3EADB),
-                          letterSpacing: 1.0,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black87,
+                          blurRadius: 16,
+                          offset: Offset(0, -2),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: _buildActiveSubPanel(),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Color(0xFFD4AF37), size: 18),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+                ),
               ),
-            ),
 
-            // Recessed crimson velvet tray housing the artifacts
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Velvet tray wrapper
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: const Color(0xFF8B262A),
-                          width: 1.2,
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x66000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 3),
+            // 3. Recessed Crimson Velvet Tray Housing Artifacts (Bottom, docked)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFFD4AF37).withValues(alpha: 0.28),
+                    width: 1.2,
+                  ),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black87,
+                      blurRadius: 14,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: CustomPaint(
+                  painter: const CrimsonVelvetBedPainter(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Top Groove: Twin Bamboo Brushes
+                        ArtifactTwinBrushes(
+                          isSelected: _activeArtifact ==
+                              ScholarArtifactType.twinBrushes,
+                          onTap: () => _selectArtifact(
+                            ScholarArtifactType.twinBrushes,
+                            ScholarTactileChime.ceramicBrushTap,
                           ),
-                        ],
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: CustomPaint(
-                        painter: const CrimsonVelvetBedPainter(),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Classical Asymmetrical Curio Compartment
+                        SizedBox(
+                          height: 206,
+                          child: Row(
                             children: [
-                              // 1. Top Groove: Twin Bamboo Brushes
-                              ArtifactTwinBrushes(
-                                isSelected: _activeArtifact ==
-                                    ScholarArtifactType.twinBrushes,
-                                onTap: () => _selectArtifact(
-                                  ScholarArtifactType.twinBrushes,
-                                  ScholarTactileChime.ceramicBrushTap,
+                              // Left Column (flex 38): Fan-Spread Stationery Sheets
+                              Expanded(
+                                flex: 38,
+                                child: ArtifactStationeryFan(
+                                  isSelected: _activeArtifact ==
+                                      ScholarArtifactType.stationeryFan,
+                                  onTap: () => _selectArtifact(
+                                    ScholarArtifactType.stationeryFan,
+                                    ScholarTactileChime.paperRustle,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(width: 8),
 
-                              // 2. Classical Asymmetrical Curio Compartment
-                              SizedBox(
-                                height: 216,
-                                child: Row(
+                              // Right Column (flex 62): Guqin + Brush Rest & Fish Lock
+                              Expanded(
+                                flex: 62,
+                                child: Column(
                                   children: [
-                                    // Left Tall Velvet Well (flex 38): Fan-Spread Stationery Sheets
-                                    Expanded(
-                                      flex: 38,
-                                      child: ArtifactStationeryFan(
+                                    // Upper Groove: 7-String Guqin Zither
+                                    SizedBox(
+                                      height: 92,
+                                      child: ArtifactGuqinZither(
                                         isSelected: _activeArtifact ==
-                                            ScholarArtifactType.stationeryFan,
+                                            ScholarArtifactType.guqinZither,
+                                        isPlaying: widget.audioSanctumService.isPlaying,
                                         onTap: () => _selectArtifact(
-                                          ScholarArtifactType.stationeryFan,
-                                          ScholarTactileChime.paperRustle,
+                                          ScholarArtifactType.guqinZither,
+                                          ScholarTactileChime.guqinPluck,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
+                                    const SizedBox(height: 8),
 
-                                    // Right 62% Column: Upper Guqin Zither + Lower Brush Rest & Fish Lock
+                                    // Lower Row: Brush Rest (56%) + Fish Lock (44%)
                                     Expanded(
-                                      flex: 62,
-                                      child: Column(
+                                      child: Row(
                                         children: [
-                                          // Top Horizontal Groove: 7-String Guqin Zither
-                                          SizedBox(
-                                            height: 96,
-                                            child: ArtifactGuqinZither(
+                                          Expanded(
+                                            flex: 56,
+                                            child: ArtifactBrushMountain(
                                               isSelected: _activeArtifact ==
-                                                  ScholarArtifactType.guqinZither,
-                                              isPlaying: widget.audioSanctumService.isPlaying,
+                                                  ScholarArtifactType.brushMountain,
                                               onTap: () => _selectArtifact(
-                                                ScholarArtifactType.guqinZither,
-                                                ScholarTactileChime.guqinPluck,
+                                                ScholarArtifactType.brushMountain,
+                                                ScholarTactileChime.ceramicBrushTap,
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(height: 10),
-
-                                          // Bottom Row: Porcelain Brush Rest (56%) + Brass Fish Lock (44%)
+                                          const SizedBox(width: 8),
                                           Expanded(
-                                            child: Row(
-                                              children: [
-                                                Expanded(
-                                                  flex: 56,
-                                                  child: ArtifactBrushMountain(
-                                                    isSelected: _activeArtifact ==
-                                                        ScholarArtifactType.brushMountain,
-                                                    onTap: () => _selectArtifact(
-                                                      ScholarArtifactType.brushMountain,
-                                                      ScholarTactileChime.ceramicBrushTap,
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  flex: 44,
-                                                  child: ArtifactFishLock(
-                                                    isSelected: _activeArtifact ==
-                                                        ScholarArtifactType.fishLock,
-                                                    isLocked: widget.unlockAt != null &&
-                                                        widget.unlockAt!.isAfter(DateTime.now()),
-                                                    onTap: () => _selectArtifact(
-                                                      ScholarArtifactType.fishLock,
-                                                      ScholarTactileChime.brassLockClick,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                            flex: 44,
+                                            child: ArtifactFishLock(
+                                              isSelected: _activeArtifact ==
+                                                  ScholarArtifactType.fishLock,
+                                              isLocked: widget.unlockAt != null &&
+                                                  widget.unlockAt!.isAfter(DateTime.now()),
+                                              onTap: () => _selectArtifact(
+                                                ScholarArtifactType.fishLock,
+                                                ScholarTactileChime.brassLockClick,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -302,29 +322,9 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
                             ],
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 14),
-
-                    // In-chest Dynamic Sub-panel
-                    Container(
-                      key: const Key('chest_sub_panel_container'),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: tokens.xuanGround,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: tokens.agedFiber),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: _buildActiveSubPanel(),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -336,6 +336,9 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
 
   Widget _buildActiveSubPanel() {
     switch (_activeArtifact) {
+      case null:
+        return const SizedBox.shrink();
+
       case ScholarArtifactType.twinBrushes:
         return Container(
           key: const Key('chest_subpanel_twin_brushes'),
@@ -344,25 +347,33 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.brush_outlined, size: 28, color: const Color(0xFFC04851)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 24),
+                  const Icon(Icons.brush_outlined, size: 24, color: Color(0xFFFFDF85)),
+                  GestureDetector(
+                    onTap: () => setState(() => _activeArtifact = null),
+                    child: const Icon(Icons.close, size: 16, color: Color(0xFFD4C5B0)),
+                  ),
+                ],
+              ),
               const SizedBox(height: 6),
-              Text(
+              const Text(
                 '笔锋运墨动效 · 敬请期待',
                 style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2C1E0A),
+                  color: Color(0xFFF3D99B),
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
+              const Text(
                 '双管并提，疾涩相参，运笔入微之境将随墨潮而至。',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontKaiti,
-                  fontSize: 12,
-                  color: const Color(0xFF7A6B5D),
+                  fontSize: 11.5,
+                  color: Color(0xFFD4C5B0),
                 ),
               ),
             ],
@@ -374,6 +385,7 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
           database: widget.database,
           activeTemplateId: widget.activeTemplateId,
           onSelectTemplate: widget.onSelectTemplate,
+          onClose: () => setState(() => _activeArtifact = null),
         );
 
       case ScholarArtifactType.brushMountain:
@@ -382,57 +394,21 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
           onTypographyChanged: widget.onTypographyChanged,
           isCenterAligned: widget.isCenterAligned,
           onToggleAlignment: widget.onToggleAlignment,
+          onClose: () => setState(() => _activeArtifact = null),
         );
 
       case ScholarArtifactType.guqinZither:
         return GuqinZitherSubPanel(
           audioSanctumService: widget.audioSanctumService,
+          onClose: () => setState(() => _activeArtifact = null),
         );
 
       case ScholarArtifactType.fishLock:
         return FishLockSubPanel(
           unlockAt: widget.unlockAt,
           onLockChanged: widget.onLockChanged,
+          onClose: () => setState(() => _activeArtifact = null),
         );
     }
   }
 }
-
-/// Renders the diagonal-ribbed crimson silk velvet bed inside the Scholar's Chest.
-class CrimsonVelvetBedPainter extends CustomPainter {
-  const CrimsonVelvetBedPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final bgPaint = Paint()
-      ..shader = const RadialGradient(
-        center: Alignment(0.0, -0.3),
-        radius: 1.1,
-        colors: [
-          Color(0xFFA81C22),
-          Color(0xFF7C1016),
-          Color(0xFF4F070B),
-        ],
-      ).createShader(rect);
-    canvas.drawRect(rect, bgPaint);
-
-    final ribPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.14)
-      ..strokeWidth = 4.5;
-    for (double xOffset = -size.height;
-        xOffset < size.width + size.height;
-        xOffset += 14) {
-      canvas.drawLine(
-        Offset(xOffset, 0),
-        Offset(xOffset + size.height * 0.7, size.height),
-        ribPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-

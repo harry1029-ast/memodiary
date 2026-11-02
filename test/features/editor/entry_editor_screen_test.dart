@@ -160,6 +160,10 @@ void main() {
       await tester.tap(find.byKey(const Key('chest_template_chip_template_lined_paper')));
       await tester.pumpAndSettle();
 
+      // Dismiss drawer to inspect updated container
+      await tester.tap(find.byKey(const Key('chest_dismiss_handle')));
+      await tester.pumpAndSettle();
+
       final updatedContainer = tester.widget<TemplateCanvasContainer>(
         find.byType(TemplateCanvasContainer),
       );

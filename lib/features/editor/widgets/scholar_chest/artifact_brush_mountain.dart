@@ -54,7 +54,7 @@ class ArtifactBrushMountain extends StatelessWidget {
                   tween: Tween<double>(begin: 0.0, end: isSelected ? 1.0 : 0.0),
                   duration: const Duration(milliseconds: 260),
                   curve: Curves.easeOutCubic,
-                  builder: (context, liftProgress, _) {
+                  builder: (context, liftProgress, child) {
                     return CustomPaint(
                       painter: PorcelainBrushRestPainter(
                         liftProgress: liftProgress,
@@ -197,6 +197,7 @@ class BrushMountainSubPanel extends StatelessWidget {
   final ValueChanged<TypographySettings> onTypographyChanged;
   final bool isCenterAligned;
   final VoidCallback? onToggleAlignment;
+  final VoidCallback? onClose;
 
   const BrushMountainSubPanel({
     super.key,
@@ -204,6 +205,7 @@ class BrushMountainSubPanel extends StatelessWidget {
     required this.onTypographyChanged,
     this.isCenterAligned = false,
     this.onToggleAlignment,
+    this.onClose,
   });
 
   @override
@@ -217,81 +219,84 @@ class BrushMountainSubPanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.text_fields, size: 16, color: const Color(0xFFC04851)),
+                const Icon(Icons.text_fields, size: 16, color: Color(0xFFFFDF85)),
                 const SizedBox(width: 6),
-                Text(
+                const Text(
                   '字法墨韵 · 笔意规制',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 13,
+                    fontSize: 12.5,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF2C1E0A),
+                    color: Color(0xFFF3D99B),
                   ),
                 ),
               ],
             ),
-            IconButton(
-              key: const Key('chest_poetry_align_button'),
-              icon: Icon(
-                isCenterAligned
-                    ? Icons.format_align_center
-                    : Icons.format_align_left,
-                size: 18,
-                color: const Color(0xFFC04851),
-              ),
-              tooltip: '诗意居中排印',
-              onPressed: onToggleAlignment,
+            Row(
+              children: [
+                IconButton(
+                  key: const Key('chest_poetry_align_button'),
+                  icon: Icon(
+                    isCenterAligned
+                        ? Icons.format_align_center
+                        : Icons.format_align_left,
+                    size: 18,
+                    color: const Color(0xFFFFDF85),
+                  ),
+                  tooltip: '诗意居中排印',
+                  onPressed: onToggleAlignment,
+                ),
+                if (onClose != null) ...[
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: onClose,
+                    child: const Icon(Icons.close, size: 16, color: Color(0xFFD4C5B0)),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
 
         // Font Family Selector
         Row(
           children: [
-            Text(
+            const Text(
               '墨宝字型',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 12,
-                color: const Color(0xFF7A6B5D),
-              ),
+              style: TextStyle(fontSize: 11.5, color: Color(0xFFD4C5B0)),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F3E8),
+                  color: const Color(0xFF2A1812),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFD4C8B8)),
+                  border: Border.all(
+                    color: const Color(0xFFD4AF37).withValues(alpha: 0.35),
+                  ),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     key: const Key('chest_font_family_dropdown'),
                     value: typography.fontFamily ?? InkDiaryTheme.fontNotoSerif,
                     isDense: true,
+                    dropdownColor: const Color(0xFF2A1812),
+                    iconEnabledColor: const Color(0xFFFFDF85),
                     items: [
                       DropdownMenuItem(
                         value: InkDiaryTheme.fontNotoSerif,
-                        child: Text(
-                          '思源雅宋 (Noto Serif)',
-                          style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif),
-                        ),
+                        child: Text('思源雅宋 (Noto Serif)', style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: const Color(0xFFF5E6C8))),
                       ),
                       DropdownMenuItem(
                         value: InkDiaryTheme.fontKaiti,
-                        child: Text(
-                          '古法楷书 (Kaiti)',
-                          style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
-                        ),
+                        child: Text('古法楷书 (Kaiti)', style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, color: const Color(0xFFF5E6C8))),
                       ),
                     ],
                     onChanged: (selectedFont) {
                       if (selectedFont != null) {
-                        onTypographyChanged(
-                          typography.copyWith(fontFamily: selectedFont),
-                        );
+                        onTypographyChanged(typography.copyWith(fontFamily: selectedFont));
                       }
                     },
                   ),
@@ -300,15 +305,12 @@ class BrushMountainSubPanel extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
 
         // Font Size Slider
         Row(
           children: [
-            Text(
-              '字形大小 (${typography.fontSize.toInt()}pt)',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF7A6B5D)),
-            ),
+            Text('字形大小 (${typography.fontSize.toInt()}pt)', style: const TextStyle(fontSize: 11, color: Color(0xFFD4C5B0))),
             Expanded(
               child: Slider(
                 key: const Key('chest_font_size_slider'),
@@ -316,11 +318,9 @@ class BrushMountainSubPanel extends StatelessWidget {
                 min: 12.0,
                 max: 28.0,
                 divisions: 16,
-                activeColor: const Color(0xFFC04851),
-                inactiveColor: const Color(0xFFD4C8B8),
-                onChanged: (newSize) {
-                  onTypographyChanged(typography.copyWith(fontSize: newSize));
-                },
+                activeColor: const Color(0xFFD4AF37),
+                inactiveColor: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+                onChanged: (newSize) => onTypographyChanged(typography.copyWith(fontSize: newSize)),
               ),
             ),
           ],
@@ -329,10 +329,7 @@ class BrushMountainSubPanel extends StatelessWidget {
         // Line Spacing Slider
         Row(
           children: [
-            Text(
-              '行间高距 (${typography.lineSpacing.toStringAsFixed(1)}x)',
-              style: const TextStyle(fontSize: 11, color: Color(0xFF7A6B5D)),
-            ),
+            Text('行间高距 (${typography.lineSpacing.toStringAsFixed(1)}x)', style: const TextStyle(fontSize: 11, color: Color(0xFFD4C5B0))),
             Expanded(
               child: Slider(
                 key: const Key('chest_line_spacing_slider'),
@@ -340,36 +337,26 @@ class BrushMountainSubPanel extends StatelessWidget {
                 min: 1.0,
                 max: 2.4,
                 divisions: 14,
-                activeColor: const Color(0xFFC04851),
-                inactiveColor: const Color(0xFFD4C8B8),
-                onChanged: (newSpacing) {
-                  onTypographyChanged(
-                    typography.copyWith(lineSpacing: newSpacing),
-                  );
-                },
+                activeColor: const Color(0xFFD4AF37),
+                inactiveColor: const Color(0xFFD4AF37).withValues(alpha: 0.3),
+                onChanged: (newSpacing) => onTypographyChanged(typography.copyWith(lineSpacing: newSpacing)),
               ),
             ),
           ],
         ),
 
         // Ink Tone Selection
-        const SizedBox(height: 6),
-        const Text(
-          '墨色韵调',
-          style: TextStyle(fontSize: 12, color: Color(0xFF7A6B5D)),
-        ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
+        const Text('墨色韵调', style: TextStyle(fontSize: 11.5, color: Color(0xFFD4C5B0))),
+        const SizedBox(height: 4),
         Row(
           children: [
             _buildInkToneChip(
               label: '焦墨',
               color: const Color(0xFF1F1D1A),
               keyName: 'chest_ink_tone_jiaomo',
-              isSelected: typography.textColor == const Color(0xFF1F1D1A) ||
-                  typography.textColor == null,
-              onTap: () => onTypographyChanged(
-                typography.copyWith(textColor: const Color(0xFF1F1D1A)),
-              ),
+              isSelected: typography.textColor == const Color(0xFF1F1D1A) || typography.textColor == null,
+              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFF1F1D1A))),
             ),
             const SizedBox(width: 8),
             _buildInkToneChip(
@@ -377,9 +364,7 @@ class BrushMountainSubPanel extends StatelessWidget {
               color: const Color(0xFFB83B2E),
               keyName: 'chest_ink_tone_cinnabar',
               isSelected: typography.textColor == const Color(0xFFB83B2E),
-              onTap: () => onTypographyChanged(
-                typography.copyWith(textColor: const Color(0xFFB83B2E)),
-              ),
+              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFFB83B2E))),
             ),
             const SizedBox(width: 8),
             _buildInkToneChip(
@@ -387,9 +372,7 @@ class BrushMountainSubPanel extends StatelessWidget {
               color: const Color(0xFF2F5241),
               keyName: 'chest_ink_tone_bamboo',
               isSelected: typography.textColor == const Color(0xFF2F5241),
-              onTap: () => onTypographyChanged(
-                typography.copyWith(textColor: const Color(0xFF2F5241)),
-              ),
+              onTap: () => onTypographyChanged(typography.copyWith(textColor: const Color(0xFF2F5241))),
             ),
           ],
         ),
@@ -410,10 +393,10 @@ class BrushMountainSubPanel extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: isSelected ? 0.16 : 0.04),
+          color: color.withValues(alpha: isSelected ? 0.35 : 0.12),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? color : color.withValues(alpha: 0.3),
+            color: isSelected ? const Color(0xFFFFDF85) : color.withValues(alpha: 0.4),
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -428,7 +411,7 @@ class BrushMountainSubPanel extends StatelessWidget {
                 fontFamily: InkDiaryTheme.fontKaiti,
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: color,
+                color: isSelected ? const Color(0xFFFFDF85) : const Color(0xFFF5E6C8),
               ),
             ),
           ],
