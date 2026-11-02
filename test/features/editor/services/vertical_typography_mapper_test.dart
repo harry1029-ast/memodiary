@@ -36,17 +36,31 @@ void main() {
       );
     });
 
-    test('tokenizeForVertical retains Latin runs and numbers as coherent units', () {
-      final tokens = VerticalTypographyMapper.tokenizeForVertical('MemoDiary 2026年「春」');
+    test('tokenize retains Latin runs and numbers as coherent units', () {
+      final tokens = VerticalTypographyMapper.tokenize('MemoDiary 2026年「春」');
+      expect(tokens, hasLength(7));
+      expect(tokens[0], equals(const VerticalGlyphToken('MemoDiary', requiresQuarterTurnRotation: true)));
+      expect(tokens[1], equals(const VerticalGlyphToken(' ')));
+      expect(tokens[2], equals(const VerticalGlyphToken('2026', requiresQuarterTurnRotation: true)));
+      expect(tokens[3], equals(const VerticalGlyphToken('年')));
+      expect(tokens[4], equals(const VerticalGlyphToken('﹁')));
+      expect(tokens[5], equals(const VerticalGlyphToken('春')));
+      expect(tokens[6], equals(const VerticalGlyphToken('﹂')));
+    });
+
+    test('formatInterlinearAsInline converts interlinear sub-notes to bracketed form', () {
       expect(
-        tokens,
-        equals(['MemoDiary', ' ', '2026', '年', '﹁', '春', '﹂']),
+        VerticalTypographyMapper.formatInterlinearAsInline('前言{夹注:月照花林}后语{夹注:唐诗}'),
+        equals('前言〖月照花林〗后语〖唐诗〗'),
+      );
+      expect(
+        VerticalTypographyMapper.formatInterlinearAsInline('无夹注正文'),
+        equals('无夹注正文'),
       );
     });
 
     test('handles empty and plain strings safely', () {
       expect(VerticalTypographyMapper.mapPunctuation(''), equals(''));
-      expect(VerticalTypographyMapper.tokenizeForVertical(''), isEmpty);
       expect(VerticalTypographyMapper.tokenize(''), isEmpty);
       expect(
         VerticalTypographyMapper.mapPunctuation('天地玄黄'),
@@ -115,6 +129,13 @@ void main() {
 
       final latinToken = tokens.firstWhere((token) => token is VerticalGlyphToken && token.glyph == 'MemoDiary') as VerticalGlyphToken;
       expect(latinToken.requiresQuarterTurnRotation, isTrue);
+
+      // Unmapped fallback brackets: { and }
+      final bracketTokens = VerticalTypographyMapper.tokenize('卷{壹}');
+      final leftCurly = bracketTokens.firstWhere((token) => token is VerticalGlyphToken && token.glyph == '{') as VerticalGlyphToken;
+      expect(leftCurly.requiresQuarterTurnRotation, isTrue);
+      final rightCurly = bracketTokens.firstWhere((token) => token is VerticalGlyphToken && token.glyph == '}') as VerticalGlyphToken;
+      expect(rightCurly.requiresQuarterTurnRotation, isTrue);
     });
   });
 }

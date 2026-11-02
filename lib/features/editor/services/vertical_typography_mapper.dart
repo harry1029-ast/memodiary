@@ -88,6 +88,10 @@ class VerticalTypographyMapper {
     ';',
     '；',
     '--',
+    '{',
+    '}',
+    '[',
+    ']',
   };
 
   /// Direct mapping table from horizontal punctuation to vertical presentation glyphs.
@@ -127,6 +131,14 @@ class VerticalTypographyMapper {
     '…': '⋮', // U+22EE
     '⋯': '⋮',
   };
+
+  /// Formats interlinear sub-notes {夹注:...} as inline bracketed notes 〖...〗.
+  static String formatInterlinearAsInline(String text) {
+    return text.replaceAllMapped(
+      _interlinearRegex,
+      (match) => '〖${match.group(1)}〗',
+    );
+  }
 
   /// Converts horizontal CJK brackets, quotes, dashes, and ellipses
   /// to their classical vertical presentation forms.
@@ -233,21 +245,5 @@ class VerticalTypographyMapper {
       }
     }
     flushLatin();
-  }
-
-  /// Partitions text into string tokens suitable for vertical columnar layout.
-  /// Maintained for backwards compatibility with legacy string-based callers.
-  static List<String> tokenizeForVertical(String input) {
-    final renderTokens = tokenize(input);
-    final result = <String>[];
-    for (final token in renderTokens) {
-      if (token is VerticalGlyphToken) {
-        result.add(token.glyph);
-      } else if (token is VerticalInterlinearPairToken) {
-        if (token.rightChar.isNotEmpty) result.add(token.rightChar);
-        if (token.leftChar.isNotEmpty) result.add(token.leftChar);
-      }
-    }
-    return result;
   }
 }

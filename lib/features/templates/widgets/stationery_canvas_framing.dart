@@ -103,12 +103,10 @@ class StationeryCanvasFraming {
     if (shouldRenderFishtail(style: style, columnCount: metrics.columnCount)) {
       paintFishtailMark(
         canvas: canvas,
-        innerFrameRect: translatedRect,
-        cellAdvancePx: metrics.cellAdvancePx,
-        lineStridePx: metrics.lineStridePx,
-        columnCount: metrics.columnCount,
+        metrics: metrics,
         style: style,
         isDark: isDark,
+        scrollOffsetY: scrollOffsetY,
       );
     }
   }
@@ -141,25 +139,24 @@ class StationeryCanvasFraming {
   /// Paints the classical Fishtail Mark near the top of the central folding column.
   static void paintFishtailMark({
     required Canvas canvas,
-    required Rect innerFrameRect,
-    required double cellAdvancePx,
-    required double lineStridePx,
-    required int columnCount,
+    required StationeryLayoutMetrics metrics,
     required TemplateStyle style,
     required bool isDark,
+    double scrollOffsetY = 0.0,
   }) {
-    final midCol = columnCount ~/ 2;
-    final colLeft = innerFrameRect.left + midCol * cellAdvancePx;
+    final translatedRect = metrics.innerFrameRect.translate(0.0, -scrollOffsetY);
+    final midCol = metrics.columnCount ~/ 2;
+    final colLeft = translatedRect.left + midCol * metrics.cellAdvancePx;
     final colRect = Rect.fromLTWH(
       colLeft,
-      innerFrameRect.top,
-      cellAdvancePx,
-      lineStridePx,
+      translatedRect.top,
+      metrics.cellAdvancePx,
+      metrics.lineStridePx,
     );
 
     final fishtailPath = createFishtailPath(
       columnRect: colRect,
-      lineStridePx: lineStridePx,
+      lineStridePx: metrics.lineStridePx,
     );
 
     final fishtailPaint = Paint()

@@ -227,6 +227,7 @@ class TemplateCanvasPainter extends CustomPainter {
 
   void _paintLinedPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
     final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
+    final effectiveHeaderY = innerRect.top + headerHeight;
 
     final linePaint = Paint()
       ..color = _isDark
@@ -234,11 +235,11 @@ class TemplateCanvasPainter extends CustomPainter {
           : style.tokens.ruleTint.color
       ..strokeWidth = 1.0;
 
-    // Horizontal baseline rules strictly bounded within innerFrameRect
+    // Horizontal baseline rules strictly bounded within innerFrameRect and below letterhead
     for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
       final y = innerRect.top + rowIndex * metrics.lineStridePx;
       if (y > size.height) break;
-      if (y < 0) continue;
+      if (y < effectiveHeaderY) continue;
       canvas.drawLine(
         Offset(innerRect.left, y),
         Offset(innerRect.right, y),
@@ -246,7 +247,7 @@ class TemplateCanvasPainter extends CustomPainter {
       );
     }
 
-    // Left vertical margin rule strictly inside innerFrameRect
+    // Left vertical margin rule strictly inside innerFrameRect and below letterhead
     final marginPaint = Paint()
       ..color = _isDark
           ? const Color(0x38EF9A9A)
@@ -256,15 +257,19 @@ class TemplateCanvasPainter extends CustomPainter {
       ..strokeWidth = 1.2;
 
     final marginX = innerRect.left + 12.0;
-    canvas.drawLine(
-      Offset(marginX, math.max(0.0, innerRect.top)),
-      Offset(marginX, math.min(size.height, innerRect.bottom)),
-      marginPaint,
-    );
+    final topMarginY = math.max(effectiveHeaderY, innerRect.top);
+    if (topMarginY < innerRect.bottom) {
+      canvas.drawLine(
+        Offset(marginX, math.max(0.0, topMarginY)),
+        Offset(marginX, math.min(size.height, innerRect.bottom)),
+        marginPaint,
+      );
+    }
   }
 
   void _paintGridPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
     final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
+    final effectiveHeaderY = innerRect.top + headerHeight;
 
     final hGridPaint = Paint()
       ..color = _isDark ? const Color(0x18FFFFFF) : style.tokens.ruleTint.color
@@ -276,16 +281,18 @@ class TemplateCanvasPainter extends CustomPainter {
           : style.tokens.ruleTint.color.withValues(alpha: (style.tokens.ruleTint.color.a * 0.85))
       ..strokeWidth = 0.6;
 
-    final topY = math.max(0.0, innerRect.top);
+    final topY = math.max(0.0, math.max(innerRect.top, effectiveHeaderY));
     final bottomY = math.min(size.height, innerRect.bottom);
 
-    // Vertical grid guidelines strictly within innerFrameRect
-    for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
-      final x = innerRect.left + colIndex * metrics.cellAdvancePx;
-      canvas.drawLine(Offset(x, topY), Offset(x, bottomY), vGridPaint);
+    // Vertical grid guidelines strictly within innerFrameRect and below letterhead
+    if (topY < bottomY) {
+      for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
+        final x = innerRect.left + colIndex * metrics.cellAdvancePx;
+        canvas.drawLine(Offset(x, topY), Offset(x, bottomY), vGridPaint);
+      }
     }
 
-    // Horizontal grid rules
+    // Horizontal grid rules strictly below letterhead
     final isManuscript = StationeryCanvasFraming.shouldRenderFishtail(
       style: style,
       columnCount: metrics.columnCount,
@@ -297,7 +304,7 @@ class TemplateCanvasPainter extends CustomPainter {
     for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
       final y = innerRect.top + rowIndex * metrics.lineStridePx;
       if (y > size.height) break;
-      if (y < 0) continue;
+      if (y < effectiveHeaderY) continue;
 
       if (isManuscript) {
         // Leave central folding column unruled horizontally
@@ -311,6 +318,7 @@ class TemplateCanvasPainter extends CustomPainter {
 
   void _paintDotGridPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
     final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
+    final effectiveHeaderY = innerRect.top + headerHeight;
 
     final dotPaint = Paint()
       ..color = _isDark ? const Color(0x24FFFFFF) : style.tokens.ruleTint.color
@@ -319,7 +327,7 @@ class TemplateCanvasPainter extends CustomPainter {
     for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
       final y = innerRect.top + rowIndex * metrics.lineStridePx;
       if (y > size.height) break;
-      if (y < 0) continue;
+      if (y < effectiveHeaderY) continue;
 
       for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
         final x = innerRect.left + colIndex * metrics.cellAdvancePx;
@@ -354,10 +362,11 @@ class TemplateCanvasPainter extends CustomPainter {
       ..strokeWidth = 0.9;
 
     final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
+    final effectiveHeaderY = innerRect.top + headerHeight;
     for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
       final y = innerRect.top + rowIndex * metrics.lineStridePx;
       if (y > size.height) break;
-      if (y < 0) continue;
+      if (y < effectiveHeaderY) continue;
       canvas.drawLine(
         Offset(innerRect.left, y),
         Offset(innerRect.right, y),

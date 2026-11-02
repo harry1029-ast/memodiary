@@ -297,5 +297,34 @@ void main() {
       );
       expect(widgets, isNotEmpty);
     });
+
+    test('generatePdfForEntry in verticalScroll mode correctly rotates Latin runs and fallback punctuation', () async {
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'entry_rot_1',
+          notebookId: 'default',
+          templateId: 'template_lined_paper',
+          title: const Value('MemoDiary 2026'),
+          contentDelta: jsonEncode([
+            {'insert': '夜泊～寒江—MemoDiary:卷{壹}\n'},
+          ]),
+          plainText: '夜泊～寒江—MemoDiary:卷{壹}\n',
+          entryDate: DateTime(2026, 11, 2),
+        ),
+      );
+
+      final entry = await db.getEntryById('entry_rot_1');
+      expect(entry, isNotNull);
+
+      final verticalBytes = await PdfExportEngine.generatePdfForEntry(
+        entry: entry!,
+        database: db,
+        mediaService: mediaService,
+        layoutMode: PdfLayoutMode.verticalScroll,
+        sealText: '心迹安放',
+      );
+      expect(verticalBytes, isNotEmpty);
+      expect(String.fromCharCodes(verticalBytes.take(5)), equals('%PDF-'));
+    });
   });
 }

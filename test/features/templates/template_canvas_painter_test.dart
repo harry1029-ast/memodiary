@@ -388,5 +388,47 @@ void main() {
       expect(metrics.innerFrameRect.left, equals(32.0));
       expect(metrics.innerFrameRect.right, equals(344.0));
     });
+
+    test('confines rulings and grid squares strictly below headerHeight', () {
+      const canvasSize = Size(400, 800);
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.grid,
+        backgroundColor: Colors.white,
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+      );
+      const typography = TypographySettings(fontSize: 16.0, lineSpacing: 1.5);
+      final metrics = StationeryLayoutCalculator.calculate(
+        canvasSize: canvasSize,
+        style: style,
+        typography: typography,
+      );
+
+      const headerHeight = 72.0;
+      final effectiveHeaderY = metrics.innerFrameRect.top + headerHeight;
+
+      final painter = TemplateCanvasPainter(
+        style: style,
+        typography: typography,
+        headerHeight: headerHeight,
+      );
+      final recordingCanvas = RecordingCanvas();
+      painter.paint(recordingCanvas, canvasSize);
+
+      expect(recordingCanvas.drawnLines, isNotEmpty);
+      for (final line in recordingCanvas.drawnLines) {
+        final (startPoint, endPoint, _) = line;
+        expect(
+          startPoint.dy,
+          greaterThanOrEqualTo(effectiveHeaderY),
+          reason: 'Ruling at dy=${startPoint.dy} must not bleed above effectiveHeaderY=$effectiveHeaderY',
+        );
+        expect(
+          endPoint.dy,
+          greaterThanOrEqualTo(effectiveHeaderY),
+          reason: 'Ruling at dy=${endPoint.dy} must not bleed above effectiveHeaderY=$effectiveHeaderY',
+        );
+      }
+    });
   });
 }

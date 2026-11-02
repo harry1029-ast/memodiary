@@ -36,23 +36,6 @@ class EditorQuillStylesBuilder {
     return isGridPattern ? math.max(0.0, lineStridePx - fontSize) : 0.0;
   }
 
-  /// Alias for [build] accepting full style parameters.
-  static DefaultStyles buildQuillStyles({
-    required TypographySettings typography,
-    required Color inkColor,
-    required bool isPaperDark,
-    required double lineStridePx,
-    required TemplateBackgroundType backgroundType,
-  }) {
-    return build(
-      typography: typography,
-      inkColor: inkColor,
-      isPaperDark: isPaperDark,
-      lineStridePx: lineStridePx,
-      backgroundType: backgroundType,
-    );
-  }
-
   /// Builds [DefaultStyles] with locked baselines and integer-clamped headings.
   static DefaultStyles build({
     required TypographySettings typography,

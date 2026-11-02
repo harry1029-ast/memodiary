@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
+import '../../editor/services/vertical_typography_mapper.dart';
 import '../../settings/services/signature_seal_service.dart';
 import '../../templates/models/template_style.dart';
 import '../models/pdf_layout_mode.dart';
@@ -288,10 +289,7 @@ class PdfExportEngine {
     }
 
     final rawTitle = entry.title?.trim() ?? '';
-    final cleanTitle = rawTitle.replaceAllMapped(
-      RegExp(r'\{夹注:(.*?)\}'),
-      (match) => '〖${match.group(1)}〗',
-    );
+    final cleanTitle = VerticalTypographyMapper.formatInterlinearAsInline(rawTitle);
     final title = fontResolver.sanitizeText(cleanTitle);
 
     return pw.Column(

@@ -19,7 +19,6 @@ import '../controllers/editor_autosave_manager.dart';
 import '../models/thought_spark.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
-import '../services/baseline_metrics_calculator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/cinnabar_signature_seal.dart';
@@ -671,7 +670,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                         ),
                         child: SingleChildScrollView(
                           controller: _editorScrollController,
-                          padding: EdgeInsets.zero,
+                          padding: EdgeInsets.only(top: metrics.heavenMarginPx),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -806,33 +805,5 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         }
       }
     });
-  }
-
-  @visibleForTesting
-  StrutStyle get activeStrutStyle {
-    final activeRowHeight = BaselineMetricsCalculator.calculateLineHeight(
-      _typography.toTextStyle(),
-    );
-    return EditorQuillStylesBuilder.buildStrutStyle(
-      fontSize: _typography.fontSize,
-      lineStridePx: activeRowHeight,
-    );
-  }
-
-  @visibleForTesting
-  DefaultStyles buildQuillStyles({
-    required TypographySettings typography,
-    required Color inkColor,
-    required bool isPaperDark,
-    required double lineStridePx,
-    required TemplateBackgroundType backgroundType,
-  }) {
-    return EditorQuillStylesBuilder.build(
-      typography: typography,
-      inkColor: inkColor,
-      isPaperDark: isPaperDark,
-      lineStridePx: lineStridePx,
-      backgroundType: backgroundType,
-    );
   }
 }

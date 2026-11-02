@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -104,8 +105,8 @@ class PdfVerticalScrollBuilder {
 
     // Build pw.Page for each slice (reversed to flow right-to-left in standard LTR coordinate space)
     final pages = <pw.Page>[];
-    for (int p = 0; p < pagesItems.length; p++) {
-      final pageSlice = pagesItems[p];
+    for (int pageIndex = 0; pageIndex < pagesItems.length; pageIndex++) {
+      final pageSlice = pagesItems[pageIndex];
       pages.add(
         pw.Page(
           pageTheme: pw.PageTheme(
@@ -193,32 +194,34 @@ class PdfVerticalScrollBuilder {
 
               if (token is VerticalGlyphToken) {
                 final sanitized = resolver.sanitizeText(token.glyph);
+                final glyphStyle = pw.TextStyle(
+                  font: font,
+                  fontSize: fontSize,
+                  color: PdfColors.black,
+                );
+
                 if (token.isCornerPunctuation) {
                   return pw.Container(
                     width: col.estimatedWidth,
                     alignment: pw.Alignment.topRight,
                     padding: const pw.EdgeInsets.only(right: 2.0),
-                    child: pw.Text(
-                      sanitized,
-                      style: pw.TextStyle(
-                        font: font,
-                        fontSize: fontSize,
-                        color: PdfColors.black,
-                      ),
+                    child: pw.Text(sanitized, style: glyphStyle),
+                  );
+                }
+
+                if (token.requiresQuarterTurnRotation) {
+                  return pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 1.0),
+                    child: pw.Transform.rotate(
+                      angle: math.pi / 2,
+                      child: pw.Text(sanitized, style: glyphStyle),
                     ),
                   );
                 }
 
                 return pw.Padding(
                   padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
-                  child: pw.Text(
-                    sanitized,
-                    style: pw.TextStyle(
-                      font: font,
-                      fontSize: fontSize,
-                      color: PdfColors.black,
-                    ),
-                  ),
+                  child: pw.Text(sanitized, style: glyphStyle),
                 );
               }
 
@@ -288,11 +291,11 @@ class PdfVerticalScrollBuilder {
             children: [
               pw.Column(
                 mainAxisSize: pw.MainAxisSize.min,
-                children: colophonText.split('').map((ch) {
+                children: colophonText.split('').map((character) {
                   return pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
                     child: pw.Text(
-                      resolver.sanitizeText(ch),
+                      resolver.sanitizeText(character),
                       style: pw.TextStyle(
                         font: resolver.regularFont,
                         fontSize: 8.0,

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/services/media_sandbox_service.dart';
+import '../../editor/services/vertical_typography_mapper.dart';
 import '../../templates/models/template_style.dart';
 import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
@@ -77,10 +78,7 @@ class PdfEntrySerializer {
       // Fallback: render plain text line by line
       final lines = fallbackPlainText.split('\n');
       for (final line in lines) {
-        final cleanLine = line.replaceAllMapped(
-          RegExp(r'\{夹注:(.*?)\}'),
-          (match) => '〖${match.group(1)}〗',
-        );
+        final cleanLine = VerticalTypographyMapper.formatInterlinearAsInline(line);
         final sanitized = fontResolver.sanitizeText(cleanLine.trimRight());
         if (sanitized.isNotEmpty) {
           widgets.add(
@@ -159,10 +157,7 @@ class PdfEntrySerializer {
 
       // 2. Text String
       if (insert is String) {
-        final cleanInsert = insert.replaceAllMapped(
-          RegExp(r'\{夹注:(.*?)\}'),
-          (match) => '〖${match.group(1)}〗',
-        );
+        final cleanInsert = VerticalTypographyMapper.formatInterlinearAsInline(insert);
         final isBold = attributes['bold'] == true;
         final isItalic = attributes['italic'] == true;
         final isUnderline = attributes['underline'] == true;
