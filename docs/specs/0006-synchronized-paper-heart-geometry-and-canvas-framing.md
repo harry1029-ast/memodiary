@@ -1,7 +1,7 @@
 ---
 id: SPEC-006
 title: Synchronized Paper Heart Geometry, Strut Baseline Lock & Classical Double Outer Border
-status: ready-for-agent
+status: completed
 created_at: 2026-11-02T14:09:00+08:00
 ---
 
