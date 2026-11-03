@@ -296,3 +296,4 @@ extension FolioHorizontalSegmentCopy on FolioHorizontalSegment {
     );
   }
 }
+

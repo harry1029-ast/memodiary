@@ -223,3 +223,4 @@ class FolioVerticalCell {
     this.color,
   });
 }
+
