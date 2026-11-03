@@ -82,9 +82,7 @@ class StationerySheetSpillMutator {
       lineStridePx: lineStridePx,
     );
 
-    if (overflow.overflowingDelta.isEmpty ||
-        (overflow.overflowingDelta.length == 1 &&
-            overflow.overflowingDelta.first.data == '\n')) {
+    if (overflow.overflowingDelta.isEmpty) {
       return null;
     }
 

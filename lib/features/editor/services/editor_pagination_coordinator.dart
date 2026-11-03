@@ -244,7 +244,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     return outcome.result;
   }
 
-  /// Auto-collapses empty continuation sheets (`sheetIndex > 0`), preserving Sheet 1.
+  /// Auto-collapses trailing empty continuation sheets (`sheetIndex > 0`), preserving Sheet 1.
   bool collapseEmptyContinuationSheets() {
     bool didCollapse = false;
     for (int index = _sheets.length - 1; index > 0; index--) {
@@ -253,6 +253,8 @@ class EditorPaginationCoordinator extends ChangeNotifier {
         _sheets.removeAt(index);
         sheet.dispose();
         didCollapse = true;
+      } else {
+        break;
       }
     }
     if (didCollapse) {

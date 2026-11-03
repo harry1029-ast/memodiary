@@ -80,8 +80,8 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   /// Plain text content of this sheet.
   String get plainText => document.toPlainText();
 
-  /// Whether the sheet contains only whitespace or is empty.
-  bool get isEmpty => plainText.trim().isEmpty;
+  /// Whether the sheet contains zero user content (only the mandatory document terminal newline).
+  bool get isEmpty => document.length <= 1;
 
   /// Replaces this sheet's controller document in place with [newDelta],
   /// keeping the [QuillController] instance alive so bound listeners and [QuillEditor] stay valid.

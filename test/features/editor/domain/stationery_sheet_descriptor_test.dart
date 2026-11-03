@@ -50,6 +50,26 @@ void main() {
       sheet.dispose();
     });
 
+    test('TextStationerySheet isEmpty only returns true when document has length <= 1', () {
+      final emptySheet = OpeningSheet.empty(sheetIndex: 0);
+      expect(emptySheet.isEmpty, isTrue);
+      emptySheet.dispose();
+
+      final newlineSheet = OpeningSheet.fromDelta(
+        sheetIndex: 0,
+        delta: Delta()..insert('\n\n'),
+      );
+      expect(newlineSheet.isEmpty, isFalse, reason: 'Blank lines are intentional user content');
+      newlineSheet.dispose();
+
+      final spaceSheet = OpeningSheet.fromDelta(
+        sheetIndex: 0,
+        delta: Delta()..insert(' \n'),
+      );
+      expect(spaceSheet.isEmpty, isFalse, reason: 'Whitespaces are intentional user content');
+      spaceSheet.dispose();
+    });
+
     test('TextStationerySheet setDelta updates document in place without disposing controller', () {
       final sheet = OpeningSheet.empty(sheetIndex: 0);
       final originalController = sheet.controller;
