@@ -278,13 +278,15 @@ class StationerySheetBorderChrome extends StatelessWidget {
           left: 0,
           right: 0,
           bottom: bottomInset,
-          child: Center(
-            child: StationeryPageIndicator(
-              currentSheetIndex: currentSheetIndex,
-              totalSheets: totalSheets,
-              substrate: substrate,
-              isPaperDark: isPaperDark,
-              inkColor: inkColor,
+          child: IgnorePointer(
+            child: Center(
+              child: StationeryPageIndicator(
+                currentSheetIndex: currentSheetIndex,
+                totalSheets: totalSheets,
+                substrate: substrate,
+                isPaperDark: isPaperDark,
+                inkColor: inkColor,
+              ),
             ),
           ),
         ),

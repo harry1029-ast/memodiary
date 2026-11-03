@@ -6,24 +6,23 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
 import '../../templates/widgets/template_canvas_container.dart';
+import '../domain/stationery_sheet_descriptor.dart';
 import '../models/typography_settings.dart';
-import 'editor_quill_styles_builder.dart';
-import 'integer_snapped_letterhead.dart';
-import 'journal_letterhead.dart';
+import '../services/editor_pagination_coordinator.dart';
+import 'editor_text_sheet_view.dart';
 import 'paper_heart_metrics.dart';
-import 'sandboxed_image_embed_builder.dart';
-import 'sandboxed_video_embed_builder.dart';
+import 'stationery_ephemera_sheet.dart';
 import 'stationery_sheet_border_chrome.dart';
 
-/// Full-bleed procedural paper canvas presenting the Letterhead, QuillEditor,
-/// bounded Cinnabar Signature Seal, and border navigation chrome.
+/// Full-bleed procedural paper canvas presenting discrete Stationery Sheets in a PageView stage,
+/// with Sheet 1 Journal Letterhead, Sheet 2+ running colophons, full-sheet Ephemera mounts,
+/// final-sheet-only bounded Cinnabar Seal, and paper-adaptive border navigation chrome.
 class EditorPaperCanvas extends StatelessWidget {
   final TemplateStyle templateStyle;
   final TypographySettings typography;
   final ThemeData paperBaseTheme;
   final Color inkColor;
   final bool isPaperDark;
-  final ScrollController scrollController;
   final GlobalKey letterheadKey;
   final double headerHeight;
   final DateTime entryDate;
@@ -33,14 +32,22 @@ class EditorPaperCanvas extends StatelessWidget {
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<int?> onMoodChanged;
   final ValueChanged<String?> onWeatherChanged;
-  final QuillController controller;
-  final FocusNode focusNode;
   final MediaSandboxService mediaSandboxService;
   final VoidCallback onSaveDraft;
+
+  final EditorPaginationCoordinator coordinator;
+  final PageController pageController;
   final int currentSheetIndex;
   final int totalSheets;
   final VoidCallback? onPreviousSheet;
   final VoidCallback? onNextSheet;
+  final ValueChanged<int>? onPageChanged;
+  final void Function(int sheetIndex)? onDeleteEphemera;
+  final void Function(int sheetIndex)? onSpillBack;
+
+  final QuillController? controller;
+  final FocusNode? focusNode;
+  final ScrollController? scrollController;
 
   const EditorPaperCanvas({
     super.key,
@@ -49,7 +56,6 @@ class EditorPaperCanvas extends StatelessWidget {
     required this.paperBaseTheme,
     required this.inkColor,
     required this.isPaperDark,
-    required this.scrollController,
     required this.letterheadKey,
     required this.headerHeight,
     required this.entryDate,
@@ -59,32 +65,27 @@ class EditorPaperCanvas extends StatelessWidget {
     required this.onDateChanged,
     required this.onMoodChanged,
     required this.onWeatherChanged,
-    required this.controller,
-    required this.focusNode,
     required this.mediaSandboxService,
     required this.onSaveDraft,
+    required this.coordinator,
+    required this.pageController,
     this.currentSheetIndex = 0,
     this.totalSheets = 1,
     this.onPreviousSheet,
     this.onNextSheet,
+    this.onPageChanged,
+    this.onDeleteEphemera,
+    this.onSpillBack,
+    this.controller,
+    this.focusNode,
+    this.scrollController,
   });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (layoutContext, layoutConstraints) {
-        final mediaQuery = MediaQuery.of(layoutContext);
-        final unconstrainedScreenHeight = mediaQuery.size.height -
-            mediaQuery.padding.top -
-            mediaQuery.padding.bottom -
-            kToolbarHeight -
-            56.0;
-        final baseCanvasHeight = math.max(layoutConstraints.maxHeight, unconstrainedScreenHeight);
-        final scrollExtent = scrollController.hasClients
-            ? scrollController.position.maxScrollExtent
-            : 0.0;
-        final totalPaperHeight = math.max(baseCanvasHeight, baseCanvasHeight + scrollExtent);
-        final canvasSize = Size(layoutConstraints.maxWidth, totalPaperHeight);
+        final canvasSize = Size(layoutConstraints.maxWidth, layoutConstraints.maxHeight);
 
         final metrics = StationeryLayoutCalculator.calculate(
           canvasSize: canvasSize,
@@ -93,6 +94,10 @@ class EditorPaperCanvas extends StatelessWidget {
           compactMargins: true,
         );
         final activeRowHeight = metrics.lineStridePx;
+
+        // Synchronize coordinator metrics
+        coordinator.contentWidth = metrics.innerFrameRect.width;
+        coordinator.lineStridePx = activeRowHeight;
 
         // Inner content padding from Paper Heart border
         final double innerContentPaddingLeft;
@@ -113,122 +118,65 @@ class EditorPaperCanvas extends StatelessWidget {
         final horizontalRight = math.max(0.0, layoutConstraints.maxWidth - metrics.innerFrameRect.right) +
             innerContentPaddingRight;
 
-        // Viewport-bounded Paper Heart metrics for seal and border chrome placement
-        final visibleMetrics = StationeryLayoutCalculator.calculate(
-          canvasSize: Size(layoutConstraints.maxWidth, layoutConstraints.maxHeight),
-          style: templateStyle,
-          typography: typography,
-          compactMargins: true,
-        );
-
         return Stack(
           fit: StackFit.expand,
           children: [
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: scrollController,
-                builder: (canvasContext, scrollChild) {
-                  final scrollOffset = scrollController.hasClients
-                      ? scrollController.offset
-                      : 0.0;
-                  return TemplateCanvasContainer(
-                    style: templateStyle,
-                    typography: typography,
-                    scrollOffset: scrollOffset,
-                    headerHeight: headerHeight,
-                    layoutMetrics: metrics,
-                    customPadding: EdgeInsets.zero,
-                    child: const SizedBox.expand(),
-                  );
-                },
-              ),
-            ),
-            Theme(
-              data: paperBaseTheme.copyWith(
-                textTheme: paperBaseTheme.textTheme.apply(
-                  bodyColor: inkColor,
-                  displayColor: inkColor,
-                ),
-              ),
-              child: SingleChildScrollView(
-                controller: scrollController,
-                padding: EdgeInsets.only(top: metrics.heavenMarginPx),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            // Horizontal PageView stage (~280ms easeOutCubic transitions)
+            PageView.builder(
+              controller: pageController,
+              itemCount: coordinator.totalSheets,
+              physics: const PageScrollPhysics(),
+              onPageChanged: onPageChanged,
+              itemBuilder: (pageContext, sheetIndex) {
+                if (sheetIndex < 0 || sheetIndex >= coordinator.sheets.length) {
+                  return const SizedBox.shrink();
+                }
+                final sheet = coordinator.sheets[sheetIndex];
+
+                return Stack(
+                  fit: StackFit.expand,
                   children: [
-                    // 1. In-Paper Journal Letterhead wrapped inside IntegerSnappedLetterhead
-                    IntegerSnappedLetterhead(
-                      key: letterheadKey,
-                      lineStridePx: activeRowHeight,
-                      child: Container(
-                        padding: EdgeInsets.only(
-                          left: horizontalLeft,
-                          right: horizontalRight,
-                          top: 8.0,
-                          bottom: 8.0,
-                        ),
-                        child: JournalLetterhead(
-                          entryDate: entryDate,
-                          mood: mood,
-                          weather: weather,
-                          titleController: titleController,
-                          onDateChanged: onDateChanged,
-                          onMoodChanged: onMoodChanged,
-                          onWeatherChanged: onWeatherChanged,
-                        ),
-                      ),
+                    // 1. Procedural Template Canvas per sheet
+                    TemplateCanvasContainer(
+                      style: templateStyle,
+                      typography: typography,
+                      scrollOffset: 0.0,
+                      headerHeight: sheet is OpeningSheet ? headerHeight : 0.0,
+                      layoutMetrics: metrics,
+                      customPadding: EdgeInsets.zero,
+                      child: const SizedBox.expand(),
                     ),
 
-                    // 2. Quill Editor Content with contextual margin alignment
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: horizontalLeft,
-                        right: horizontalRight,
-                        bottom: 120.0,
-                      ),
-                      child: QuillEditor(
-                        controller: controller,
-                        focusNode: focusNode,
-                        scrollController: scrollController,
-                        config: QuillEditorConfig(
-                          placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
-                          expands: false,
-                          scrollable: false,
-                          embedBuilders: [
-                            SandboxedImageEmbedBuilder(
-                              mediaSandboxService: mediaSandboxService,
-                              onImageRemoved: onSaveDraft,
-                              onEmbedMutated: (mutatedBlock) => onSaveDraft(),
-                              rowHeight: activeRowHeight,
-                            ),
-                            SandboxedVideoEmbedBuilder(
-                              mediaSandboxService: mediaSandboxService,
-                              onVideoRemoved: onSaveDraft,
-                              onEmbedMutated: (mutatedBlock) => onSaveDraft(),
-                              rowHeight: activeRowHeight,
-                            ),
-                          ],
-                          customStyles: EditorQuillStylesBuilder.build(
-                            typography: typography,
-                            inkColor: inkColor,
-                            isPaperDark: isPaperDark,
-                            lineStridePx: activeRowHeight,
-                            backgroundType: templateStyle.type,
-                          ),
+                    // 2. Paper content theme
+                    Theme(
+                      data: paperBaseTheme.copyWith(
+                        textTheme: paperBaseTheme.textTheme.apply(
+                          bodyColor: inkColor,
+                          displayColor: inkColor,
                         ),
+                      ),
+                      child: _buildSheetBody(
+                        sheet: sheet,
+                        sheetIndex: sheetIndex,
+                        metrics: metrics,
+                        activeRowHeight: activeRowHeight,
+                        horizontalLeft: horizontalLeft,
+                        horizontalRight: horizontalRight,
+                        maxWidth: layoutConstraints.maxWidth,
                       ),
                     ),
                   ],
-                ),
-              ),
+                );
+              },
             ),
 
-            // Live Cinnabar Signature Seal anchored strictly inside Paper Heart
-            BoundedCinnabarSeal(
-              innerFrameRect: visibleMetrics.innerFrameRect,
-              containerSize: Size(layoutConstraints.maxWidth, layoutConstraints.maxHeight),
-              sealStyle: templateStyle.tokens.sealStyle,
-            ),
+            // Live Cinnabar Signature Seal renders ONLY on the final sheet
+            if (currentSheetIndex == totalSheets - 1)
+              BoundedCinnabarSeal(
+                innerFrameRect: metrics.innerFrameRect,
+                containerSize: canvasSize,
+                sealStyle: templateStyle.tokens.sealStyle,
+              ),
 
             // Paper-adaptive navigation chevrons and bottom page counter
             StationerySheetBorderChrome(
@@ -244,5 +192,56 @@ class EditorPaperCanvas extends StatelessWidget {
         );
       },
     );
+  }
+
+  Widget _buildSheetBody({
+    required StationerySheetDescriptor sheet,
+    required int sheetIndex,
+    required StationeryLayoutMetrics metrics,
+    required double activeRowHeight,
+    required double horizontalLeft,
+    required double horizontalRight,
+    required double maxWidth,
+  }) {
+    if (sheet is TextStationerySheet) {
+      return EditorTextSheetView(
+        sheet: sheet,
+        sheetIndex: sheetIndex,
+        metrics: metrics,
+        activeRowHeight: activeRowHeight,
+        horizontalLeft: horizontalLeft,
+        horizontalRight: horizontalRight,
+        templateStyle: templateStyle,
+        typography: typography,
+        inkColor: inkColor,
+        isPaperDark: isPaperDark,
+        letterheadKey: letterheadKey,
+        entryDate: entryDate,
+        mood: mood,
+        weather: weather,
+        titleController: titleController,
+        onDateChanged: onDateChanged,
+        onMoodChanged: onMoodChanged,
+        onWeatherChanged: onWeatherChanged,
+        mediaSandboxService: mediaSandboxService,
+        onSaveDraft: onSaveDraft,
+        onSpillBack: onSpillBack,
+      );
+    } else if (sheet is EphemeraSheet) {
+      return StationeryEphemeraSheet(
+        sheet: sheet,
+        innerFrameRect: metrics.innerFrameRect,
+        title: titleController.text.trim(),
+        mediaSandboxService: mediaSandboxService,
+        isActiveSheet: currentSheetIndex == sheet.sheetIndex,
+        onDelete: onDeleteEphemera != null ? () => onDeleteEphemera!(sheet.sheetIndex) : null,
+        onCaptionChanged: (newCaption) => onSaveDraft(),
+        isPaperDark: isPaperDark,
+        substrate: templateStyle.tokens.substrate,
+        inkColor: inkColor,
+        fontFamily: typography.fontFamily,
+      );
+    }
+    return const SizedBox.shrink();
   }
 }

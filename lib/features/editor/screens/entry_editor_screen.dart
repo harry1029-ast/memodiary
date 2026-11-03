@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -11,19 +9,21 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
+import '../controllers/editor_pagination_handler.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
+import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/editor_media_actions.dart';
+import '../widgets/editor_overlay_actions.dart';
 import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_top_app_bar.dart';
-import '../widgets/keepsake_scroll_view.dart';
 import '../widgets/scholar_chest/scholar_chest_drawer.dart';
 import '../widgets/writing_dock.dart';
 
 /// Full-Bleed rich-text multimodal diary editor in classical Ink & Paper stationery aesthetic.
-/// Decouples content (Quill Delta JSON) from presentation (Procedural Templates & Typography).
+/// Decouples content (Quill Delta JSON) from presentation (Procedural Templates & Discrete Sheets).
 class EntryEditorScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaSandboxService;
@@ -54,11 +54,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   late final AudioSanctumService _audioSanctumService;
   late final ImagePicker _imagePicker;
 
-  QuillController? _controller;
+  late final EditorPaginationCoordinator _coordinator;
+  final PageController _pageController = PageController();
   final TextEditingController _titleController = TextEditingController();
-  final FocusNode _editorFocusNode = FocusNode();
-  final ScrollController _editorScrollController = ScrollController();
   EditorAutosaveManager? _autosaveManager;
+  EditorPaginationHandler? _paginationHandler;
 
   final GlobalKey _letterheadKey = GlobalKey();
   double _headerHeight = 90.0;
@@ -77,6 +77,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   Entry? _entry;
   bool _isCenterAligned = false;
 
+  QuillController get _activeController =>
+      _paginationHandler?.activeTextController ?? QuillController.basic();
+
   @override
   void initState() {
     super.initState();
@@ -89,11 +92,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   @override
   void dispose() {
+    _paginationHandler?.dispose();
+    _pageController.dispose();
+    _coordinator.dispose();
     _autosaveManager?.dispose();
-    _controller?.dispose();
     _titleController.dispose();
-    _editorFocusNode.dispose();
-    _editorScrollController.dispose();
     if (widget.dictationService == null) {
       _dictationService.dispose();
     }
@@ -114,30 +117,22 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
       final templates = await widget.database.select(widget.database.templates).get();
       final template = templates.firstWhere(
-        (tpl) => tpl.id == entry.templateId,
+        (item) => item.id == entry.templateId,
         orElse: () => templates.first,
       );
 
-      // Parse Quill Delta
-      Document document;
-      try {
-        if (entry.contentDelta.trim().isEmpty) {
-          document = Document();
-        } else {
-          final decoded = jsonDecode(entry.contentDelta);
-          if (decoded is List) {
-            document = Document.fromJson(decoded);
-          } else {
-            document = Document();
-          }
-        }
-      } catch (_) {
-        document = Document();
-      }
+      final derivedTypography = TypographySettings.fromTemplate(template);
+      final templateStyle = TemplateStyle.fromTemplate(template);
+      final attachments = await widget.database.getMediaForEntry(widget.entryId);
 
-      final controller = QuillController(
-        document: document,
-        selection: const TextSelection.collapsed(offset: 0),
+      _coordinator = EditorPaginationCoordinator(
+        typography: derivedTypography,
+        templateStyle: templateStyle,
+      );
+      _coordinator.initializeFromDelta(
+        entry.contentDelta,
+        fallbackPlainText: entry.plainText,
+        attachments: attachments,
       );
 
       _titleController.text = entry.title ?? '';
@@ -145,17 +140,24 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       final autosave = EditorAutosaveManager(
         database: widget.database,
         entryId: widget.entryId,
-        controller: controller,
+        coordinator: _coordinator,
         titleController: _titleController,
       );
 
-      final derivedTypography = TypographySettings.fromTemplate(template);
+      final handler = EditorPaginationHandler(
+        coordinator: _coordinator,
+        pageController: _pageController,
+        autosaveManager: autosave,
+        onStateChanged: () {
+          if (mounted) setState(() {});
+        },
+      );
 
       if (mounted) {
         setState(() {
           _currentTemplate = template;
-          _controller = controller;
           _autosaveManager = autosave;
+          _paginationHandler = handler;
           _entryDate = entry.entryDate;
           _mood = entry.mood;
           _weather = entry.weather;
@@ -174,21 +176,21 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   void _toggleCenterAlignment() {
-    if (_controller == null) return;
+    final active = _paginationHandler?.ensureActiveTextSheet() ?? _activeController;
     setState(() {
       _isCenterAligned = !_isCenterAligned;
     });
-    _controller!.formatSelection(
+    active.formatSelection(
       _isCenterAligned ? Attribute.centerAlignment : Attribute.leftAlignment,
     );
+    _autosaveManager?.markDirty();
   }
 
   Future<void> _openScholarChest([ScholarArtifactType initialArtifact = ScholarArtifactType.stationeryFan]) async {
-    if (_currentTemplate == null) return;
-    await ScholarChestDrawer.show(
+    await EditorOverlayActions.openScholarChest(
       context: context,
       database: widget.database,
-      activeTemplateId: _currentTemplate!.id,
+      currentTemplate: _currentTemplate,
       typography: _typography,
       audioSanctumService: _audioSanctumService,
       unlockAt: _unlockAt,
@@ -199,12 +201,19 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           _currentTemplate = newTemplate;
           _typography = TypographySettings.fromTemplate(newTemplate);
         });
+        _coordinator.updateTypography(
+          _typography,
+          newTemplateStyle: TemplateStyle.fromTemplate(newTemplate),
+        );
+        _paginationHandler?.attachSheetListeners();
         await widget.database.updateEntryTemplate(widget.entryId, newTemplate.id);
       },
       onTypographyChanged: (newTypography) {
         setState(() {
           _typography = newTypography;
         });
+        _coordinator.updateTypography(newTypography);
+        _paginationHandler?.attachSheetListeners();
       },
       onLockChanged: (newUnlockAt) async {
         await widget.database.updateEntryUnlockAt(widget.entryId, newUnlockAt);
@@ -219,50 +228,59 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   void _openKeepsakeScroll() {
-    if (_entry == null || _currentTemplate == null) return;
-    final templateStyle = TemplateStyle.fromTemplate(_currentTemplate!);
-    final currentDelta = jsonEncode(_controller?.document.toDelta().toJson() ?? []);
-    final currentPlain = _controller?.document.toPlainText() ?? _entry!.plainText;
-    final currentTitle = _titleController.text.trim();
-
-    final previewEntry = _entry!.copyWith(
-      title: Value(currentTitle),
-      contentDelta: currentDelta,
-      plainText: currentPlain,
-      templateId: _currentTemplate!.id,
-    );
-
-    KeepsakeScrollView.show(
+    EditorOverlayActions.openKeepsakeScroll(
       context: context,
-      entry: previewEntry,
-      style: templateStyle,
-      mediaService: widget.mediaSandboxService,
+      entry: _entry,
+      currentTemplate: _currentTemplate,
+      coordinator: _coordinator,
+      titleController: _titleController,
+      mediaSandboxService: widget.mediaSandboxService,
       database: widget.database,
     );
   }
 
-  Future<void> _handleImagePick() async {
-    await EditorMediaActions.handleImagePick(
-      context: context,
-      imagePicker: _imagePicker,
-      controller: _controller,
-      mediaSandboxService: widget.mediaSandboxService,
-      database: widget.database,
-      entryId: widget.entryId,
-      autosaveManager: _autosaveManager,
-    );
-  }
+  Future<void> _handleMediaPick({required bool isVideo}) async {
+    void onDone() {
+      _paginationHandler?.attachSheetListeners();
+      if (mounted) {
+        setState(() {
+          _paginationHandler?.currentSheetIndex = _coordinator.activeSheetIndex;
+        });
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            _coordinator.activeSheetIndex,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    }
 
-  Future<void> _handleVideoPick() async {
-    await EditorMediaActions.handleVideoPick(
-      context: context,
-      imagePicker: _imagePicker,
-      controller: _controller,
-      mediaSandboxService: widget.mediaSandboxService,
-      database: widget.database,
-      entryId: widget.entryId,
-      autosaveManager: _autosaveManager,
-    );
+    if (isVideo) {
+      await EditorMediaActions.handleVideoPick(
+        context: context,
+        imagePicker: _imagePicker,
+        coordinator: _coordinator,
+        pageController: _pageController,
+        mediaSandboxService: widget.mediaSandboxService,
+        database: widget.database,
+        entryId: widget.entryId,
+        autosaveManager: _autosaveManager,
+        onStateChanged: onDone,
+      );
+    } else {
+      await EditorMediaActions.handleImagePick(
+        context: context,
+        imagePicker: _imagePicker,
+        coordinator: _coordinator,
+        pageController: _pageController,
+        mediaSandboxService: widget.mediaSandboxService,
+        database: widget.database,
+        entryId: widget.entryId,
+        autosaveManager: _autosaveManager,
+        onStateChanged: onDone,
+      );
+    }
   }
 
   void _handleShuffleSpark() {
@@ -274,8 +292,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   void _handleInsertPrompt(String prompt) {
+    final active = _paginationHandler?.ensureActiveTextSheet() ?? _activeController;
     EditorMediaActions.handleInsertPrompt(
-      controller: _controller,
+      controller: active,
       prompt: prompt,
       autosaveManager: _autosaveManager,
       onStateChanged: () => setState(() {}),
@@ -292,7 +311,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
 
-    if (_isLoading || _controller == null || _currentTemplate == null) {
+    if (_isLoading || _currentTemplate == null || _paginationHandler == null) {
       return Scaffold(
         backgroundColor: tokens.xuanGround,
         body: Center(
@@ -308,6 +327,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     final paperColor = templateStyle.backgroundColor;
     final inkColor = isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF212121);
     final iconColor = isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF2D2D2D);
+    final currentSheetIndex = _paginationHandler!.currentSheetIndex;
 
     _updateHeaderHeight();
 
@@ -334,7 +354,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 paperBaseTheme: paperBaseTheme,
                 inkColor: inkColor,
                 isPaperDark: isPaperDark,
-                scrollController: _editorScrollController,
                 letterheadKey: _letterheadKey,
                 headerHeight: _headerHeight,
                 entryDate: _entryDate,
@@ -353,27 +372,37 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                   setState(() => _weather = selectedWeather);
                   widget.database.updateEntryMetadata(widget.entryId, weather: selectedWeather);
                 },
-                controller: _controller!,
-                focusNode: _editorFocusNode,
                 mediaSandboxService: widget.mediaSandboxService,
                 onSaveDraft: () => _autosaveManager?.saveDraft(),
+                coordinator: _coordinator,
+                pageController: _pageController,
+                currentSheetIndex: currentSheetIndex,
+                totalSheets: _coordinator.totalSheets,
+                onPreviousSheet: () => _paginationHandler!.goToSheet(currentSheetIndex - 1),
+                onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
+                onPageChanged: _paginationHandler!.handlePageChanged,
+                onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
+                onSpillBack: _paginationHandler!.handleSpillBack,
               ),
             ),
 
-            // Floating Dictation Bar when active
             if (_isDictating)
               DictationBar(
-                controller: _controller!,
+                controller: _activeController,
                 dictationService: _dictationService,
                 onClose: () => setState(() => _isDictating = false),
               ),
 
-            // Bottom Progressive Writing Dock
             WritingDock(
-              controller: _controller!,
-              onPickImage: _handleImagePick,
-              onPickVideo: _handleVideoPick,
-              onToggleDictation: () => setState(() => _isDictating = !_isDictating),
+              controller: _activeController,
+              onPickImage: () => _handleMediaPick(isVideo: false),
+              onPickVideo: () => _handleMediaPick(isVideo: true),
+              onToggleDictation: () {
+                if (!_isDictating) {
+                  _paginationHandler?.ensureActiveTextSheet();
+                }
+                setState(() => _isDictating = !_isDictating);
+              },
               onShuffleSpark: _handleShuffleSpark,
               isDictating: _isDictating,
               backgroundColor: paperColor.withValues(alpha: 0.95),

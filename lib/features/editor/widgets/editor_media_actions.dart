@@ -9,7 +9,9 @@ import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../controllers/editor_autosave_manager.dart';
+import '../models/media_embed_data.dart';
 import '../models/thought_spark.dart';
+import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
 
 /// Modular helpers for sandboxed media ingestion (photos and short videos)
@@ -18,15 +20,18 @@ class EditorMediaActions {
   const EditorMediaActions._();
 
   /// Prompts the user to pick an image (camera or gallery), compresses to WebP,
-  /// copies into private sandbox storage, and embeds into the Quill Delta.
+  /// copies into private sandbox storage, and embeds into the Quill Delta or coordinator.
   static Future<void> handleImagePick({
     required BuildContext context,
     required ImagePicker imagePicker,
-    required QuillController? controller,
+    QuillController? controller,
+    EditorPaginationCoordinator? coordinator,
+    PageController? pageController,
     required MediaSandboxService mediaSandboxService,
     required AppDatabase database,
     required String entryId,
     EditorAutosaveManager? autosaveManager,
+    VoidCallback? onStateChanged,
   }) async {
     final tokens = InkDiaryTheme.tokensOf(context);
 
@@ -64,17 +69,11 @@ class EditorMediaActions {
 
     try {
       final picked = await imagePicker.pickImage(source: source);
-      if (picked == null || controller == null) return;
+      if (picked == null) return;
 
       final relativePath = await mediaSandboxService.copyAndCompressImage(
         File(picked.path),
       );
-
-      final index = controller.selection.baseOffset.clamp(
-        0,
-        controller.document.length - 1,
-      );
-      controller.document.insert(index, BlockEmbed.image(relativePath));
 
       await database.attachMediaToEntry(
         id: const Uuid().v4(),
@@ -82,6 +81,26 @@ class EditorMediaActions {
         relativePath: relativePath,
         mediaType: 'image',
       );
+
+      if (coordinator != null) {
+        final targetIndex = coordinator.activeSheetIndex + 1;
+        coordinator.insertEphemeraSheet(
+          mediaType: 'image',
+          mediaData: MediaEmbedData(
+            path: relativePath,
+            caption: '',
+            aspect: 'auto',
+          ),
+          atIndex: targetIndex,
+        );
+        onStateChanged?.call();
+      } else if (controller != null) {
+        final index = controller.selection.baseOffset.clamp(
+          0,
+          controller.document.length - 1,
+        );
+        controller.document.insert(index, BlockEmbed.image(relativePath));
+      }
 
       autosaveManager?.saveDraft();
     } catch (error) {
@@ -94,15 +113,18 @@ class EditorMediaActions {
   }
 
   /// Prompts the user to pick or record a video (camera or gallery, <= 60s),
-  /// sandboxes into private storage, and embeds into the Quill Delta.
+  /// sandboxes into private storage, and embeds into the Quill Delta or coordinator.
   static Future<void> handleVideoPick({
     required BuildContext context,
     required ImagePicker imagePicker,
-    required QuillController? controller,
+    QuillController? controller,
+    EditorPaginationCoordinator? coordinator,
+    PageController? pageController,
     required MediaSandboxService mediaSandboxService,
     required AppDatabase database,
     required String entryId,
     EditorAutosaveManager? autosaveManager,
+    VoidCallback? onStateChanged,
   }) async {
     final tokens = InkDiaryTheme.tokensOf(context);
 
@@ -143,17 +165,11 @@ class EditorMediaActions {
         source: source,
         maxDuration: const Duration(seconds: 60),
       );
-      if (picked == null || controller == null) return;
+      if (picked == null) return;
 
       final result = await mediaSandboxService.copyAndSandboxVideo(
         File(picked.path),
       );
-
-      final index = controller.selection.baseOffset.clamp(
-        0,
-        controller.document.length - 1,
-      );
-      controller.document.insert(index, BlockEmbed.video(result.relativePath));
 
       await database.attachMediaToEntry(
         id: const Uuid().v4(),
@@ -162,6 +178,26 @@ class EditorMediaActions {
         mediaType: 'video',
         thumbnailPath: result.thumbnailPath,
       );
+
+      if (coordinator != null) {
+        final targetIndex = coordinator.activeSheetIndex + 1;
+        coordinator.insertEphemeraSheet(
+          mediaType: 'video',
+          mediaData: MediaEmbedData(
+            path: result.relativePath,
+            caption: '',
+            aspect: 'auto',
+          ),
+          atIndex: targetIndex,
+        );
+        onStateChanged?.call();
+      } else if (controller != null) {
+        final index = controller.selection.baseOffset.clamp(
+          0,
+          controller.document.length - 1,
+        );
+        controller.document.insert(index, BlockEmbed.video(result.relativePath));
+      }
 
       autosaveManager?.saveDraft();
     } on VideoDurationExceededException catch (error) {

@@ -12,6 +12,7 @@ import '../models/typography_settings.dart';
 import 'editor_delta_partitioner.dart';
 import 'editor_pagination_models.dart';
 import 'stationery_delta_splitter.dart';
+import 'stationery_delta_synthesizer.dart';
 import 'stationery_line_measurer.dart';
 
 export 'editor_pagination_models.dart';
@@ -27,6 +28,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   double? contentWidth;
   double? lineStridePx;
   bool isImeComposing = false;
+  ValueChanged<AutoSpillResult>? onAutoSpill;
 
   EditorPaginationCoordinator({
     this.typography = const TypographySettings(),
@@ -115,61 +117,16 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   }
 
   /// Synthesizes all active sheets back into a single continuous Quill Delta.
-  Delta synthesizeUnifiedDelta() {
-    final unified = Delta();
-
-    for (int index = 0; index < _sheets.length; index++) {
-      final sheet = _sheets[index];
-      if (sheet is TextStationerySheet) {
-        final sheetDelta = sheet.delta;
-        if (sheet.hasTrailingSoftNewline && sheetDelta.isNotEmpty) {
-          for (int opIndex = 0; opIndex < sheetDelta.operations.length; opIndex++) {
-            final op = sheetDelta.operations[opIndex];
-            final isLast = opIndex == sheetDelta.operations.length - 1;
-
-            if (isLast && op.isInsert && op.data is String) {
-              final text = op.data as String;
-              if (text.endsWith('\n')) {
-                final stripped = text.substring(0, text.length - 1);
-                if (stripped.isNotEmpty) {
-                  unified.push(Operation.insert(stripped, op.attributes));
-                }
-              } else {
-                unified.push(op);
-              }
-            } else {
-              unified.push(op);
-            }
-          }
-        } else {
-          for (final op in sheetDelta.operations) {
-            unified.push(op);
-          }
-        }
-      } else if (sheet is EphemeraSheet) {
-        final embedValue = sheet.currentMediaData.toEmbedValue();
-        unified.push(Operation.insert({sheet.mediaType: embedValue}));
-        unified.push(Operation.insert('\n'));
-      }
-    }
-
-    if (unified.isEmpty) {
-      unified.push(Operation.insert('\n'));
-    } else {
-      final lastOp = unified.operations.last;
-      if (lastOp.data is! String || !(lastOp.data as String).endsWith('\n')) {
-        unified.push(Operation.insert('\n'));
-      }
-    }
-
-    return unified;
-  }
+  Delta synthesizeUnifiedDelta() => StationeryDeltaSynthesizer.synthesize(_sheets);
 
   /// Re-synthesizes the unified Delta JSON string and segmented plain text representation.
   (String deltaJson, String plainText) reSynthesize() {
     final unified = synthesizeUnifiedDelta();
-    final jsonStr = jsonEncode(unified.toJson());
     final plainText = Document.fromDelta(unified).toPlainText().trim();
+    if (plainText.isEmpty && _sheets.every((sheet) => sheet is! EphemeraSheet)) {
+      return ('[]', '');
+    }
+    final jsonStr = jsonEncode(unified.toJson());
     return (jsonStr, plainText);
   }
 
@@ -246,12 +203,14 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     checkAndPerformAutoSpill(destinationIndex);
     notifyListeners();
 
-    return AutoSpillResult(
+    final result = AutoSpillResult(
       sourceSheetIndex: sheetIndex,
       destinationSheetIndex: destinationIndex,
       destinationCaretOffset: destinationCaretOffset,
       didAllocateNewSheet: didAllocateNew,
     );
+    onAutoSpill?.call(result);
+    return result;
   }
 
   /// Handles backspace at offset 0 on a continuation sheet, triggering Spill-Back.
@@ -401,6 +360,22 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       _activeSheetIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
       notifyListeners();
     }
+  }
+
+  /// Finds or creates a text-bearing sheet immediately following [fromIndex].
+  TextStationerySheet getOrCreateFollowingTextSheet(int fromIndex) {
+    for (int sheetIndex = fromIndex + 1; sheetIndex < _sheets.length; sheetIndex++) {
+      final candidate = _sheets[sheetIndex];
+      if (candidate is TextStationerySheet) {
+        return candidate;
+      }
+    }
+    final newIndex = _sheets.length;
+    final continuation = ContinuationSheet.empty(sheetIndex: newIndex);
+    _sheets.add(continuation);
+    _reindexSheets();
+    notifyListeners();
+    return continuation;
   }
 
   void _reindexSheets() {
