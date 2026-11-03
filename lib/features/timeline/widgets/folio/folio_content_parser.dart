@@ -203,7 +203,10 @@ class FolioContentParser {
     return segments;
   }
 
-  /// Extracts an opening reflection ribbon string from text or {夹注:...}.
+  /// Extracts an opening reflection ribbon string from explicit `{夹注:...}` annotation.
+  ///
+  /// Returns `null` if no `{夹注:...}` tag is authored, ensuring standard diary body
+  /// text is never erroneously hijacked or displayed on the frontispiece cover.
   static String? extractOpeningReflection({
     required String plainText,
     String? title,
@@ -212,20 +215,7 @@ class FolioContentParser {
     if (match != null && match.group(1)?.isNotEmpty == true) {
       return '眉批夹注：${match.group(1)!.trim()}';
     }
-
-    final trimmed = plainText.trim();
-    if (trimmed.isEmpty) return null;
-
-    final firstLine = trimmed.split('\n').first.trim();
-    if (firstLine.isEmpty) return null;
-    if (title != null && firstLine == title.trim()) {
-      final lines = trimmed.split('\n');
-      if (lines.length > 1 && lines[1].trim().isNotEmpty) {
-        return '眉批夹注：${lines[1].trim()}';
-      }
-    }
-
-    return '眉批夹注：$firstLine';
+    return null;
   }
 
   /// Formats classical lunar date with Ganzhi cyclical year, e.g. `岁次丙午 · 十月廿三`.

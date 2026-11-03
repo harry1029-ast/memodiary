@@ -5,6 +5,7 @@ import '../../../editor/widgets/sandboxed_video_player.dart';
 import '../../../templates/models/template_style.dart';
 import 'folio_cinnabar_seal_widget.dart';
 import 'folio_leaf_model.dart';
+import 'folio_leaf_scaffold.dart';
 import 'folio_reading_perspective.dart';
 import 'folio_silk_corner_mounts_painter.dart';
 import 'folio_silk_ruling_painter.dart';
@@ -33,39 +34,42 @@ class FolioContentLeafPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final accentColor = theme.isDark ? const Color(0xFFE07A6B) : const Color(0xFFB83B2E);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildRunningHeader(),
-          const SizedBox(height: 6),
-          Center(
-            child: SizedBox(
-              width: 320,
-              height: 448,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: FolioSilkRulingPainter(
-                        layout: _resolveRulingLayout(),
-                        ruleColor: theme.ruleColor,
-                        frameColor: theme.frameColor,
-                        isDark: theme.isDark,
+    return FolioLeafScaffold(
+      theme: theme,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildRunningHeader(),
+            const SizedBox(height: 6),
+            Center(
+              child: SizedBox(
+                width: 320,
+                height: 448,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: FolioSilkRulingPainter(
+                          layout: _resolveRulingLayout(),
+                          ruleColor: theme.ruleColor,
+                          frameColor: theme.frameColor,
+                          isDark: theme.isDark,
+                        ),
                       ),
                     ),
-                  ),
-                  Positioned.fill(child: _buildLeafContent()),
-                  if (leaf.isConcludingLeaf) _buildConcludingSeal(),
-                ],
+                    Positioned.fill(child: _buildLeafContent()),
+                    if (leaf.isConcludingLeaf) _buildConcludingSeal(),
+                  ],
+                ),
               ),
             ),
-          ),
-          const Spacer(),
-          _buildFooterColophon(accentColor),
-        ],
+            const Spacer(),
+            _buildFooterColophon(accentColor),
+          ],
+        ),
       ),
     );
   }
@@ -369,15 +373,10 @@ class FolioContentLeafPage extends StatelessWidget {
   Widget _buildConcludingSeal() {
     final isHorizontal = leaf is FolioContentBodyLeaf &&
         (leaf as FolioContentBodyLeaf).layout == FolioRulingLayout.faithfulHorizontal;
-    final sealText = switch (leaf) {
-      FolioContentBodyLeaf bodyLeaf => bodyLeaf.sealText ?? '心迹安放',
-      FolioTippedInEphemeraLeaf ephemeraLeaf => ephemeraLeaf.sealText ?? '心迹安放',
-      _ => '心迹安放',
-    };
-    final sealStyle = switch (leaf) {
-      FolioContentBodyLeaf bodyLeaf => bodyLeaf.sealStyle,
-      FolioTippedInEphemeraLeaf ephemeraLeaf => ephemeraLeaf.sealStyle,
-      _ => SealCarvingStyle.zhuwen,
+    final (sealText, sealStyle) = switch (leaf) {
+      FolioContentBodyLeaf b => (b.sealText ?? '心迹安放', b.sealStyle),
+      FolioTippedInEphemeraLeaf e => (e.sealText ?? '心迹安放', e.sealStyle),
+      _ => ('心迹安放', SealCarvingStyle.zhuwen),
     };
 
     return Positioned(

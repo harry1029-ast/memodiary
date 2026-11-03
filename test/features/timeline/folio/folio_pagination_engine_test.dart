@@ -59,7 +59,7 @@ void main() {
       expect(gregorian, contains('亥时一刻'));
     });
 
-    test('extracts opening reflection from {夹注:...} or first sentence', () {
+    test('extracts opening reflection only from explicit {夹注:...}', () {
       final reflection1 = FolioContentParser.extractOpeningReflection(
         plainText: '晚来天欲雪{夹注:孤灯疾书见闻}，室内小炉温茶。',
       );
@@ -69,7 +69,7 @@ void main() {
         plainText: '暮秋听雨小记\n窗外梧桐叶落声渐密。',
         title: '暮秋听雨小记',
       );
-      expect(reflection2, equals('眉批夹注：窗外梧桐叶落声渐密。'));
+      expect(reflection2, isNull);
     });
   });
 

@@ -209,10 +209,10 @@ class FolioBottomDock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.only(
-        top: 10,
-        bottom: MediaQuery.paddingOf(context).bottom + 10,
-        left: 18,
-        right: 18,
+        top: 8,
+        bottom: MediaQuery.paddingOf(context).bottom + 8,
+        left: 10,
+        right: 10,
       ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -226,92 +226,119 @@ class FolioBottomDock extends StatelessWidget {
         ),
       ),
       child: MediaQuery.withClampedTextScaling(
-        maxScaleFactor: 1.3,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            TextButton.icon(
-              key: const Key('folio_reading_perspective_btn'),
-              onPressed: onOpenPerspective,
-              icon: const Icon(Icons.auto_stories_outlined, size: 16, color: Color(0xFFD4AF37)),
-              label: Text(
-                perspective.label,
-                style: const TextStyle(fontSize: 13, color: Color(0xFFE6E1D8)),
-              ),
-              style: TextButton.styleFrom(
-                backgroundColor: const Color(0x1AD4AF37),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  key: const Key('folio_prev_page_btn'),
-                  icon: const Icon(Icons.chevron_left_rounded, size: 20, color: Color(0xFFE6E1D8)),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                  tooltip: '上一页',
-                  onPressed: onPrevPage,
-                ),
-                InkWell(
-                  key: const Key('folio_page_indicator'),
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: onOpenPageJump,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0x1AFFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '第 ${currentPageIndex + 1} / $totalPages 页',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFFB3ADA3),
-                        letterSpacing: 0.8,
+        maxScaleFactor: 1.2,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.maxWidth;
+            return SizedBox(
+              width: availableWidth,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: availableWidth,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton.icon(
+                        key: const Key('folio_reading_perspective_btn'),
+                        onPressed: onOpenPerspective,
+                        icon: const Icon(Icons.auto_stories_outlined, size: 14, color: Color(0xFFD4AF37)),
+                        label: Text(
+                          perspective.label,
+                          style: const TextStyle(fontSize: 12, color: Color(0xFFE6E1D8)),
+                        ),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0x1AD4AF37),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
                       ),
-                    ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            key: const Key('folio_prev_page_btn'),
+                            icon: const Icon(Icons.chevron_left_rounded, size: 18, color: Color(0xFFE6E1D8)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 24, minHeight: 28),
+                            visualDensity: VisualDensity.compact,
+                            tooltip: '上一页',
+                            onPressed: onPrevPage,
+                          ),
+                          InkWell(
+                            key: const Key('folio_page_indicator'),
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: onOpenPageJump,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0x1AFFFFFF),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '第 ${currentPageIndex + 1} / $totalPages 页',
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  color: Color(0xFFB3ADA3),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            key: const Key('folio_next_page_btn'),
+                            icon: const Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFFE6E1D8)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 24, minHeight: 28),
+                            visualDensity: VisualDensity.compact,
+                            tooltip: '下一页',
+                            onPressed: onNextPage,
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            key: const Key('folio_share_btn'),
+                            icon: const Icon(Icons.share_outlined, size: 17, color: Color(0xFFE6E1D8)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            visualDensity: VisualDensity.compact,
+                            tooltip: '分享',
+                            onPressed: onShare,
+                          ),
+                          const SizedBox(width: 4),
+                          FilledButton.icon(
+                            key: const Key('folio_edit_entry_btn'),
+                            onPressed: onEditEntry,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFFB83B2E),
+                              foregroundColor: const Color(0xFFFAF7F0),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            icon: const Icon(Icons.edit_outlined, size: 13),
+                            label: const Text('落墨修改', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                IconButton(
-                  key: const Key('folio_next_page_btn'),
-                  icon: const Icon(Icons.chevron_right_rounded, size: 20, color: Color(0xFFE6E1D8)),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                  tooltip: '下一页',
-                  onPressed: onNextPage,
-                ),
-              ],
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  key: const Key('folio_share_btn'),
-                  icon: const Icon(Icons.share_outlined, size: 18, color: Color(0xFFE6E1D8)),
-                  tooltip: '分享',
-                  onPressed: onShare,
-                ),
-                const SizedBox(width: 4),
-                FilledButton.icon(
-                  key: const Key('folio_edit_entry_btn'),
-                  onPressed: onEditEntry,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFB83B2E),
-                    foregroundColor: const Color(0xFFFAF7F0),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                  ),
-                  icon: const Icon(Icons.edit_outlined, size: 15),
-                  label: const Text('落墨修改', style: TextStyle(fontSize: 13)),
-                ),
-              ],
-            ),
-          ],
+              ),
+            );
+          },
         ),
       ),
     );
   }
 }
+

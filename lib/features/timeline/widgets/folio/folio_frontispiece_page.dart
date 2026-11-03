@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/services/media_sandbox_service.dart';
 import 'folio_leaf_model.dart';
+import 'folio_leaf_scaffold.dart';
 import 'folio_reading_perspective.dart';
 import 'folio_shanshui_art_painter.dart';
 import 'folio_silk_corner_mounts_painter.dart';
@@ -25,35 +26,38 @@ class FolioFrontispiecePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final accentColor = theme.isDark ? const Color(0xFFE07A6B) : const Color(0xFFB83B2E);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildTopMetadata(accentColor),
-          const SizedBox(height: 10),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-              decoration: BoxDecoration(
-                border: Border.all(color: accentColor.withValues(alpha: 0.42), width: 1.4),
-                color: theme.isDark ? Colors.white.withValues(alpha: 0.015) : Colors.white.withValues(alpha: 0.25),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildTitleBanner(accentColor),
-                  const SizedBox(height: 14),
-                  Expanded(child: _buildArtworkMount(accentColor)),
-                  const SizedBox(height: 12),
-                  _buildReflectionOrPlaceholder(accentColor),
-                ],
+    return FolioLeafScaffold(
+      theme: theme,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildTopMetadata(accentColor),
+            const SizedBox(height: 10),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                decoration: BoxDecoration(
+                  border: Border.all(color: accentColor.withValues(alpha: 0.42), width: 1.4),
+                  color: theme.isDark ? Colors.white.withValues(alpha: 0.015) : Colors.white.withValues(alpha: 0.25),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildTitleBanner(accentColor),
+                    const SizedBox(height: 14),
+                    Expanded(child: _buildArtworkMount(accentColor)),
+                    const SizedBox(height: 12),
+                    _buildReflectionOrPlaceholder(accentColor),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          _buildBottomFooter(accentColor),
-        ],
+            const SizedBox(height: 8),
+            _buildBottomFooter(accentColor),
+          ],
+        ),
       ),
     );
   }
