@@ -61,27 +61,22 @@ class FolioFrontispiecePage extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.08),
-                border: Border.all(color: accentColor.withValues(alpha: 0.45)),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Text(
-                leaf.lunarDate,
-                style: TextStyle(fontSize: 10.5, color: accentColor, letterSpacing: 1.2, fontFamily: theme.fontFamily),
-              ),
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.08),
+              border: Border.all(color: accentColor.withValues(alpha: 0.45)),
+              borderRadius: BorderRadius.circular(2),
             ),
-            if (leaf.gregorianDate.isNotEmpty) ...[
-              const SizedBox(width: 6),
-              Text(leaf.gregorianDate, style: TextStyle(fontSize: 10.0, color: theme.inkSecondary, letterSpacing: 0.8)),
-            ],
-          ],
+            child: Text(
+              leaf.lunarDate,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 10.5, color: accentColor, letterSpacing: 1.0, fontFamily: theme.fontFamily),
+            ),
+          ),
         ),
+        const SizedBox(width: 8),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -113,16 +108,21 @@ class FolioFrontispiecePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('拾光日记 · 岁时扉页', style: TextStyle(fontSize: 10.0, letterSpacing: 2.0, color: theme.inkSecondary)),
+              Text(
+                leaf.gregorianDate.isNotEmpty
+                    ? leaf.gregorianDate
+                    : '拾光日记 · 岁时扉页',
+                style: TextStyle(fontSize: 10.0, letterSpacing: 1.2, color: theme.inkSecondary),
+              ),
               const SizedBox(height: 2),
               Text(
                 leaf.entryTitle,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 20.0,
+                  fontSize: 18.0,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 1.8,
+                  letterSpacing: 1.4,
                   fontFamily: theme.fontFamily,
                   color: theme.inkPrimary,
                 ),

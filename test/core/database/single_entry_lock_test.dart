@@ -183,7 +183,7 @@ void main() {
         ),
       );
 
-      expect(find.text('Private Reflection'), findsOneWidget);
+      expect(find.text('Private Reflection'), findsAtLeastNWidgets(1));
       expect(find.text('🔒 This entry is locked'), findsOneWidget);
       expect(find.textContaining('Hidden confidential'), findsNothing);
 
@@ -216,7 +216,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('This Diary Entry is Locked'), findsNothing);
-      expect(find.text('Private Reflection'), findsOneWidget);
+      expect(find.text('Private Reflection'), findsAtLeastNWidgets(1));
     });
   });
 }

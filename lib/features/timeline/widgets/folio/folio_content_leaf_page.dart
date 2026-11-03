@@ -353,18 +353,15 @@ class FolioContentLeafPage extends StatelessWidget {
   }
 
   Widget _buildFooterColophon(Color accentColor) {
-    final lunarDate = switch (leaf) {
-      FolioContentBodyLeaf bodyLeaf => bodyLeaf.lunarDate,
-      FolioTippedInEphemeraLeaf ephemeraLeaf => ephemeraLeaf.lunarDate,
-      _ => '',
-    };
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          '第 ${leaf.leafIndex + 1} / ${leaf.totalLeaves} 页 · 拾光存卷 $lunarDate',
-          style: TextStyle(fontSize: 10.0, letterSpacing: 1.1, color: theme.inkSecondary),
+        Expanded(
+          child: Text(
+            '第 ${leaf.leafIndex + 1}/${leaf.totalLeaves} 页 · 拾光存卷',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 10.0, letterSpacing: 1.1, color: theme.inkSecondary),
+          ),
         ),
         Row(
           mainAxisSize: MainAxisSize.min,

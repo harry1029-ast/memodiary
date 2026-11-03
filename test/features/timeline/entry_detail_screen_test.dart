@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
+import 'package:memodiary/features/timeline/widgets/folio/folio_3d_stage.dart';
+import 'package:memodiary/features/timeline/widgets/folio/folio_reading_perspective.dart';
+import 'package:memodiary/features/timeline/widgets/folio/thread_bound_folio_screen.dart';
 
 void main() {
   late AppDatabase db;
@@ -21,8 +22,8 @@ void main() {
     await db.close();
   });
 
-  group('EntryDetailScreen Widget Tests', () {
-    testWidgets('renders entry inside template with metadata, title, and action buttons', (WidgetTester tester) async {
+  group('EntryDetailScreen Thread-Bound Folio Overhaul Tests', () {
+    testWidgets('renders entry inside ThreadBoundFolioScreen with frontispiece metadata and action dock', (WidgetTester tester) async {
       final now = DateTime(2026, 10, 16, 14, 30);
 
       final entry = Entry(
@@ -62,23 +63,25 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Verify Title & Metadata badges
-      expect(find.text('Reflections on Autumn'), findsOneWidget);
-      expect(find.text('W42 Review'), findsOneWidget);
-      expect(find.text('🙂'), findsOneWidget); // Mood 4 emoji
-      expect(find.byIcon(Icons.wb_sunny_outlined), findsOneWidget); // Weather sunny
+      // Verify Folio stage rendered
+      expect(find.byType(ThreadBoundFolioScreen), findsOneWidget);
+      expect(find.byType(Folio3DStage), findsOneWidget);
 
-      // Verify Template and Rich-text editor are rendered
-      expect(find.byType(TemplateCanvasContainer), findsOneWidget);
-      expect(find.byType(quill.QuillEditor), findsOneWidget);
+      // Verify Title & Frontispiece metadata
+      expect(find.text('Reflections on Autumn'), findsAtLeastNWidgets(1));
+      expect(find.text('周报 · 第42周'), findsOneWidget);
+      expect(find.text('愉快'), findsOneWidget); // Mood 4
 
-      // Verify Action Bar buttons exist
-      expect(find.text('Template'), findsOneWidget);
-      expect(find.text('Share'), findsOneWidget);
-      expect(find.text('Edit Entry'), findsOneWidget);
+      // Verify Action Bar items exist (Reading Perspective, Share, Edit)
+      expect(find.byKey(const Key('folio_reading_perspective_btn')), findsOneWidget);
+      expect(find.text('忠实原貌'), findsOneWidget);
+      expect(find.byKey(const Key('folio_share_btn')), findsOneWidget);
+      expect(find.byKey(const Key('folio_edit_entry_btn')), findsOneWidget);
+      expect(find.text('落墨修改'), findsOneWidget);
+      expect(find.byKey(const Key('folio_page_indicator')), findsOneWidget);
 
       // Test Share Action Button
-      await tester.tap(find.text('Share'));
+      await tester.tap(find.byKey(const Key('folio_share_btn')));
       await tester.pumpAndSettle();
 
       expect(sharedContent, isNotNull);
@@ -86,7 +89,60 @@ void main() {
       expect(sharedContent, contains('The leaves are falling gently today.'));
     });
 
-    testWidgets('soft delete button triggers confirmation dialog', (WidgetTester tester) async {
+    testWidgets('non-destructive Reading Perspective switching updates active layout', (WidgetTester tester) async {
+      final now = DateTime(2026, 10, 16, 14, 30);
+
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'detail_entry_persp',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('山行即景'),
+          contentDelta: jsonEncode([
+            {'insert': '远上寒山石径斜，白云生处有人家。\n'}
+          ]),
+          plainText: '远上寒山石径斜，白云生处有人家。',
+          entryDate: now,
+          mood: const Value(3),
+          weather: const Value('cloudy'),
+        ),
+      );
+      final entry = (await db.getEntryById('detail_entry_persp'))!;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EntryDetailScreen(
+            entry: entry,
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Open Perspective Sheet
+      await tester.tap(find.byKey(const Key('folio_reading_perspective_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('展阅视角'), findsOneWidget);
+      expect(find.text('朱丝古刻'), findsOneWidget);
+      expect(find.text('原稿墨格'), findsOneWidget);
+      expect(find.text('松烟夜卷'), findsOneWidget);
+
+      // Select '朱丝古刻'
+      await tester.tap(find.byKey(Key('folio_perspective_option_${ReadingPerspective.vermilionVertical.name}')));
+      await tester.pumpAndSettle();
+
+      // Perspective button now displays '朱丝古刻'
+      expect(find.text('朱丝古刻'), findsOneWidget);
+
+      // Verify SQLite entry record template is completely untouched
+      final dbEntry = await db.getEntryById('detail_entry_persp');
+      expect(dbEntry?.templateId, equals('template_minimalist_white'));
+    });
+
+    testWidgets('soft delete via consolidated More menu triggers confirmation dialog', (WidgetTester tester) async {
       final now = DateTime.now();
 
       await db.createEntry(
@@ -115,8 +171,12 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap AppBar delete icon
-      await tester.tap(find.byIcon(Icons.delete_outline));
+      // Open More Menu
+      await tester.tap(find.byKey(const Key('folio_more_menu_btn')));
+      await tester.pumpAndSettle();
+
+      // Tap soft delete menu item
+      await tester.tap(find.byKey(const Key('folio_menu_delete_entry')));
       await tester.pumpAndSettle();
 
       // Confirmation dialog should appear
@@ -162,7 +222,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify loaded title and content
-      expect(find.text('异步载入手札'), findsOneWidget);
+      expect(find.text('异步载入手札'), findsAtLeastNWidgets(1));
       expect(find.byType(CircularProgressIndicator), findsNothing);
     });
   });

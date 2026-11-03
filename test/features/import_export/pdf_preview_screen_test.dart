@@ -176,12 +176,15 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Find PDF export icon button in AppBar
-      final pdfButton = find.byIcon(Icons.picture_as_pdf_outlined);
-      expect(pdfButton, findsOneWidget);
+      // Open consolidated More menu and tap PDF export
+      final moreMenuButton = find.byKey(const Key('folio_more_menu_btn'));
+      expect(moreMenuButton, findsOneWidget);
+      await tester.tap(moreMenuButton);
+      await tester.pumpAndSettle();
 
-      // Tap PDF export button
-      await tester.tap(pdfButton);
+      final pdfMenuItem = find.byKey(const Key('folio_menu_export_pdf'));
+      expect(pdfMenuItem, findsOneWidget);
+      await tester.tap(pdfMenuItem);
       await tester.pumpAndSettle();
 
       // Verify navigation to PdfPreviewScreen
