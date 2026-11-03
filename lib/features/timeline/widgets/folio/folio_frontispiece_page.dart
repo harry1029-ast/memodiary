@@ -1,19 +1,23 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../../core/services/media_sandbox_service.dart';
 import 'folio_leaf_model.dart';
 import 'folio_reading_perspective.dart';
 import 'folio_shanshui_art_painter.dart';
+import 'folio_silk_corner_mounts_painter.dart';
 
 /// Page 0: Ceremonial Frontispiece Cover of the Thread-Bound Folio.
 class FolioFrontispiecePage extends StatelessWidget {
   final FolioFrontispieceCoverLeaf leaf;
   final FolioSubstrateTheme theme;
+  final MediaSandboxService? mediaService;
   final VoidCallback? onTurnForward;
 
   const FolioFrontispiecePage({
     super.key,
     required this.leaf,
     required this.theme,
+    this.mediaService,
     this.onTurnForward,
   });
 
@@ -164,6 +168,20 @@ class FolioFrontispiecePage extends StatelessWidget {
     );
   }
 
+  File? _resolveFileImmediate(String rawPath) {
+    if (!MediaSandboxService.isStrictlyRelative(rawPath)) {
+      return File(rawPath);
+    }
+    return null;
+  }
+
+  Future<File> _resolveFile(String rawPath) async {
+    if (MediaSandboxService.isStrictlyRelative(rawPath) && mediaService != null) {
+      return mediaService!.getFileFromRelativePath(rawPath);
+    }
+    return File(rawPath);
+  }
+
   Widget _buildArtworkMount(Color accentColor) {
     final silkColor = theme.isDark ? const Color(0xD0C8A055) : const Color(0xC0DFC898);
 
@@ -182,16 +200,34 @@ class FolioFrontispiecePage extends StatelessWidget {
             children: [
               Positioned.fill(
                 child: (leaf.heroPhotoPath != null && leaf.heroPhotoPath!.isNotEmpty)
-                    ? Image.file(
-                        File(leaf.heroPhotoPath!),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => CustomPaint(
-                          painter: FolioShanshuiArtPainter(
-                            realm: leaf.sceneryAtmosphere.realm,
-                            isDark: theme.isDark,
-                            atmosphere: leaf.sceneryAtmosphere,
-                          ),
-                        ),
+                    ? FutureBuilder<File>(
+                        initialData: _resolveFileImmediate(leaf.heroPhotoPath!),
+                        future: _resolveFile(leaf.heroPhotoPath!),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return Image.file(
+                              snapshot.data!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => CustomPaint(
+                                painter: FolioShanshuiArtPainter(
+                                  realm: leaf.sceneryAtmosphere.realm,
+                                  isDark: theme.isDark,
+                                  atmosphere: leaf.sceneryAtmosphere,
+                                ),
+                              ),
+                            );
+                          }
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                          }
+                          return CustomPaint(
+                            painter: FolioShanshuiArtPainter(
+                              realm: leaf.sceneryAtmosphere.realm,
+                              isDark: theme.isDark,
+                              atmosphere: leaf.sceneryAtmosphere,
+                            ),
+                          );
+                        },
                       )
                     : CustomPaint(
                         painter: FolioShanshuiArtPainter(
@@ -201,7 +237,7 @@ class FolioFrontispiecePage extends StatelessWidget {
                         ),
                       ),
               ),
-              Positioned.fill(child: CustomPaint(painter: _SilkCornerMountsPainter(silkColor: silkColor))),
+              Positioned.fill(child: CustomPaint(painter: FolioSilkCornerMountsPainter(silkColor: silkColor))),
             ],
           ),
         ),
@@ -304,38 +340,4 @@ class FolioFrontispiecePage extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Paints the 4 classical silk mounting corners (`四角绫绢护角`) holding the artwork.
-class _SilkCornerMountsPainter extends CustomPainter {
-  final Color silkColor;
-  const _SilkCornerMountsPainter({required this.silkColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = silkColor..style = PaintingStyle.fill;
-    final linePaint = Paint()..color = const Color(0xFFAA823C).withValues(alpha: 0.6)..strokeWidth = 1.0;
-    const s = 14.0;
-    for (int cornerIndex = 0; cornerIndex < 4; cornerIndex++) {
-      final path = Path();
-      switch (cornerIndex) {
-        case 0: // TL
-          path..moveTo(0, 0)..lineTo(s, 0)..lineTo(0, s)..close();
-          canvas.drawLine(const Offset(s, 0), const Offset(0, s), linePaint);
-        case 1: // TR
-          path..moveTo(size.width, 0)..lineTo(size.width - s, 0)..lineTo(size.width, s)..close();
-          canvas.drawLine(Offset(size.width - s, 0), Offset(size.width, s), linePaint);
-        case 2: // BL
-          path..moveTo(0, size.height)..lineTo(s, size.height)..lineTo(0, size.height - s)..close();
-          canvas.drawLine(Offset(s, size.height), Offset(0, size.height - s), linePaint);
-        case 3: // BR
-          path..moveTo(size.width, size.height)..lineTo(size.width - s, size.height)..lineTo(size.width, size.height - s)..close();
-          canvas.drawLine(Offset(size.width - s, size.height), Offset(size.width, size.height - s), linePaint);
-      }
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SilkCornerMountsPainter oldDelegate) => oldDelegate.silkColor != silkColor;
 }

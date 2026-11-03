@@ -225,5 +225,71 @@ void main() {
       expect(find.text('异步载入手札'), findsAtLeastNWidgets(1));
       expect(find.byType(CircularProgressIndicator), findsNothing);
     });
+
+    testWidgets('tapping page indicator opens FolioPageJumpSheet and jumps to selected page', (tester) async {
+      final now = DateTime(2026, 10, 20);
+      final longText = List.generate(40, (i) => '这是第$i行长文本，用于产生多页手稿。').join('\n');
+      await db.createEntry(
+        EntriesCompanion.insert(
+          id: 'multipage_entry',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('多页长篇手札'),
+          contentDelta: jsonEncode([{'insert': '$longText\n'}]),
+          plainText: longText,
+          entryDate: now,
+        ),
+      );
+
+      final entry = (await db.getEntryById('multipage_entry'))!;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EntryDetailScreen(
+            entry: entry,
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Verify page indicator and prev/next navigation buttons
+      expect(find.byKey(const Key('folio_page_indicator')), findsOneWidget);
+      expect(find.byKey(const Key('folio_prev_page_btn')), findsOneWidget);
+      expect(find.byKey(const Key('folio_next_page_btn')), findsOneWidget);
+
+      // Tap next page button
+      await tester.tap(find.byKey(const Key('folio_next_page_btn')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('folio_page_indicator')),
+          matching: find.textContaining('第 2 /'),
+        ),
+        findsOneWidget,
+      );
+
+      // Tap page indicator to open FolioPageJumpSheet
+      await tester.tap(find.byKey(const Key('folio_page_indicator')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('展卷索引 · 翻转至特定页'), findsOneWidget);
+      expect(find.byKey(const Key('folio_jump_page_tile_0')), findsOneWidget);
+
+      // Tap first page tile to jump back to frontispiece
+      await tester.tap(find.byKey(const Key('folio_jump_page_tile_0')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('folio_page_indicator')),
+          matching: find.textContaining('第 1 /'),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }

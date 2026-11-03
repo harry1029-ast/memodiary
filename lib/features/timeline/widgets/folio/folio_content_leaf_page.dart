@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../../../../core/services/media_sandbox_service.dart';
+import '../../../editor/widgets/sandboxed_video_player.dart';
 import '../../../templates/models/template_style.dart';
 import 'folio_cinnabar_seal_widget.dart';
 import 'folio_leaf_model.dart';
 import 'folio_reading_perspective.dart';
+import 'folio_silk_corner_mounts_painter.dart';
 import 'folio_silk_ruling_painter.dart';
 
 /// Renders discrete integer-locked content leaves inside the Thread-Bound Folio:
@@ -11,6 +14,7 @@ import 'folio_silk_ruling_painter.dart';
 class FolioContentLeafPage extends StatelessWidget {
   final FolioLeaf leaf;
   final FolioSubstrateTheme theme;
+  final MediaSandboxService? mediaService;
   final bool isTurningLeaf;
   final VoidCallback? onTurnForward;
   final VoidCallback? onTurnBackward;
@@ -19,6 +23,7 @@ class FolioContentLeafPage extends StatelessWidget {
     super.key,
     required this.leaf,
     required this.theme,
+    this.mediaService,
     this.isTurningLeaf = false,
     this.onTurnForward,
     this.onTurnBackward,
@@ -259,6 +264,14 @@ class FolioContentLeafPage extends StatelessWidget {
     );
   }
 
+  File? _resolveFileImmediate(String rawPath) =>
+      !MediaSandboxService.isStrictlyRelative(rawPath) ? File(rawPath) : null;
+
+  Future<File> _resolveFile(String rawPath) async =>
+      (MediaSandboxService.isStrictlyRelative(rawPath) && mediaService != null)
+          ? await mediaService!.getFileFromRelativePath(rawPath)
+          : File(rawPath);
+
   Widget _buildTippedInEphemera(FolioTippedInEphemeraLeaf ephemeraLeaf) {
     final silkColor = theme.isDark ? const Color(0xD0C8A055) : const Color(0xC0DFC898);
 
@@ -276,37 +289,65 @@ class FolioContentLeafPage extends StatelessWidget {
                     boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
                   ),
                   child: ClipRRect(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.file(
-                          File(ephemeraLeaf.sandboxedRelativePath),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Center(
-                            child: Icon(
-                              ephemeraLeaf.mediaType == 'video' ? Icons.videocam_outlined : Icons.photo_outlined,
-                              size: 40,
-                              color: theme.inkSecondary.withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ),
-                        if (ephemeraLeaf.mediaType == 'video')
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white70, width: 1.5),
+                    child: FutureBuilder<File>(
+                      initialData: _resolveFileImmediate(ephemeraLeaf.sandboxedRelativePath),
+                      future: _resolveFile(ephemeraLeaf.sandboxedRelativePath),
+                      builder: (context, snapshot) {
+                        final file = snapshot.data;
+                        if (file != null) {
+                          if (ephemeraLeaf.mediaType == 'video' && !isTurningLeaf && file.existsSync()) {
+                            return SandboxedVideoPlayer(
+                              videoFile: file,
+                              autoPlay: false,
+                            );
+                          }
+
+                          return Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.file(
+                                file,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Center(
+                                  child: Icon(
+                                    ephemeraLeaf.mediaType == 'video' ? Icons.videocam_outlined : Icons.photo_outlined,
+                                    size: 40,
+                                    color: theme.inkSecondary.withValues(alpha: 0.5),
+                                  ),
+                                ),
                               ),
-                              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
-                            ),
+                              if (ephemeraLeaf.mediaType == 'video')
+                                Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white70, width: 1.5),
+                                    ),
+                                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+                                  ),
+                                ),
+                            ],
+                          );
+                        }
+
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                        }
+
+                        return Center(
+                          child: Icon(
+                            ephemeraLeaf.mediaType == 'video' ? Icons.videocam_outlined : Icons.photo_outlined,
+                            size: 40,
+                            color: theme.inkSecondary.withValues(alpha: 0.5),
                           ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
-                Positioned.fill(child: CustomPaint(painter: _SilkCornerMountsPainter(silkColor: silkColor))),
+                Positioned.fill(child: CustomPaint(painter: FolioSilkCornerMountsPainter(silkColor: silkColor))),
               ],
             ),
           ),
@@ -397,33 +438,4 @@ class FolioContentLeafPage extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Paints the 4 classical silk mounting corners (`四角绫绢护角`) on ephemera leaves.
-class _SilkCornerMountsPainter extends CustomPainter {
-  final Color silkColor;
-  const _SilkCornerMountsPainter({required this.silkColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = silkColor..style = PaintingStyle.fill;
-    final linePaint = Paint()..color = const Color(0xFFAA823C).withValues(alpha: 0.6)..strokeWidth = 1.0;
-    const s = 14.0;
-    final w = size.width;
-    final h = size.height;
-    final corners = [
-      (0.0, 0.0, s, 0.0, 0.0, s),
-      (w, 0.0, w - s, 0.0, w, s),
-      (0.0, h, s, h, 0.0, h - s),
-      (w, h, w - s, h, w, h - s),
-    ];
-    for (final corner in corners) {
-      final path = Path()..moveTo(corner.$1, corner.$2)..lineTo(corner.$3, corner.$4)..lineTo(corner.$5, corner.$6)..close();
-      canvas.drawPath(path, paint);
-      canvas.drawLine(Offset(corner.$3, corner.$4), Offset(corner.$5, corner.$6), linePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SilkCornerMountsPainter oldDelegate) => oldDelegate.silkColor != silkColor;
 }

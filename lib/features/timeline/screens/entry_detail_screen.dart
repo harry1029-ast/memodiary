@@ -161,6 +161,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       HapticFeedback.lightImpact();
       await _loadData();
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已解除私密封缄')),
         );
@@ -426,13 +427,16 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       entry: entry,
       templateStyle: templateStyle,
       attachments: _attachments,
+      mediaService: _media,
       audioSanctumService: _audioSanctumService,
-      shareHandler: _handleShare,
-      onEditEntry: _handleEdit,
-      onSoftDelete: _handleSoftDelete,
-      onToggleLock: _handleToggleLock,
-      onExportPdf: _handleExportPdf,
-      onExportText: _handleExportText,
+      actions: FolioActions(
+        shareHandler: _handleShare,
+        onEditEntry: _handleEdit,
+        onSoftDelete: _handleSoftDelete,
+        onToggleLock: _handleToggleLock,
+        onExportPdf: _handleExportPdf,
+        onExportText: _handleExportText,
+      ),
     );
   }
 }

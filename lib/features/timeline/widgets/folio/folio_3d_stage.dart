@@ -274,6 +274,9 @@ class Folio3DStageState extends State<Folio3DStage>
         final swayAngle = _isFlipping
             ? sinCurve * 0.15 * (_flipDirection == 1 ? 1 : -1)
             : 0.0;
+        final spineOpacity = progress > 0.65
+            ? (1.0 - (progress - 0.65) / 0.35).clamp(0.0, 1.0)
+            : 1.0;
 
         return Stack(
           clipBehavior: Clip.none,
@@ -332,11 +335,13 @@ class Folio3DStageState extends State<Folio3DStage>
                     Positioned.fill(
                       key: const ValueKey('turning_leaf'),
                       child: IgnorePointer(
-                        child: Transform(
-                          alignment: Alignment.centerLeft,
-                          transform: Matrix4.identity()
-                            ..setEntry(3, 2, 0.00065)
-                            ..rotateY(angleRad),
+                        child: Opacity(
+                          opacity: spineOpacity,
+                          child: Transform(
+                            alignment: Alignment.centerLeft,
+                            transform: Matrix4.identity()
+                              ..setEntry(3, 2, -0.0008)
+                              ..rotateY(angleRad),
                           child: progress <= 0.5
                               ? Stack(
                                   children: [
@@ -363,6 +368,7 @@ class Folio3DStageState extends State<Folio3DStage>
                                   transform: Matrix4.identity()..rotateY(math.pi),
                                   child: _buildReverseBleedThroughSheet(context, flippingFrontLeaf),
                                 ),
+                          ),
                         ),
                       ),
                     ),
