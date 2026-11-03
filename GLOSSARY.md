@@ -111,3 +111,11 @@ _Avoid_: Template editor, style picker, theme switcher
 **Interlinear Sub-Note**:
 The classical Chinese annotation format (`双行夹注` · Jiāzhù) rendering commentary as two parallel sub-columns of small-scale characters within a single column stride, parsed from `{夹注:...}` syntax.
 _Avoid_: Side note, footnote, inline comment
+
+**Stationery Sheet**:
+The discrete, integer-locked editing page (`StationerySheet` · 信笺书页) inside the paginated entry editor, conforming to the active template's ruling capacity without infinite vertical scrolling.
+_Avoid_: Editor page, paper screen, scroll card
+
+**Auto-Spill**:
+The deterministic pagination advance mechanism (`AutoSpill` · 溢行分叶) that automatically allocates and smoothly glides to a subsequent Stationery Sheet as soon as text exceeds the integer-locked line capacity of the active sheet.
+_Avoid_: Auto scroll, page push, overflow wrap
