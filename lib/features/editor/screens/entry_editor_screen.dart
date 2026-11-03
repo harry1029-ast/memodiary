@@ -16,9 +16,9 @@ import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
+import '../prototype/prototyped_editor_paper_canvas.dart';
 import '../widgets/editor_media_actions.dart';
 import '../widgets/editor_overlay_actions.dart';
-import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_top_app_bar.dart';
 import '../widgets/scholar_chest/scholar_chest_drawer.dart';
 import '../widgets/writing_dock.dart';
@@ -381,7 +381,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         body: Column(
           children: [
             Expanded(
-              child: EditorPaperCanvas(
+              child: PrototypedEditorPaperCanvas(
                 themeConfig: themeConfig,
                 letterheadConfig: letterheadConfig,
                 mediaSandboxService: widget.mediaSandboxService,
