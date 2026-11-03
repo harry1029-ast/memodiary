@@ -45,6 +45,7 @@ ehthumbs_vista.db
 migrate_working_dir/
 .scratch/
 scratch/
+.worktrees/
 
 # IDE & Editor Configurations
 *.iml
