@@ -278,7 +278,7 @@ class JournalLetterhead extends StatelessWidget {
     final activeWeather = _resolveWeather(weather);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+      padding: const EdgeInsets.fromLTRB(4, 2, 4, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -382,7 +382,7 @@ class JournalLetterhead extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
 
           // Line 2: Borderless Stationery Title Field
           if (titleController != null)
@@ -407,11 +407,11 @@ class JournalLetterhead extends StatelessWidget {
                 ),
                 border: InputBorder.none,
                 isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               ),
             ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
           // Subtle Deckle Stationery Divider
           Container(

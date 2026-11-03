@@ -1,33 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/controllers/editor_autosave_manager.dart';
-import 'package:memodiary/features/editor/services/audio_sanctum_service.dart';
 import 'package:memodiary/features/editor/widgets/editor_top_app_bar.dart';
 import 'package:memodiary/features/editor/widgets/scholar_chest/scholar_chest_drawer.dart';
 
-class _FakeAudioSanctumService extends ChangeNotifier implements AudioSanctumService {
-  bool _isPlaying = false;
-
-  @override
-  bool get isPlaying => _isPlaying;
-
-  void setPlaying(bool playing) {
-    _isPlaying = playing;
-    notifyListeners();
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+import '../../../helpers/editor_test_harness.dart';
 
 void main() {
   group('EditorTopAppBar Widget Tests', () {
     late ValueNotifier<AutosaveStatus> autosaveStatusNotifier;
-    late _FakeAudioSanctumService fakeAudioService;
+    late FakeAudioSanctumService fakeAudioService;
 
     setUp(() {
       autosaveStatusNotifier = ValueNotifier<AutosaveStatus>(AutosaveStatus.saved);
-      fakeAudioService = _FakeAudioSanctumService();
+      fakeAudioService = FakeAudioSanctumService();
     });
 
     tearDown(() {
@@ -59,22 +45,18 @@ void main() {
         ),
       );
 
-      // Verify Back button
       expect(find.byTooltip('返回 · Back'), findsOneWidget);
       await tester.tap(find.byTooltip('返回 · Back'));
       expect(savedAndExited, isTrue);
 
-      // Verify Keepsake scroll button
       expect(find.byKey(const Key('top_bar_keepsake_scroll_button')), findsOneWidget);
       await tester.tap(find.byKey(const Key('top_bar_keepsake_scroll_button')));
       expect(openedKeepsake, isTrue);
 
-      // Verify Scholar chest button
       expect(find.byKey(const Key('top_bar_scholar_chest_button')), findsOneWidget);
       await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
       expect(chestArtifact, equals(ScholarArtifactType.stationeryFan));
 
-      // Verify Done button
       savedAndExited = false;
       expect(find.byKey(const Key('editor_seal_done_btn')), findsOneWidget);
       await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
@@ -144,31 +126,52 @@ void main() {
       expect(openedArtifact, equals(ScholarArtifactType.guqinZither));
     });
 
-    testWidgets('shows lock pill when entry is locked in the future and triggers fish lock artifact', (tester) async {
+    testWidgets('shows lock pill when entry is locked in the future and clamps text scaling <= 1.3', (tester) async {
       ScholarArtifactType? openedArtifact;
       final futureDate = DateTime.now().add(const Duration(days: 7));
+      fakeAudioService.setPlaying(true);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            appBar: EditorTopAppBar(
-              paperColor: Colors.white,
-              iconColor: Colors.black,
-              autosaveStatusNotifier: autosaveStatusNotifier,
-              audioSanctumService: fakeAudioService,
-              unlockAt: futureDate,
-              onSaveAndExit: () {},
-              onOpenKeepsakeScroll: () {},
-              onOpenScholarChest: ([artifact = ScholarArtifactType.stationeryFan]) {
-                openedArtifact = artifact;
-              },
+        MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 640),
+            textScaler: TextScaler.linear(2.0),
+          ),
+          child: MaterialApp(
+            builder: (appContext, appChild) => MediaQuery(
+              data: MediaQuery.of(appContext).copyWith(
+                size: const Size(320, 640),
+                textScaler: const TextScaler.linear(2.0),
+              ),
+              child: appChild!,
+            ),
+            home: Scaffold(
+              appBar: EditorTopAppBar(
+                paperColor: Colors.white,
+                iconColor: Colors.black,
+                autosaveStatusNotifier: autosaveStatusNotifier,
+                audioSanctumService: fakeAudioService,
+                unlockAt: futureDate,
+                onSaveAndExit: () {},
+                onOpenKeepsakeScroll: () {},
+                onOpenScholarChest: ([artifact = ScholarArtifactType.stationeryFan]) {
+                  openedArtifact = artifact;
+                },
+              ),
             ),
           ),
         ),
       );
 
+      expect(tester.takeException(), isNull);
       expect(find.byKey(const Key('top_bar_lock_pill')), findsOneWidget);
       expect(find.text('封缄'), findsOneWidget);
+
+      final innerContext = tester.element(find.text('封缄'));
+      expect(
+        MediaQuery.textScalerOf(innerContext).scale(10.0),
+        lessThanOrEqualTo(13.001),
+      );
 
       await tester.tap(find.byKey(const Key('top_bar_lock_pill')));
       expect(openedArtifact, equals(ScholarArtifactType.fishLock));

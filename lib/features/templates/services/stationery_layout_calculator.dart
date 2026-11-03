@@ -76,6 +76,7 @@ class StationeryLayoutCalculator {
     required TemplateStyle style,
     TypographySettings? typography,
     bool compactMargins = false,
+    int? maxRows,
   }) {
     return calculateMetrics(
       canvasWidth: canvasSize.width,
@@ -85,6 +86,7 @@ class StationeryLayoutCalculator {
       lineSpacing: style.lineSpacing,
       typography: typography,
       compactMargins: compactMargins,
+      maxRows: maxRows,
     );
   }
 
@@ -98,6 +100,7 @@ class StationeryLayoutCalculator {
     double? fontSize,
     TypographySettings? typography,
     bool compactMargins = false,
+    int? maxRows,
   }) {
     final resolvedFontSize = fontSize ?? typography?.fontSize ?? 16.0;
 
@@ -169,6 +172,13 @@ class StationeryLayoutCalculator {
     if (heavenMarginPx + rowCount * lineStridePx > canvasHeight && rowCount > 1) {
       rowCount = math.max(1, ((canvasHeight - (minHeaven + minEarth)) / lineStridePx).floor());
       earthMarginPx = math.max(0.0, canvasHeight - (heavenMarginPx + rowCount * lineStridePx));
+    }
+
+    if (maxRows != null && maxRows > 0 && rowCount > maxRows) {
+      rowCount = maxRows;
+      final totalMargin = math.max(0.0, canvasHeight - (rowCount * lineStridePx));
+      heavenMarginPx = (totalMargin * 0.50).roundToDouble();
+      earthMarginPx = totalMargin - heavenMarginPx;
     }
 
     final innerFrameRect = Rect.fromLTWH(

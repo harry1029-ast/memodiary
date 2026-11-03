@@ -9,6 +9,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../controllers/editor_autosave_manager.dart';
+import '../domain/stationery_sheet_descriptor.dart';
 import '../models/media_embed_data.dart';
 import '../models/thought_spark.dart';
 import '../services/editor_pagination_coordinator.dart';
@@ -20,13 +21,11 @@ class EditorMediaActions {
   const EditorMediaActions._();
 
   /// Prompts the user to pick an image (camera or gallery), compresses to WebP,
-  /// copies into private sandbox storage, and embeds into the Quill Delta or coordinator.
+  /// copies into private sandbox storage, and mounts onto a dedicated EphemeraSheet.
   static Future<void> handleImagePick({
     required BuildContext context,
     required ImagePicker imagePicker,
-    QuillController? controller,
-    EditorPaginationCoordinator? coordinator,
-    PageController? pageController,
+    required EditorPaginationCoordinator coordinator,
     required MediaSandboxService mediaSandboxService,
     required AppDatabase database,
     required String entryId,
@@ -45,7 +44,7 @@ class EditorMediaActions {
         child: Wrap(
           children: [
             ListTile(
-              leading: Icon(Icons.camera_alt_outlined, color: tokens.jiaomo),
+              leading: Icon(Icons.camera_alt_outlined, size: 20, color: tokens.jiaomo),
               title: Text(
                 '即时拓影 · Take Photo',
                 style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
@@ -53,7 +52,7 @@ class EditorMediaActions {
               onTap: () => Navigator.pop(modalContext, ImageSource.camera),
             ),
             ListTile(
-              leading: Icon(Icons.photo_library_outlined, color: tokens.jiaomo),
+              leading: Icon(Icons.photo_library_outlined, size: 20, color: tokens.jiaomo),
               title: Text(
                 '相册选撷 · Photo Gallery',
                 style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
@@ -79,47 +78,36 @@ class EditorMediaActions {
         id: const Uuid().v4(),
         entryId: entryId,
         relativePath: relativePath,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image.embedKey,
       );
 
-      if (coordinator != null) {
-        final targetIndex = coordinator.activeSheetIndex + 1;
-        coordinator.insertEphemeraSheet(
-          mediaType: 'image',
-          mediaData: MediaEmbedData(
-            path: relativePath,
-            caption: '',
-            aspect: 'auto',
-          ),
-          atIndex: targetIndex,
-        );
-        onStateChanged?.call();
-      } else if (controller != null) {
-        final index = controller.selection.baseOffset.clamp(
-          0,
-          controller.document.length - 1,
-        );
-        controller.document.insert(index, BlockEmbed.image(relativePath));
-      }
-
-      autosaveManager?.saveDraft();
+      coordinator.insertMediaAtCurrentSelection(
+        mediaType: EphemeraMediaType.image,
+        mediaData: MediaEmbedData(
+          path: relativePath,
+          caption: '',
+          aspect: 'auto',
+        ),
+      );
+      onStateChanged?.call();
+      await autosaveManager?.saveDraft();
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to insert photo: $error')),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(content: Text('Failed to insert photo: $error')),
+          );
       }
     }
   }
 
   /// Prompts the user to pick or record a video (camera or gallery, <= 60s),
-  /// sandboxes into private storage, and embeds into the Quill Delta or coordinator.
+  /// sandboxes into private storage, and mounts onto a dedicated EphemeraSheet.
   static Future<void> handleVideoPick({
     required BuildContext context,
     required ImagePicker imagePicker,
-    QuillController? controller,
-    EditorPaginationCoordinator? coordinator,
-    PageController? pageController,
+    required EditorPaginationCoordinator coordinator,
     required MediaSandboxService mediaSandboxService,
     required AppDatabase database,
     required String entryId,
@@ -138,7 +126,7 @@ class EditorMediaActions {
         child: Wrap(
           children: [
             ListTile(
-              leading: Icon(Icons.videocam_outlined, color: tokens.jiaomo),
+              leading: Icon(Icons.videocam_outlined, size: 20, color: tokens.jiaomo),
               title: Text(
                 '录制短影 · Record Video (≤60s)',
                 style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
@@ -146,7 +134,7 @@ class EditorMediaActions {
               onTap: () => Navigator.pop(modalContext, ImageSource.camera),
             ),
             ListTile(
-              leading: Icon(Icons.video_library_outlined, color: tokens.jiaomo),
+              leading: Icon(Icons.video_library_outlined, size: 20, color: tokens.jiaomo),
               title: Text(
                 '相册选取短影 · Video Gallery (≤60s)',
                 style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
@@ -175,45 +163,38 @@ class EditorMediaActions {
         id: const Uuid().v4(),
         entryId: entryId,
         relativePath: result.relativePath,
-        mediaType: 'video',
+        mediaType: EphemeraMediaType.video.embedKey,
         thumbnailPath: result.thumbnailPath,
       );
 
-      if (coordinator != null) {
-        final targetIndex = coordinator.activeSheetIndex + 1;
-        coordinator.insertEphemeraSheet(
-          mediaType: 'video',
-          mediaData: MediaEmbedData(
-            path: result.relativePath,
-            caption: '',
-            aspect: 'auto',
-          ),
-          atIndex: targetIndex,
-        );
-        onStateChanged?.call();
-      } else if (controller != null) {
-        final index = controller.selection.baseOffset.clamp(
-          0,
-          controller.document.length - 1,
-        );
-        controller.document.insert(index, BlockEmbed.video(result.relativePath));
-      }
-
-      autosaveManager?.saveDraft();
+      coordinator.insertMediaAtCurrentSelection(
+        mediaType: EphemeraMediaType.video,
+        mediaData: MediaEmbedData(
+          path: result.relativePath,
+          caption: '',
+          aspect: 'auto',
+        ),
+      );
+      onStateChanged?.call();
+      await autosaveManager?.saveDraft();
     } on VideoDurationExceededException catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.message),
-            backgroundColor: Colors.red.shade700,
-          ),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(error.message),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to insert video: $error')),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(content: Text('Failed to insert video: $error')),
+          );
       }
     }
   }
@@ -227,20 +208,21 @@ class EditorMediaActions {
     HapticFeedback.selectionClick();
     final nextSpark = thoughtSparkService.nextSpark();
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '“${nextSpark.localizedPrompt}”',
-          style: const TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            '“${nextSpark.localizedPrompt}”',
+            style: const TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
+          ),
+          action: SnackBarAction(
+            label: '由此题落墨',
+            onPressed: () => onAdoptPrompt(nextSpark.localizedPrompt),
+          ),
+          duration: const Duration(seconds: 4),
         ),
-        action: SnackBarAction(
-          label: '由此题落墨',
-          onPressed: () => onAdoptPrompt(nextSpark.localizedPrompt),
-        ),
-        duration: const Duration(seconds: 4),
-      ),
-    );
+      );
     return nextSpark;
   }
 

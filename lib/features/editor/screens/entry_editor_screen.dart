@@ -10,6 +10,7 @@ import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../controllers/editor_pagination_handler.dart';
+import '../models/stationery_sheet_configs.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
@@ -61,7 +62,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   EditorPaginationHandler? _paginationHandler;
 
   final GlobalKey _letterheadKey = GlobalKey();
-  double _headerHeight = 90.0;
+  double _headerHeight = 96.0;
 
   Template? _currentTemplate;
   TypographySettings _typography = const TypographySettings();
@@ -186,11 +187,16 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _autosaveManager?.markDirty();
   }
 
-  Future<void> _openScholarChest([ScholarArtifactType initialArtifact = ScholarArtifactType.stationeryFan]) async {
-    await EditorOverlayActions.openScholarChest(
+  Future<void> _openScholarChest([
+    ScholarArtifactType initialArtifact = ScholarArtifactType.stationeryFan,
+  ]) async {
+    final activeTemplate = _currentTemplate;
+    if (activeTemplate == null) return;
+
+    await ScholarChestDrawer.show(
       context: context,
       database: widget.database,
-      currentTemplate: _currentTemplate,
+      activeTemplateId: activeTemplate.id,
       typography: _typography,
       audioSanctumService: _audioSanctumService,
       unlockAt: _unlockAt,
@@ -261,7 +267,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         context: context,
         imagePicker: _imagePicker,
         coordinator: _coordinator,
-        pageController: _pageController,
         mediaSandboxService: widget.mediaSandboxService,
         database: widget.database,
         entryId: widget.entryId,
@@ -273,7 +278,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         context: context,
         imagePicker: _imagePicker,
         coordinator: _coordinator,
-        pageController: _pageController,
         mediaSandboxService: widget.mediaSandboxService,
         database: widget.database,
         entryId: widget.entryId,
@@ -329,6 +333,35 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     final iconColor = isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF2D2D2D);
     final currentSheetIndex = _paginationHandler!.currentSheetIndex;
 
+    final themeConfig = StationerySheetThemeConfig(
+      templateStyle: templateStyle,
+      typography: _typography,
+      paperBaseTheme: paperBaseTheme,
+      inkColor: inkColor,
+      isPaperDark: isPaperDark,
+    );
+
+    final letterheadConfig = StationeryLetterheadConfig(
+      letterheadKey: _letterheadKey,
+      headerHeight: _headerHeight,
+      entryDate: _entryDate,
+      mood: _mood,
+      weather: _weather,
+      titleController: _titleController,
+      onDateChanged: (selectedDate) {
+        setState(() => _entryDate = selectedDate);
+        widget.database.updateEntryMetadata(widget.entryId, entryDate: selectedDate);
+      },
+      onMoodChanged: (selectedMood) {
+        setState(() => _mood = selectedMood);
+        widget.database.updateEntryMetadata(widget.entryId, mood: selectedMood);
+      },
+      onWeatherChanged: (selectedWeather) {
+        setState(() => _weather = selectedWeather);
+        widget.database.updateEntryMetadata(widget.entryId, weather: selectedWeather);
+      },
+    );
+
     _updateHeaderHeight();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -349,29 +382,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           children: [
             Expanded(
               child: EditorPaperCanvas(
-                templateStyle: templateStyle,
-                typography: _typography,
-                paperBaseTheme: paperBaseTheme,
-                inkColor: inkColor,
-                isPaperDark: isPaperDark,
-                letterheadKey: _letterheadKey,
-                headerHeight: _headerHeight,
-                entryDate: _entryDate,
-                mood: _mood,
-                weather: _weather,
-                titleController: _titleController,
-                onDateChanged: (selectedDate) {
-                  setState(() => _entryDate = selectedDate);
-                  widget.database.updateEntryMetadata(widget.entryId, entryDate: selectedDate);
-                },
-                onMoodChanged: (selectedMood) {
-                  setState(() => _mood = selectedMood);
-                  widget.database.updateEntryMetadata(widget.entryId, mood: selectedMood);
-                },
-                onWeatherChanged: (selectedWeather) {
-                  setState(() => _weather = selectedWeather);
-                  widget.database.updateEntryMetadata(widget.entryId, weather: selectedWeather);
-                },
+                themeConfig: themeConfig,
+                letterheadConfig: letterheadConfig,
                 mediaSandboxService: widget.mediaSandboxService,
                 onSaveDraft: () => _autosaveManager?.saveDraft(),
                 coordinator: _coordinator,
@@ -385,16 +397,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),
             ),
-
             if (_isDictating)
               DictationBar(
                 controller: _activeController,
                 dictationService: _dictationService,
                 onClose: () => setState(() => _isDictating = false),
               ),
-
             WritingDock(
               controller: _activeController,
+              onEnsureTextController: () => _paginationHandler!.ensureActiveTextSheet(),
               onPickImage: () => _handleMediaPick(isVideo: false),
               onPickVideo: () => _handleMediaPick(isVideo: true),
               onToggleDictation: () {

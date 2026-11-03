@@ -73,8 +73,13 @@ class EditorDeltaPartitioner {
         var remainingParagraphDelta = block.delta;
 
         while (remainingParagraphDelta.isNotEmpty) {
+          final remainingPlainText = _extractPlainText(remainingParagraphDelta);
+          if (remainingPlainText.isEmpty) {
+            break;
+          }
+
           final measured = StationeryLineMeasurer.measureParagraph(
-            text: block.plainText,
+            text: remainingPlainText,
             blockAttributes: block.blockAttributes,
             inlineOperations: remainingParagraphDelta.operations,
             typography: typography,
@@ -85,37 +90,73 @@ class EditorDeltaPartitioner {
 
           final availableRows = currentBudget - currentUsedRows;
           if (measured.totalRows <= availableRows) {
-            for (final op in remainingParagraphDelta.operations) {
-              currentTextDelta.push(op);
+            for (final operation in remainingParagraphDelta.operations) {
+              currentTextDelta.push(operation);
             }
             currentUsedRows += measured.totalRows;
             currentSoftNewline = false;
             break;
           }
 
-          // Overflows sheet capacity
-          final linesThatFit = math.max(0, availableRows ~/ measured.rowWeight);
-          if (linesThatFit > 0) {
-            final lineBreakIndex = math.min(
-              linesThatFit - 1,
-              measured.lineBreakOffsets.length - 1,
-            );
-            final cutOffset = measured.lineBreakOffsets[lineBreakIndex];
-            final split = StationeryDeltaSplitter.splitDeltaAtCharacterOffset(
-              sourceDelta: remainingParagraphDelta,
-              splitOffset: cutOffset,
-              trailingParagraphAttributes: block.blockAttributes,
-            );
-
-            for (final op in split.firstSlice.operations) {
-              currentTextDelta.push(op);
-            }
-            currentSoftNewline = split.hasTrailingSoftNewline;
+          final rawLinesThatFit = math.max(0, availableRows ~/ measured.rowWeight);
+          if (rawLinesThatFit == 0 && (currentTextDelta.isNotEmpty || currentUsedRows > 0)) {
             flushTextSheet();
-            remainingParagraphDelta = split.secondSlice;
-          } else {
-            flushTextSheet();
+            continue;
           }
+
+          final linesThatFit = math.max(1, rawLinesThatFit);
+          final lineBreakIndex = math.min(
+            linesThatFit - 1,
+            measured.lineBreakOffsets.length - 1,
+          );
+          var cutOffset = measured.lineBreakOffsets[lineBreakIndex];
+          final textBodyLength = remainingPlainText.endsWith('\n')
+              ? remainingPlainText.length - 1
+              : remainingPlainText.length;
+
+          if (cutOffset <= 0 && textBodyLength > 0) {
+            cutOffset = 1;
+          }
+
+          if (cutOffset >= textBodyLength) {
+            for (final operation in remainingParagraphDelta.operations) {
+              currentTextDelta.push(operation);
+            }
+            currentUsedRows += measured.totalRows;
+            currentSoftNewline = false;
+            if (currentUsedRows >= currentBudget) {
+              flushTextSheet();
+            }
+            break;
+          }
+
+          final split = StationeryDeltaSplitter.splitDeltaAtCharacterOffset(
+            sourceDelta: remainingParagraphDelta,
+            splitOffset: cutOffset,
+            trailingParagraphAttributes: block.blockAttributes,
+          );
+
+          final nextPlainText = _extractPlainText(split.secondSlice);
+          final nextBodyLength = nextPlainText.endsWith('\n')
+              ? nextPlainText.length - 1
+              : nextPlainText.length;
+
+          // Strict forward-progress guard: never allow non-shrinking remainder
+          if (nextBodyLength == 0 || nextBodyLength >= textBodyLength) {
+            for (final operation in remainingParagraphDelta.operations) {
+              currentTextDelta.push(operation);
+            }
+            currentSoftNewline = false;
+            flushTextSheet();
+            break;
+          }
+
+          for (final operation in split.firstSlice.operations) {
+            currentTextDelta.push(operation);
+          }
+          currentSoftNewline = split.hasTrailingSoftNewline;
+          flushTextSheet();
+          remainingParagraphDelta = split.secondSlice;
         }
       }
     }
@@ -124,7 +165,6 @@ class EditorDeltaPartitioner {
       flushTextSheet();
     }
 
-    // Attach any missing external media attachments
     final existingPaths = sheets
         .whereType<EphemeraSheet>()
         .map((ephemera) => ephemera.sandboxedRelativePath)
@@ -134,7 +174,7 @@ class EditorDeltaPartitioner {
       if (!existingPaths.contains(attachment.relativePath)) {
         sheets.add(EphemeraSheet(
           sheetIndex: sheets.length,
-          mediaType: attachment.mediaType,
+          mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
           mediaData: MediaEmbedData(
             path: attachment.relativePath,
             caption: attachment.ocrText ?? '',
@@ -150,6 +190,16 @@ class EditorDeltaPartitioner {
     return sheets;
   }
 
+  static String _extractPlainText(Delta delta) {
+    final buffer = StringBuffer();
+    for (final operation in delta.operations) {
+      if (operation.isInsert && operation.data is String) {
+        buffer.write(operation.data as String);
+      }
+    }
+    return buffer.toString();
+  }
+
   /// Extracts structured text and ephemera blocks from continuous Delta.
   static List<EditorContentBlock> extractContentBlocks(Delta delta) {
     final blocks = <EditorContentBlock>[];
@@ -157,12 +207,12 @@ class EditorDeltaPartitioner {
     final textBuffer = StringBuffer();
     bool skipNextNewline = false;
 
-    for (final op in delta.operations) {
-      if (!op.isInsert) continue;
+    for (final operation in delta.operations) {
+      if (!operation.isInsert) continue;
 
-      if (op.data is Map) {
-        final map = op.data as Map;
-        if (map.containsKey('image')) {
+      if (operation.data is Map) {
+        final map = operation.data as Map;
+        if (map.containsKey('image') || map.containsKey('video')) {
           if (currentOps.isNotEmpty) {
             blocks.add(EditorTextBlock(
               delta: Delta.fromOperations(currentOps),
@@ -171,32 +221,18 @@ class EditorDeltaPartitioner {
             currentOps = <Operation>[];
             textBuffer.clear();
           }
+          final isVideo = map.containsKey('video');
           blocks.add(EditorEphemeraBlock(
-            mediaType: 'image',
-            rawData: map['image'],
-          ));
-          skipNextNewline = true;
-          continue;
-        } else if (map.containsKey('video')) {
-          if (currentOps.isNotEmpty) {
-            blocks.add(EditorTextBlock(
-              delta: Delta.fromOperations(currentOps),
-              plainText: textBuffer.toString(),
-            ));
-            currentOps = <Operation>[];
-            textBuffer.clear();
-          }
-          blocks.add(EditorEphemeraBlock(
-            mediaType: 'video',
-            rawData: map['video'],
+            mediaType: isVideo ? EphemeraMediaType.video : EphemeraMediaType.image,
+            rawData: isVideo ? map['video'] : map['image'],
           ));
           skipNextNewline = true;
           continue;
         }
       }
 
-      if (op.data is String) {
-        var text = op.data as String;
+      if (operation.data is String) {
+        var text = operation.data as String;
         if (skipNextNewline && text.startsWith('\n')) {
           text = text.substring(1);
           skipNextNewline = false;
@@ -207,23 +243,23 @@ class EditorDeltaPartitioner {
         skipNextNewline = false;
 
         if (!text.contains('\n')) {
-          currentOps.add(Operation.insert(text, op.attributes));
+          currentOps.add(Operation.insert(text, operation.attributes));
           textBuffer.write(text);
         } else {
           final lines = text.split('\n');
           for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             final part = lines[lineIndex];
             if (part.isNotEmpty) {
-              currentOps.add(Operation.insert(part, op.attributes));
+              currentOps.add(Operation.insert(part, operation.attributes));
               textBuffer.write(part);
             }
             if (lineIndex < lines.length - 1) {
               textBuffer.write('\n');
-              currentOps.add(Operation.insert('\n', op.attributes));
+              currentOps.add(Operation.insert('\n', operation.attributes));
               blocks.add(EditorTextBlock(
                 delta: Delta.fromOperations(currentOps),
                 plainText: textBuffer.toString(),
-                blockAttributes: op.attributes,
+                blockAttributes: operation.attributes,
               ));
               currentOps = <Operation>[];
               textBuffer.clear();

@@ -68,7 +68,7 @@ class StationeryEphemeraSheet extends StatefulWidget {
   final EphemeraSheet sheet;
   final Rect? innerFrameRect;
   final String? title;
-  final MediaSandboxService? mediaSandboxService;
+  final MediaSandboxService mediaSandboxService;
   final bool isActiveSheet;
   final VoidCallback? onDelete;
   final ValueChanged<String>? onCaptionChanged;
@@ -80,9 +80,9 @@ class StationeryEphemeraSheet extends StatefulWidget {
   const StationeryEphemeraSheet({
     super.key,
     required this.sheet,
+    required this.mediaSandboxService,
     this.innerFrameRect,
     this.title,
-    this.mediaSandboxService,
     this.isActiveSheet = true,
     this.onDelete,
     this.onCaptionChanged,
@@ -98,22 +98,18 @@ class StationeryEphemeraSheet extends StatefulWidget {
 
 class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
   late Future<({File file, File? thumbFile})> _mediaFilesFuture;
-  late MediaSandboxService _service;
 
   @override
   void initState() {
     super.initState();
-    _service = widget.mediaSandboxService ?? MediaSandboxService();
     _mediaFilesFuture = _resolveMediaFiles(widget.sheet.sandboxedRelativePath);
   }
 
   @override
   void didUpdateWidget(covariant StationeryEphemeraSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.mediaSandboxService != widget.mediaSandboxService) {
-      _service = widget.mediaSandboxService ?? MediaSandboxService();
-    }
-    if (oldWidget.sheet.sandboxedRelativePath != widget.sheet.sandboxedRelativePath) {
+    if (oldWidget.mediaSandboxService != widget.mediaSandboxService ||
+        oldWidget.sheet.sandboxedRelativePath != widget.sheet.sandboxedRelativePath) {
       _mediaFilesFuture = _resolveMediaFiles(widget.sheet.sandboxedRelativePath);
     }
   }
@@ -126,15 +122,16 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
   }
 
   Future<({File file, File? thumbFile})> _resolveMediaFiles(String rawPath) async {
+    final service = widget.mediaSandboxService;
     final mediaFile = MediaSandboxService.isStrictlyRelative(rawPath)
-        ? await _service.getFileFromRelativePath(rawPath)
+        ? await service.getFileFromRelativePath(rawPath)
         : File(rawPath);
 
     File? thumbFile;
     if (rawPath.endsWith('.mp4')) {
       final thumbPath = rawPath.replaceAll(RegExp(r'\.mp4$'), '_thumb.webp');
       final candidate = MediaSandboxService.isStrictlyRelative(thumbPath)
-          ? await _service.getFileFromRelativePath(thumbPath)
+          ? await service.getFileFromRelativePath(thumbPath)
           : File(thumbPath);
       if (candidate.existsSync()) {
         thumbFile = candidate;
@@ -153,7 +150,7 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
     );
 
     return LayoutBuilder(
-      builder: (context, constraints) {
+      builder: (layoutContext, constraints) {
         final innerRect = widget.innerFrameRect;
         final left = innerRect?.left ?? 20.0;
         final top = innerRect?.top ?? 18.0;
@@ -193,37 +190,23 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
     final displayTitle = (rawTitle != null && rawTitle.isNotEmpty) ? rawTitle : '无题';
     final pageNumber = widget.sheet.sheetIndex + 1;
     final colophonText = '《$displayTitle》 · 第 $pageNumber 页';
-    final mediaTypeLabel = widget.sheet.mediaType == 'video' ? '动态拓片 · 影印' : '珍藏拓影 · 插页';
 
     return SizedBox(
       height: 24,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              colophonText,
-              key: const Key('editor_ephemera_colophon_header'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11.0,
-                letterSpacing: 1.2,
-                fontFamily: widget.fontFamily,
-                color: theme.colophonTextColor,
-              ),
-            ),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          colophonText,
+          key: const Key('editor_ephemera_colophon_header'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 11.0,
+            letterSpacing: 1.2,
+            fontFamily: widget.fontFamily,
+            color: theme.colophonTextColor,
           ),
-          Text(
-            mediaTypeLabel,
-            style: TextStyle(
-              fontSize: 10.0,
-              letterSpacing: 0.8,
-              fontFamily: widget.fontFamily,
-              color: theme.colophonTextColor.withValues(alpha: 0.85),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -248,7 +231,7 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
             child: FutureBuilder<({File file, File? thumbFile})>(
               initialData: _resolveImmediate(widget.sheet.sandboxedRelativePath),
               future: _mediaFilesFuture,
-              builder: (context, snapshot) {
+              builder: (futureContext, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting && snapshot.data == null) {
                   return const Center(
                     child: CircularProgressIndicator(
@@ -263,7 +246,7 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
                   return _buildFallbackIcon(theme);
                 }
 
-                if (widget.sheet.mediaType == 'video') {
+                if (widget.sheet.mediaType == EphemeraMediaType.video) {
                   if (widget.isActiveSheet) {
                     return SandboxedVideoPlayer(
                       key: Key('editor_ephemera_video_player_${widget.sheet.sheetIndex}'),
@@ -279,7 +262,7 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
                 return Image.file(
                   data.file,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => _buildFallbackIcon(theme),
+                  errorBuilder: (errorContext, error, stackTrace) => _buildFallbackIcon(theme),
                 );
               },
             ),
@@ -290,8 +273,8 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
             child: CustomPaint(
               key: const Key('editor_ephemera_silk_corners'),
               painter: FolioSilkCornerMountsPainter(
-                 silkColor: theme.silkColor,
-                 size: 14.0,
+                silkColor: theme.silkColor,
+                size: 14.0,
               ),
             ),
           ),
@@ -303,7 +286,7 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
   Widget _buildFallbackIcon(_EphemeraSubstrateTheme theme) {
     return Center(
       child: Icon(
-        widget.sheet.mediaType == 'video'
+        widget.sheet.mediaType == EphemeraMediaType.video
             ? Icons.videocam_outlined
             : Icons.photo_outlined,
         key: const Key('editor_ephemera_fallback_icon'),

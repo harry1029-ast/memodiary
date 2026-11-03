@@ -8,9 +8,9 @@ import 'writing_dock_formatting_ribbon.dart';
 /// Progressive two-tier bottom writing dock anchored above the soft keyboard.
 /// Tier 1 presents 5 high-frequency tools: Aa Formatting, Photo, Video, Dictation, Spark.
 /// Tier 2 smoothly unfolds on-demand as an inline formatting ribbon.
-/// Supports collapsible mode into a slim drag handle tab and paper-adaptive scholar styling.
 class WritingDock extends StatefulWidget {
   final QuillController controller;
+  final QuillController Function()? onEnsureTextController;
   final VoidCallback onPickImage;
   final VoidCallback? onPickVideo;
   final VoidCallback onToggleDictation;
@@ -25,6 +25,7 @@ class WritingDock extends StatefulWidget {
   const WritingDock({
     super.key,
     required this.controller,
+    this.onEnsureTextController,
     required this.onPickImage,
     this.onPickVideo,
     required this.onToggleDictation,
@@ -189,8 +190,6 @@ class _WritingDockState extends State<WritingDock> {
           tokens: tokens,
           effectiveInkColor: effectiveInkColor,
         ),
-
-        // Tier 2: Smoothly animated inline formatting ribbon
         AnimatedSize(
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeInOutCubic,
@@ -198,14 +197,13 @@ class _WritingDockState extends State<WritingDock> {
           child: _isFormattingOpen
               ? WritingDockFormattingRibbon(
                   controller: widget.controller,
+                  onEnsureTextController: widget.onEnsureTextController,
                   tokens: tokens,
                   inkColor: effectiveInkColor,
                   isPaperDark: widget.isPaperDark,
                 )
               : const SizedBox.shrink(),
         ),
-
-        // Tier 1: 5 Primary High-Frequency Tools
         _buildPrimaryToolbar(tokens, effectiveInkColor),
       ],
     );
@@ -220,7 +218,6 @@ class _WritingDockState extends State<WritingDock> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          // 1. [Aa 字法] (Formatting Drawer Toggle with Paper-Adaptive Ink)
           _buildPrimaryToolBtn(
             key: const Key('writing_dock_format_btn'),
             icon: Icons.text_fields_rounded,
@@ -230,11 +227,12 @@ class _WritingDockState extends State<WritingDock> {
             activeBackground: activeBackdrop,
             onTap: () {
               HapticFeedback.lightImpact();
+              if (!_isFormattingOpen) {
+                widget.onEnsureTextController?.call();
+              }
               setState(() => _isFormattingOpen = !_isFormattingOpen);
             },
           ),
-
-          // 2. [📷 拓影] (Sandboxed Photo)
           _buildPrimaryToolBtn(
             key: const Key('writing_dock_photo_btn'),
             icon: Icons.add_photo_alternate_outlined,
@@ -243,8 +241,6 @@ class _WritingDockState extends State<WritingDock> {
             color: effectiveInkColor,
             onTap: widget.onPickImage,
           ),
-
-          // 3. [🎥 短影] (Sandboxed Video)
           if (widget.onPickVideo != null)
             _buildPrimaryToolBtn(
               key: const Key('writing_dock_video_btn'),
@@ -254,8 +250,6 @@ class _WritingDockState extends State<WritingDock> {
               color: effectiveInkColor,
               onTap: widget.onPickVideo!,
             ),
-
-          // 4. [🎙️ 听写] (Speech Dictation with Cinnabar Accent)
           _buildPrimaryToolBtn(
             key: const Key('writing_dock_dictation_btn'),
             icon: widget.isDictating ? Icons.mic : Icons.mic_none,
@@ -265,8 +259,6 @@ class _WritingDockState extends State<WritingDock> {
             activeBackground: const Color(0xFFB83B2E),
             onTap: widget.onToggleDictation,
           ),
-
-          // 5. [✨ 灵感] (Thought Spark Prompt with Amber Gold Accent)
           if (widget.onShuffleSpark != null)
             _buildPrimaryToolBtn(
               key: const Key('writing_dock_spark_btn'),

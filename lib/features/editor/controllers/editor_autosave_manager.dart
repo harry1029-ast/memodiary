@@ -1,26 +1,27 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import '../../../core/database/app_database.dart';
+import '../domain/stationery_sheet_descriptor.dart';
 import '../services/editor_pagination_coordinator.dart';
 
 enum AutosaveStatus { saved, saving, unsaved }
 
-/// Manages background autosave of entry title, Quill Delta, and plain text to SQLite
+/// Manages background autosave of entry title, unified Quill Delta, and plain text to SQLite
 /// with debounced (2s) and periodic (≤10s) timers.
 class EditorAutosaveManager {
   final AppDatabase database;
   final String entryId;
-  final QuillController? controller;
-  final EditorPaginationCoordinator? coordinator;
+  final EditorPaginationCoordinator coordinator;
   final TextEditingController? titleController;
   final Duration debounceDuration;
   final Duration periodicDuration;
 
   Timer? _debounceTimer;
   Timer? _periodicTimer;
-  StreamSubscription? _docSub;
+  final List<StreamSubscription<DocChange>> _sheetDocSubscriptions =
+      <StreamSubscription<DocChange>>[];
+  final List<VoidCallback> _sheetListenerRemovers = <VoidCallback>[];
   bool _isDirty = false;
 
   final ValueNotifier<AutosaveStatus> statusNotifier =
@@ -29,8 +30,7 @@ class EditorAutosaveManager {
   EditorAutosaveManager({
     required this.database,
     required this.entryId,
-    this.controller,
-    this.coordinator,
+    required this.coordinator,
     this.titleController,
     this.debounceDuration = const Duration(seconds: 2),
     this.periodicDuration = const Duration(seconds: 8),
@@ -40,18 +40,10 @@ class EditorAutosaveManager {
 
   void _init() {
     titleController?.addListener(_handleTitleChange);
+    coordinator.contentRevision.addListener(_handleContentRevisionChange);
+    coordinator.addListener(_rebindSheetListeners);
+    _rebindSheetListeners();
 
-    if (controller != null) {
-      _docSub = controller!.document.changes.listen((change) {
-        _scheduleDebounce();
-      });
-    }
-
-    if (coordinator != null) {
-      coordinator!.addListener(_handleCoordinatorChange);
-    }
-
-    // Periodic safety timer
     _periodicTimer = Timer.periodic(periodicDuration, (timer) {
       if (_isDirty) {
         saveDraft();
@@ -59,11 +51,68 @@ class EditorAutosaveManager {
     });
   }
 
+  void _rebindSheetListeners() {
+    _clearSheetListeners();
+
+    for (final sheet in coordinator.sheets) {
+      if (sheet is TextStationerySheet) {
+        Document boundDocument = sheet.controller.document;
+        StreamSubscription<DocChange> activeDocSub =
+            boundDocument.changes.listen((docChange) {
+          _scheduleDebounce();
+        });
+        _sheetDocSubscriptions.add(activeDocSub);
+
+        void handleControllerNotification() {
+          if (!identical(sheet.controller.document, boundDocument)) {
+            _sheetDocSubscriptions.remove(activeDocSub);
+            activeDocSub.cancel();
+            boundDocument = sheet.controller.document;
+            activeDocSub = boundDocument.changes.listen((docChange) {
+              _scheduleDebounce();
+            });
+            _sheetDocSubscriptions.add(activeDocSub);
+          }
+        }
+
+        sheet.controller.addListener(handleControllerNotification);
+        _sheetListenerRemovers.add(() {
+          sheet.controller.removeListener(handleControllerNotification);
+        });
+      } else if (sheet is EphemeraSheet) {
+        String lastCaption = sheet.captionController.text;
+        void handleCaptionNotification() {
+          if (sheet.captionController.text != lastCaption) {
+            lastCaption = sheet.captionController.text;
+            _scheduleDebounce();
+          }
+        }
+
+        sheet.captionController.addListener(handleCaptionNotification);
+        _sheetListenerRemovers.add(() {
+          sheet.captionController.removeListener(handleCaptionNotification);
+        });
+      }
+    }
+  }
+
+  void _clearSheetListeners() {
+    for (final subscription in _sheetDocSubscriptions) {
+      subscription.cancel();
+    }
+    _sheetDocSubscriptions.clear();
+
+    for (final remover in _sheetListenerRemovers) {
+      remover();
+    }
+    _sheetListenerRemovers.clear();
+  }
+
   void _handleTitleChange() {
     _scheduleDebounce();
   }
 
-  void _handleCoordinatorChange() {
+  void _handleContentRevisionChange() {
     _scheduleDebounce();
   }
 
@@ -84,7 +133,7 @@ class EditorAutosaveManager {
     });
   }
 
-  /// Immediately serializes title, Delta JSON, and plain text, then saves to database
+  /// Immediately serializes title, unified Delta JSON, and plain text, then saves to database.
   Future<void> saveDraft({bool force = false}) async {
     if (!_isDirty && !force) return;
 
@@ -92,21 +141,7 @@ class EditorAutosaveManager {
     statusNotifier.value = AutosaveStatus.saving;
 
     try {
-      final String deltaJson;
-      final String plainText;
-
-      if (coordinator != null) {
-        final synthesized = coordinator!.reSynthesize();
-        deltaJson = synthesized.$1;
-        plainText = synthesized.$2;
-      } else if (controller != null) {
-        deltaJson = jsonEncode(controller!.document.toDelta().toJson());
-        plainText = controller!.document.toPlainText().trim();
-      } else {
-        statusNotifier.value = AutosaveStatus.saved;
-        return;
-      }
-
+      final (deltaJson, plainText) = coordinator.reSynthesize();
       final titleText = titleController?.text.trim();
 
       await database.transaction(() async {
@@ -130,10 +165,10 @@ class EditorAutosaveManager {
   void dispose() {
     _debounceTimer?.cancel();
     _periodicTimer?.cancel();
-    _docSub?.cancel();
+    _clearSheetListeners();
     titleController?.removeListener(_handleTitleChange);
-    coordinator?.removeListener(_handleCoordinatorChange);
+    coordinator.contentRevision.removeListener(_handleContentRevisionChange);
+    coordinator.removeListener(_rebindSheetListeners);
     statusNotifier.dispose();
   }
 }
-

@@ -11,9 +11,8 @@ import '../models/media_embed_data.dart';
 import '../models/typography_settings.dart';
 import 'editor_delta_partitioner.dart';
 import 'editor_pagination_models.dart';
-import 'stationery_delta_splitter.dart';
 import 'stationery_delta_synthesizer.dart';
-import 'stationery_line_measurer.dart';
+import 'stationery_sheet_spill_mutator.dart';
 
 export 'editor_pagination_models.dart';
 
@@ -21,7 +20,9 @@ export 'editor_pagination_models.dart';
 /// and discrete, integer-locked Stationery Sheets in the authoring canvas.
 class EditorPaginationCoordinator extends ChangeNotifier {
   final List<StationerySheetDescriptor> _sheets = <StationerySheetDescriptor>[];
+  final ValueNotifier<int> contentRevision = ValueNotifier<int>(0);
   int _activeSheetIndex = 0;
+  bool _isDisposed = false;
 
   TypographySettings typography;
   TemplateStyle templateStyle;
@@ -42,13 +43,8 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     this.lineStridePx,
   });
 
-  /// Ordered list of active stationery sheets.
   List<StationerySheetDescriptor> get sheets => List.unmodifiable(_sheets);
-
-  /// Total sheet count.
   int get totalSheets => _sheets.length;
-
-  /// Current 0-based index of the visible stationery sheet.
   int get activeSheetIndex => _activeSheetIndex;
 
   set activeSheetIndex(int value) {
@@ -58,7 +54,11 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     }
   }
 
-  /// Whether active mobile IME composition is currently underway on the given sheet.
+  void _markContentMutated() {
+    contentRevision.value++;
+  }
+
+  /// Whether active mobile IME composition is currently underway on [sheetIndex].
   bool isSheetComposing(int sheetIndex) {
     if (isImeComposing) return true;
     if (sheetIndex < 0 || sheetIndex >= _sheets.length) return false;
@@ -116,184 +116,132 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Synthesizes all active sheets back into a single continuous Quill Delta.
+  /// Synchronizes measured Paper Heart text width and stride outside `build()`,
+  /// re-balancing sheets cleanly if dimensions changed significantly while not composing.
+  void syncLayoutMetrics({
+    required double contentWidth,
+    required double lineStridePx,
+  }) {
+    if (_isDisposed) return;
+
+    final widthChanged = this.contentWidth == null ||
+        (this.contentWidth! - contentWidth).abs() > 1.0;
+    final strideChanged = this.lineStridePx == null ||
+        (this.lineStridePx! - lineStridePx).abs() > 0.5;
+
+    this.contentWidth = contentWidth;
+    this.lineStridePx = lineStridePx;
+
+    if (!widthChanged && !strideChanged) return;
+    if (_sheets.isEmpty) return;
+    if (_sheets.length == 1 &&
+        _sheets.first is OpeningSheet &&
+        (_sheets.first as OpeningSheet).isEmpty) {
+      return;
+    }
+    if (_sheets.any((sheet) => isSheetComposing(sheet.sheetIndex))) {
+      return;
+    }
+
+    final unifiedDelta = synthesizeUnifiedDelta();
+    final partitioned = EditorDeltaPartitioner.partition(
+      unifiedDelta: unifiedDelta,
+      typography: typography,
+      contentWidth: contentWidth,
+      templateStyle: templateStyle,
+      lineStridePx: lineStridePx,
+    );
+
+    if (StationerySheetSpillMutator.areSheetsEquivalent(_sheets, partitioned)) {
+      for (final candidate in partitioned) {
+        candidate.dispose();
+      }
+      return;
+    }
+
+    final previousIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
+    final previousSheet = _sheets[previousIndex];
+    final previousOffset = previousSheet is TextStationerySheet
+        ? previousSheet.controller.selection.baseOffset
+        : 0;
+    final hadFocus = previousSheet is TextStationerySheet
+        ? previousSheet.focusNode.hasFocus
+        : false;
+
+    for (final sheet in _sheets) {
+      sheet.dispose();
+    }
+    _sheets
+      ..clear()
+      ..addAll(partitioned);
+    _activeSheetIndex = previousIndex.clamp(0, _sheets.length - 1);
+
+    final restoredSheet = _sheets[_activeSheetIndex];
+    if (restoredSheet is TextStationerySheet) {
+      final maxOffset = math.max(0, restoredSheet.document.length - 1);
+      restoredSheet.controller.updateSelection(
+        TextSelection.collapsed(offset: previousOffset.clamp(0, maxOffset)),
+        ChangeSource.local,
+      );
+      if (hadFocus) {
+        restoredSheet.focusNode.requestFocus();
+      }
+    }
+    notifyListeners();
+  }
+
   Delta synthesizeUnifiedDelta() => StationeryDeltaSynthesizer.synthesize(_sheets);
 
-  /// Re-synthesizes the unified Delta JSON string and segmented plain text representation.
+  /// Re-synthesizes the unified Delta JSON string and plain text representation.
   (String deltaJson, String plainText) reSynthesize() {
     final unified = synthesizeUnifiedDelta();
     final plainText = Document.fromDelta(unified).toPlainText().trim();
     if (plainText.isEmpty && _sheets.every((sheet) => sheet is! EphemeraSheet)) {
       return ('[]', '');
     }
-    final jsonStr = jsonEncode(unified.toJson());
-    return (jsonStr, plainText);
+    return (jsonEncode(unified.toJson()), plainText);
   }
 
   /// Checks if [sheetIndex] exceeds row capacity, and if so, performs Auto-Spill.
   AutoSpillResult? checkAndPerformAutoSpill(int sheetIndex) {
-    if (sheetIndex < 0 || sheetIndex >= _sheets.length) return null;
-    final sheet = _sheets[sheetIndex];
-    if (sheet is! TextStationerySheet) return null;
-
-    if (isSheetComposing(sheetIndex)) {
-      return null;
-    }
-
-    final currentRows = StationeryLineMeasurer.measureDeltaRows(
-      delta: sheet.delta,
+    final outcome = StationerySheetSpillMutator.performAutoSpill(
+      sheets: _sheets,
+      sheetIndex: sheetIndex,
+      currentActiveIndex: _activeSheetIndex,
       typography: typography,
-      contentWidth: contentWidth,
       backgroundType: templateStyle.type,
-      lineStridePx: lineStridePx,
-    );
-
-    if (currentRows <= sheet.rowCapacity) {
-      return null;
-    }
-
-    final overflow = StationeryDeltaSplitter.extractOverflow(
-      sheetDelta: sheet.delta,
-      rowCapacity: sheet.rowCapacity,
-      typography: typography,
       contentWidth: contentWidth,
-      backgroundType: templateStyle.type,
       lineStridePx: lineStridePx,
+      isSheetComposing: isSheetComposing,
     );
+    if (outcome == null) return null;
 
-    if (overflow.overflowingDelta.isEmpty ||
-        (overflow.overflowingDelta.length == 1 &&
-            overflow.overflowingDelta.first.data == '\n')) {
-      return null;
-    }
-
-    final currentCaret = sheet.controller.selection.baseOffset;
-    sheet.setDelta(overflow.remainingDelta);
-    sheet.hasTrailingSoftNewline = overflow.hasTrailingSoftNewline;
-
-    int destinationIndex = sheetIndex + 1;
-    bool didAllocateNew = false;
-
-    if (destinationIndex >= _sheets.length ||
-        _sheets[destinationIndex] is! TextStationerySheet) {
-      final newSheet = ContinuationSheet.empty(sheetIndex: destinationIndex);
-      _sheets.insert(destinationIndex, newSheet);
-      didAllocateNew = true;
-      _reindexSheets();
-    }
-
-    final destinationSheet = _sheets[destinationIndex] as TextStationerySheet;
-    final mergedDelta = StationeryDeltaSplitter.mergeDeltaSlices(
-      firstSlice: overflow.overflowingDelta,
-      secondSlice: destinationSheet.delta,
-      firstSliceHasSoftNewline: overflow.hasTrailingSoftNewline,
-    );
-    destinationSheet.setDelta(mergedDelta);
-
-    int destinationCaretOffset = 0;
-    if (currentCaret > overflow.splitOffset) {
-      destinationCaretOffset = math.max(0, currentCaret - overflow.splitOffset);
-      _activeSheetIndex = destinationIndex;
-      destinationSheet.controller.updateSelection(
-        TextSelection.collapsed(offset: destinationCaretOffset),
-        ChangeSource.local,
-      );
-    }
-
-    checkAndPerformAutoSpill(destinationIndex);
+    _activeSheetIndex = outcome.activeSheetIndex;
+    _markContentMutated();
     notifyListeners();
-
-    final result = AutoSpillResult(
-      sourceSheetIndex: sheetIndex,
-      destinationSheetIndex: destinationIndex,
-      destinationCaretOffset: destinationCaretOffset,
-      didAllocateNewSheet: didAllocateNew,
-    );
-    onAutoSpill?.call(result);
-    return result;
+    onAutoSpill?.call(outcome.result);
+    return outcome.result;
   }
 
   /// Handles backspace at offset 0 on a continuation sheet, triggering Spill-Back.
   SpillBackResult? handleSpillBack(int sheetIndex) {
-    if (sheetIndex <= 0 || sheetIndex >= _sheets.length) return null;
-    final currentSheet = _sheets[sheetIndex];
-    if (currentSheet is! TextStationerySheet) return null;
-
-    int precedingIndex = -1;
-    for (int i = sheetIndex - 1; i >= 0; i--) {
-      if (_sheets[i] is TextStationerySheet) {
-        precedingIndex = i;
-        break;
-      }
-    }
-    if (precedingIndex < 0) return null;
-
-    final precedingSheet = _sheets[precedingIndex] as TextStationerySheet;
-    final precedingDocLength = math.max(0, precedingSheet.document.length - 1);
-
-    if (currentSheet.isEmpty) {
-      _sheets.removeAt(sheetIndex);
-      currentSheet.dispose();
-      _reindexSheets();
-      _activeSheetIndex = precedingIndex;
-      precedingSheet.controller.updateSelection(
-        TextSelection.collapsed(offset: precedingDocLength),
-        ChangeSource.local,
-      );
-      notifyListeners();
-      return SpillBackResult(
-        sourceSheetIndex: sheetIndex,
-        destinationSheetIndex: precedingIndex,
-        destinationCaretOffset: precedingDocLength,
-        didCollapse: true,
-      );
-    }
-
-    final precedingRows = StationeryLineMeasurer.measureDeltaRows(
-      delta: precedingSheet.delta,
+    final outcome = StationerySheetSpillMutator.performSpillBack(
+      sheets: _sheets,
+      sheetIndex: sheetIndex,
       typography: typography,
-      contentWidth: contentWidth,
       backgroundType: templateStyle.type,
+      contentWidth: contentWidth,
       lineStridePx: lineStridePx,
+      isSheetComposing: isSheetComposing,
     );
-    final availableRows = math.max(0, precedingSheet.rowCapacity - precedingRows);
+    if (outcome == null) return null;
 
-    if (availableRows > 0) {
-      final merged = StationeryDeltaSplitter.mergeDeltaSlices(
-        firstSlice: precedingSheet.delta,
-        secondSlice: currentSheet.delta,
-        firstSliceHasSoftNewline: precedingSheet.hasTrailingSoftNewline,
-      );
-      precedingSheet.setDelta(merged);
-      _sheets.removeAt(sheetIndex);
-      currentSheet.dispose();
-      _reindexSheets();
-      _activeSheetIndex = precedingIndex;
-      precedingSheet.controller.updateSelection(
-        TextSelection.collapsed(offset: precedingDocLength),
-        ChangeSource.local,
-      );
-      notifyListeners();
-      return SpillBackResult(
-        sourceSheetIndex: sheetIndex,
-        destinationSheetIndex: precedingIndex,
-        destinationCaretOffset: precedingDocLength,
-        didCollapse: true,
-      );
+    _activeSheetIndex = outcome.activeSheetIndex;
+    if (outcome.didMutateContent) {
+      _markContentMutated();
     }
-
-    _activeSheetIndex = precedingIndex;
-    precedingSheet.controller.updateSelection(
-      TextSelection.collapsed(offset: precedingDocLength),
-      ChangeSource.local,
-    );
     notifyListeners();
-    return SpillBackResult(
-      sourceSheetIndex: sheetIndex,
-      destinationSheetIndex: precedingIndex,
-      destinationCaretOffset: precedingDocLength,
-      didCollapse: false,
-    );
+    return outcome.result;
   }
 
   /// Auto-collapses empty continuation sheets (`sheetIndex > 0`), preserving Sheet 1.
@@ -308,8 +256,9 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       }
     }
     if (didCollapse) {
-      _reindexSheets();
+      StationerySheetSpillMutator.reindexSheets(_sheets);
       _activeSheetIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
+      _markContentMutated();
       notifyListeners();
     }
     return didCollapse;
@@ -333,19 +282,41 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
   /// Inserts a new ephemera sheet at [atIndex] or after the active sheet.
   void insertEphemeraSheet({
-    required String mediaType,
+    required EphemeraMediaType mediaType,
     required MediaEmbedData mediaData,
     int? atIndex,
   }) {
-    final targetIndex = atIndex ?? (_activeSheetIndex + 1);
-    final ephemera = EphemeraSheet(
-      sheetIndex: targetIndex,
+    final targetIndex = (atIndex ?? (_activeSheetIndex + 1)).clamp(0, _sheets.length);
+    _sheets.insert(
+      targetIndex,
+      EphemeraSheet(
+        sheetIndex: targetIndex,
+        mediaType: mediaType,
+        mediaData: mediaData,
+      ),
+    );
+    StationerySheetSpillMutator.reindexSheets(_sheets);
+    _activeSheetIndex = targetIndex;
+    _markContentMutated();
+    notifyListeners();
+  }
+
+  /// Inserts media at the active selection, splitting mid-sheet prose cleanly.
+  void insertMediaAtCurrentSelection({
+    required EphemeraMediaType mediaType,
+    required MediaEmbedData mediaData,
+  }) {
+    if (_sheets.isEmpty) {
+      _sheets.add(OpeningSheet.empty(sheetIndex: 0));
+    }
+    final activeIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
+    _activeSheetIndex = StationerySheetSpillMutator.insertMediaAtSelection(
+      sheets: _sheets,
+      activeIndex: activeIndex,
       mediaType: mediaType,
       mediaData: mediaData,
     );
-    _sheets.insert(targetIndex, ephemera);
-    _reindexSheets();
-    _activeSheetIndex = targetIndex;
+    _markContentMutated();
     notifyListeners();
   }
 
@@ -356,8 +327,9 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     if (sheet is EphemeraSheet) {
       _sheets.removeAt(sheetIndex);
       sheet.dispose();
-      _reindexSheets();
+      StationerySheetSpillMutator.reindexSheets(_sheets);
       _activeSheetIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
+      _markContentMutated();
       notifyListeners();
     }
   }
@@ -373,23 +345,19 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     final newIndex = _sheets.length;
     final continuation = ContinuationSheet.empty(sheetIndex: newIndex);
     _sheets.add(continuation);
-    _reindexSheets();
+    StationerySheetSpillMutator.reindexSheets(_sheets);
     notifyListeners();
     return continuation;
   }
 
-  void _reindexSheets() {
-    for (int index = 0; index < _sheets.length; index++) {
-      _sheets[index] = _sheets[index].copyWithIndex(index);
-    }
-  }
-
   @override
   void dispose() {
+    _isDisposed = true;
     for (final sheet in _sheets) {
       sheet.dispose();
     }
     _sheets.clear();
+    contentRevision.dispose();
     super.dispose();
   }
 }

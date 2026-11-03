@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
@@ -14,7 +15,10 @@ class EditorPaginationHandler {
   final EditorAutosaveManager autosaveManager;
   final VoidCallback onStateChanged;
 
-  final List<StreamSubscription> _subscriptions = <StreamSubscription>[];
+  final List<StreamSubscription<DocChange>> _subscriptions =
+      <StreamSubscription<DocChange>>[];
+  final List<VoidCallback> _listenerRemovers = <VoidCallback>[];
+  bool _isMutatingSheets = false;
   int currentSheetIndex = 0;
 
   EditorPaginationHandler({
@@ -27,6 +31,7 @@ class EditorPaginationHandler {
   }
 
   void _init() {
+    coordinator.addListener(_handleCoordinatorNotification);
     coordinator.onAutoSpill = (spillResult) {
       attachSheetListeners();
       if (pageController.hasClients) {
@@ -52,33 +57,120 @@ class EditorPaginationHandler {
     attachSheetListeners();
   }
 
-  void attachSheetListeners() {
-    for (final subscription in _subscriptions) {
-      subscription.cancel();
+  void _handleCoordinatorNotification() {
+    if (_isMutatingSheets) return;
+    attachSheetListeners();
+    final clampedIndex = coordinator.activeSheetIndex
+        .clamp(0, math.max(0, coordinator.totalSheets - 1))
+        .toInt();
+    if (currentSheetIndex != clampedIndex) {
+      currentSheetIndex = clampedIndex;
     }
-    _subscriptions.clear();
+    onStateChanged();
+  }
+
+  void attachSheetListeners() {
+    _clearAttachedListeners();
 
     for (final sheet in coordinator.sheets) {
       if (sheet is TextStationerySheet) {
-        final docSub = sheet.controller.document.changes.listen((docChange) {
-          autosaveManager.markDirty();
-          if (!coordinator.isSheetComposing(sheet.sheetIndex)) {
-            coordinator.checkAndPerformAutoSpill(sheet.sheetIndex);
-          }
+        Document boundDocument = sheet.controller.document;
+        StreamSubscription<DocChange> docSub =
+            boundDocument.changes.listen((docChange) {
+          _onSheetDocumentChanged(sheet);
         });
         _subscriptions.add(docSub);
 
-        sheet.controller.addListener(() {
-          if (!sheet.controller.plainTextEditingValue.composing.isCollapsed) return;
-          if (!coordinator.isSheetComposing(sheet.sheetIndex)) {
-            coordinator.checkAndPerformAutoSpill(sheet.sheetIndex);
+        void onControllerNotified() {
+          if (!identical(sheet.controller.document, boundDocument)) {
+            _subscriptions.remove(docSub);
+            docSub.cancel();
+            boundDocument = sheet.controller.document;
+            docSub = boundDocument.changes.listen((docChange) {
+              _onSheetDocumentChanged(sheet);
+            });
+            _subscriptions.add(docSub);
+            return;
           }
+          if (_isMutatingSheets) return;
+          if (!sheet.controller.plainTextEditingValue.composing.isCollapsed) {
+            return;
+          }
+          if (!coordinator.isSheetComposing(sheet.sheetIndex)) {
+            _runGuardedMutation(() {
+              coordinator.checkAndPerformAutoSpill(sheet.sheetIndex);
+            });
+          }
+        }
+
+        sheet.controller.addListener(onControllerNotified);
+        _listenerRemovers.add(() {
+          sheet.controller.removeListener(onControllerNotified);
         });
       } else if (sheet is EphemeraSheet) {
-        sheet.captionController.addListener(() {
+        void onCaptionNotified() {
           autosaveManager.markDirty();
+        }
+
+        sheet.captionController.addListener(onCaptionNotified);
+        _listenerRemovers.add(() {
+          sheet.captionController.removeListener(onCaptionNotified);
         });
       }
+    }
+  }
+
+  void _onSheetDocumentChanged(TextStationerySheet sheet) {
+    if (_isMutatingSheets) return;
+    autosaveManager.markDirty();
+    if (coordinator.isSheetComposing(sheet.sheetIndex)) return;
+
+    final liveIndex = coordinator.sheets.indexOf(sheet);
+    if (liveIndex < 0) return;
+
+    if (liveIndex > 0 && sheet.isEmpty) {
+      _runGuardedMutation(() {
+        final didCollapse = coordinator.collapseEmptyContinuationSheets();
+        if (didCollapse) {
+          attachSheetListeners();
+          final targetIndex = coordinator.activeSheetIndex
+              .clamp(0, math.max(0, coordinator.totalSheets - 1))
+              .toInt();
+          currentSheetIndex = targetIndex;
+          final activeSheet = coordinator.sheets[targetIndex];
+          if (activeSheet is TextStationerySheet) {
+            activeSheet.focusNode.requestFocus();
+            final endOffset = math.max(0, activeSheet.document.length - 1);
+            activeSheet.controller.updateSelection(
+              TextSelection.collapsed(offset: endOffset),
+              ChangeSource.local,
+            );
+          }
+          if (pageController.hasClients) {
+            pageController.animateToPage(
+              targetIndex,
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+            );
+          }
+          onStateChanged();
+        }
+      });
+      return;
+    }
+
+    _runGuardedMutation(() {
+      coordinator.checkAndPerformAutoSpill(liveIndex);
+    });
+  }
+
+  void _runGuardedMutation(VoidCallback action) {
+    if (_isMutatingSheets) return;
+    _isMutatingSheets = true;
+    try {
+      action();
+    } finally {
+      _isMutatingSheets = false;
     }
   }
 
@@ -89,13 +181,13 @@ class EditorPaginationHandler {
         return activeSheet.controller;
       }
     }
-    for (int index = currentSheetIndex - 1; index >= 0; index--) {
+    for (int index = currentSheetIndex + 1; index < coordinator.sheets.length; index++) {
       final sheet = coordinator.sheets[index];
       if (sheet is TextStationerySheet) {
         return sheet.controller;
       }
     }
-    for (int index = currentSheetIndex + 1; index < coordinator.sheets.length; index++) {
+    for (int index = currentSheetIndex - 1; index >= 0; index--) {
       final sheet = coordinator.sheets[index];
       if (sheet is TextStationerySheet) {
         return sheet.controller;
@@ -111,7 +203,10 @@ class EditorPaginationHandler {
         return activeSheet.controller;
       }
     }
-    final nextTextSheet = coordinator.getOrCreateFollowingTextSheet(currentSheetIndex);
+    late final TextStationerySheet nextTextSheet;
+    _runGuardedMutation(() {
+      nextTextSheet = coordinator.getOrCreateFollowingTextSheet(currentSheetIndex);
+    });
     attachSheetListeners();
     goToSheet(nextTextSheet.sheetIndex);
     nextTextSheet.focusNode.requestFocus();
@@ -141,34 +236,48 @@ class EditorPaginationHandler {
   }
 
   void handleSpillBack(int sheetIndex) {
-    final result = coordinator.handleSpillBack(sheetIndex);
+    SpillBackResult? result;
+    _runGuardedMutation(() {
+      result = coordinator.handleSpillBack(sheetIndex);
+    });
     if (result != null) {
+      final spillBackResult = result!;
       attachSheetListeners();
       if (pageController.hasClients) {
         pageController.animateToPage(
-          result.destinationSheetIndex,
+          spillBackResult.destinationSheetIndex,
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
         );
       }
-      final destSheet = coordinator.sheets[result.destinationSheetIndex];
+      final destSheet = coordinator.sheets[spillBackResult.destinationSheetIndex];
       if (destSheet is TextStationerySheet) {
         destSheet.focusNode.requestFocus();
         destSheet.controller.updateSelection(
-          TextSelection.collapsed(offset: result.destinationCaretOffset),
+          TextSelection.collapsed(offset: spillBackResult.destinationCaretOffset),
           ChangeSource.local,
         );
       }
       autosaveManager.saveDraft();
-      currentSheetIndex = result.destinationSheetIndex;
+      currentSheetIndex = spillBackResult.destinationSheetIndex;
       onStateChanged();
     }
   }
 
-  void handleDeleteEphemera(int sheetIndex) {
-    coordinator.removeEphemeraSheet(sheetIndex);
+  Future<void> handleDeleteEphemera(int sheetIndex) async {
+    if (sheetIndex < 0 || sheetIndex >= coordinator.sheets.length) return;
+    final targetSheet = coordinator.sheets[sheetIndex];
+    final deletedRelativePath =
+        targetSheet is EphemeraSheet ? targetSheet.sandboxedRelativePath : null;
+
+    _runGuardedMutation(() {
+      coordinator.removeEphemeraSheet(sheetIndex);
+    });
     attachSheetListeners();
-    final targetIndex = coordinator.activeSheetIndex.clamp(0, coordinator.totalSheets - 1);
+
+    final targetIndex = coordinator.activeSheetIndex
+        .clamp(0, math.max(0, coordinator.totalSheets - 1))
+        .toInt();
     currentSheetIndex = targetIndex;
     onStateChanged();
     if (pageController.hasClients) {
@@ -178,13 +287,30 @@ class EditorPaginationHandler {
         curve: Curves.easeOutCubic,
       );
     }
-    autosaveManager.saveDraft();
+
+    if (deletedRelativePath != null && deletedRelativePath.isNotEmpty) {
+      await autosaveManager.database.deleteMediaForEntryByPath(
+        entryId: autosaveManager.entryId,
+        relativePath: deletedRelativePath,
+      );
+    }
+    await autosaveManager.saveDraft(force: true);
   }
 
-  void dispose() {
+  void _clearAttachedListeners() {
     for (final subscription in _subscriptions) {
       subscription.cancel();
     }
     _subscriptions.clear();
+
+    for (final remover in _listenerRemovers) {
+      remover();
+    }
+    _listenerRemovers.clear();
+  }
+
+  void dispose() {
+    coordinator.removeListener(_handleCoordinatorNotification);
+    _clearAttachedListeners();
   }
 }

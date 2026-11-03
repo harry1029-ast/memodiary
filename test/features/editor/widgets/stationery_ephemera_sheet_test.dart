@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,56 +11,27 @@ import 'package:memodiary/features/timeline/widgets/folio/folio_silk_corner_moun
 import 'package:path/path.dart' as p;
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
-class _FakeVideoPlayerPlatform extends VideoPlayerPlatform {
-  final StreamController<VideoEvent> _eventController = StreamController<VideoEvent>.broadcast();
-
-  @override
-  Future<void> init() async {}
-  @override
-  Future<void> dispose(int playerId) async {}
-  @override
-  Future<int?> create(DataSource dataSource) async => 0;
-  @override
-  Future<void> setLooping(int playerId, bool looping) async {}
-  @override
-  Future<void> play(int playerId) async {}
-  @override
-  Future<void> pause(int playerId) async {}
-  @override
-  Future<void> setVolume(int playerId, double volume) async {}
-  @override
-  Future<void> setPlaybackSpeed(int playerId, double speed) async {}
-  @override
-  Future<void> seekTo(int playerId, Duration position) async {}
-  @override
-  Future<Duration> getPosition(int playerId) async => Duration.zero;
-  @override
-  Stream<VideoEvent> videoEventsFor(int playerId) => _eventController.stream;
-  @override
-  Widget buildView(int playerId) => const SizedBox(key: ValueKey('fake_video_view'));
-}
+import '../../../helpers/editor_test_harness.dart';
 
 void main() {
   late Directory tempDir;
   late MediaSandboxService sandboxService;
 
   setUpAll(() {
-    VideoPlayerPlatform.instance = _FakeVideoPlayerPlatform();
+    VideoPlayerPlatform.instance = FakeEditorVideoPlatform();
   });
 
-  setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('ephemera_sheet_test_');
-    sandboxService = MediaSandboxService(
-      baseDirProvider: () async => tempDir,
-      compressor: (sourcePath, targetPath, {minWidth = 1600, minHeight = 1600, quality = 80}) async {
-        return File(sourcePath).copy(targetPath);
-      },
+  setUp(() {
+    tempDir = Directory.systemTemp.createTempSync('ephemera_sheet_test_');
+    sandboxService = SyncTestMediaSandboxService(
+      tempDir: tempDir,
+      autoCreateMissingOnLookup: false,
     );
   });
 
-  tearDown(() async {
-    if (await tempDir.exists()) {
-      await tempDir.delete(recursive: true);
+  tearDown(() {
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
     }
   });
 
@@ -103,13 +73,14 @@ void main() {
   }
 
   group('StationeryEphemeraSheet Photo Mount Tests', () {
-    testWidgets('renders sandboxed photo with matte framing, silk corners, and colophon', (tester) async {
+    testWidgets('renders sandboxed photo with matte framing, silk corners, and strict SPEC-008 colophon', (tester) async {
       final mediaDir = Directory(p.join(tempDir.path, 'media'))..createSync(recursive: true);
-      final photoFile = File(p.join(mediaDir.path, 'garden.webp'))..writeAsStringSync('dummy_image_bytes');
+      final photoFile = File(p.join(mediaDir.path, 'garden.webp'))
+        ..writeAsBytesSync(kValid1x1PngBytes);
 
       final sheet = EphemeraSheet(
         sheetIndex: 1,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(
           path: 'media/garden.webp',
           caption: '春日游园 · Spring Garden',
@@ -129,7 +100,7 @@ void main() {
       expect(find.byKey(const Key('editor_ephemera_matte_container')), findsOneWidget);
       expect(find.byKey(const Key('editor_ephemera_silk_corners')), findsOneWidget);
       expect(find.text('《江南杂记》 · 第 2 页'), findsOneWidget);
-      expect(find.text('珍藏拓影 · 插页'), findsOneWidget);
+      expect(find.text('珍藏拓影 · 插页'), findsNothing);
 
       final customPaint = tester.widget<CustomPaint>(find.byKey(const Key('editor_ephemera_silk_corners')));
       expect(customPaint.painter, isA<FolioSilkCornerMountsPainter>());
@@ -140,7 +111,7 @@ void main() {
     testWidgets('displays fallback photo icon when file is missing in sandbox', (tester) async {
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(path: 'media/non_existent.webp'),
       );
 
@@ -156,13 +127,14 @@ void main() {
   });
 
   group('StationeryEphemeraSheet Video Mount Tests', () {
-    testWidgets('renders SandboxedVideoPlayer when sheet is active', (tester) async {
+    testWidgets('renders SandboxedVideoPlayer when sheet is active without right-side subtitle badge', (tester) async {
       final mediaDir = Directory(p.join(tempDir.path, 'media'))..createSync(recursive: true);
-      final videoFile = File(p.join(mediaDir.path, 'lake.mp4'))..writeAsStringSync('dummy_video_bytes');
+      final videoFile = File(p.join(mediaDir.path, 'lake.mp4'))
+        ..writeAsBytesSync(kValidMp4FtypBytes);
 
       final sheet = EphemeraSheet(
         sheetIndex: 2,
-        mediaType: 'video',
+        mediaType: EphemeraMediaType.video,
         mediaData: const MediaEmbedData(path: 'media/lake.mp4'),
       );
 
@@ -178,18 +150,18 @@ void main() {
       expect(videoFile.existsSync(), isTrue);
       expect(find.byType(SandboxedVideoPlayer), findsOneWidget);
       expect(find.text('《西湖夜游》 · 第 3 页'), findsOneWidget);
-      expect(find.text('动态拓片 · 影印'), findsOneWidget);
+      expect(find.text('动态拓片 · 影印'), findsNothing);
 
       sheet.dispose();
     });
 
     testWidgets('renders suspended video preview when sheet is not active', (tester) async {
       final mediaDir = Directory(p.join(tempDir.path, 'media'))..createSync(recursive: true);
-      File(p.join(mediaDir.path, 'stream.mp4')).writeAsStringSync('dummy_video_bytes');
+      File(p.join(mediaDir.path, 'stream.mp4')).writeAsBytesSync(kValidMp4FtypBytes);
 
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'video',
+        mediaType: EphemeraMediaType.video,
         mediaData: const MediaEmbedData(path: 'media/stream.mp4'),
       );
 
@@ -211,7 +183,7 @@ void main() {
     testWidgets('displays fallback video icon when video file does not exist', (tester) async {
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'video',
+        mediaType: EphemeraMediaType.video,
         mediaData: const MediaEmbedData(path: 'media/missing_clip.mp4'),
       );
 
@@ -230,7 +202,7 @@ void main() {
       String? changedCaption;
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(
           path: 'media/tree.webp',
           caption: '初始题注',
@@ -263,7 +235,7 @@ void main() {
     testWidgets('shows placeholder hint when caption is empty', (tester) async {
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(path: 'media/tree.webp', caption: ''),
       );
 
@@ -282,7 +254,7 @@ void main() {
       var deleteInvoked = false;
       final sheet = EphemeraSheet(
         sheetIndex: 1,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(path: 'media/temp.webp'),
       );
 
@@ -314,7 +286,7 @@ void main() {
     testWidgets('adapts matte color and silk corner tint for light substrate', (tester) async {
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(path: 'media/art.webp'),
       );
 
@@ -345,7 +317,7 @@ void main() {
     testWidgets('adapts matte color and silk corner tint for dark obsidian substrate', (tester) async {
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(path: 'media/dark.webp'),
       );
 
@@ -378,7 +350,7 @@ void main() {
     testWidgets('falls back to 《无题》 when title is empty or null', (tester) async {
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(path: 'media/untitled.webp'),
       );
 
@@ -393,7 +365,7 @@ void main() {
     testWidgets('constrains Paper Heart strictly to provided innerFrameRect', (tester) async {
       final sheet = EphemeraSheet(
         sheetIndex: 0,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(path: 'media/rect_test.webp'),
       );
 

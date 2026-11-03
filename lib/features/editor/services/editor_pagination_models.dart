@@ -1,4 +1,5 @@
 import 'package:flutter_quill/quill_delta.dart';
+import '../domain/stationery_sheet_descriptor.dart';
 
 /// Result emitted when content on a stationery sheet overflows and spills onto the next.
 class AutoSpillResult {
@@ -46,7 +47,7 @@ class EditorTextBlock extends EditorContentBlock {
 }
 
 class EditorEphemeraBlock extends EditorContentBlock {
-  final String mediaType;
+  final EphemeraMediaType mediaType;
   final dynamic rawData;
 
   EditorEphemeraBlock({

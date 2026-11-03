@@ -3,38 +3,55 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 /// Layout widget that dynamically clamps its child's outer layout height to an
-/// exact integer multiple of [lineStridePx], distributing any surplus vertical
-/// space symmetrically across top and bottom padding.
-///
-/// Eliminates fractional vertical phase shifts on ruled, squared-grid, and
-/// dot-matrix paper substrates across single-line and wrapped multi-line titles.
+/// exact integer multiple of [lineStridePx], enforcing at least [minRows] integer rows
+/// and distributing surplus vertical space symmetrically across top and bottom padding.
 class IntegerSnappedLetterhead extends SingleChildRenderObjectWidget {
   /// The active line stride / row height in pixels.
   final double lineStridePx;
 
+  /// Minimum integer row count reserved for the letterhead (4 rows on Sheet 1).
+  final int minRows;
+
   const IntegerSnappedLetterhead({
     super.key,
     required this.lineStridePx,
+    this.minRows = 1,
     required Widget super.child,
   });
 
   /// Pure static utility to compute integer-snapped height for a given raw height and stride.
-  static double calculateSnappedHeight(double rawHeight, double lineStridePx) {
+  static double calculateSnappedHeight(
+    double rawHeight,
+    double lineStridePx, {
+    int minRows = 1,
+  }) {
     if (lineStridePx <= 0.0) return rawHeight;
-    final rowCount = math.max(1, (rawHeight / lineStridePx).ceil());
+    final effectiveMinRows = math.max(1, minRows);
+    final rowCount = math.max(effectiveMinRows, (rawHeight / lineStridePx).ceil());
     return rowCount * lineStridePx;
   }
 
   /// Pure static utility to compute top/bottom padding for a given raw height and stride.
-  static double calculatePaddingTop(double rawHeight, double lineStridePx) {
-    final snappedHeight = calculateSnappedHeight(rawHeight, lineStridePx);
+  static double calculatePaddingTop(
+    double rawHeight,
+    double lineStridePx, {
+    int minRows = 1,
+  }) {
+    final snappedHeight = calculateSnappedHeight(
+      rawHeight,
+      lineStridePx,
+      minRows: minRows,
+    );
     final delta = math.max(0.0, snappedHeight - rawHeight);
     return delta / 2.0;
   }
 
   @override
   RenderIntegerSnappedLetterhead createRenderObject(BuildContext context) {
-    return RenderIntegerSnappedLetterhead(lineStridePx: lineStridePx);
+    return RenderIntegerSnappedLetterhead(
+      lineStridePx: lineStridePx,
+      minRows: minRows,
+    );
   }
 
   @override
@@ -42,7 +59,9 @@ class IntegerSnappedLetterhead extends SingleChildRenderObjectWidget {
     BuildContext context,
     RenderIntegerSnappedLetterhead renderObject,
   ) {
-    renderObject.lineStridePx = lineStridePx;
+    renderObject
+      ..lineStridePx = lineStridePx
+      ..minRows = minRows;
   }
 }
 
@@ -51,11 +70,14 @@ class IntegerSnappedLetterhead extends SingleChildRenderObjectWidget {
 /// symmetrically centers the child vertically.
 class RenderIntegerSnappedLetterhead extends RenderShiftedBox {
   double _lineStridePx;
+  int _minRows;
 
   RenderIntegerSnappedLetterhead({
     RenderBox? child,
     required double lineStridePx,
+    int minRows = 1,
   })  : _lineStridePx = lineStridePx,
+        _minRows = minRows,
         super(child);
 
   double get lineStridePx => _lineStridePx;
@@ -67,8 +89,21 @@ class RenderIntegerSnappedLetterhead extends RenderShiftedBox {
     }
   }
 
+  int get minRows => _minRows;
+
+  set minRows(int value) {
+    if (_minRows != value) {
+      _minRows = value;
+      markNeedsLayout();
+    }
+  }
+
   double _snapHeight(double rawHeight) {
-    return IntegerSnappedLetterhead.calculateSnappedHeight(rawHeight, _lineStridePx);
+    return IntegerSnappedLetterhead.calculateSnappedHeight(
+      rawHeight,
+      _lineStridePx,
+      minRows: _minRows,
+    );
   }
 
   @override
@@ -119,7 +154,6 @@ class RenderIntegerSnappedLetterhead extends RenderShiftedBox {
       return;
     }
 
-    // Measure child with incoming horizontal constraints but unconstrained height
     currentChild.layout(
       constraints.copyWith(
         minHeight: 0.0,

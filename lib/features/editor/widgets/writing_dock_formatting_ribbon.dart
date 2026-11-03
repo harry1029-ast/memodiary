@@ -8,6 +8,7 @@ import '../../../core/theme/ink_diary_theme.dart';
 /// Harmonized with paper-adaptive ink colors and scholar stationery styling.
 class WritingDockFormattingRibbon extends StatelessWidget {
   final QuillController controller;
+  final QuillController Function()? onEnsureTextController;
   final InkDiaryTokens tokens;
   final Color inkColor;
   final bool isPaperDark;
@@ -15,41 +16,53 @@ class WritingDockFormattingRibbon extends StatelessWidget {
   const WritingDockFormattingRibbon({
     super.key,
     required this.controller,
+    this.onEnsureTextController,
     required this.tokens,
     required this.inkColor,
     required this.isPaperDark,
   });
 
+  QuillController _resolveTargetController() {
+    return onEnsureTextController?.call() ?? controller;
+  }
+
   void _toggleFormat(Attribute attribute) {
     HapticFeedback.selectionClick();
-    final isToggled = controller.getSelectionStyle().containsKey(attribute.key);
+    final targetController = _resolveTargetController();
+    final isToggled = targetController.getSelectionStyle().containsKey(attribute.key);
     if (isToggled) {
-      controller.formatSelection(Attribute.clone(attribute, null));
+      targetController.formatSelection(Attribute.clone(attribute, null));
     } else {
-      controller.formatSelection(attribute);
+      targetController.formatSelection(attribute);
     }
   }
 
   void _insertInterlinearNote() {
     HapticFeedback.selectionClick();
-    final selection = controller.selection;
+    final targetController = _resolveTargetController();
+    final selection = targetController.selection;
     if (!selection.isValid || selection.isCollapsed) {
       final int offset = (selection.isValid && selection.baseOffset >= 0)
           ? selection.baseOffset
           : 0;
-      controller.replaceText(offset, 0, '{夹注:}', null);
-      controller.updateSelection(
+      targetController.replaceText(offset, 0, '{夹注:}', null);
+      targetController.updateSelection(
         TextSelection.collapsed(offset: offset + 4),
         ChangeSource.local,
       );
     } else {
-      final plainText = controller.document.toPlainText();
+      final plainText = targetController.document.toPlainText();
       final startIndex = selection.start.clamp(0, plainText.length);
       final endIndex = selection.end.clamp(0, plainText.length);
       final selectedSubstring = plainText.substring(startIndex, endIndex);
       final replacementText = '{夹注:$selectedSubstring}';
-      controller.replaceText(startIndex, endIndex - startIndex, replacementText, null);
-      controller.updateSelection(
+      targetController.replaceText(
+        startIndex,
+        endIndex - startIndex,
+        replacementText,
+        null,
+      );
+      targetController.updateSelection(
         TextSelection.collapsed(offset: startIndex + replacementText.length),
         ChangeSource.local,
       );
@@ -71,7 +84,7 @@ class WritingDockFormattingRibbon extends StatelessWidget {
       ),
       child: ListenableBuilder(
         listenable: controller,
-        builder: (ribbonContext, _) {
+        builder: (ribbonContext, unusedChild) {
           final style = controller.getSelectionStyle();
 
           return SingleChildScrollView(
@@ -79,7 +92,6 @@ class WritingDockFormattingRibbon extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               children: [
-                // Bold
                 _buildFormatTextBtn(
                   label: 'B',
                   isBold: true,
@@ -87,7 +99,6 @@ class WritingDockFormattingRibbon extends StatelessWidget {
                   onTap: () => _toggleFormat(Attribute.bold),
                   tooltip: '加粗 · Bold',
                 ),
-                // Italic
                 _buildFormatTextBtn(
                   label: 'I',
                   isItalic: true,
@@ -95,7 +106,6 @@ class WritingDockFormattingRibbon extends StatelessWidget {
                   onTap: () => _toggleFormat(Attribute.italic),
                   tooltip: '斜体 · Italic',
                 ),
-                // Underline
                 _buildFormatTextBtn(
                   label: 'U',
                   isUnderline: true,
@@ -103,10 +113,7 @@ class WritingDockFormattingRibbon extends StatelessWidget {
                   onTap: () => _toggleFormat(Attribute.underline),
                   tooltip: '下划线 · Underline',
                 ),
-
                 _buildDivider(),
-
-                // Heading 1
                 _buildFormatTextBtn(
                   label: 'T',
                   isHeading: true,
@@ -114,7 +121,6 @@ class WritingDockFormattingRibbon extends StatelessWidget {
                   onTap: () => _toggleFormat(Attribute.h1),
                   tooltip: '大标题 · Heading 1',
                 ),
-                // Heading 2
                 _buildFormatTextBtn(
                   label: 'Tt',
                   isHeading: false,
@@ -122,34 +128,26 @@ class WritingDockFormattingRibbon extends StatelessWidget {
                   onTap: () => _toggleFormat(Attribute.h2),
                   tooltip: '次标题 · Heading 2',
                 ),
-                // Blockquote
                 _buildFormatIconBtn(
                   icon: Icons.format_quote,
                   isActive: style.containsKey(Attribute.blockQuote.key),
                   onTap: () => _toggleFormat(Attribute.blockQuote),
                   tooltip: '引用 · Quote',
                 ),
-
                 _buildDivider(),
-
-                // Bullet List
                 _buildFormatIconBtn(
                   icon: Icons.format_list_bulleted,
                   isActive: style.containsKey(Attribute.ul.key),
                   onTap: () => _toggleFormat(Attribute.ul),
                   tooltip: '无序列表 · Bullet List',
                 ),
-                // Numbered List
                 _buildFormatIconBtn(
                   icon: Icons.format_list_numbered,
                   isActive: style.containsKey(Attribute.ol.key),
                   onTap: () => _toggleFormat(Attribute.ol),
                   tooltip: '有序列表 · Numbered List',
                 ),
-
                 _buildDivider(),
-
-                // Interlinear Note (双行夹注)
                 _buildFormatTextBtn(
                   buttonKey: const Key('writing_dock_interlinear_note_btn'),
                   label: '〘注〙',
@@ -244,4 +242,3 @@ class WritingDockFormattingRibbon extends StatelessWidget {
     );
   }
 }
-

@@ -10,6 +10,21 @@ const int kContinuationSheetRowCapacity = 14;
 const int kJournalLetterheadReservedRows = 4;
 const int kStandardFolioRowsPerLeaf = 14;
 
+/// Supported media types for full-sheet ephemera mounts.
+enum EphemeraMediaType {
+  image('image'),
+  video('video');
+
+  final String embedKey;
+
+  const EphemeraMediaType(this.embedKey);
+
+  /// Resolves an [EphemeraMediaType] from its serialized Delta embed key or SQLite column value.
+  static EphemeraMediaType fromEmbedKey(String rawKey) {
+    return rawKey == 'video' ? EphemeraMediaType.video : EphemeraMediaType.image;
+  }
+}
+
 /// Base descriptor for discrete Stationery Sheets (信笺书页) in the paginated editor.
 sealed class StationerySheetDescriptor {
   final int sheetIndex;
@@ -39,7 +54,7 @@ sealed class StationerySheetDescriptor {
 
 /// Abstract base descriptor for text-bearing stationery sheets.
 sealed class TextStationerySheet extends StationerySheetDescriptor {
-  QuillController controller;
+  final QuillController controller;
   final FocusNode focusNode;
 
   /// Whether the sheet's document ends with an artificial soft newline
@@ -68,21 +83,21 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   /// Whether the sheet contains only whitespace or is empty.
   bool get isEmpty => plainText.trim().isEmpty;
 
-  /// Replaces this sheet's controller document cleanly with [newDelta]
-  /// preserving or restoring appropriate text selection.
+  /// Replaces this sheet's controller document in place with [newDelta],
+  /// keeping the [QuillController] instance alive so bound listeners and [QuillEditor] stay valid.
   void setDelta(Delta newDelta, {TextSelection? selection}) {
     final newDoc = Document.fromDelta(newDelta);
-    final targetSelection = selection ??
-        TextSelection.collapsed(
-          offset: math.min(
-            controller.selection.baseOffset,
-            math.max(0, newDoc.length - 1),
-          ),
-        );
-    controller.dispose();
-    controller = QuillController(
-      document: newDoc,
-      selection: targetSelection,
+    final maxOffset = math.max(0, newDoc.length - 1);
+    final rawBase = selection?.baseOffset ?? controller.selection.baseOffset;
+    final clampedBase = rawBase.clamp(0, maxOffset);
+    final clampedExtent = selection != null
+        ? selection.extentOffset.clamp(0, maxOffset)
+        : clampedBase;
+
+    controller.document = newDoc;
+    controller.updateSelection(
+      TextSelection(baseOffset: clampedBase, extentOffset: clampedExtent),
+      ChangeSource.local,
     );
   }
 
@@ -199,8 +214,8 @@ class ContinuationSheet extends TextStationerySheet {
 /// A dedicated full-page ephemera mount presenting an embedded photo or short video
 /// paired with an editable caption and silk corner framing.
 class EphemeraSheet extends StationerySheetDescriptor {
-  /// 'image' or 'video'
-  final String mediaType;
+  /// Typed media kind (`image` or `video`).
+  final EphemeraMediaType mediaType;
 
   /// Parsed embed metadata (path, caption, aspect ratio)
   final MediaEmbedData mediaData;
@@ -224,7 +239,7 @@ class EphemeraSheet extends StationerySheetDescriptor {
   /// Creates an ephemera sheet descriptor from raw BlockEmbed data.
   factory EphemeraSheet.fromEmbed({
     required int sheetIndex,
-    required String mediaType,
+    required EphemeraMediaType mediaType,
     required dynamic rawData,
   }) {
     final embedData = MediaEmbedData.fromRaw(rawData);

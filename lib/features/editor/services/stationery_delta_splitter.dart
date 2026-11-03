@@ -38,6 +38,40 @@ class SheetOverflowResult {
 class StationeryDeltaSplitter {
   const StationeryDeltaSplitter._();
 
+  /// Appends [source] operations onto [target], optionally stripping a single
+  /// trailing artificial soft newline from [source]'s final string insert operation.
+  static void appendDeltaStrippingSoftNewline({
+    required Delta target,
+    required Delta source,
+    required bool stripTrailingSoftNewline,
+  }) {
+    if (!stripTrailingSoftNewline || source.isEmpty) {
+      for (final operation in source.operations) {
+        target.push(operation);
+      }
+      return;
+    }
+
+    for (int opIndex = 0; opIndex < source.operations.length; opIndex++) {
+      final operation = source.operations[opIndex];
+      final isLast = opIndex == source.operations.length - 1;
+
+      if (isLast && operation.isInsert && operation.data is String) {
+        final text = operation.data as String;
+        if (text.endsWith('\n')) {
+          final stripped = text.substring(0, text.length - 1);
+          if (stripped.isNotEmpty) {
+            target.push(Operation.insert(stripped, operation.attributes));
+          }
+        } else {
+          target.push(operation);
+        }
+      } else {
+        target.push(operation);
+      }
+    }
+  }
+
   /// Splits [sourceDelta] at character [splitOffset].
   ///
   /// If the split occurs mid-paragraph, an artificial soft newline is appended
@@ -52,47 +86,49 @@ class StationeryDeltaSplitter {
     final secondSlice = Delta();
     int currentOffset = 0;
 
-    for (final op in sourceDelta.operations) {
-      if (!op.isInsert) continue;
+    for (final operation in sourceDelta.operations) {
+      if (!operation.isInsert) continue;
 
-      if (op.data is Map) {
-        // Embed node has length 1
+      if (operation.data is Map) {
         if (currentOffset + 1 <= splitOffset) {
-          firstSlice.push(op);
+          firstSlice.push(operation);
         } else {
-          secondSlice.push(op);
+          secondSlice.push(operation);
         }
         currentOffset += 1;
         continue;
       }
 
-      if (op.data is String) {
-        final text = op.data as String;
+      if (operation.data is String) {
+        final text = operation.data as String;
         final opLength = text.length;
 
         if (currentOffset + opLength <= splitOffset) {
-          firstSlice.push(op);
+          firstSlice.push(operation);
           currentOffset += opLength;
         } else if (currentOffset < splitOffset &&
             currentOffset + opLength > splitOffset) {
           final cutPoint = splitOffset - currentOffset;
-          final safeCutPoint = StationeryLineMeasurer.snapToSafeCodePointBoundary(
+          var safeCutPoint = StationeryLineMeasurer.snapToSafeCodePointBoundary(
             text,
             cutPoint,
           );
+          if (cutPoint > 0 && safeCutPoint == 0 && text.isNotEmpty) {
+            safeCutPoint = math.min(text.length, cutPoint + 1);
+          }
 
           final part1 = text.substring(0, safeCutPoint);
           final part2 = text.substring(safeCutPoint);
 
           if (part1.isNotEmpty) {
-            firstSlice.push(Operation.insert(part1, op.attributes));
+            firstSlice.push(Operation.insert(part1, operation.attributes));
           }
           if (part2.isNotEmpty) {
-            secondSlice.push(Operation.insert(part2, op.attributes));
+            secondSlice.push(Operation.insert(part2, operation.attributes));
           }
           currentOffset += opLength;
         } else {
-          secondSlice.push(op);
+          secondSlice.push(operation);
           currentOffset += opLength;
         }
       }
@@ -100,7 +136,6 @@ class StationeryDeltaSplitter {
 
     bool hasTrailingSoftNewline = false;
 
-    // Ensure firstSlice ends with newline for valid Quill document
     if (firstSlice.isEmpty) {
       firstSlice.push(Operation.insert('\n', trailingParagraphAttributes));
       hasTrailingSoftNewline = true;
@@ -114,7 +149,6 @@ class StationeryDeltaSplitter {
       }
     }
 
-    // Ensure secondSlice ends with newline for valid Quill document
     if (secondSlice.isEmpty) {
       secondSlice.push(Operation.insert('\n'));
     } else {
@@ -132,51 +166,24 @@ class StationeryDeltaSplitter {
   }
 
   /// Merges [firstSlice] and [secondSlice] back into a single continuous Delta.
-  /// If [firstSliceHasSoftNewline] is true, strips the trailing soft newline
-  /// and automatically normalizes adjacent text operations with identical attributes.
   static Delta mergeDeltaSlices({
     required Delta firstSlice,
     required Delta secondSlice,
     bool firstSliceHasSoftNewline = false,
   }) {
     final combined = Delta();
-
-    if (firstSliceHasSoftNewline && firstSlice.isNotEmpty) {
-      for (int index = 0; index < firstSlice.operations.length; index++) {
-        final op = firstSlice.operations[index];
-        final isLast = index == firstSlice.operations.length - 1;
-
-        if (isLast && op.isInsert && op.data is String) {
-          final text = op.data as String;
-          if (text.endsWith('\n')) {
-            final stripped = text.substring(0, text.length - 1);
-            if (stripped.isNotEmpty) {
-              combined.push(Operation.insert(stripped, op.attributes));
-            }
-          } else {
-            combined.push(op);
-          }
-        } else {
-          combined.push(op);
-        }
-      }
-    } else {
-      for (final op in firstSlice.operations) {
-        combined.push(op);
-      }
+    appendDeltaStrippingSoftNewline(
+      target: combined,
+      source: firstSlice,
+      stripTrailingSoftNewline: firstSliceHasSoftNewline,
+    );
+    for (final operation in secondSlice.operations) {
+      combined.push(operation);
     }
-
-    for (final op in secondSlice.operations) {
-      combined.push(op);
-    }
-
     return combined;
   }
 
   /// Extracts overflowing content from [sheetDelta] when it exceeds [rowCapacity].
-  ///
-  /// Returns [SheetOverflowResult] containing the remaining delta that fits,
-  /// the overflowing delta to spill onto the next sheet, and split metadata.
   static SheetOverflowResult extractOverflow({
     required Delta sheetDelta,
     required int rowCapacity,
@@ -199,8 +206,8 @@ class StationeryDeltaSplitter {
 
     for (final paragraph in paragraphs) {
       if (isOverflowing) {
-        for (final op in paragraph.operations) {
-          tailDelta.push(op);
+        for (final operation in paragraph.operations) {
+          tailDelta.push(operation);
         }
         continue;
       }
@@ -216,36 +223,37 @@ class StationeryDeltaSplitter {
       );
 
       if (measured.totalRows <= remainingRows) {
-        // Fits fully
-        for (final op in paragraph.operations) {
-          headDelta.push(op);
+        for (final operation in paragraph.operations) {
+          headDelta.push(operation);
         }
         remainingRows -= measured.totalRows;
         cumulativeCharacterOffset += paragraph.plainText.length;
       } else {
-        // Overflows this sheet!
         isOverflowing = true;
-        final linesThatFit = math.max(0, remainingRows ~/ measured.rowWeight);
+        final rawLinesThatFit = math.max(0, remainingRows ~/ measured.rowWeight);
+        final linesThatFit =
+            (rawLinesThatFit == 0 && headDelta.isEmpty) ? 1 : rawLinesThatFit;
 
         if (linesThatFit == 0) {
-          // No lines of this paragraph fit; entire paragraph moves to tail
           splitOffset = cumulativeCharacterOffset;
           hasTrailingSoftNewline = false;
-          for (final op in paragraph.operations) {
-            tailDelta.push(op);
+          for (final operation in paragraph.operations) {
+            tailDelta.push(operation);
           }
         } else {
-          // Some visual lines fit
           final lineBreakIndex = math.min(
             linesThatFit - 1,
             measured.lineBreakOffsets.length - 1,
           );
-          final paragraphCutOffset = measured.lineBreakOffsets[lineBreakIndex];
+          var paragraphCutOffset = measured.lineBreakOffsets[lineBreakIndex];
+          if (paragraphCutOffset <= 0 && paragraph.plainText.isNotEmpty) {
+            paragraphCutOffset = math.min(paragraph.plainText.length, 1);
+          }
           splitOffset = cumulativeCharacterOffset + paragraphCutOffset;
 
           final paragraphDelta = Delta();
-          for (final op in paragraph.operations) {
-            paragraphDelta.push(op);
+          for (final operation in paragraph.operations) {
+            paragraphDelta.push(operation);
           }
 
           final split = splitDeltaAtCharacterOffset(
@@ -254,11 +262,11 @@ class StationeryDeltaSplitter {
             trailingParagraphAttributes: paragraph.blockAttributes,
           );
 
-          for (final op in split.firstSlice.operations) {
-            headDelta.push(op);
+          for (final operation in split.firstSlice.operations) {
+            headDelta.push(operation);
           }
-          for (final op in split.secondSlice.operations) {
-            tailDelta.push(op);
+          for (final operation in split.secondSlice.operations) {
+            tailDelta.push(operation);
           }
           hasTrailingSoftNewline = split.hasTrailingSoftNewline;
         }
@@ -274,7 +282,6 @@ class StationeryDeltaSplitter {
       );
     }
 
-    // Ensure valid terminating newlines
     if (headDelta.isEmpty) {
       headDelta.push(Operation.insert('\n'));
     } else {

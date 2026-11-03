@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
@@ -49,15 +50,27 @@ void main() {
       sheet.dispose();
     });
 
-    test('TextStationerySheet setDelta updates controller with exact Delta', () {
+    test('TextStationerySheet setDelta updates document in place without disposing controller', () {
       final sheet = OpeningSheet.empty(sheetIndex: 0);
+      final originalController = sheet.controller;
+      var listenerCalls = 0;
+      originalController.addListener(() {
+        listenerCalls++;
+      });
+
       final newDelta = Delta()
         ..insert('Updated heading')
         ..insert('\n', {'header': 1});
 
-      sheet.setDelta(newDelta);
+      sheet.setDelta(
+        newDelta,
+        selection: const TextSelection.collapsed(offset: 7),
+      );
 
+      expect(identical(sheet.controller, originalController), isTrue);
+      expect(listenerCalls, greaterThan(0));
       expect(sheet.plainText.trim(), equals('Updated heading'));
+      expect(sheet.controller.selection.baseOffset, equals(7));
       expect(sheet.delta.operations.last.attributes?['header'], equals(1));
 
       sheet.dispose();
@@ -81,8 +94,8 @@ void main() {
       original.dispose();
     });
 
-    test('EphemeraSheet parses BlockEmbed metadata with caption and aspect ratio', () {
-      final embedData = const MediaEmbedData(
+    test('EphemeraSheet parses BlockEmbed metadata with typed EphemeraMediaType', () {
+      const embedData = MediaEmbedData(
         path: 'media/test_uuid.webp',
         caption: 'Classical Garden Pavilion',
         aspect: '4:3',
@@ -90,19 +103,19 @@ void main() {
 
       final sheet = EphemeraSheet(
         sheetIndex: 1,
-        mediaType: 'image',
+        mediaType: EphemeraMediaType.image,
         mediaData: embedData,
       );
 
       expect(sheet.sheetIndex, equals(1));
       expect(sheet.isEphemeraSheet, isTrue);
       expect(sheet.isTextSheet, isFalse);
-      expect(sheet.mediaType, equals('image'));
+      expect(sheet.mediaType, equals(EphemeraMediaType.image));
+      expect(sheet.mediaType.embedKey, equals('image'));
       expect(sheet.sandboxedRelativePath, equals('media/test_uuid.webp'));
       expect(sheet.caption, equals('Classical Garden Pavilion'));
       expect(sheet.aspect, equals('4:3'));
 
-      // Edit caption
       sheet.captionController.text = 'Updated Autumn View';
       expect(sheet.caption, equals('Updated Autumn View'));
       expect(sheet.currentMediaData.caption, equals('Updated Autumn View'));
@@ -118,11 +131,12 @@ void main() {
       const rawJson = '{"path":"media/video_uuid.mp4","caption":"Mountain Stream","aspect":"1:1"}';
       final sheet = EphemeraSheet.fromEmbed(
         sheetIndex: 2,
-        mediaType: 'video',
+        mediaType: EphemeraMediaType.video,
         rawData: rawJson,
       );
 
-      expect(sheet.mediaType, equals('video'));
+      expect(sheet.mediaType, equals(EphemeraMediaType.video));
+      expect(sheet.mediaType.embedKey, equals('video'));
       expect(sheet.sandboxedRelativePath, equals('media/video_uuid.mp4'));
       expect(sheet.caption, equals('Mountain Stream'));
       expect(sheet.aspect, equals('1:1'));

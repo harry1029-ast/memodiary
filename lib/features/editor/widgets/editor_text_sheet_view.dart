@@ -5,18 +5,17 @@ import 'package:flutter_quill/flutter_quill.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
-import '../../templates/models/template_style.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/typography_settings.dart';
+import '../models/stationery_sheet_configs.dart';
 import 'editor_quill_styles_builder.dart';
 import 'integer_snapped_letterhead.dart';
 import 'journal_letterhead.dart';
 import 'sandboxed_image_embed_builder.dart';
 import 'sandboxed_video_embed_builder.dart';
 
-/// Renders an OpeningSheet (JournalLetterhead + 10-row editor) or ContinuationSheet
-/// (running colophon + 14-row editor) inside the Paper Heart.
+/// Renders an OpeningSheet (4-row JournalLetterhead + 10-row editor) or ContinuationSheet
+/// (running colophon + 14-row editor) constrained and clipped strictly inside the Paper Heart.
 class EditorTextSheetView extends StatelessWidget {
   final TextStationerySheet sheet;
   final int sheetIndex;
@@ -24,18 +23,8 @@ class EditorTextSheetView extends StatelessWidget {
   final double activeRowHeight;
   final double horizontalLeft;
   final double horizontalRight;
-  final TemplateStyle templateStyle;
-  final TypographySettings typography;
-  final Color inkColor;
-  final bool isPaperDark;
-  final GlobalKey letterheadKey;
-  final DateTime entryDate;
-  final int? mood;
-  final String? weather;
-  final TextEditingController titleController;
-  final ValueChanged<DateTime> onDateChanged;
-  final ValueChanged<int?> onMoodChanged;
-  final ValueChanged<String?> onWeatherChanged;
+  final StationerySheetThemeConfig themeConfig;
+  final StationeryLetterheadConfig letterheadConfig;
   final MediaSandboxService mediaSandboxService;
   final VoidCallback onSaveDraft;
   final void Function(int sheetIndex)? onSpillBack;
@@ -48,18 +37,8 @@ class EditorTextSheetView extends StatelessWidget {
     required this.activeRowHeight,
     required this.horizontalLeft,
     required this.horizontalRight,
-    required this.templateStyle,
-    required this.typography,
-    required this.inkColor,
-    required this.isPaperDark,
-    required this.letterheadKey,
-    required this.entryDate,
-    required this.mood,
-    required this.weather,
-    required this.titleController,
-    required this.onDateChanged,
-    required this.onMoodChanged,
-    required this.onWeatherChanged,
+    required this.themeConfig,
+    required this.letterheadConfig,
     required this.mediaSandboxService,
     required this.onSaveDraft,
     this.onSpillBack,
@@ -74,95 +53,116 @@ class EditorTextSheetView extends StatelessWidget {
   }
 
   Widget _buildOpeningSheet() {
-    return SingleChildScrollView(
-      physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.only(top: metrics.heavenMarginPx),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. In-Paper Journal Letterhead wrapped inside IntegerSnappedLetterhead
-          IntegerSnappedLetterhead(
-            key: letterheadKey,
-            lineStridePx: activeRowHeight,
-            child: Container(
-              padding: EdgeInsets.only(
-                left: horizontalLeft,
-                right: horizontalRight,
-                top: 8.0,
-                bottom: 8.0,
-              ),
-              child: JournalLetterhead(
-                entryDate: entryDate,
-                mood: mood,
-                weather: weather,
-                titleController: titleController,
-                onDateChanged: onDateChanged,
-                onMoodChanged: onMoodChanged,
-                onWeatherChanged: onWeatherChanged,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned(
+          top: metrics.innerFrameRect.top,
+          left: 0,
+          right: 0,
+          height: metrics.innerFrameRect.height,
+          child: ClipRect(
+            key: const Key('editor_paper_heart_viewport_clip'),
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IntegerSnappedLetterhead(
+                    key: letterheadConfig.letterheadKey,
+                    lineStridePx: activeRowHeight,
+                    minRows: kJournalLetterheadReservedRows,
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: horizontalLeft,
+                        right: horizontalRight,
+                      ),
+                      child: JournalLetterhead(
+                        entryDate: letterheadConfig.entryDate,
+                        mood: letterheadConfig.mood,
+                        weather: letterheadConfig.weather,
+                        titleController: letterheadConfig.titleController,
+                        onDateChanged: letterheadConfig.onDateChanged,
+                        onMoodChanged: letterheadConfig.onMoodChanged,
+                        onWeatherChanged: letterheadConfig.onWeatherChanged,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: horizontalLeft,
+                      right: horizontalRight,
+                    ),
+                    child: _buildTextEditor(
+                      placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-
-          // 2. 10 ruled lines QuillEditor inside Paper Heart
-          Padding(
-            padding: EdgeInsets.only(
-              left: horizontalLeft,
-              right: horizontalRight,
-              bottom: 40.0,
-            ),
-            child: _buildTextEditor(
-              placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildContinuationSheet() {
-    final rawTitle = titleController.text.trim();
+    final rawTitle = letterheadConfig.titleController.text.trim();
     final displayTitle = rawTitle.isNotEmpty ? rawTitle : '无题';
     final colophonText = '《$displayTitle》 · 第 ${sheetIndex + 1} 页';
+    final hasMarginRoom = metrics.innerFrameRect.top >= 26.0;
+    final colophonTop = math.max(0.0, metrics.innerFrameRect.top - 26.0);
 
-    return SingleChildScrollView(
-      physics: const ClampingScrollPhysics(),
-      padding: EdgeInsets.only(top: math.max(0.0, metrics.heavenMarginPx - 26.0)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Running colophon header
-          Container(
-            height: 24.0,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned(
+          top: colophonTop,
+          left: 0,
+          right: 0,
+          height: 24.0,
+          child: Padding(
             padding: EdgeInsets.only(left: horizontalLeft, right: horizontalRight),
-            alignment: Alignment.centerLeft,
-            child: Text(
-              colophonText,
-              key: const Key('editor_continuation_colophon_header'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 11.0,
-                letterSpacing: 1.2,
-                color: inkColor.withValues(alpha: 0.7),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                colophonText,
+                key: const Key('editor_continuation_colophon_header'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 11.0,
+                  letterSpacing: 1.2,
+                  color: themeConfig.inkColor.withValues(alpha: 0.7),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 2.0),
-
-          // 14 ruled lines QuillEditor inside Paper Heart
-          Padding(
-            padding: EdgeInsets.only(
-              left: horizontalLeft,
-              right: horizontalRight,
-              bottom: 40.0,
-            ),
-            child: _buildTextEditor(
-              placeholder: '续写素笺... Continue writing...',
+        ),
+        Positioned(
+          top: metrics.innerFrameRect.top,
+          left: 0,
+          right: 0,
+          height: metrics.innerFrameRect.height,
+          child: ClipRect(
+            key: const Key('editor_paper_heart_viewport_clip'),
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.only(top: hasMarginRoom ? 0.0 : 8.0),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: horizontalLeft,
+                  right: horizontalRight,
+                ),
+                child: _buildTextEditor(
+                  placeholder: '续写素笺... Continue writing...',
+                ),
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -204,15 +204,14 @@ class EditorTextSheetView extends StatelessWidget {
             ),
           ],
           customStyles: EditorQuillStylesBuilder.build(
-            typography: typography,
-            inkColor: inkColor,
-            isPaperDark: isPaperDark,
+            typography: themeConfig.typography,
+            inkColor: themeConfig.inkColor,
+            isPaperDark: themeConfig.isPaperDark,
             lineStridePx: activeRowHeight,
-            backgroundType: templateStyle.type,
+            backgroundType: themeConfig.templateStyle.type,
           ),
         ),
       ),
     );
   }
 }
-

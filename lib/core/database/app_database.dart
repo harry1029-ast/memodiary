@@ -430,6 +430,20 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  /// Deletes media attachment records matching both [entryId] and [relativePath].
+  Future<int> deleteMediaForEntryByPath({
+    required String entryId,
+    required String relativePath,
+  }) {
+    return (delete(mediaAttachments)
+          ..where(
+            (attachment) =>
+                attachment.entryId.equals(entryId) &
+                attachment.relativePath.equals(relativePath),
+          ))
+        .go();
+  }
+
   /// Retrieves all video media attachments associated with a specific entry
   Future<List<MediaAttachment>> getVideosForEntry(String entryId) {
     return (select(mediaAttachments)
