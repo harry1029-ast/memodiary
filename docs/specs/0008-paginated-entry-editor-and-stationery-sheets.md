@@ -1,7 +1,7 @@
 ---
 id: SPEC-008
 title: Paginated Entry Editor, Discrete Stationery Sheets & Auto-Spill
-status: ready-for-agent
+status: completed
 created_at: 2026-11-03T22:31:00+08:00
 ---
 
