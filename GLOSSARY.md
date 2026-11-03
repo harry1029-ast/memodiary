@@ -92,6 +92,22 @@ _Avoid_: Header padding, footer margin, canvas insets
 The classical stationery framing format (`文武双栏` / 四周双栏) composed of an outer heavier stroke and inner lighter stroke enclosing the Paper Heart, preventing ruling lines from bleeding to screen edges.
 _Avoid_: Canvas border, frame border, sheet outline
 
+**Thread-Bound Folio**:
+The mobile single-page reading stage (`ThreadBoundFolioStage`) modeled after a traditional Chinese thread-bound volume, featuring 6-hole silk binding, brass corner protectors, stacked edge depth, and 3D cylindrical page-turning physics.
+_Avoid_: Book preview, flipbook screen, folio widget
+
+**Frontispiece Cover**:
+The opening ceremonial leaf (`FolioFrontispiecePage`) of a diary entry in the Thread-Bound Folio, presenting the entry's date, weather, mood, an authentic center-mounted hero artwork (photo or procedural landscape with washi tape and silk mounts), and an interlinear reflection (`眉批夹注`).
+_Avoid_: Book cover, title slide, entry splash page
+
+**Tipped-In Ephemera Leaf**:
+A dedicated illustration leaf (`TippedInEphemeraLeaf`) interleaved within the paginated Folio text flow, presenting an attached photo or video with paper-toned matte borders, classical silk corner mounts, and colophon captions.
+_Avoid_: Image page, media slide, photo leaf
+
+**Reading Perspective**:
+The ephemeral, non-destructive presentation mode (`ReadingPerspective`) in the Thread-Bound Folio allowing the diarist to contemplate an entry in alternative classical formats (e.g., `朱丝竖排` vermilion vertical, `原稿墨格` manuscript grid, `松烟夜卷` obsidian gold rubbing) while defaulting faithfully to the entry's saved stationery template (`忠实原貌` faithful original).
+_Avoid_: Template editor, style picker, theme switcher
+
 **Interlinear Sub-Note**:
 The classical Chinese annotation format (`双行夹注` · Jiāzhù) rendering commentary as two parallel sub-columns of small-scale characters within a single column stride, parsed from `{夹注:...}` syntax.
 _Avoid_: Side note, footnote, inline comment
