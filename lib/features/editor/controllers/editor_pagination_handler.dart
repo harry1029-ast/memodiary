@@ -33,25 +33,29 @@ class EditorPaginationHandler {
   void _init() {
     coordinator.addListener(_handleCoordinatorNotification);
     coordinator.onAutoSpill = (spillResult) {
-      attachSheetListeners();
-      if (pageController.hasClients) {
-        pageController.animateToPage(
-          spillResult.destinationSheetIndex,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-        );
-      }
-      final destSheet = coordinator.sheets[spillResult.destinationSheetIndex];
-      if (destSheet is TextStationerySheet) {
-        destSheet.focusNode.requestFocus();
-        destSheet.controller.updateSelection(
-          TextSelection.collapsed(offset: spillResult.destinationCaretOffset),
-          ChangeSource.local,
-        );
-      }
-      autosaveManager.markDirty();
       currentSheetIndex = spillResult.destinationSheetIndex;
+      coordinator.activeSheetIndex = spillResult.destinationSheetIndex;
+      attachSheetListeners();
+      autosaveManager.markDirty();
       onStateChanged();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (pageController.hasClients) {
+          pageController.animateToPage(
+            spillResult.destinationSheetIndex,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+          );
+        }
+        final destSheet = coordinator.sheets[spillResult.destinationSheetIndex];
+        if (destSheet is TextStationerySheet) {
+          destSheet.focusNode.requestFocus();
+          destSheet.controller.updateSelection(
+            TextSelection.collapsed(offset: spillResult.destinationCaretOffset),
+            ChangeSource.local,
+          );
+        }
+      });
     };
 
     attachSheetListeners();
@@ -77,7 +81,7 @@ class EditorPaginationHandler {
         Document boundDocument = sheet.controller.document;
         StreamSubscription<DocChange> docSub =
             boundDocument.changes.listen((docChange) {
-          _onSheetDocumentChanged(sheet);
+          _onSheetDocumentChanged(sheet, docChange);
         });
         _subscriptions.add(docSub);
 
@@ -87,7 +91,7 @@ class EditorPaginationHandler {
             docSub.cancel();
             boundDocument = sheet.controller.document;
             docSub = boundDocument.changes.listen((docChange) {
-              _onSheetDocumentChanged(sheet);
+              _onSheetDocumentChanged(sheet, docChange);
             });
             _subscriptions.add(docSub);
             return;
@@ -120,7 +124,7 @@ class EditorPaginationHandler {
     }
   }
 
-  void _onSheetDocumentChanged(TextStationerySheet sheet) {
+  void _onSheetDocumentChanged(TextStationerySheet sheet, DocChange docChange) {
     if (_isMutatingSheets) return;
     autosaveManager.markDirty();
     if (coordinator.isSheetComposing(sheet.sheetIndex)) return;
@@ -128,32 +132,35 @@ class EditorPaginationHandler {
     final liveIndex = coordinator.sheets.indexOf(sheet);
     if (liveIndex < 0) return;
 
-    if (liveIndex > 0 && sheet.isEmpty) {
+    final hasDeletions = docChange.change.operations.any((op) => op.isDelete);
+    if (liveIndex > 0 && sheet.isEmpty && hasDeletions) {
       _runGuardedMutation(() {
-        final didCollapse = coordinator.collapseEmptyContinuationSheets();
+        final didCollapse = coordinator.collapseEmptyContinuationSheets(allowActive: true);
         if (didCollapse) {
           attachSheetListeners();
           final targetIndex = coordinator.activeSheetIndex
               .clamp(0, math.max(0, coordinator.totalSheets - 1))
               .toInt();
           currentSheetIndex = targetIndex;
-          final activeSheet = coordinator.sheets[targetIndex];
-          if (activeSheet is TextStationerySheet) {
-            activeSheet.focusNode.requestFocus();
-            final endOffset = math.max(0, activeSheet.document.length - 1);
-            activeSheet.controller.updateSelection(
-              TextSelection.collapsed(offset: endOffset),
-              ChangeSource.local,
-            );
-          }
-          if (pageController.hasClients) {
-            pageController.animateToPage(
-              targetIndex,
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutCubic,
-            );
-          }
           onStateChanged();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final activeSheet = coordinator.sheets[targetIndex];
+            if (activeSheet is TextStationerySheet) {
+              activeSheet.focusNode.requestFocus();
+              final endOffset = math.max(0, activeSheet.document.length - 1);
+              activeSheet.controller.updateSelection(
+                TextSelection.collapsed(offset: endOffset),
+                ChangeSource.local,
+              );
+            }
+            if (pageController.hasClients) {
+              pageController.animateToPage(
+                targetIndex,
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+              );
+            }
+          });
         }
       });
       return;
@@ -209,7 +216,9 @@ class EditorPaginationHandler {
     });
     attachSheetListeners();
     goToSheet(nextTextSheet.sheetIndex);
-    nextTextSheet.focusNode.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      nextTextSheet.focusNode.requestFocus();
+    });
     return nextTextSheet.controller;
   }
 
@@ -217,20 +226,42 @@ class EditorPaginationHandler {
     if (targetIndex < 0 || targetIndex >= coordinator.totalSheets) return;
     coordinator.activeSheetIndex = targetIndex;
     currentSheetIndex = targetIndex;
-    onStateChanged();
-    if (pageController.hasClients) {
-      pageController.animateToPage(
-        targetIndex,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-      );
+    final targetSheet = coordinator.sheets[targetIndex];
+    if (targetSheet is TextStationerySheet) {
+      targetSheet.focusNode.requestFocus();
     }
+    _runGuardedMutation(() {
+      final didCollapse = coordinator.collapseEmptyContinuationSheets();
+      if (didCollapse) {
+        attachSheetListeners();
+      }
+    });
+    onStateChanged();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (pageController.hasClients) {
+        pageController.animateToPage(
+          targetIndex.clamp(0, math.max(0, coordinator.totalSheets - 1)),
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
   }
 
   void handlePageChanged(int newPageIndex) {
     coordinator.activeSheetIndex = newPageIndex;
     if (currentSheetIndex != newPageIndex) {
       currentSheetIndex = newPageIndex;
+      final activeSheet = coordinator.sheets[newPageIndex.clamp(0, coordinator.sheets.length - 1)];
+      if (activeSheet is TextStationerySheet) {
+        activeSheet.focusNode.requestFocus();
+      }
+      _runGuardedMutation(() {
+        final didCollapse = coordinator.collapseEmptyContinuationSheets();
+        if (didCollapse) {
+          attachSheetListeners();
+        }
+      });
       onStateChanged();
     }
   }
@@ -242,25 +273,29 @@ class EditorPaginationHandler {
     });
     if (result != null) {
       final spillBackResult = result!;
-      attachSheetListeners();
-      if (pageController.hasClients) {
-        pageController.animateToPage(
-          spillBackResult.destinationSheetIndex,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-        );
-      }
-      final destSheet = coordinator.sheets[spillBackResult.destinationSheetIndex];
-      if (destSheet is TextStationerySheet) {
-        destSheet.focusNode.requestFocus();
-        destSheet.controller.updateSelection(
-          TextSelection.collapsed(offset: spillBackResult.destinationCaretOffset),
-          ChangeSource.local,
-        );
-      }
-      autosaveManager.saveDraft();
       currentSheetIndex = spillBackResult.destinationSheetIndex;
+      coordinator.activeSheetIndex = spillBackResult.destinationSheetIndex;
+      attachSheetListeners();
+      autosaveManager.saveDraft();
       onStateChanged();
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (pageController.hasClients) {
+          pageController.animateToPage(
+            spillBackResult.destinationSheetIndex,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+          );
+        }
+        final destSheet = coordinator.sheets[spillBackResult.destinationSheetIndex];
+        if (destSheet is TextStationerySheet) {
+          destSheet.focusNode.requestFocus();
+          destSheet.controller.updateSelection(
+            TextSelection.collapsed(offset: spillBackResult.destinationCaretOffset),
+            ChangeSource.local,
+          );
+        }
+      });
     }
   }
 
@@ -280,13 +315,15 @@ class EditorPaginationHandler {
         .toInt();
     currentSheetIndex = targetIndex;
     onStateChanged();
-    if (pageController.hasClients) {
-      pageController.animateToPage(
-        targetIndex,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-      );
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (pageController.hasClients) {
+        pageController.animateToPage(
+          targetIndex,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
 
     if (deletedRelativePath != null && deletedRelativePath.isNotEmpty) {
       await autosaveManager.database.deleteMediaForEntryByPath(

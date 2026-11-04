@@ -139,7 +139,9 @@ class EditorPaginationCoordinator extends ChangeNotifier {
         (_sheets.first as OpeningSheet).isEmpty) {
       return;
     }
-    if (_sheets.any((sheet) => isSheetComposing(sheet.sheetIndex))) {
+    if (_sheets.any((sheet) =>
+        isSheetComposing(sheet.sheetIndex) ||
+        (sheet is TextStationerySheet && sheet.focusNode.hasFocus))) {
       return;
     }
 
@@ -245,11 +247,18 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   }
 
   /// Auto-collapses trailing empty continuation sheets (`sheetIndex > 0`), preserving Sheet 1.
-  bool collapseEmptyContinuationSheets() {
+  bool collapseEmptyContinuationSheets({bool allowActive = false}) {
     bool didCollapse = false;
     for (int index = _sheets.length - 1; index > 0; index--) {
+      if (!allowActive && index == _activeSheetIndex) break;
       final sheet = _sheets[index];
       if (sheet is TextStationerySheet && sheet.isEmpty) {
+        if (!allowActive && sheet.focusNode.hasFocus) {
+          break;
+        }
+        if (sheet.focusNode.hasFocus) {
+          sheet.focusNode.unfocus();
+        }
         _sheets.removeAt(index);
         sheet.dispose();
         didCollapse = true;

@@ -108,6 +108,7 @@ void main() {
       secondEditor.controller.document.length - 1,
     );
     await tester.pumpAndSettle();
+
     expect(find.text('第 1 / 1 页'), findsOneWidget);
   });
 }
