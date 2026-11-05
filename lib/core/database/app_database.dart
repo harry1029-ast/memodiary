@@ -289,10 +289,13 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(mediaAttachments, mediaAttachments.caption);
             // Captions previously lived in `ocr_text`. Rows with real OCR
             // blocks keep it as OCR; rows never scanned (NULL blocks) or
-            // captioned in-app (empty blocks with non-empty text) are copied.
-            // `ocr_text` is left untouched so `media_fts` is unaffected.
+            // captioned in-app (empty blocks with non-empty text) have the
+            // text moved to `caption` and their OCR fields reset to unindexed
+            // (NULL), so the caption leaves `media_fts` (via the update
+            // trigger) and the photo is queued for OCR backfill.
             await customStatement('''
-              UPDATE media_attachments SET caption = ocr_text
+              UPDATE media_attachments
+              SET caption = ocr_text, ocr_text = NULL, ocr_blocks_json = NULL
               WHERE coalesce(ocr_text, '') <> ''
                 AND (ocr_blocks_json IS NULL OR ocr_blocks_json = '[]');
             ''');

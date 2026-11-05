@@ -355,19 +355,18 @@ void main() {
         expect(restoreRes.albumPhotosRestored, equals(1));
 
         final restoredMedia = (await db.getMediaForEntry('v4_entry_1')).single;
-        expect(restoredMedia.ocrText, equals('Legacy V4 Signpost'));
-        expect(restoredMedia.ocrBlocksJson, isNull);
         // Pre-v7 captions lived in ocrText; restore applies the v7 migration rule
         expect(restoredMedia.caption, equals('Legacy V4 Signpost'));
+        expect(restoredMedia.ocrText, isNull);
+        expect(restoredMedia.ocrBlocksJson, isNull);
 
         final restoredAlbumPhoto = (await db.select(db.albumPhotos).get()).single;
         expect(restoredAlbumPhoto.ocrText, isNull);
         expect(restoredAlbumPhoto.ocrBlocksJson, isNull);
 
-        // Legacy entry attachment with ocrText is searchable immediately, while legacy album photo is queued for backfill
-        final searchHits = await db.searchPhotoText('Signpost');
-        expect(searchHits.map((item) => item.id).toList(), equals(['v4_att_1']));
-        expect(await db.countUnindexedImages(), equals(1));
+        // The moved caption is not photo-searchable; both legacy images are queued for OCR backfill
+        expect(await db.searchPhotoText('Signpost'), isEmpty);
+        expect(await db.countUnindexedImages(), equals(2));
       },
     );
   });

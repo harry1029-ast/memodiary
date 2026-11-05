@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart' show Value, Variable;
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
@@ -108,7 +108,7 @@ void main() {
     );
 
     test(
-      'Real v4 -> v5 migration adds OCR columns and backfills existing non-empty image ocr_text into media_fts',
+      'Real v4 -> latest migration adds OCR columns and moves block-less pre-v5 ocr_text into captions, out of media_fts',
       () async {
         final executor = NativeDatabase.memory(
           setup: (rawDb) {
@@ -216,7 +216,7 @@ void main() {
                 1710000000, 1710000000, 1710000000
               );
             ''');
-            // Image with pre-existing ocr_text -> MUST be backfilled
+            // Image with pre-v5 ocr_text (no OCR blocks) -> moved to caption by v7
             rawDb.execute('''
               INSERT INTO media_attachments (id, entry_id, media_type, relative_path, ocr_text, created_at)
               VALUES ('v4_img_with_ocr', 'v4_entry_1', 'image', 'media/ferry_ticket.webp', 'WestLake Ferry 2026', 1710000001);
@@ -258,38 +258,27 @@ void main() {
         expect(attachments.length, equals(4));
         final migratedTicket =
             attachments.firstWhere((item) => item.id == 'v4_img_with_ocr');
-        expect(migratedTicket.ocrText, equals('WestLake Ferry 2026'));
+        expect(migratedTicket.caption, equals('WestLake Ferry 2026'));
+        expect(migratedTicket.ocrText, isNull);
         expect(migratedTicket.ocrBlocksJson, isNull);
+        final migratedVideo = attachments.firstWhere((item) => item.id == 'v4_vid_1');
+        expect(migratedVideo.caption, equals('Video Subtitle'));
+        final migratedEmpty = attachments.firstWhere((item) => item.id == 'v4_img_empty_ocr');
+        expect(migratedEmpty.caption, isNull);
+        expect(migratedEmpty.ocrText, equals(''));
 
         final migratedPhotos = await db.select(db.albumPhotos).get();
         expect(migratedPhotos.single.id, equals('v4_album_photo_1'));
         expect(migratedPhotos.single.ocrText, isNull);
         expect(migratedPhotos.single.ocrBlocksJson, isNull);
 
-        // Verify media_fts backfilled ONLY the non-empty image attachment
+        // v5 backfills media_fts from ocr_text; v7 then moves those captions
+        // out, so no caption text remains photo-searchable.
         final ftsRows = await db
-            .customSelect('SELECT id, source_type, ocr_text FROM media_fts')
+            .customSelect('SELECT id FROM media_fts')
             .get();
-        expect(ftsRows.length, equals(1));
-        expect(ftsRows.single.read<String>('id'), equals('v4_img_with_ocr'));
-        expect(
-          ftsRows.single.read<String>('source_type'),
-          equals('entry_media'),
-        );
-        expect(
-          ftsRows.single.read<String>('ocr_text'),
-          equals('WestLake Ferry 2026'),
-        );
-
-        // Verify FTS5 MATCH works immediately against backfilled record
-        final matchRows = await db
-            .customSelect(
-              'SELECT id FROM media_fts WHERE media_fts MATCH ?',
-              variables: [Variable.withString('"Ferry"*')],
-            )
-            .get();
-        expect(matchRows.length, equals(1));
-        expect(matchRows.single.read<String>('id'), equals('v4_img_with_ocr'));
+        expect(ftsRows, isEmpty);
+        expect(await db.searchPhotoText('Ferry'), isEmpty);
       },
     );
 

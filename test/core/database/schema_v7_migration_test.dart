@@ -117,7 +117,7 @@ void main() {
       expect(await db.searchPhotoText('秋日'), isEmpty);
     });
 
-    test('upgrade from v6 copies captions only from rows without OCR blocks', () async {
+    test('upgrade from v6 moves captions out of OCR text only for rows without OCR blocks', () async {
       final nowSec = DateTime(2026, 11, 5, 9).millisecondsSinceEpoch ~/ 1000;
       final executor = NativeDatabase.memory(
         setup: (rawDb) {
@@ -150,8 +150,11 @@ void main() {
       };
 
       expect(byId['legacy_caption']!.caption, equals('湖畔品茶'));
-      expect(byId['legacy_caption']!.ocrText, equals('湖畔品茶'));
+      expect(byId['legacy_caption']!.ocrText, isNull);
+      expect(byId['legacy_caption']!.ocrBlocksJson, isNull);
       expect(byId['in_app_caption']!.caption, equals('雨后西湖'));
+      expect(byId['in_app_caption']!.ocrText, isNull);
+      expect(byId['in_app_caption']!.ocrBlocksJson, isNull);
       expect(byId['ocr_scanned']!.caption, isNull);
       expect(byId['ocr_scanned']!.ocrText, equals('狮峰龙井'));
       expect(byId['ocr_scanned']!.ocrBlocksJson, equals('[{"text":"狮峰龙井"}]'));
@@ -161,6 +164,10 @@ void main() {
       expect(byId['unscanned']!.ocrText, isNull);
 
       expect((await db.searchPhotoText('狮峰')).map((match) => match.id), equals(['ocr_scanned']));
+      // Moved captions leave photo text search and are queued for OCR backfill.
+      expect(await db.searchPhotoText('湖畔'), isEmpty);
+      expect(await db.searchPhotoText('雨后'), isEmpty);
+      expect(await db.countUnindexedImages(), equals(3));
 
       await db.updateMediaCaption('ocr_scanned', caption: '明前新茶');
       expect((await db.searchPhotoText('狮峰')).map((match) => match.id), equals(['ocr_scanned']));

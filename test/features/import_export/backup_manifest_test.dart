@@ -192,7 +192,7 @@ void main() {
       expect(legacyV2.snapshot.albumPhotos, isEmpty);
     });
 
-    test('pre-v7 manifests derive captions from ocrText only for rows without OCR blocks', () {
+    test('pre-v7 manifests move captions out of ocrText only for rows without OCR blocks', () {
       Map<String, dynamic> legacyAttachment(String id, String? ocrText, String? blocks) => {
             'id': id,
             'entryId': 'entry_1',
@@ -235,7 +235,7 @@ void main() {
       }));
       expect(
         legacyV6.snapshot.mediaAttachments.map((media) => media.ocrText),
-        equals(['湖畔品茶', '雨后西湖', '狮峰龙井', '']),
+        equals([null, null, '狮峰龙井', '']),
       );
     });
 

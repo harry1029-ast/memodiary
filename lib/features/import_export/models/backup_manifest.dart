@@ -98,15 +98,17 @@ class BackupDatabaseSnapshot {
       };
 
   /// Pre-v7 backups have no `caption` key: captions lived in `ocrText`.
-  /// Mirrors the schema v7 migration: copy `ocrText` into `caption` only for
+  /// Mirrors the schema v7 migration: move `ocrText` into `caption` only for
   /// rows that were never OCR-scanned (`ocrBlocksJson` null) or captioned
-  /// in-app (empty blocks with non-empty text); `ocrText` is kept as-is.
+  /// in-app (empty blocks with non-empty text), resetting their OCR fields to
+  /// unindexed (null) so the caption stays out of photo text search.
   static Map<String, dynamic> _withLegacyCaption(Map<String, dynamic> json) {
     if (json.containsKey('caption')) return json;
     final ocrText = json['ocrText'];
     final blocks = json['ocrBlocksJson'];
     final isCaption = ocrText is String && ocrText.isNotEmpty && (blocks == null || blocks == '[]');
-    return {...json, 'caption': isCaption ? ocrText : null};
+    if (!isCaption) return {...json, 'caption': null};
+    return {...json, 'caption': ocrText, 'ocrText': null, 'ocrBlocksJson': null};
   }
 
   factory BackupDatabaseSnapshot.fromJson(Map<String, dynamic> json) {
