@@ -168,6 +168,9 @@ class EditorPaginationHandler {
 
     _runGuardedMutation(() {
       coordinator.checkAndPerformAutoSpill(liveIndex);
+      // Mounted items follow their markers: a deleted passage unmounts its
+      // item, an undo remounts it, and reflow cascades or unmounts extras.
+      coordinator.reflowMounts();
     });
   }
 

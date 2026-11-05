@@ -43,14 +43,6 @@ class SheetMediaOperations {
   int _stagedIndexOf(String mediaId) =>
       _stagedItems.indexWhere((item) => item.id == mediaId);
 
-  /// Every known item: mounted items in sheet order, then staged items, so a
-  /// re-partition can resolve markers again without losing captions.
-  List<SheetMediaItem> allItems() => [
-        for (final sheet in _sheets)
-          if (sheet is TextStationerySheet) ...sheet.mediaAttachments,
-        ..._stagedItems,
-      ];
-
   /// Collects [item] into the Staging Handscroll, after every earlier item.
   void collect(SheetMediaItem item) {
     _stagedItems.add(item);
