@@ -13,8 +13,6 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/paper_heart_metrics.dart';
-import 'package:memodiary/features/templates/models/template_style.dart';
-import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
 
@@ -134,7 +132,7 @@ void main() {
       expect(find.text('第 2 / 3 页'), findsOneWidget);
     });
 
-    testWidgets('final-sheet-only BoundedCinnabarSeal is strictly contained within innerFrameRect on 360px viewport', (tester) async {
+    testWidgets('final-sheet-only BoundedCinnabarSeal rests cleanly beneath card without bleeding outside canvas on 360px viewport', (tester) async {
       await pumpEntryEditorScreen(
         tester,
         database: database,
@@ -147,31 +145,26 @@ void main() {
       expect(sealFinder, findsOneWidget);
 
       final sealRect = tester.getRect(sealFinder);
-      final canvasFinder = find.byType(TemplateCanvasContainer);
-      final canvasOrigin = tester.getTopLeft(canvasFinder);
-      final canvasMetrics = tester.widget<TemplateCanvasContainer>(canvasFinder).layoutMetrics!;
-      final globalInnerFrameRect = canvasMetrics.innerFrameRect.shift(canvasOrigin);
+      final cardFinder = find.byType(TemplateCanvasContainer);
+      final cardRect = tester.getRect(cardFinder);
 
-      final isContained = PaperHeartMetrics.isContainedInside(
-        innerFrameRect: globalInnerFrameRect,
-        targetRect: sealRect,
-      );
-      expect(isContained, isTrue, reason: 'Seal must stay strictly inside Paper Heart innerFrameRect');
-
-      final standardMetrics = StationeryLayoutCalculator.calculateMetrics(
-        canvasWidth: 360.0,
-        canvasHeight: 640.0,
-        backgroundType: TemplateBackgroundType.lined,
-        horizontalMargin: 24.0,
-        fontSize: 16.0,
-        lineSpacing: 1.5,
+      expect(
+        sealRect.top,
+        greaterThanOrEqualTo(cardRect.bottom),
+        reason: 'Seal must rest cleanly beneath the stationery card',
       );
       expect(
-        PaperHeartMetrics.isInsideDoubleOuterBorder(
-          innerFrameRect: standardMetrics.innerFrameRect,
-          targetRect: sealRect,
-        ),
-        isTrue,
+        sealRect.bottom,
+        lessThanOrEqualTo(640.0),
+        reason: 'Seal must never bleed outside 360x640 viewport boundaries',
+      );
+      expect(
+        sealRect.left,
+        greaterThanOrEqualTo(0.0),
+      );
+      expect(
+        sealRect.right,
+        lessThanOrEqualTo(360.0),
       );
     });
 

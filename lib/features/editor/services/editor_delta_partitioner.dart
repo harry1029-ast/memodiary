@@ -27,7 +27,13 @@ class EditorDeltaPartitioner {
     final blocks = extractContentBlocks(unifiedDelta);
 
     if (blocks.isEmpty) {
-      sheets.add(OpeningSheet.empty(sheetIndex: 0));
+      final emptySheet = OpeningSheet.empty(sheetIndex: 0);
+      for (final attachment in attachments) {
+        if (!emptySheet.isAtMediaCapacity) {
+          emptySheet.mediaAttachments.add(SheetMediaItem.fromMediaAttachment(attachment));
+        }
+      }
+      sheets.add(emptySheet);
       return sheets;
     }
 
@@ -165,21 +171,36 @@ class EditorDeltaPartitioner {
       flushTextSheet();
     }
 
-    final existingPaths = sheets
+    final existingEphemeraPaths = sheets
         .whereType<EphemeraSheet>()
         .map((ephemera) => ephemera.sandboxedRelativePath)
         .toSet();
 
-    for (final attachment in attachments) {
-      if (!existingPaths.contains(attachment.relativePath)) {
-        sheets.add(EphemeraSheet(
-          sheetIndex: sheets.length,
-          mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
-          mediaData: MediaEmbedData(
-            path: attachment.relativePath,
-            caption: attachment.ocrText ?? '',
-          ),
-        ));
+    final textSheets = sheets.whereType<TextStationerySheet>().toList();
+    if (textSheets.isNotEmpty) {
+      for (final attachment in attachments) {
+        if (existingEphemeraPaths.contains(attachment.relativePath)) continue;
+        final item = SheetMediaItem.fromMediaAttachment(attachment);
+        final targetSheet = textSheets.firstWhere(
+          (sheet) => !sheet.isAtMediaCapacity,
+          orElse: () => textSheets.last,
+        );
+        if (!targetSheet.mediaAttachments.any((candidate) => candidate.id == item.id || candidate.relativePath == item.relativePath)) {
+          targetSheet.mediaAttachments.add(item);
+        }
+      }
+    } else {
+      for (final attachment in attachments) {
+        if (!existingEphemeraPaths.contains(attachment.relativePath)) {
+          sheets.add(EphemeraSheet(
+            sheetIndex: sheets.length,
+            mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
+            mediaData: MediaEmbedData(
+              path: attachment.relativePath,
+              caption: attachment.ocrText ?? '',
+            ),
+          ));
+        }
       }
     }
 

@@ -1,4 +1,5 @@
 import '../../../../core/database/app_database.dart';
+import '../../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../../scenery/services/shanshui_atmosphere_resolver.dart';
 import '../../../templates/models/template_style.dart';
 import 'folio_content_parser.dart';
@@ -129,6 +130,66 @@ class FolioPaginationEngine {
     }
 
     final totalLeaves = 1 + contentLeaves.length;
+    final totalContentCount = contentLeaves.length;
+    final totalBodyCount = contentLeaves.whereType<FolioContentBodyLeaf>().length;
+    final basePhotos = _curateFolioPhotos(
+      attachments: attachments,
+      contentLeaves: const [],
+      fallbackHeroPath: heroPhotoPath,
+      fallbackMediaType: heroMediaType,
+      entryDateStr: gregorianDateStr,
+    );
+
+    final reindexedContentLeaves = <FolioLeaf>[];
+    var contentPageCounter = 1;
+    var bodyCounter = 0;
+
+    for (int index = 0; index < totalContentCount; index++) {
+      final currentLeaf = contentLeaves[index];
+      final isLast = index == totalContentCount - 1;
+      final physicalIndex = index + 1;
+
+      if (currentLeaf is FolioContentBodyLeaf) {
+        final leafPhotos = _photosForBodyIndex(basePhotos, bodyCounter++, totalBodyCount);
+        reindexedContentLeaves.add(FolioContentBodyLeaf(
+          leafIndex: physicalIndex,
+          totalLeaves: totalLeaves,
+          pageIndexInContent: contentPageCounter++,
+          totalContentPages: totalContentCount,
+          layout: currentLeaf.layout,
+          horizontalRows: currentLeaf.horizontalRows,
+          verticalColumns: currentLeaf.verticalColumns,
+          title: currentLeaf.title,
+          lunarDate: currentLeaf.lunarDate,
+          sealText: isLast ? effectiveSeal : null,
+          sealStyle: effectiveSealStyle,
+          photos: leafPhotos,
+          isConcludingLeaf: isLast,
+        ));
+      } else if (currentLeaf is FolioTippedInEphemeraLeaf) {
+        reindexedContentLeaves.add(FolioTippedInEphemeraLeaf(
+          leafIndex: physicalIndex,
+          totalLeaves: totalLeaves,
+          mediaType: currentLeaf.mediaType,
+          sandboxedRelativePath: currentLeaf.sandboxedRelativePath,
+          caption: currentLeaf.caption,
+          aspectRatio: currentLeaf.aspectRatio,
+          title: currentLeaf.title,
+          lunarDate: currentLeaf.lunarDate,
+          sealText: isLast ? effectiveSeal : null,
+          sealStyle: effectiveSealStyle,
+          isConcludingLeaf: isLast,
+        ));
+      }
+    }
+
+    final curatedPhotos = _curateFolioPhotos(
+      attachments: attachments,
+      contentLeaves: reindexedContentLeaves,
+      fallbackHeroPath: heroPhotoPath,
+      fallbackMediaType: heroMediaType,
+      entryDateStr: gregorianDateStr,
+    );
 
     final coverLeaf = FolioFrontispieceCoverLeaf(
       leafIndex: 0,
@@ -148,50 +209,118 @@ class FolioPaginationEngine {
       sealText: effectiveSeal,
       sealStyle: effectiveSealStyle,
       wordCount: wordCount,
+      photos: curatedPhotos,
     );
 
-    final reindexedLeaves = <FolioLeaf>[coverLeaf];
-    final totalContentCount = contentLeaves.length;
-    var contentPageCounter = 1;
+    return [coverLeaf, ...reindexedContentLeaves];
+  }
 
-    for (int index = 0; index < totalContentCount; index++) {
-      final currentLeaf = contentLeaves[index];
-      final isLast = index == totalContentCount - 1;
-      final physicalIndex = index + 1;
+  static List<FolioPhotoAttachment> _photosForBodyIndex(
+    List<FolioPhotoAttachment> allPhotos,
+    int bodyIndex,
+    int totalBodyCount,
+  ) {
+    if (allPhotos.isEmpty || totalBodyCount <= 0) return const [];
+    if (totalBodyCount == 1) {
+      return allPhotos.take(3).toList();
+    }
+    if (allPhotos.length <= totalBodyCount) {
+      return bodyIndex < allPhotos.length ? [allPhotos[bodyIndex]] : const [];
+    }
+    final perLeaf = (allPhotos.length / totalBodyCount).ceil().clamp(1, 3);
+    final start = bodyIndex * perLeaf;
+    if (start >= allPhotos.length) return const [];
+    return allPhotos.skip(start).take(perLeaf).toList();
+  }
 
-      if (currentLeaf is FolioContentBodyLeaf) {
-        reindexedLeaves.add(FolioContentBodyLeaf(
-          leafIndex: physicalIndex,
-          totalLeaves: totalLeaves,
-          pageIndexInContent: contentPageCounter++,
-          totalContentPages: totalContentCount,
-          layout: currentLeaf.layout,
-          horizontalRows: currentLeaf.horizontalRows,
-          verticalColumns: currentLeaf.verticalColumns,
-          title: currentLeaf.title,
-          lunarDate: currentLeaf.lunarDate,
-          sealText: isLast ? effectiveSeal : null,
-          sealStyle: effectiveSealStyle,
-          isConcludingLeaf: isLast,
-        ));
-      } else if (currentLeaf is FolioTippedInEphemeraLeaf) {
-        reindexedLeaves.add(FolioTippedInEphemeraLeaf(
-          leafIndex: physicalIndex,
-          totalLeaves: totalLeaves,
-          mediaType: currentLeaf.mediaType,
-          sandboxedRelativePath: currentLeaf.sandboxedRelativePath,
-          caption: currentLeaf.caption,
-          aspectRatio: currentLeaf.aspectRatio,
-          title: currentLeaf.title,
-          lunarDate: currentLeaf.lunarDate,
-          sealText: isLast ? effectiveSeal : null,
-          sealStyle: effectiveSealStyle,
-          isConcludingLeaf: isLast,
-        ));
+  static List<FolioPhotoAttachment> _curateFolioPhotos({
+    required List<MediaAttachment> attachments,
+    required List<FolioLeaf> contentLeaves,
+    String? fallbackHeroPath,
+    String? fallbackMediaType,
+    required String entryDateStr,
+  }) {
+    final results = <FolioPhotoAttachment>[];
+    final seenPaths = <String>{};
+
+    if (attachments.isNotEmpty) {
+      for (int index = 0; index < attachments.length; index++) {
+        final attachment = attachments[index];
+        seenPaths.add(attachment.relativePath);
+        final bodyMatch = contentLeaves
+            .whereType<FolioContentBodyLeaf>()
+            .cast<FolioContentBodyLeaf?>()
+            .firstWhere(
+              (leaf) => leaf != null && leaf.photos.any((photo) => photo.relativePath == attachment.relativePath),
+              orElse: () => null,
+            );
+        final leafMatch = contentLeaves
+            .whereType<FolioTippedInEphemeraLeaf>()
+            .cast<FolioTippedInEphemeraLeaf?>()
+            .firstWhere(
+              (leaf) => leaf?.sandboxedRelativePath == attachment.relativePath,
+              orElse: () => null,
+            );
+        final targetLeafIndex = bodyMatch?.leafIndex ?? leafMatch?.leafIndex ?? (index + 1);
+        final caption = attachment.ocrText?.trim() ?? '';
+        final title = caption.isNotEmpty ? caption.split('\n').first : '随文影札 ${index + 1}';
+        results.add(
+          FolioPhotoAttachment(
+            id: attachment.id,
+            relativePath: attachment.relativePath,
+            mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
+            title: title,
+            caption: caption.isNotEmpty ? caption : '随文影札 · 拾光留影',
+            date: entryDateStr,
+            pageNumber: index + 1,
+            targetLeafIndex: targetLeafIndex,
+            overlayXRatio: attachment.overlayXRatio,
+            overlayYRatio: attachment.overlayYRatio,
+          ),
+        );
       }
     }
 
-    return reindexedLeaves;
+    final ephemeraLeaves = contentLeaves.whereType<FolioTippedInEphemeraLeaf>().toList();
+    for (final leaf in ephemeraLeaves) {
+      if (!seenPaths.contains(leaf.sandboxedRelativePath)) {
+        seenPaths.add(leaf.sandboxedRelativePath);
+        final pageNum = results.length + 1;
+        final caption = leaf.caption?.trim() ?? '';
+        final title = caption.isNotEmpty
+            ? caption.replaceAll('「图注 · ', '').replaceAll('」', '')
+            : '随文影札 $pageNum';
+        results.add(
+          FolioPhotoAttachment(
+            id: 'ephemera_${leaf.leafIndex}',
+            relativePath: leaf.sandboxedRelativePath,
+            mediaType: EphemeraMediaType.fromEmbedKey(leaf.mediaType),
+            title: title,
+            caption: caption.isNotEmpty ? caption : '随文影札 · 拾光留影',
+            date: entryDateStr,
+            pageNumber: pageNum,
+            targetLeafIndex: leaf.leafIndex,
+          ),
+        );
+      }
+    }
+
+    if (results.isEmpty && fallbackHeroPath != null && fallbackHeroPath.isNotEmpty) {
+      results.add(
+        FolioPhotoAttachment(
+          id: 'hero_fallback',
+          relativePath: fallbackHeroPath,
+          mediaType: EphemeraMediaType.fromEmbedKey(fallbackMediaType ?? 'image'),
+          title: '随文影札 1',
+          caption: '随文影札 · 拾光留影',
+          date: entryDateStr,
+          pageNumber: 1,
+          targetLeafIndex: contentLeaves.isNotEmpty ? 1 : 0,
+        ),
+      );
+    }
+
+    return results;
   }
 
   // --- Horizontal Pagination ---

@@ -74,21 +74,37 @@ class EditorMediaActions {
         File(picked.path),
       );
 
+      final mediaId = const Uuid().v4();
       await database.attachMediaToEntry(
-        id: const Uuid().v4(),
+        id: mediaId,
         entryId: entryId,
         relativePath: relativePath,
         mediaType: EphemeraMediaType.image.embedKey,
       );
 
-      coordinator.insertMediaAtCurrentSelection(
-        mediaType: EphemeraMediaType.image,
-        mediaData: MediaEmbedData(
-          path: relativePath,
-          caption: '',
-          aspect: 'auto',
-        ),
-      );
+      final activeSheet = coordinator.sheets.isNotEmpty &&
+              coordinator.activeSheetIndex < coordinator.sheets.length
+          ? coordinator.sheets[coordinator.activeSheetIndex]
+          : null;
+
+      if (activeSheet is TextStationerySheet && !activeSheet.isAtMediaCapacity) {
+        coordinator.attachMediaToActiveSheet(
+          SheetMediaItem(
+            id: mediaId,
+            mediaType: EphemeraMediaType.image,
+            relativePath: relativePath,
+          ),
+        );
+      } else {
+        coordinator.insertMediaAtCurrentSelection(
+          mediaType: EphemeraMediaType.image,
+          mediaData: MediaEmbedData(
+            path: relativePath,
+            caption: '',
+            aspect: 'auto',
+          ),
+        );
+      }
       onStateChanged?.call();
       await autosaveManager?.saveDraft();
     } catch (error) {
@@ -159,22 +175,39 @@ class EditorMediaActions {
         File(picked.path),
       );
 
+      final mediaId = const Uuid().v4();
       await database.attachMediaToEntry(
-        id: const Uuid().v4(),
+        id: mediaId,
         entryId: entryId,
         relativePath: result.relativePath,
         mediaType: EphemeraMediaType.video.embedKey,
         thumbnailPath: result.thumbnailPath,
       );
 
-      coordinator.insertMediaAtCurrentSelection(
-        mediaType: EphemeraMediaType.video,
-        mediaData: MediaEmbedData(
-          path: result.relativePath,
-          caption: '',
-          aspect: 'auto',
-        ),
-      );
+      final activeSheet = coordinator.sheets.isNotEmpty &&
+              coordinator.activeSheetIndex < coordinator.sheets.length
+          ? coordinator.sheets[coordinator.activeSheetIndex]
+          : null;
+
+      if (activeSheet is TextStationerySheet && !activeSheet.isAtMediaCapacity) {
+        coordinator.attachMediaToActiveSheet(
+          SheetMediaItem(
+            id: mediaId,
+            mediaType: EphemeraMediaType.video,
+            relativePath: result.relativePath,
+            thumbnailPath: result.thumbnailPath,
+          ),
+        );
+      } else {
+        coordinator.insertMediaAtCurrentSelection(
+          mediaType: EphemeraMediaType.video,
+          mediaData: MediaEmbedData(
+            path: result.relativePath,
+            caption: '',
+            aspect: 'auto',
+          ),
+        );
+      }
       onStateChanged?.call();
       await autosaveManager?.saveDraft();
     } on VideoDurationExceededException catch (error) {
@@ -242,5 +275,33 @@ class EditorMediaActions {
     controller.formatText(index, prompt.length + 6, Attribute.blockQuote);
     autosaveManager?.saveDraft(force: true);
     onStateChanged?.call();
+  }
+
+  /// Deletes an attached media item from the given sheet, removes it from SQLite,
+  /// and saves a draft.
+  static Future<void> handleDeleteMedia({
+    required EditorPaginationCoordinator coordinator,
+    required AppDatabase database,
+    required String entryId,
+    required int sheetIndex,
+    required String mediaId,
+    EditorAutosaveManager? autosaveManager,
+    VoidCallback? onStateChanged,
+  }) async {
+    if (sheetIndex >= 0 && sheetIndex < coordinator.sheets.length) {
+      final sheet = coordinator.sheets[sheetIndex];
+      if (sheet is TextStationerySheet) {
+        final items = sheet.mediaAttachments.where((item) => item.id == mediaId).toList();
+        coordinator.removeMediaAttachment(sheetIndex, mediaId);
+        for (final item in items) {
+          await database.deleteMediaForEntryByPath(
+            entryId: entryId,
+            relativePath: item.relativePath,
+          );
+        }
+        await autosaveManager?.saveDraft();
+        onStateChanged?.call();
+      }
+    }
   }
 }

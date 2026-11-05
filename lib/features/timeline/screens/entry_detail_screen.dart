@@ -437,6 +437,8 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         onExportPdf: _handleExportPdf,
         onExportText: _handleExportText,
       ),
+      onOverlayPositionChanged: (photoId, xRatio, yRatio) =>
+          _db.updateMediaAttachmentOverlayPosition(photoId, xRatio: xRatio, yRatio: yRatio),
     );
   }
 }

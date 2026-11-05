@@ -9,13 +9,18 @@ import '../domain/stationery_sheet_descriptor.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'editor_text_sheet_view.dart';
+import 'fullscreen_media_lightbox.dart';
 import 'paper_heart_metrics.dart';
 import 'stationery_ephemera_sheet.dart';
+import 'stationery_media_tray.dart';
 import 'stationery_sheet_border_chrome.dart';
 
-/// Full-bleed procedural paper canvas presenting discrete Stationery Sheets in a PageView stage,
-/// with Sheet 1 Journal Letterhead, Sheet 2+ running colophons, full-sheet Ephemera mounts,
-/// final-sheet-only bounded Cinnabar Seal, and paper-adaptive border navigation chrome.
+/// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
+/// resting on a scholar's writing desk.
+///
+/// When an entry or sheet is text-only (zero photos attached), the 14-row integer-locked
+/// stationery card automatically centers vertically on the desk mat with the diarist's
+/// Cinnabar Signature Seal resting cleanly beneath it, eliminating empty whitespace voids.
 class EditorPaperCanvas extends StatelessWidget {
   final StationerySheetThemeConfig themeConfig;
   final StationeryLetterheadConfig letterheadConfig;
@@ -30,6 +35,8 @@ class EditorPaperCanvas extends StatelessWidget {
   final VoidCallback? onNextSheet;
   final ValueChanged<int>? onPageChanged;
   final void Function(int sheetIndex)? onDeleteEphemera;
+  final void Function(int sheetIndex, String mediaId)? onDeleteMedia;
+  final void Function(int sheetIndex, String mediaId, String newCaption)? onMediaCaptionChanged;
   final void Function(int sheetIndex)? onSpillBack;
 
   const EditorPaperCanvas({
@@ -46,6 +53,8 @@ class EditorPaperCanvas extends StatelessWidget {
     this.onNextSheet,
     this.onPageChanged,
     this.onDeleteEphemera,
+    this.onDeleteMedia,
+    this.onMediaCaptionChanged,
     this.onSpillBack,
   });
 
@@ -53,19 +62,52 @@ class EditorPaperCanvas extends StatelessWidget {
   Widget build(BuildContext context) {
     final templateStyle = themeConfig.templateStyle;
     final typography = themeConfig.typography;
+    final isDark = themeConfig.isPaperDark;
+
+    // Scholar desk mat tone: warm parchment / tea-wood in light, deep walnut in dark
+    final deskColor = isDark ? const Color(0xFF151413) : const Color(0xFFE9E5DC);
 
     return LayoutBuilder(
       builder: (layoutContext, layoutConstraints) {
-        final canvasSize = Size(layoutConstraints.maxWidth, layoutConstraints.maxHeight);
+        final canvasWidth = layoutConstraints.maxWidth;
+        final canvasHeight = layoutConstraints.maxHeight;
 
+        // Bounded card canvas dimensions for integer-locked 14-row calculation
+        final cardCanvasSize = Size(canvasWidth, math.max(380.0, math.min(canvasHeight, 420.0)));
         final metrics = StationeryLayoutCalculator.calculate(
-          canvasSize: canvasSize,
+          canvasSize: cardCanvasSize,
           style: templateStyle,
           typography: typography,
           compactMargins: true,
           maxRows: kStandardFolioRowsPerLeaf,
         );
         final activeRowHeight = metrics.lineStridePx;
+
+        // Card height wraps innerFrameRect with 16px bottom padding
+        final cardHeight = metrics.innerFrameRect.bottom + 16.0;
+
+        // Resolve active sheet and check whether it currently contains media attachments
+        final activeSheet = (currentSheetIndex >= 0 && currentSheetIndex < coordinator.sheets.length)
+            ? coordinator.sheets[currentSheetIndex]
+            : (coordinator.sheets.isNotEmpty ? coordinator.sheets.first : null);
+
+        final bool hasSheetAttachments = activeSheet is TextStationerySheet && activeSheet.hasMediaAttachments;
+        final bool hasAttachments = hasSheetAttachments;
+
+        final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+
+        const sealSize = PaperHeartMetrics.kDefaultSealSize;
+        const sealGap = 16.0;
+        const sealBlockHeight = sealSize + sealGap;
+
+        // Vertical centering on the scholar's desk mat:
+        // For text-only entries: center card and seal as a unified vertical unit when keyboard is closed
+        final double topOffset;
+        if (!hasAttachments && !keyboardVisible && canvasHeight > cardHeight + sealBlockHeight + 24.0) {
+          topOffset = math.max(12.0, (canvasHeight - cardHeight - sealBlockHeight) / 2.0);
+        } else {
+          topOffset = 12.0;
+        }
 
         final double innerContentPaddingLeft;
         if (templateStyle.type == TemplateBackgroundType.grid ||
@@ -96,72 +138,195 @@ class EditorPaperCanvas extends StatelessWidget {
 
         final horizontalLeft = metrics.innerFrameRect.left + innerContentPaddingLeft;
         final horizontalRight =
-            math.max(0.0, layoutConstraints.maxWidth - metrics.innerFrameRect.right) +
-                innerContentPaddingRight;
+            math.max(0.0, canvasWidth - metrics.innerFrameRect.right) + innerContentPaddingRight;
 
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            PageView.builder(
-              controller: pageController,
-              itemCount: coordinator.totalSheets,
-              physics: const PageScrollPhysics(),
-              onPageChanged: onPageChanged,
-              itemBuilder: (pageContext, sheetIndex) {
-                if (sheetIndex < 0 || sheetIndex >= coordinator.sheets.length) {
-                  return const SizedBox.shrink();
-                }
-                final sheet = coordinator.sheets[sheetIndex];
+        final deskTopSeal = topOffset + cardHeight + sealGap;
+        final canRenderDeskSeal = !hasAttachments &&
+            !keyboardVisible &&
+            (currentSheetIndex == totalSheets - 1) &&
+            (deskTopSeal + sealSize <= canvasHeight);
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    TemplateCanvasContainer(
-                      style: templateStyle,
-                      typography: typography,
-                      scrollOffset: 0.0,
-                      headerHeight:
-                          sheet is OpeningSheet ? letterheadConfig.headerHeight : 0.0,
-                      layoutMetrics: metrics,
-                      customPadding: EdgeInsets.zero,
-                      child: const SizedBox.expand(),
+        return Container(
+          color: deskColor,
+          child: ClipRect(
+            child: Stack(
+              children: [
+                // Desk Mat watermark indicator
+                Positioned(
+                  top: 8,
+                  right: 16,
+                  child: Opacity(
+                    opacity: 0.28,
+                    child: Text(
+                      '书案 · 案头',
+                      style: TextStyle(
+                        fontSize: 10,
+                        letterSpacing: 2.0,
+                        color: isDark ? Colors.white38 : const Color(0xFF6B655B),
+                      ),
                     ),
-                    Theme(
-                      data: themeConfig.paperBaseTheme.copyWith(
-                        textTheme: themeConfig.paperBaseTheme.textTheme.apply(
-                          bodyColor: themeConfig.inkColor,
-                          displayColor: themeConfig.inkColor,
+                  ),
+                ),
+
+                // PageView of Tactile Stationery Cards
+                PageView.builder(
+                  controller: pageController,
+                  itemCount: coordinator.totalSheets,
+                  physics: const PageScrollPhysics(),
+                  onPageChanged: onPageChanged,
+                  itemBuilder: (pageContext, sheetIndex) {
+                    if (sheetIndex < 0 || sheetIndex >= coordinator.sheets.length) {
+                      return const SizedBox.shrink();
+                    }
+                    final sheet = coordinator.sheets[sheetIndex];
+
+                    return Align(
+                      alignment: Alignment.topCenter,
+                      child: AnimatedPadding(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        padding: EdgeInsets.only(top: topOffset),
+                        child: OverflowBox(
+                          alignment: Alignment.topCenter,
+                          minHeight: 0,
+                          maxHeight: double.infinity,
+                          child: Container(
+                            width: canvasWidth,
+                            height: cardHeight,
+                            decoration: BoxDecoration(
+                              color: templateStyle.backgroundColor,
+                              borderRadius: BorderRadius.circular(8.0),
+                              border: Border.all(
+                                color: isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
+                                width: 0.8,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                                  blurRadius: 18.0,
+                                  offset: const Offset(0, 6),
+                                ),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.03),
+                                  blurRadius: 4.0,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8.0),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  TemplateCanvasContainer(
+                                    style: templateStyle,
+                                    typography: typography,
+                                    scrollOffset: 0.0,
+                                    headerHeight: sheet is OpeningSheet
+                                        ? letterheadConfig.headerHeight
+                                        : 0.0,
+                                    layoutMetrics: metrics,
+                                    customPadding: EdgeInsets.zero,
+                                    child: const SizedBox.expand(),
+                                  ),
+                                  Theme(
+                                    data: themeConfig.paperBaseTheme.copyWith(
+                                      textTheme: themeConfig.paperBaseTheme.textTheme.apply(
+                                        bodyColor: themeConfig.inkColor,
+                                        displayColor: themeConfig.inkColor,
+                                      ),
+                                    ),
+                                    child: _buildSheetBody(
+                                      sheet: sheet,
+                                      sheetIndex: sheetIndex,
+                                      metrics: metrics,
+                                      activeRowHeight: activeRowHeight,
+                                      horizontalLeft: horizontalLeft,
+                                      horizontalRight: horizontalRight,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      child: _buildSheetBody(
-                        sheet: sheet,
-                        sheetIndex: sheetIndex,
-                        metrics: metrics,
-                        activeRowHeight: activeRowHeight,
-                        horizontalLeft: horizontalLeft,
-                        horizontalRight: horizontalRight,
+                    );
+                  },
+                ),
+
+                // Lower Media & Keepsake Tray on Split Desk when active sheet has attachments
+                if (activeSheet is TextStationerySheet && activeSheet.hasMediaAttachments)
+                  Positioned(
+                    top: topOffset + cardHeight + 10.0,
+                    left: 16.0,
+                    right: 16.0,
+                    bottom: 12.0,
+                    child: AnimatedSlide(
+                      offset: keyboardVisible ? const Offset(0.0, 1.5) : Offset.zero,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      child: AnimatedOpacity(
+                        opacity: keyboardVisible ? 0.0 : 1.0,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        child: IgnorePointer(
+                          ignoring: keyboardVisible,
+                          child: StationeryMediaTray(
+                            items: activeSheet.mediaAttachments,
+                            mediaSandboxService: mediaSandboxService,
+                            onTapMedia: (item) {
+                              FullscreenMediaLightbox.show(
+                                context,
+                                item: item,
+                                mediaSandboxService: mediaSandboxService,
+                              );
+                            },
+                            onCaptionChanged: (mediaId, newCaption) {
+                              coordinator.updateMediaCaption(currentSheetIndex, mediaId, newCaption);
+                              onMediaCaptionChanged?.call(currentSheetIndex, mediaId, newCaption);
+                              onSaveDraft();
+                            },
+                            onDeleteItem: (mediaId) {
+                              if (onDeleteMedia != null) {
+                                onDeleteMedia!(currentSheetIndex, mediaId);
+                              } else {
+                                coordinator.removeMediaAttachment(currentSheetIndex, mediaId);
+                                onSaveDraft();
+                              }
+                            },
+                            isPaperDark: themeConfig.isPaperDark,
+                            inkColor: themeConfig.inkColor,
+                          ),
+                        ),
                       ),
                     ),
-                  ],
-                );
-              },
+                  ),
+
+                // Cinnabar Signature Seal resting cleanly beneath the card on text-only entries
+                if (canRenderDeskSeal)
+                  BoundedCinnabarSeal(
+                    innerFrameRect: metrics.innerFrameRect,
+                    containerSize: Size(canvasWidth, canvasHeight),
+                    sealStyle: templateStyle.tokens.sealStyle,
+                    deskTop: deskTopSeal,
+                    opacity: 0.85,
+                  ),
+
+                // Floating border navigation chevrons and bottom page indicator
+                StationerySheetBorderChrome(
+                  currentSheetIndex: currentSheetIndex,
+                  totalSheets: totalSheets,
+                  onPreviousSheet: onPreviousSheet,
+                  onNextSheet: onNextSheet,
+                  substrate: templateStyle.tokens.substrate,
+                  isPaperDark: themeConfig.isPaperDark,
+                  inkColor: themeConfig.inkColor,
+                  bottomInset: 12.0,
+                ),
+              ],
             ),
-            if (currentSheetIndex == totalSheets - 1)
-              BoundedCinnabarSeal(
-                innerFrameRect: metrics.innerFrameRect,
-                containerSize: canvasSize,
-                sealStyle: templateStyle.tokens.sealStyle,
-              ),
-            StationerySheetBorderChrome(
-              currentSheetIndex: currentSheetIndex,
-              totalSheets: totalSheets,
-              onPreviousSheet: onPreviousSheet,
-              onNextSheet: onNextSheet,
-              substrate: templateStyle.tokens.substrate,
-              isPaperDark: themeConfig.isPaperDark,
-              inkColor: themeConfig.inkColor,
-            ),
-          ],
+          ),
         );
       },
     );
@@ -196,8 +361,7 @@ class EditorPaperCanvas extends StatelessWidget {
         title: letterheadConfig.titleController.text.trim(),
         mediaSandboxService: mediaSandboxService,
         isActiveSheet: currentSheetIndex == sheet.sheetIndex,
-        onDelete:
-            onDeleteEphemera != null ? () => onDeleteEphemera!(sheet.sheetIndex) : null,
+        onDelete: onDeleteEphemera != null ? () => onDeleteEphemera!(sheet.sheetIndex) : null,
         onCaptionChanged: (newCaption) => onSaveDraft(),
         isPaperDark: themeConfig.isPaperDark,
         substrate: themeConfig.templateStyle.tokens.substrate,

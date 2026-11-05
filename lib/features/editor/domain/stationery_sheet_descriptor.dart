@@ -3,6 +3,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import '../models/media_embed_data.dart';
+import 'sheet_media_item.dart';
+
+export 'sheet_media_item.dart';
 
 /// Row capacity limits for stationery sheet viewports.
 const int kOpeningSheetRowCapacity = 10;
@@ -57,6 +60,9 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   final QuillController controller;
   final FocusNode focusNode;
 
+  /// Keepsake photos or short videos attached directly to this sheet (up to 3 items).
+  final List<SheetMediaItem> mediaAttachments;
+
   /// Whether the sheet's document ends with an artificial soft newline
   /// introduced to split a single paragraph across sheets for valid Quill Document structure.
   bool hasTrailingSoftNewline;
@@ -65,8 +71,18 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
     required super.sheetIndex,
     required this.controller,
     FocusNode? focusNode,
+    List<SheetMediaItem>? mediaAttachments,
     this.hasTrailingSoftNewline = false,
-  }) : focusNode = focusNode ?? FocusNode();
+  })  : focusNode = focusNode ?? FocusNode(),
+        mediaAttachments = mediaAttachments != null
+            ? List<SheetMediaItem>.from(mediaAttachments)
+            : <SheetMediaItem>[];
+
+  /// Whether this sheet has at least one paired photo or video keepsake.
+  bool get hasMediaAttachments => mediaAttachments.isNotEmpty;
+
+  /// Whether this sheet has reached the maximum allowed attachment capacity (3 items).
+  bool get isAtMediaCapacity => mediaAttachments.length >= 3;
 
   /// Maximum integer visual row capacity on this stationery sheet.
   int get rowCapacity;
@@ -118,14 +134,19 @@ class OpeningSheet extends TextStationerySheet {
     required super.sheetIndex,
     required super.controller,
     super.focusNode,
+    super.mediaAttachments,
     super.hasTrailingSoftNewline = false,
   });
 
   /// Creates an empty opening sheet with a fresh basic QuillController.
-  factory OpeningSheet.empty({int sheetIndex = 0}) {
+  factory OpeningSheet.empty({
+    int sheetIndex = 0,
+    List<SheetMediaItem>? mediaAttachments,
+  }) {
     return OpeningSheet(
       sheetIndex: sheetIndex,
       controller: QuillController.basic(),
+      mediaAttachments: mediaAttachments,
     );
   }
 
@@ -133,6 +154,7 @@ class OpeningSheet extends TextStationerySheet {
   factory OpeningSheet.fromDelta({
     required int sheetIndex,
     required Delta delta,
+    List<SheetMediaItem>? mediaAttachments,
     bool hasTrailingSoftNewline = false,
   }) {
     final controller = QuillController(
@@ -142,6 +164,7 @@ class OpeningSheet extends TextStationerySheet {
     return OpeningSheet(
       sheetIndex: sheetIndex,
       controller: controller,
+      mediaAttachments: mediaAttachments,
       hasTrailingSoftNewline: hasTrailingSoftNewline,
     );
   }
@@ -155,6 +178,7 @@ class OpeningSheet extends TextStationerySheet {
       sheetIndex: newIndex,
       controller: controller,
       focusNode: focusNode,
+      mediaAttachments: mediaAttachments,
       hasTrailingSoftNewline: hasTrailingSoftNewline,
     );
   }
@@ -169,14 +193,19 @@ class ContinuationSheet extends TextStationerySheet {
     required super.sheetIndex,
     required super.controller,
     super.focusNode,
+    super.mediaAttachments,
     super.hasTrailingSoftNewline = false,
   });
 
   /// Creates an empty continuation sheet with a fresh basic QuillController.
-  factory ContinuationSheet.empty({required int sheetIndex}) {
+  factory ContinuationSheet.empty({
+    required int sheetIndex,
+    List<SheetMediaItem>? mediaAttachments,
+  }) {
     return ContinuationSheet(
       sheetIndex: sheetIndex,
       controller: QuillController.basic(),
+      mediaAttachments: mediaAttachments,
     );
   }
 
@@ -184,6 +213,7 @@ class ContinuationSheet extends TextStationerySheet {
   factory ContinuationSheet.fromDelta({
     required int sheetIndex,
     required Delta delta,
+    List<SheetMediaItem>? mediaAttachments,
     bool hasTrailingSoftNewline = false,
   }) {
     final controller = QuillController(
@@ -193,6 +223,7 @@ class ContinuationSheet extends TextStationerySheet {
     return ContinuationSheet(
       sheetIndex: sheetIndex,
       controller: controller,
+      mediaAttachments: mediaAttachments,
       hasTrailingSoftNewline: hasTrailingSoftNewline,
     );
   }
@@ -206,6 +237,7 @@ class ContinuationSheet extends TextStationerySheet {
       sheetIndex: newIndex,
       controller: controller,
       focusNode: focusNode,
+      mediaAttachments: mediaAttachments,
       hasTrailingSoftNewline: hasTrailingSoftNewline,
     );
   }

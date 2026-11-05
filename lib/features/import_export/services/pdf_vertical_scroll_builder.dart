@@ -10,6 +10,7 @@ import '../../editor/services/vertical_typography_mapper.dart';
 import '../../templates/models/template_style.dart';
 import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
+import 'pdf_polaroid_overlay_builder.dart';
 import 'pdf_template_renderer.dart';
 
 sealed class _PdfKeepsakeItem {
@@ -68,6 +69,7 @@ class PdfVerticalScrollBuilder {
     required MediaSandboxService mediaService,
     required PdfFontResolver fontResolver,
     required String sealText,
+    List<MediaAttachment> attachments = const [],
     PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
     final landscapeFormat = pageFormat.landscape;
@@ -76,6 +78,14 @@ class PdfVerticalScrollBuilder {
 
     final availableHeight = landscapeFormat.height - (marginY * 2);
     final availableWidth = landscapeFormat.width - (marginX * 2);
+
+    final overlayCards = attachments.isNotEmpty
+        ? await PdfPolaroidOverlayBuilder.buildOverlayCards(
+            attachments: attachments, mediaService: mediaService,
+            resolver: fontResolver, availableWidth: availableWidth,
+            availableHeight: availableHeight, isVertical: true,
+          )
+        : const <pw.Widget>[];
 
     // Collect all vertical items (title, columns, media cards, terminal colophon)
     final items = await _parseEntryItems(
@@ -115,14 +125,19 @@ class PdfVerticalScrollBuilder {
             buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, style),
           ),
           build: (context) {
-            return pw.Container(
-              height: availableHeight,
-              child: pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                children: pageSlice.reversed
-                    .map((item) => _renderPdfItem(item, style, fontResolver, availableHeight))
-                    .toList(),
-              ),
+            return pw.Stack(
+              children: [
+                pw.Container(
+                  height: availableHeight,
+                  child: pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                    children: pageSlice.reversed
+                        .map((item) => _renderPdfItem(item, style, fontResolver, availableHeight))
+                        .toList(),
+                  ),
+                ),
+                if (pageIndex == 0) ...overlayCards,
+              ],
             );
           },
         ),
@@ -400,9 +415,7 @@ class PdfVerticalScrollBuilder {
   }
 
   static void _partitionTokens(
-    List<VerticalRenderToken> tokens,
-    int maxPerCol,
-    List<_PdfKeepsakeItem> out,
+    List<VerticalRenderToken> tokens, int maxPerCol, List<_PdfKeepsakeItem> out,
   ) {
     if (tokens.isEmpty) return;
     for (int index = 0; index < tokens.length; index += maxPerCol) {
@@ -412,8 +425,7 @@ class PdfVerticalScrollBuilder {
   }
 
   static Future<pw.MemoryImage?> _loadTranscodedImage(
-    String path,
-    MediaSandboxService mediaService,
+    String path, MediaSandboxService mediaService,
   ) async {
     try {
       final file = MediaSandboxService.isStrictlyRelative(path)
@@ -424,9 +436,7 @@ class PdfVerticalScrollBuilder {
         final pngBytes = await ImageFormatTranscoder.ensurePdfCompatibleBytes(rawBytes);
         return pw.MemoryImage(pngBytes);
       }
-    } catch (_) {
-      // Fallback
-    }
+    } catch (_) {}
     return null;
   }
 }

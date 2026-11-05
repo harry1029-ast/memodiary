@@ -68,7 +68,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   /// Creates the `media_fts` FTS5 virtual table and its 6 synchronization triggers.
   Future<void> _createMediaFts() async {
@@ -274,6 +274,16 @@ class AppDatabase extends _$AppDatabase {
               FROM media_attachments
               WHERE media_type = 'image' AND coalesce(ocr_text, '') <> '';
             ''');
+          }
+          if (from < 6) {
+            await m.addColumn(
+              mediaAttachments,
+              mediaAttachments.overlayXRatio,
+            );
+            await m.addColumn(
+              mediaAttachments,
+              mediaAttachments.overlayYRatio,
+            );
           }
         },
         beforeOpen: (details) async {
@@ -1114,6 +1124,21 @@ class AppDatabase extends _$AppDatabase {
       AlbumPhotosCompanion(
         ocrText: Value(ocrText),
         ocrBlocksJson: Value(ocrBlocksJson),
+      ),
+    );
+  }
+
+  /// Updates the normalized overlay coordinates (`overlayXRatio`, `overlayYRatio`)
+  /// of a media attachment, or resets them to null when reset to default.
+  Future<void> updateMediaAttachmentOverlayPosition(
+    String id, {
+    double? xRatio,
+    double? yRatio,
+  }) async {
+    await (update(mediaAttachments)..where((tbl) => tbl.id.equals(id))).write(
+      MediaAttachmentsCompanion(
+        overlayXRatio: Value(xRatio),
+        overlayYRatio: Value(yRatio),
       ),
     );
   }

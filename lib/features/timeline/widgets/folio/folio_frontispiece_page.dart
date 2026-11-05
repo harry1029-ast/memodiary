@@ -1,11 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+
 import '../../../../core/services/media_sandbox_service.dart';
+import '../../../editor/domain/stationery_sheet_descriptor.dart';
+import '../../../editor/widgets/fullscreen_media_lightbox.dart';
+import 'folio_cover_showcase.dart';
 import 'folio_leaf_model.dart';
 import 'folio_leaf_scaffold.dart';
+import 'folio_photo_sleeve_modal.dart';
 import 'folio_reading_perspective.dart';
-import 'folio_shanshui_art_painter.dart';
-import 'folio_silk_corner_mounts_painter.dart';
 
 /// Page 0: Ceremonial Frontispiece Cover of the Thread-Bound Folio.
 class FolioFrontispiecePage extends StatelessWidget {
@@ -13,6 +15,7 @@ class FolioFrontispiecePage extends StatelessWidget {
   final FolioSubstrateTheme theme;
   final MediaSandboxService? mediaService;
   final VoidCallback? onTurnForward;
+  final ValueChanged<int>? onJumpToPage;
 
   const FolioFrontispiecePage({
     super.key,
@@ -20,7 +23,36 @@ class FolioFrontispiecePage extends StatelessWidget {
     required this.theme,
     this.mediaService,
     this.onTurnForward,
+    this.onJumpToPage,
   });
+
+  void _openPhotoSleeveModal(BuildContext context) {
+    if (leaf.photos.isEmpty) return;
+    FolioPhotoSleeveModal.show(
+      context: context,
+      entryTitle: leaf.entryTitle,
+      photos: leaf.photos,
+      theme: theme,
+      mediaService: mediaService,
+      onJumpToPage: onJumpToPage,
+    );
+  }
+
+  void _handlePhotoTap(BuildContext context, FolioPhotoAttachment photo) {
+    if (mediaService != null) {
+      final sheetItem = SheetMediaItem(
+        id: photo.id,
+        mediaType: photo.mediaType,
+        relativePath: photo.relativePath,
+        caption: photo.caption,
+      );
+      FullscreenMediaLightbox.show(
+        context,
+        item: sheetItem,
+        mediaSandboxService: mediaService!,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,9 +77,17 @@ class FolioFrontispiecePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildTitleBanner(accentColor),
+                    _buildTitleBanner(context, accentColor),
                     const SizedBox(height: 14),
-                    Expanded(child: _buildArtworkMount(accentColor)),
+                    Expanded(
+                      child: FolioCoverShowcase(
+                        leaf: leaf,
+                        theme: theme,
+                        mediaService: mediaService,
+                        onOpenSleeveModal: () => _openPhotoSleeveModal(context),
+                        onPhotoTap: (photo) => _handlePhotoTap(context, photo),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     _buildReflectionOrPlaceholder(accentColor),
                   ],
@@ -80,7 +120,12 @@ class FolioFrontispiecePage extends StatelessWidget {
             child: Text(
               leaf.lunarDate,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10.5, color: accentColor, letterSpacing: 1.0, fontFamily: theme.fontFamily),
+              style: TextStyle(
+                fontSize: 10.5,
+                color: accentColor,
+                letterSpacing: 1.0,
+                fontFamily: theme.fontFamily,
+              ),
             ),
           ),
         ),
@@ -107,7 +152,16 @@ class FolioFrontispiecePage extends StatelessWidget {
     );
   }
 
-  Widget _buildTitleBanner(Color accentColor) {
+  Widget _buildTitleBanner(BuildContext context, Color accentColor) {
+    final photoCount = leaf.photos.length;
+    final badgeLabel = switch (photoCount) {
+      1 => '单幅画心 · 1帧',
+      2 => '双屏对幅 · 2帧',
+      3 => '三景册页 · 3帧',
+      > 3 => '集锦画匣 · $photoCount帧',
+      _ => '扉页 · 封面',
+    };
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,14 +196,20 @@ class FolioFrontispiecePage extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.08),
-                border: Border.all(color: accentColor.withValues(alpha: 0.40)),
-                borderRadius: BorderRadius.circular(3),
+            GestureDetector(
+              onTap: photoCount > 0 ? () => _openPhotoSleeveModal(context) : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.08),
+                  border: Border.all(color: accentColor.withValues(alpha: 0.40)),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: Text(
+                  badgeLabel,
+                  style: TextStyle(fontSize: 10.0, color: accentColor, fontWeight: FontWeight.w500),
+                ),
               ),
-              child: Text('扉页 · 封面', style: TextStyle(fontSize: 10.0, color: accentColor, fontWeight: FontWeight.w500)),
             ),
             if (leaf.isWeeklyReview) ...[
               const SizedBox(height: 4),
@@ -167,101 +227,6 @@ class FolioFrontispiecePage extends StatelessWidget {
               ),
             ],
           ],
-        ),
-      ],
-    );
-  }
-
-  File? _resolveFileImmediate(String rawPath) {
-    if (!MediaSandboxService.isStrictlyRelative(rawPath)) {
-      return File(rawPath);
-    }
-    return null;
-  }
-
-  Future<File> _resolveFile(String rawPath) async {
-    if (MediaSandboxService.isStrictlyRelative(rawPath) && mediaService != null) {
-      return mediaService!.getFileFromRelativePath(rawPath);
-    }
-    return File(rawPath);
-  }
-
-  Widget _buildArtworkMount(Color accentColor) {
-    final silkColor = theme.isDark ? const Color(0xD0C8A055) : const Color(0xC0DFC898);
-
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.topCenter,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: theme.isDark ? const Color(0xFF141619) : const Color(0xFFFDFBF7),
-            border: Border.all(color: const Color(0xFF8C7355).withValues(alpha: 0.35)),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-          ),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: (leaf.heroPhotoPath != null && leaf.heroPhotoPath!.isNotEmpty)
-                    ? FutureBuilder<File>(
-                        initialData: _resolveFileImmediate(leaf.heroPhotoPath!),
-                        future: _resolveFile(leaf.heroPhotoPath!),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            return Image.file(
-                              snapshot.data!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => CustomPaint(
-                                painter: FolioShanshuiArtPainter(
-                                  realm: leaf.sceneryAtmosphere.realm,
-                                  isDark: theme.isDark,
-                                  atmosphere: leaf.sceneryAtmosphere,
-                                ),
-                              ),
-                            );
-                          }
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                          }
-                          return CustomPaint(
-                            painter: FolioShanshuiArtPainter(
-                              realm: leaf.sceneryAtmosphere.realm,
-                              isDark: theme.isDark,
-                              atmosphere: leaf.sceneryAtmosphere,
-                            ),
-                          );
-                        },
-                      )
-                    : CustomPaint(
-                        painter: FolioShanshuiArtPainter(
-                          realm: leaf.sceneryAtmosphere.realm,
-                          isDark: theme.isDark,
-                          atmosphere: leaf.sceneryAtmosphere,
-                        ),
-                      ),
-              ),
-              Positioned.fill(child: CustomPaint(painter: FolioSilkCornerMountsPainter(silkColor: silkColor))),
-            ],
-          ),
-        ),
-        Positioned(
-          top: -8,
-          child: Transform.rotate(
-            angle: -0.04,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xB8DEC183), Color(0xCCD2AD64), Color(0xADC8A055)]),
-                border: Border.symmetric(vertical: BorderSide(color: const Color(0xFFAA823C).withValues(alpha: 0.45))),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-              ),
-              child: const Text(
-                '泥金和纸胶带 · 拾光·珍藏拓影',
-                style: TextStyle(fontSize: 8.5, letterSpacing: 1.0, fontWeight: FontWeight.w600, color: Color(0xFF5A4418)),
-              ),
-            ),
-          ),
         ),
       ],
     );

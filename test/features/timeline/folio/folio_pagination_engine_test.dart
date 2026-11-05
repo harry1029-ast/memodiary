@@ -272,5 +272,44 @@ void main() {
       expect(ephemeraLeaves.first.caption, contains('竹窗听雨图'));
       expect(leaves.last.isConcludingLeaf, isTrue);
     });
+
+    test('curates FolioPhotoAttachment on CoverLeaf for multiple attachments (N=4)', () {
+      final entry = createTestEntry(
+        contentDelta: jsonEncode([
+          {'insert': '全卷随文影札集锦。\n'},
+        ]),
+        plainText: '全卷随文影札集锦。',
+      );
+
+      final attachments = List.generate(4, (index) {
+        final num = index + 1;
+        return MediaAttachment(
+          id: 'media-$num',
+          entryId: entry.id,
+          mediaType: 'image',
+          relativePath: 'media/photo_$num.webp',
+          thumbnailPath: 'media/thumb_$num.webp',
+          ocrText: '随文小景 $num',
+          createdAt: testDate,
+        );
+      });
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        attachments: attachments,
+      );
+
+      expect(leaves.first, isA<FolioFrontispieceCoverLeaf>());
+      final cover = leaves.first as FolioFrontispieceCoverLeaf;
+      expect(cover.photos.length, equals(4));
+
+      for (int index = 0; index < 4; index++) {
+        final photo = cover.photos[index];
+        expect(photo.pageNumber, equals(index + 1));
+        expect(photo.relativePath, equals('media/photo_${index + 1}.webp'));
+        expect(photo.title, equals('随文小景 ${index + 1}'));
+        expect(photo.targetLeafIndex, greaterThan(0));
+      }
+    });
   });
 }

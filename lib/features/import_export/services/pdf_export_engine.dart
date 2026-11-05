@@ -10,6 +10,7 @@ import '../../templates/models/template_style.dart';
 import '../models/pdf_layout_mode.dart';
 import 'pdf_entry_serializer.dart';
 import 'pdf_font_resolver.dart';
+import 'pdf_polaroid_overlay_builder.dart';
 import 'pdf_template_renderer.dart';
 import 'pdf_vertical_scroll_builder.dart';
 
@@ -42,6 +43,9 @@ class PdfExportEngine {
     final sealManager = sealService ?? SignatureSealService();
     final effectiveSealText = sealText ?? await sealManager.getSealText();
 
+    // 2b. Retrieve paired entry media attachments with persistent overlay ratios
+    final attachments = await database.getMediaForEntry(entry.id);
+
     final doc = pw.Document();
 
     // 3. Classical Right-to-Left Vertical Keepsake Scroll mode
@@ -52,6 +56,7 @@ class PdfExportEngine {
         mediaService: mediaService,
         fontResolver: resolver,
         sealText: effectiveSealText,
+        attachments: attachments,
         pageFormat: pageFormat,
       );
       for (final page in pages) {
@@ -69,6 +74,17 @@ class PdfExportEngine {
       fontResolver: resolver,
     );
 
+    final overlayCards = attachments.isNotEmpty
+        ? await PdfPolaroidOverlayBuilder.buildOverlayCards(
+            attachments: attachments,
+            mediaService: mediaService,
+            resolver: resolver,
+            availableWidth: pageFormat.width - (style.marginHorizontal.clamp(20.0, 60.0) * 2),
+            availableHeight: pageFormat.height - 72.0,
+            isVertical: false,
+          )
+        : const <pw.Widget>[];
+
     doc.addPage(
       pw.MultiPage(
         pageTheme: pw.PageTheme(
@@ -85,13 +101,23 @@ class PdfExportEngine {
         footer: (context) =>
             PdfTemplateRenderer.buildFooter(context, entry, style, resolver),
         build: (context) => [
-          _buildEntryHeader(entry, resolver),
-          pw.SizedBox(height: 10),
-          ...contentWidgets,
-          _buildSealColophon(
-            style: style,
-            resolver: resolver,
-            sealText: effectiveSealText,
+          pw.Stack(
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: [
+                  _buildEntryHeader(entry, resolver),
+                  pw.SizedBox(height: 10),
+                  ...contentWidgets,
+                  _buildSealColophon(
+                    style: style,
+                    resolver: resolver,
+                    sealText: effectiveSealText,
+                  ),
+                ],
+              ),
+              ...overlayCards,
+            ],
           ),
         ],
       ),

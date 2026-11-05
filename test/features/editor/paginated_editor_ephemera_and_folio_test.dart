@@ -13,6 +13,7 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/stationery_ephemera_sheet.dart';
+import 'package:memodiary/features/editor/widgets/stationery_media_tray.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_leaf_model.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_pagination_engine.dart';
 import '../../helpers/editor_test_harness.dart';
@@ -54,7 +55,7 @@ void main() {
   });
 
   group('Paginated Editor - Ephemera Lifecycle, Chest & Folio Parity Tests', () {
-    testWidgets('deleted ephemera sheet removes SQLite attachment and never resurrects on reload or Folio paginate', (tester) async {
+    testWidgets('deleted photo keepsake removes SQLite attachment and never resurrects on reload or Folio paginate', (tester) async {
       final sampleImageFile = File('${tempDirectory.path}/sample_photo.png')
         ..writeAsBytesSync(kValid1x1PngBytes);
 
@@ -68,6 +69,7 @@ void main() {
         mediaSandboxService: sandboxService,
         entryId: 'ephemera_folio_entry',
         imagePicker: stubPicker,
+        viewportSize: const Size(360.0, 780.0),
       );
 
       expect(find.text('第 1 / 1 页'), findsOneWidget);
@@ -78,18 +80,20 @@ void main() {
       await tester.tap(find.text('相册选撷 · Photo Gallery'));
       await tester.pumpAndSettle();
 
-      expect(find.text('第 2 / 2 页'), findsOneWidget);
-      expect(find.byType(StationeryEphemeraSheet), findsOneWidget);
+      // In Split Desk architecture: photo mounts into lower StationeryMediaTray on Sheet 1
+      expect(find.text('第 1 / 1 页'), findsOneWidget);
+      expect(find.byType(StationeryMediaTray), findsOneWidget);
 
       final attachmentsBeforeDelete = await database.getMediaForEntry('ephemera_folio_entry');
       expect(attachmentsBeforeDelete, hasLength(1));
 
-      // Delete the ephemera sheet
-      await tester.tap(find.byKey(const Key('editor_remove_ephemera_btn')));
+      // Delete the photo from the StationeryMediaTray
+      final deleteBtnFinder = find.byKey(Key('media_tray_delete_${attachmentsBeforeDelete.first.id}'));
+      expect(deleteBtnFinder, findsOneWidget);
+      await tester.tap(deleteBtnFinder);
       await tester.pumpAndSettle();
 
-      expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byType(StationeryEphemeraSheet), findsNothing);
+      expect(find.byType(StationeryMediaTray), findsNothing);
 
       // Verify SQLite media_attachments row is deleted
       final attachmentsAfterDelete = await database.getMediaForEntry('ephemera_folio_entry');
@@ -112,12 +116,13 @@ void main() {
         database: database,
         mediaSandboxService: sandboxService,
         entryId: 'ephemera_folio_entry',
+        viewportSize: const Size(360.0, 780.0),
       );
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byType(StationeryEphemeraSheet), findsNothing);
+      expect(find.byType(StationeryMediaTray), findsNothing);
     });
 
-    testWidgets('mid-sheet photo insertion splits prose before and after caret onto surrounding sheets', (tester) async {
+    testWidgets('mid-sheet photo insertion preserves uninterrupted prose on active sheet and mounts tray', (tester) async {
       final initialDelta = Delta()..insert('上卷春风十里。\n下卷秋水人家。\n');
       await database.updateEntryContent(
         'ephemera_folio_entry',
@@ -137,6 +142,7 @@ void main() {
         mediaSandboxService: sandboxService,
         entryId: 'ephemera_folio_entry',
         imagePicker: stubPicker,
+        viewportSize: const Size(360.0, 780.0),
       );
 
       expect(find.text('第 1 / 1 页'), findsOneWidget);
@@ -153,15 +159,12 @@ void main() {
       await tester.tap(find.text('相册选撷 · Photo Gallery'));
       await tester.pumpAndSettle();
 
-      // Now 3 sheets: Sheet 1 (leading prose), Sheet 2 (EphemeraSheet), Sheet 3 (trailing prose)
-      expect(find.text('第 2 / 3 页'), findsOneWidget);
-      expect(find.byType(StationeryEphemeraSheet), findsOneWidget);
+      // Preserves uninterrupted prose on Sheet 1 while mounting lower StationeryMediaTray
+      expect(find.text('第 1 / 1 页'), findsOneWidget);
+      expect(find.byType(StationeryMediaTray), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
-      await tester.pumpAndSettle();
-      expect(find.text('第 3 / 3 页'), findsOneWidget);
-      final trailingEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
-      expect(trailingEditor.controller.document.toPlainText().trim(), equals('下卷秋水人家。'));
+      final editorAfterAttach = tester.widget<QuillEditor>(find.byType(QuillEditor));
+      expect(editorAfterAttach.controller.document.toPlainText().trim(), equals('上卷春风十里。\n下卷秋水人家。'));
     });
 
     testWidgets('invoking WritingDock sub-note action on EphemeraSheet allocates following text sheet', (tester) async {

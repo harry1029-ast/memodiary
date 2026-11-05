@@ -27,6 +27,12 @@ class MediaAttachments extends Table {
   /// Normalized line bounding boxes JSON (if processed)
   TextColumn get ocrBlocksJson => text().nullable()();
 
+  /// Normalized horizontal anchor offset [0.0..1.0] for folio ephemera overlay.
+  RealColumn get overlayXRatio => real().nullable()();
+
+  /// Normalized vertical anchor offset [0.0..1.0] for folio ephemera overlay.
+  RealColumn get overlayYRatio => real().nullable()();
+
   /// Attachment creation timestamp
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 

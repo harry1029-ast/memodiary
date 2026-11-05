@@ -16,7 +16,7 @@ import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/dictation_bar.dart';
-import '../prototype/prototyped_editor_paper_canvas.dart';
+import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_media_actions.dart';
 import '../widgets/editor_overlay_actions.dart';
 import '../widgets/editor_top_app_bar.dart';
@@ -98,12 +98,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _coordinator.dispose();
     _autosaveManager?.dispose();
     _titleController.dispose();
-    if (widget.dictationService == null) {
-      _dictationService.dispose();
-    }
-    if (widget.audioSanctumService == null) {
-      _audioSanctumService.dispose();
-    }
+    if (widget.dictationService == null) _dictationService.dispose();
+    if (widget.audioSanctumService == null) _audioSanctumService.dispose();
     super.dispose();
   }
 
@@ -129,12 +125,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       _coordinator = EditorPaginationCoordinator(
         typography: derivedTypography,
         templateStyle: templateStyle,
-      );
-      _coordinator.initializeFromDelta(
-        entry.contentDelta,
-        fallbackPlainText: entry.plainText,
-        attachments: attachments,
-      );
+      )..initializeFromDelta(
+          entry.contentDelta,
+          fallbackPlainText: entry.plainText,
+          attachments: attachments,
+        );
 
       _titleController.text = entry.title ?? '';
 
@@ -178,9 +173,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   void _toggleCenterAlignment() {
     final active = _paginationHandler?.ensureActiveTextSheet() ?? _activeController;
-    setState(() {
-      _isCenterAligned = !_isCenterAligned;
-    });
+    setState(() => _isCenterAligned = !_isCenterAligned);
     active.formatSelection(
       _isCenterAligned ? Attribute.centerAlignment : Attribute.leftAlignment,
     );
@@ -215,19 +208,13 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         await widget.database.updateEntryTemplate(widget.entryId, newTemplate.id);
       },
       onTypographyChanged: (newTypography) {
-        setState(() {
-          _typography = newTypography;
-        });
+        setState(() => _typography = newTypography);
         _coordinator.updateTypography(newTypography);
         _paginationHandler?.attachSheetListeners();
       },
       onLockChanged: (newUnlockAt) async {
         await widget.database.updateEntryUnlockAt(widget.entryId, newUnlockAt);
-        if (mounted) {
-          setState(() {
-            _unlockAt = newUnlockAt;
-          });
-        }
+        if (mounted) setState(() => _unlockAt = newUnlockAt);
       },
       onToggleAlignment: _toggleCenterAlignment,
     );
@@ -249,9 +236,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     void onDone() {
       _paginationHandler?.attachSheetListeners();
       if (mounted) {
-        setState(() {
-          _paginationHandler?.currentSheetIndex = _coordinator.activeSheetIndex;
-        });
+        setState(() => _paginationHandler?.currentSheetIndex = _coordinator.activeSheetIndex);
         if (_pageController.hasClients) {
           _pageController.animateToPage(
             _coordinator.activeSheetIndex,
@@ -285,6 +270,20 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         onStateChanged: onDone,
       );
     }
+  }
+
+  Future<void> _handleDeleteMedia(int sheetIndex, String mediaId) async {
+    await EditorMediaActions.handleDeleteMedia(
+      coordinator: _coordinator,
+      database: widget.database,
+      entryId: widget.entryId,
+      sheetIndex: sheetIndex,
+      mediaId: mediaId,
+      autosaveManager: _autosaveManager,
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
+    );
   }
 
   void _handleShuffleSpark() {
@@ -381,7 +380,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         body: Column(
           children: [
             Expanded(
-              child: PrototypedEditorPaperCanvas(
+              child: EditorPaperCanvas(
                 themeConfig: themeConfig,
                 letterheadConfig: letterheadConfig,
                 mediaSandboxService: widget.mediaSandboxService,
@@ -394,6 +393,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
                 onPageChanged: _paginationHandler!.handlePageChanged,
                 onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
+                onDeleteMedia: _handleDeleteMedia,
+                onMediaCaptionChanged: (sheetIndex, mediaId, newCaption) =>
+                    widget.database.updateMediaOcr(mediaId, ocrText: newCaption, ocrBlocksJson: '[]'),
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),
             ),
@@ -435,9 +437,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       if (renderBox != null && renderBox.hasSize) {
         final height = renderBox.size.height;
         if ((height - _headerHeight).abs() > 0.5) {
-          setState(() {
-            _headerHeight = height;
-          });
+          setState(() => _headerHeight = height);
         }
       }
     });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../../scenery/models/shanshui_atmosphere.dart';
 import '../../../templates/models/template_style.dart';
 import 'folio_reading_perspective.dart';
@@ -40,6 +41,7 @@ class FolioFrontispieceCoverLeaf extends FolioLeaf {
   final String? sealText;
   final SealCarvingStyle sealStyle;
   final int wordCount;
+  final List<FolioPhotoAttachment> photos;
 
   const FolioFrontispieceCoverLeaf({
     required super.leafIndex,
@@ -59,10 +61,65 @@ class FolioFrontispieceCoverLeaf extends FolioLeaf {
     this.sealText,
     this.sealStyle = SealCarvingStyle.zhuwen,
     this.wordCount = 0,
+    this.photos = const [],
   });
 
   @override
   bool get isConcludingLeaf => totalLeaves <= 1;
+}
+
+/// Represents a photo or ephemera asset curated into the Folio stage.
+class FolioPhotoAttachment {
+  final String id;
+  final String relativePath;
+  final EphemeraMediaType mediaType;
+  final String title;
+  final String caption;
+  final String date;
+  final int pageNumber;
+  final int targetLeafIndex;
+  final double? overlayXRatio;
+  final double? overlayYRatio;
+
+  const FolioPhotoAttachment({
+    required this.id,
+    required this.relativePath,
+    this.mediaType = EphemeraMediaType.image,
+    required this.title,
+    required this.caption,
+    required this.date,
+    required this.pageNumber,
+    required this.targetLeafIndex,
+    this.overlayXRatio,
+    this.overlayYRatio,
+  });
+
+  FolioPhotoAttachment copyWith({
+    String? id,
+    String? relativePath,
+    EphemeraMediaType? mediaType,
+    String? title,
+    String? caption,
+    String? date,
+    int? pageNumber,
+    int? targetLeafIndex,
+    double? overlayXRatio,
+    double? overlayYRatio,
+    bool clearOverlayPosition = false,
+  }) {
+    return FolioPhotoAttachment(
+      id: id ?? this.id,
+      relativePath: relativePath ?? this.relativePath,
+      mediaType: mediaType ?? this.mediaType,
+      title: title ?? this.title,
+      caption: caption ?? this.caption,
+      date: date ?? this.date,
+      pageNumber: pageNumber ?? this.pageNumber,
+      targetLeafIndex: targetLeafIndex ?? this.targetLeafIndex,
+      overlayXRatio: clearOverlayPosition ? null : (overlayXRatio ?? this.overlayXRatio),
+      overlayYRatio: clearOverlayPosition ? null : (overlayYRatio ?? this.overlayYRatio),
+    );
+  }
 }
 
 /// A ruled or gridded content leaf containing paginated diary body text.
@@ -94,6 +151,9 @@ class FolioContentBodyLeaf extends FolioLeaf {
   /// Carving style of the cinnabar seal.
   final SealCarvingStyle sealStyle;
 
+  /// Pinned Polaroid photo attachments displayed in the Ephemera Overlay Layer.
+  final List<FolioPhotoAttachment> photos;
+
   @override
   final bool isConcludingLeaf;
 
@@ -109,6 +169,7 @@ class FolioContentBodyLeaf extends FolioLeaf {
     required this.lunarDate,
     this.sealText,
     this.sealStyle = SealCarvingStyle.zhuwen,
+    this.photos = const [],
     this.isConcludingLeaf = false,
   });
 }

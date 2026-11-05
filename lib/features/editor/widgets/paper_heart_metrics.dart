@@ -72,8 +72,8 @@ class PaperHeartMetrics {
   }
 }
 
-/// Renders a colophon [CinnabarSignatureSeal] positioned strictly inside the
-/// bottom-right corner of the Paper Heart ([innerFrameRect]).
+/// Renders a colophon [CinnabarSignatureSeal] positioned either inside the
+/// Paper Heart ([innerFrameRect]) or resting cleanly on the scholar desk mat ([deskTop]).
 class BoundedCinnabarSeal extends StatelessWidget {
   final Rect innerFrameRect;
   final Size containerSize;
@@ -82,6 +82,7 @@ class BoundedCinnabarSeal extends StatelessWidget {
   final double inset;
   final double opacity;
   final String? overrideText;
+  final double? deskTop;
 
   const BoundedCinnabarSeal({
     super.key,
@@ -90,14 +91,39 @@ class BoundedCinnabarSeal extends StatelessWidget {
     this.sealStyle = SealCarvingStyle.zhuwen,
     this.sealSize = PaperHeartMetrics.kDefaultSealSize,
     this.inset = PaperHeartMetrics.kDefaultSealInset,
-    this.opacity = 0.38,
+    this.opacity = 0.85,
     this.overrideText,
+    this.deskTop,
   });
 
   @override
   Widget build(BuildContext context) {
     if (sealStyle == SealCarvingStyle.hidden) {
       return const SizedBox.shrink();
+    }
+
+    if (deskTop != null) {
+      if (deskTop! + sealSize > containerSize.height) {
+        return const SizedBox.shrink();
+      }
+      return Positioned(
+        top: deskTop,
+        left: 0,
+        right: 0,
+        height: sealSize,
+        child: IgnorePointer(
+          child: Center(
+            child: Opacity(
+              opacity: opacity,
+              child: CinnabarSignatureSeal(
+                sealStyle: sealStyle,
+                size: sealSize,
+                overrideText: overrideText,
+              ),
+            ),
+          ),
+        ),
+      );
     }
 
     final offsets = PaperHeartMetrics.computeSealStackOffsets(

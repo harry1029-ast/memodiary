@@ -2,8 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/services/media_sandbox_service.dart';
 import '../../../editor/widgets/sandboxed_video_player.dart';
+import '../../../scenery/models/shanshui_atmosphere.dart';
 import '../../../templates/models/template_style.dart';
+import 'folio_body_calligraphy_view.dart';
 import 'folio_cinnabar_seal_widget.dart';
+import 'folio_ephemera_overlay_layer.dart';
 import 'folio_leaf_model.dart';
 import 'folio_leaf_scaffold.dart';
 import 'folio_reading_perspective.dart';
@@ -11,37 +14,49 @@ import 'folio_silk_corner_mounts_painter.dart';
 import 'folio_silk_ruling_painter.dart';
 
 /// Renders discrete integer-locked content leaves inside the Thread-Bound Folio:
-/// both [FolioContentBodyLeaf] (ruled text) and [FolioTippedInEphemeraLeaf] (photo/video).
-class FolioContentLeafPage extends StatelessWidget {
+/// both [FolioContentBodyLeaf] (ruled text with Ephemera Overlay) and [FolioTippedInEphemeraLeaf].
+class FolioContentLeafPage extends StatefulWidget {
   final FolioLeaf leaf;
   final FolioSubstrateTheme theme;
   final MediaSandboxService? mediaService;
+  final ShanshuiRealm atmosphereRealm;
   final bool isTurningLeaf;
   final VoidCallback? onTurnForward;
   final VoidCallback? onTurnBackward;
+  final void Function(String photoId, double? xRatio, double? yRatio)? onOverlayPositionChanged;
 
   const FolioContentLeafPage({
     super.key,
     required this.leaf,
     required this.theme,
     this.mediaService,
+    this.atmosphereRealm = ShanshuiRealm.nature,
     this.isTurningLeaf = false,
     this.onTurnForward,
     this.onTurnBackward,
+    this.onOverlayPositionChanged,
   });
 
   @override
+  State<FolioContentLeafPage> createState() => _FolioContentLeafPageState();
+}
+
+class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
+  bool _isPolaroidHidden = false;
+
+  @override
   Widget build(BuildContext context) {
-    final accentColor = theme.isDark ? const Color(0xFFE07A6B) : const Color(0xFFB83B2E);
+    final accentColor = widget.theme.isDark ? const Color(0xFFE07A6B) : const Color(0xFFB83B2E);
+    final leaf = widget.leaf;
 
     return FolioLeafScaffold(
-      theme: theme,
+      theme: widget.theme,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildRunningHeader(),
+            _buildRunningHeader(accentColor),
             const SizedBox(height: 6),
             Center(
               child: SizedBox(
@@ -54,14 +69,24 @@ class FolioContentLeafPage extends StatelessWidget {
                       child: CustomPaint(
                         painter: FolioSilkRulingPainter(
                           layout: _resolveRulingLayout(),
-                          ruleColor: theme.ruleColor,
-                          frameColor: theme.frameColor,
-                          isDark: theme.isDark,
+                          ruleColor: widget.theme.ruleColor,
+                          frameColor: widget.theme.frameColor,
+                          isDark: widget.theme.isDark,
                         ),
                       ),
                     ),
                     Positioned.fill(child: _buildLeafContent()),
                     if (leaf.isConcludingLeaf) _buildConcludingSeal(),
+                    if (leaf is FolioContentBodyLeaf && leaf.photos.isNotEmpty)
+                      FolioEphemeraOverlayLayer(
+                        photos: leaf.photos,
+                        layout: leaf.layout,
+                        mediaService: widget.mediaService,
+                        atmosphereRealm: widget.atmosphereRealm,
+                        isHidden: _isPolaroidHidden,
+                        onHide: () => setState(() => _isPolaroidHidden = true),
+                        onPositionChanged: widget.onOverlayPositionChanged,
+                      ),
                   ],
                 ),
               ),
@@ -75,13 +100,14 @@ class FolioContentLeafPage extends StatelessWidget {
   }
 
   FolioRulingLayout _resolveRulingLayout() {
-    if (leaf is FolioContentBodyLeaf) {
-      return (leaf as FolioContentBodyLeaf).layout;
+    if (widget.leaf is FolioContentBodyLeaf) {
+      return (widget.leaf as FolioContentBodyLeaf).layout;
     }
     return FolioRulingLayout.faithfulHorizontal;
   }
 
-  Widget _buildRunningHeader() {
+  Widget _buildRunningHeader(Color accentColor) {
+    final leaf = widget.leaf;
     final title = switch (leaf) {
       FolioContentBodyLeaf bodyLeaf => bodyLeaf.title,
       FolioTippedInEphemeraLeaf ephemeraLeaf => ephemeraLeaf.title,
@@ -98,6 +124,8 @@ class FolioContentLeafPage extends StatelessWidget {
       _ => '',
     };
 
+    final hasPhotos = leaf is FolioContentBodyLeaf && leaf.photos.isNotEmpty;
+
     return SizedBox(
       height: 24,
       child: Row(
@@ -108,176 +136,83 @@ class FolioContentLeafPage extends StatelessWidget {
               '《$title》 · 第 ${leaf.leafIndex + 1} 页',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11.0, letterSpacing: 1.2, fontFamily: theme.fontFamily, color: theme.inkSecondary),
+              style: TextStyle(
+                fontSize: 11.0,
+                letterSpacing: 1.2,
+                fontFamily: widget.theme.fontFamily,
+                color: widget.theme.inkSecondary,
+              ),
             ),
           ),
-          Text(layoutLabel, style: TextStyle(fontSize: 10.0, letterSpacing: 0.8, color: theme.inkSecondary.withValues(alpha: 0.85))),
+          if (hasPhotos)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  key: const Key('folio_ephemera_restore_pill'),
+                  onTap: () => setState(() => _isPolaroidHidden = !_isPolaroidHidden),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _isPolaroidHidden
+                          ? accentColor.withValues(alpha: 0.14)
+                          : Colors.black.withValues(alpha: 0.05),
+                      border: Border.all(
+                        color: _isPolaroidHidden
+                            ? accentColor.withValues(alpha: 0.55)
+                            : widget.theme.inkSecondary.withValues(alpha: 0.35),
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      _isPolaroidHidden ? '📌 展开微笺' : '👁️ 隐藏微笺',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                        color: _isPolaroidHidden ? accentColor : widget.theme.inkSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              layoutLabel,
+              style: TextStyle(
+                fontSize: 10.0,
+                letterSpacing: 0.8,
+                color: widget.theme.inkSecondary.withValues(alpha: 0.85),
+              ),
+            ),
         ],
       ),
     );
   }
 
   Widget _buildLeafContent() {
-    if (leaf is FolioContentBodyLeaf) {
-      final bodyLeaf = leaf as FolioContentBodyLeaf;
-      return bodyLeaf.layout == FolioRulingLayout.faithfulHorizontal
-          ? _buildHorizontalBody(bodyLeaf)
-          : _buildVerticalBody(bodyLeaf);
+    if (widget.leaf is FolioContentBodyLeaf) {
+      return FolioBodyCalligraphyView(
+        bodyLeaf: widget.leaf as FolioContentBodyLeaf,
+        theme: widget.theme,
+      );
     }
-    if (leaf is FolioTippedInEphemeraLeaf) {
-      return _buildTippedInEphemera(leaf as FolioTippedInEphemeraLeaf);
+    if (widget.leaf is FolioTippedInEphemeraLeaf) {
+      return _buildTippedInEphemera(widget.leaf as FolioTippedInEphemeraLeaf);
     }
     return const SizedBox.shrink();
-  }
-
-  Widget _buildHorizontalBody(FolioContentBodyLeaf bodyLeaf) {
-    final rows = bodyLeaf.horizontalRows ?? const [];
-    final jiazhuColor = theme.isDark ? const Color(0xFFD4AF37) : const Color(0xFFB83B2E);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: List.generate(14, (rowIndex) {
-        final row = rowIndex < rows.length ? rows[rowIndex] : null;
-        return SizedBox(
-          height: 32.0,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: row == null || row.isEmpty
-                  ? const SizedBox.shrink()
-                  : Text.rich(
-                      maxLines: 1,
-                      overflow: TextOverflow.clip,
-                      TextSpan(
-                        children: row.segments.map((segment) {
-                          if (segment.isJiazhuNote) {
-                            return WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 2),
-                                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0.5),
-                                decoration: BoxDecoration(
-                                  color: jiazhuColor.withValues(alpha: 0.08),
-                                  border: Border.all(color: jiazhuColor.withValues(alpha: 0.35), width: 0.7),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                                child: Text(
-                                  segment.text,
-                                  style: TextStyle(fontSize: 10.5, height: 1.1, fontFamily: theme.fontFamily, color: segment.color ?? theme.inkPrimary),
-                                ),
-                              ),
-                            );
-                          }
-                          return TextSpan(
-                            text: segment.text,
-                            style: TextStyle(
-                              fontSize: 15.0,
-                              height: 1.2,
-                              letterSpacing: 1.1,
-                              fontWeight: segment.isBold ? FontWeight.bold : FontWeight.normal,
-                              fontStyle: segment.isItalic ? FontStyle.italic : FontStyle.normal,
-                              decoration: (segment.isTodo && segment.isChecked) ? TextDecoration.lineThrough : null,
-                              color: segment.color ?? ((segment.isTodo && segment.isChecked) ? theme.inkSecondary : theme.inkPrimary),
-                              fontFamily: theme.fontFamily,
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-            ),
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildVerticalBody(FolioContentBodyLeaf bodyLeaf) {
-    final columns = bodyLeaf.verticalColumns ?? const [];
-    return Row(
-      textDirection: TextDirection.rtl,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: List.generate(10, (colIndex) {
-        final column = colIndex < columns.length ? columns[colIndex] : null;
-        final cells = column?.cells ?? const [];
-        return SizedBox(
-          width: 32.0,
-          height: 448.0,
-          child: Column(
-            children: List.generate(16, (rowIndex) {
-              final cell = rowIndex < cells.length ? cells[rowIndex] : null;
-              return SizedBox(
-                width: 32.0,
-                height: 28.0,
-                child: Center(child: _buildVerticalCell(cell)),
-              );
-            }),
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildVerticalCell(FolioVerticalCell? cell) {
-    if (cell == null || cell.mainChar.isEmpty) return const SizedBox.shrink();
-    final jiazhuColor = theme.isDark ? const Color(0xFFD4AF37) : const Color(0xFFB83B2E);
-
-    if (cell.isJiazhuPair) {
-      return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 1.5, vertical: 1.0),
-        padding: const EdgeInsets.symmetric(horizontal: 1.0),
-        decoration: BoxDecoration(
-          color: jiazhuColor.withValues(alpha: 0.08),
-          border: Border.all(color: jiazhuColor.withValues(alpha: 0.35), width: 0.6),
-          borderRadius: BorderRadius.circular(2),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Text(cell.secondChar, style: TextStyle(fontSize: 9.5, height: 1.0, fontFamily: theme.fontFamily, color: theme.inkPrimary.withValues(alpha: 0.88))),
-            Text(cell.mainChar, style: TextStyle(fontSize: 9.5, height: 1.0, fontFamily: theme.fontFamily, color: theme.inkPrimary.withValues(alpha: 0.88))),
-          ],
-        ),
-      );
-    }
-    if (cell.requiresQuarterTurnRotation) {
-      return RotatedBox(
-        quarterTurns: 1,
-        child: Text(cell.mainChar, style: TextStyle(fontSize: 15.0, color: cell.color ?? theme.inkPrimary, fontFamily: theme.fontFamily)),
-      );
-    }
-    if (cell.isCornerPunctuation) {
-      return Align(
-        alignment: Alignment.topRight,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 2, right: 3),
-          child: Text(cell.mainChar, style: TextStyle(fontSize: 14.0, color: cell.color ?? theme.inkPrimary, fontFamily: theme.fontFamily)),
-        ),
-      );
-    }
-    return Text(
-      cell.mainChar,
-      textAlign: TextAlign.center,
-      style: TextStyle(
-        fontSize: 15.5,
-        height: 1.0,
-        fontWeight: cell.isTodo ? FontWeight.w600 : FontWeight.w400,
-        color: cell.color ?? ((cell.isTodo && cell.isChecked) ? theme.inkSecondary : theme.inkPrimary),
-        fontFamily: theme.fontFamily,
-      ),
-    );
   }
 
   File? _resolveFileImmediate(String rawPath) =>
       !MediaSandboxService.isStrictlyRelative(rawPath) ? File(rawPath) : null;
 
   Future<File> _resolveFile(String rawPath) async =>
-      (MediaSandboxService.isStrictlyRelative(rawPath) && mediaService != null)
-          ? await mediaService!.getFileFromRelativePath(rawPath)
+      (MediaSandboxService.isStrictlyRelative(rawPath) && widget.mediaService != null)
+          ? await widget.mediaService!.getFileFromRelativePath(rawPath)
           : File(rawPath);
 
   Widget _buildTippedInEphemera(FolioTippedInEphemeraLeaf ephemeraLeaf) {
-    final silkColor = theme.isDark ? const Color(0xD0C8A055) : const Color(0xC0DFC898);
+    final silkColor = widget.theme.isDark ? const Color(0xD0C8A055) : const Color(0xC0DFC898);
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -288,7 +223,7 @@ class FolioContentLeafPage extends StatelessWidget {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: theme.isDark ? const Color(0xFF141619) : const Color(0xFFFDFBF7),
+                    color: widget.theme.isDark ? const Color(0xFF141619) : const Color(0xFFFDFBF7),
                     border: Border.all(color: const Color(0xFF8C7355).withValues(alpha: 0.35)),
                     boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
                   ),
@@ -299,7 +234,7 @@ class FolioContentLeafPage extends StatelessWidget {
                       builder: (context, snapshot) {
                         final file = snapshot.data;
                         if (file != null) {
-                          if (ephemeraLeaf.mediaType == 'video' && !isTurningLeaf && file.existsSync()) {
+                          if (ephemeraLeaf.mediaType == 'video' && !widget.isTurningLeaf && file.existsSync()) {
                             return SandboxedVideoPlayer(
                               videoFile: file,
                               autoPlay: false,
@@ -316,7 +251,7 @@ class FolioContentLeafPage extends StatelessWidget {
                                   child: Icon(
                                     ephemeraLeaf.mediaType == 'video' ? Icons.videocam_outlined : Icons.photo_outlined,
                                     size: 40,
-                                    color: theme.inkSecondary.withValues(alpha: 0.5),
+                                    color: widget.theme.inkSecondary.withValues(alpha: 0.5),
                                   ),
                                 ),
                               ),
@@ -344,7 +279,7 @@ class FolioContentLeafPage extends StatelessWidget {
                           child: Icon(
                             ephemeraLeaf.mediaType == 'video' ? Icons.videocam_outlined : Icons.photo_outlined,
                             size: 40,
-                            color: theme.inkSecondary.withValues(alpha: 0.5),
+                            color: widget.theme.inkSecondary.withValues(alpha: 0.5),
                           ),
                         );
                       },
@@ -362,7 +297,12 @@ class FolioContentLeafPage extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, fontFamily: theme.fontFamily, color: theme.inkSecondary),
+              style: TextStyle(
+                fontSize: 11.5,
+                fontStyle: FontStyle.italic,
+                fontFamily: widget.theme.fontFamily,
+                color: widget.theme.inkSecondary,
+              ),
             ),
           ],
         ],
@@ -371,8 +311,9 @@ class FolioContentLeafPage extends StatelessWidget {
   }
 
   Widget _buildConcludingSeal() {
+    final leaf = widget.leaf;
     final isHorizontal = leaf is FolioContentBodyLeaf &&
-        (leaf as FolioContentBodyLeaf).layout == FolioRulingLayout.faithfulHorizontal;
+        leaf.layout == FolioRulingLayout.faithfulHorizontal;
     final (sealText, sealStyle) = switch (leaf) {
       FolioContentBodyLeaf b => (b.sealText ?? '心迹安放', b.sealStyle),
       FolioTippedInEphemeraLeaf e => (e.sealText ?? '心迹安放', e.sealStyle),
@@ -385,46 +326,50 @@ class FolioContentLeafPage extends StatelessWidget {
       bottom: 12,
       child: FolioCinnabarSealWidget(
         sealText: sealText,
-        theme: theme,
+        theme: widget.theme,
         sealStyle: sealStyle,
-        animateOnMount: !isTurningLeaf,
+        animateOnMount: !widget.isTurningLeaf,
       ),
     );
   }
 
   Widget _buildFooterColophon(Color accentColor) {
+    final leaf = widget.leaf;
+    final hasPhotos = leaf is FolioContentBodyLeaf && leaf.photos.isNotEmpty;
+    final footerNotice = hasPhotos ? '第 ${leaf.leafIndex + 1}/${leaf.totalLeaves} 页 · 可自由拖拽微笺位置' : '第 ${leaf.leafIndex + 1}/${leaf.totalLeaves} 页 · 拾光存卷';
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: Text(
-            '第 ${leaf.leafIndex + 1}/${leaf.totalLeaves} 页 · 拾光存卷',
+            footerNotice,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 10.0, letterSpacing: 1.1, color: theme.inkSecondary),
+            style: TextStyle(fontSize: 10.0, letterSpacing: 1.1, color: widget.theme.inkSecondary),
           ),
         ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (onTurnBackward != null)
+            if (widget.onTurnBackward != null)
               Semantics(
                 button: true,
                 label: '上一页',
                 child: GestureDetector(
-                  onTap: onTurnBackward,
+                  onTap: widget.onTurnBackward,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 12, top: 4, bottom: 4),
-                    child: Text('◂ 上一页', style: TextStyle(fontSize: 10.5, color: theme.inkSecondary)),
+                    child: Text('◂ 上一页', style: TextStyle(fontSize: 10.5, color: widget.theme.inkSecondary)),
                   ),
                 ),
               ),
-            if (onTurnForward != null)
+            if (widget.onTurnForward != null)
               Semantics(
                 button: true,
                 label: '下一页',
                 child: GestureDetector(
-                  onTap: onTurnForward,
+                  onTap: widget.onTurnForward,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),

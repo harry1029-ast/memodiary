@@ -27,6 +27,7 @@ class ThreadBoundFolioScreen extends StatefulWidget {
   final AudioSanctumService? audioSanctumService;
   final FolioActions actions;
   final bool enableAmbientAnimation;
+  final void Function(String photoId, double? xRatio, double? yRatio)? onOverlayPositionChanged;
 
   const ThreadBoundFolioScreen({
     super.key,
@@ -37,6 +38,7 @@ class ThreadBoundFolioScreen extends StatefulWidget {
     this.audioSanctumService,
     this.actions = const FolioActions(),
     this.enableAmbientAnimation = true,
+    this.onOverlayPositionChanged,
   });
 
   @override
@@ -148,6 +150,7 @@ class _ThreadBoundFolioScreenState extends State<ThreadBoundFolioScreen> {
                       theme: _substrateTheme,
                       mediaService: widget.mediaService,
                       onTurnForward: () => _handlePageTurn(1),
+                      onJumpToPage: (targetIndex) => setState(() => _currentPageIndex = targetIndex),
                     );
                   }
                   return FolioContentLeafPage(
@@ -157,6 +160,7 @@ class _ThreadBoundFolioScreenState extends State<ThreadBoundFolioScreen> {
                     isTurningLeaf: isTurningLeaf,
                     onTurnForward: () => _handlePageTurn(1),
                     onTurnBackward: () => _handlePageTurn(-1),
+                    onOverlayPositionChanged: widget.onOverlayPositionChanged,
                   );
                 },
               ),

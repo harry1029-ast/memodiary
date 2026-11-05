@@ -1638,6 +1638,18 @@ class $MediaAttachmentsTable extends MediaAttachments
   late final GeneratedColumn<String> ocrBlocksJson = GeneratedColumn<String>(
       'ocr_blocks_json', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _overlayXRatioMeta =
+      const VerificationMeta('overlayXRatio');
+  @override
+  late final GeneratedColumn<double> overlayXRatio = GeneratedColumn<double>(
+      'overlay_x_ratio', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _overlayYRatioMeta =
+      const VerificationMeta('overlayYRatio');
+  @override
+  late final GeneratedColumn<double> overlayYRatio = GeneratedColumn<double>(
+      'overlay_y_ratio', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1655,6 +1667,8 @@ class $MediaAttachmentsTable extends MediaAttachments
         thumbnailPath,
         ocrText,
         ocrBlocksJson,
+        overlayXRatio,
+        overlayYRatio,
         createdAt
       ];
   @override
@@ -1708,6 +1722,18 @@ class $MediaAttachmentsTable extends MediaAttachments
           ocrBlocksJson.isAcceptableOrUnknown(
               data['ocr_blocks_json']!, _ocrBlocksJsonMeta));
     }
+    if (data.containsKey('overlay_x_ratio')) {
+      context.handle(
+          _overlayXRatioMeta,
+          overlayXRatio.isAcceptableOrUnknown(
+              data['overlay_x_ratio']!, _overlayXRatioMeta));
+    }
+    if (data.containsKey('overlay_y_ratio')) {
+      context.handle(
+          _overlayYRatioMeta,
+          overlayYRatio.isAcceptableOrUnknown(
+              data['overlay_y_ratio']!, _overlayYRatioMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1735,6 +1761,10 @@ class $MediaAttachmentsTable extends MediaAttachments
           .read(DriftSqlType.string, data['${effectivePrefix}ocr_text']),
       ocrBlocksJson: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}ocr_blocks_json']),
+      overlayXRatio: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}overlay_x_ratio']),
+      overlayYRatio: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}overlay_y_ratio']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
@@ -1768,6 +1798,12 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
   /// Normalized line bounding boxes JSON (if processed)
   final String? ocrBlocksJson;
 
+  /// Normalized horizontal anchor offset [0.0..1.0] for folio ephemera overlay.
+  final double? overlayXRatio;
+
+  /// Normalized vertical anchor offset [0.0..1.0] for folio ephemera overlay.
+  final double? overlayYRatio;
+
   /// Attachment creation timestamp
   final DateTime createdAt;
   const MediaAttachment(
@@ -1778,6 +1814,8 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       this.thumbnailPath,
       this.ocrText,
       this.ocrBlocksJson,
+      this.overlayXRatio,
+      this.overlayYRatio,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1794,6 +1832,12 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
     }
     if (!nullToAbsent || ocrBlocksJson != null) {
       map['ocr_blocks_json'] = Variable<String>(ocrBlocksJson);
+    }
+    if (!nullToAbsent || overlayXRatio != null) {
+      map['overlay_x_ratio'] = Variable<double>(overlayXRatio);
+    }
+    if (!nullToAbsent || overlayYRatio != null) {
+      map['overlay_y_ratio'] = Variable<double>(overlayYRatio);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -1814,6 +1858,12 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       ocrBlocksJson: ocrBlocksJson == null && nullToAbsent
           ? const Value.absent()
           : Value(ocrBlocksJson),
+      overlayXRatio: overlayXRatio == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overlayXRatio),
+      overlayYRatio: overlayYRatio == null && nullToAbsent
+          ? const Value.absent()
+          : Value(overlayYRatio),
       createdAt: Value(createdAt),
     );
   }
@@ -1829,6 +1879,8 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       thumbnailPath: serializer.fromJson<String?>(json['thumbnailPath']),
       ocrText: serializer.fromJson<String?>(json['ocrText']),
       ocrBlocksJson: serializer.fromJson<String?>(json['ocrBlocksJson']),
+      overlayXRatio: serializer.fromJson<double?>(json['overlayXRatio']),
+      overlayYRatio: serializer.fromJson<double?>(json['overlayYRatio']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -1843,6 +1895,8 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       'thumbnailPath': serializer.toJson<String?>(thumbnailPath),
       'ocrText': serializer.toJson<String?>(ocrText),
       'ocrBlocksJson': serializer.toJson<String?>(ocrBlocksJson),
+      'overlayXRatio': serializer.toJson<double?>(overlayXRatio),
+      'overlayYRatio': serializer.toJson<double?>(overlayYRatio),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -1855,6 +1909,8 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           Value<String?> thumbnailPath = const Value.absent(),
           Value<String?> ocrText = const Value.absent(),
           Value<String?> ocrBlocksJson = const Value.absent(),
+          Value<double?> overlayXRatio = const Value.absent(),
+          Value<double?> overlayYRatio = const Value.absent(),
           DateTime? createdAt}) =>
       MediaAttachment(
         id: id ?? this.id,
@@ -1866,6 +1922,10 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
         ocrText: ocrText.present ? ocrText.value : this.ocrText,
         ocrBlocksJson:
             ocrBlocksJson.present ? ocrBlocksJson.value : this.ocrBlocksJson,
+        overlayXRatio:
+            overlayXRatio.present ? overlayXRatio.value : this.overlayXRatio,
+        overlayYRatio:
+            overlayYRatio.present ? overlayYRatio.value : this.overlayYRatio,
         createdAt: createdAt ?? this.createdAt,
       );
   MediaAttachment copyWithCompanion(MediaAttachmentsCompanion data) {
@@ -1883,6 +1943,12 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       ocrBlocksJson: data.ocrBlocksJson.present
           ? data.ocrBlocksJson.value
           : this.ocrBlocksJson,
+      overlayXRatio: data.overlayXRatio.present
+          ? data.overlayXRatio.value
+          : this.overlayXRatio,
+      overlayYRatio: data.overlayYRatio.present
+          ? data.overlayYRatio.value
+          : this.overlayYRatio,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -1897,14 +1963,25 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('ocrText: $ocrText, ')
           ..write('ocrBlocksJson: $ocrBlocksJson, ')
+          ..write('overlayXRatio: $overlayXRatio, ')
+          ..write('overlayYRatio: $overlayYRatio, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, entryId, mediaType, relativePath,
-      thumbnailPath, ocrText, ocrBlocksJson, createdAt);
+  int get hashCode => Object.hash(
+      id,
+      entryId,
+      mediaType,
+      relativePath,
+      thumbnailPath,
+      ocrText,
+      ocrBlocksJson,
+      overlayXRatio,
+      overlayYRatio,
+      createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1916,6 +1993,8 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           other.thumbnailPath == this.thumbnailPath &&
           other.ocrText == this.ocrText &&
           other.ocrBlocksJson == this.ocrBlocksJson &&
+          other.overlayXRatio == this.overlayXRatio &&
+          other.overlayYRatio == this.overlayYRatio &&
           other.createdAt == this.createdAt);
 }
 
@@ -1927,6 +2006,8 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
   final Value<String?> thumbnailPath;
   final Value<String?> ocrText;
   final Value<String?> ocrBlocksJson;
+  final Value<double?> overlayXRatio;
+  final Value<double?> overlayYRatio;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const MediaAttachmentsCompanion({
@@ -1937,6 +2018,8 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     this.thumbnailPath = const Value.absent(),
     this.ocrText = const Value.absent(),
     this.ocrBlocksJson = const Value.absent(),
+    this.overlayXRatio = const Value.absent(),
+    this.overlayYRatio = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1948,6 +2031,8 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     this.thumbnailPath = const Value.absent(),
     this.ocrText = const Value.absent(),
     this.ocrBlocksJson = const Value.absent(),
+    this.overlayXRatio = const Value.absent(),
+    this.overlayYRatio = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -1962,6 +2047,8 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     Expression<String>? thumbnailPath,
     Expression<String>? ocrText,
     Expression<String>? ocrBlocksJson,
+    Expression<double>? overlayXRatio,
+    Expression<double>? overlayYRatio,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -1973,6 +2060,8 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
       if (ocrText != null) 'ocr_text': ocrText,
       if (ocrBlocksJson != null) 'ocr_blocks_json': ocrBlocksJson,
+      if (overlayXRatio != null) 'overlay_x_ratio': overlayXRatio,
+      if (overlayYRatio != null) 'overlay_y_ratio': overlayYRatio,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1986,6 +2075,8 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       Value<String?>? thumbnailPath,
       Value<String?>? ocrText,
       Value<String?>? ocrBlocksJson,
+      Value<double?>? overlayXRatio,
+      Value<double?>? overlayYRatio,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return MediaAttachmentsCompanion(
@@ -1996,6 +2087,8 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       ocrText: ocrText ?? this.ocrText,
       ocrBlocksJson: ocrBlocksJson ?? this.ocrBlocksJson,
+      overlayXRatio: overlayXRatio ?? this.overlayXRatio,
+      overlayYRatio: overlayYRatio ?? this.overlayYRatio,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2025,6 +2118,12 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     if (ocrBlocksJson.present) {
       map['ocr_blocks_json'] = Variable<String>(ocrBlocksJson.value);
     }
+    if (overlayXRatio.present) {
+      map['overlay_x_ratio'] = Variable<double>(overlayXRatio.value);
+    }
+    if (overlayYRatio.present) {
+      map['overlay_y_ratio'] = Variable<double>(overlayYRatio.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2044,6 +2143,8 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('ocrText: $ocrText, ')
           ..write('ocrBlocksJson: $ocrBlocksJson, ')
+          ..write('overlayXRatio: $overlayXRatio, ')
+          ..write('overlayYRatio: $overlayYRatio, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4190,6 +4291,8 @@ typedef $$MediaAttachmentsTableCreateCompanionBuilder
   Value<String?> thumbnailPath,
   Value<String?> ocrText,
   Value<String?> ocrBlocksJson,
+  Value<double?> overlayXRatio,
+  Value<double?> overlayYRatio,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -4202,6 +4305,8 @@ typedef $$MediaAttachmentsTableUpdateCompanionBuilder
   Value<String?> thumbnailPath,
   Value<String?> ocrText,
   Value<String?> ocrBlocksJson,
+  Value<double?> overlayXRatio,
+  Value<double?> overlayYRatio,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -4235,6 +4340,12 @@ class $$MediaAttachmentsTableFilterComposer
 
   ColumnFilters<String> get ocrBlocksJson => $composableBuilder(
       column: $table.ocrBlocksJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get overlayXRatio => $composableBuilder(
+      column: $table.overlayXRatio, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get overlayYRatio => $composableBuilder(
+      column: $table.overlayYRatio, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4273,6 +4384,14 @@ class $$MediaAttachmentsTableOrderingComposer
       column: $table.ocrBlocksJson,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get overlayXRatio => $composableBuilder(
+      column: $table.overlayXRatio,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get overlayYRatio => $composableBuilder(
+      column: $table.overlayYRatio,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
@@ -4306,6 +4425,12 @@ class $$MediaAttachmentsTableAnnotationComposer
 
   GeneratedColumn<String> get ocrBlocksJson => $composableBuilder(
       column: $table.ocrBlocksJson, builder: (column) => column);
+
+  GeneratedColumn<double> get overlayXRatio => $composableBuilder(
+      column: $table.overlayXRatio, builder: (column) => column);
+
+  GeneratedColumn<double> get overlayYRatio => $composableBuilder(
+      column: $table.overlayYRatio, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4345,6 +4470,8 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             Value<String?> thumbnailPath = const Value.absent(),
             Value<String?> ocrText = const Value.absent(),
             Value<String?> ocrBlocksJson = const Value.absent(),
+            Value<double?> overlayXRatio = const Value.absent(),
+            Value<double?> overlayYRatio = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -4356,6 +4483,8 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             thumbnailPath: thumbnailPath,
             ocrText: ocrText,
             ocrBlocksJson: ocrBlocksJson,
+            overlayXRatio: overlayXRatio,
+            overlayYRatio: overlayYRatio,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -4367,6 +4496,8 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             Value<String?> thumbnailPath = const Value.absent(),
             Value<String?> ocrText = const Value.absent(),
             Value<String?> ocrBlocksJson = const Value.absent(),
+            Value<double?> overlayXRatio = const Value.absent(),
+            Value<double?> overlayYRatio = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -4378,6 +4509,8 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             thumbnailPath: thumbnailPath,
             ocrText: ocrText,
             ocrBlocksJson: ocrBlocksJson,
+            overlayXRatio: overlayXRatio,
+            overlayYRatio: overlayYRatio,
             createdAt: createdAt,
             rowid: rowid,
           ),
