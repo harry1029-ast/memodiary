@@ -103,6 +103,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     String? fallbackPlainText,
     List<MediaAttachment> attachments = const [],
   }) {
+    media.adoptCollectOrder(attachments.map((attachment) => attachment.id));
     _initialize(
       contentDeltaJson,
       fallbackPlainText: fallbackPlainText,
@@ -169,6 +170,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     if (_sheets.any((sheet) => isSheetComposing(sheet.sheetIndex))) return;
 
     final outcome = _mounts.reflow(_sheets, _stagedItems);
+    media.orderStagedByCollect();
     if (outcome.didChange) {
       _markContentMutated();
       notifyListeners();

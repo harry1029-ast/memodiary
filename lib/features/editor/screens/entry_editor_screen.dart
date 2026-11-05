@@ -17,6 +17,7 @@ import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
+import '../widgets/desk_workstation/desk_workstation_controller.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_media_actions.dart';
@@ -72,7 +73,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   bool _isLoading = true;
   bool _isDictating = false;
-  bool _isDockCollapsed = false;
+  final DeskWorkstationController _workstationController = DeskWorkstationController();
 
   DateTime _entryDate = DateTime.now();
   int? _mood;
@@ -91,12 +92,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _thoughtSparkService = widget.thoughtSparkService ?? ThoughtSparkService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _imagePicker = widget.imagePicker ?? ImagePicker();
+    _workstationController.addListener(_handleWorkstationChanged);
     _loadEntryData();
   }
 
   @override
   void dispose() {
+    _workstationController.dispose();
     _paginationHandler?.dispose();
+    _mediaBinding?.dispose();
     _pageController.dispose();
     _coordinator.dispose();
     _autosaveManager?.dispose();
@@ -104,6 +108,16 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     if (widget.dictationService == null) _dictationService.dispose();
     if (widget.audioSanctumService == null) _audioSanctumService.dispose();
     super.dispose();
+  }
+
+  void _handleWorkstationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Collecting always opens the workstation so the new keepsake is seen landing.
+  void _collectMedia({required bool isVideo}) {
+    _workstationController.expand();
+    _mediaBinding!.pickMedia(context, isVideo: isVideo);
   }
 
   Future<void> _loadEntryData() async {
@@ -363,6 +377,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 letterheadConfig: letterheadConfig,
                 mediaSandboxService: widget.mediaSandboxService,
                 onSaveDraft: () => _autosaveManager?.saveDraft(),
+                workstationController: _workstationController,
+                isKeyboardVisible: MediaQuery.viewInsetsOf(context).bottom > 0,
                 coordinator: _coordinator,
                 pageController: _pageController,
                 currentSheetIndex: currentSheetIndex,
@@ -371,8 +387,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
                 onPageChanged: _paginationHandler!.handlePageChanged,
                 onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
+                onCollectMedia: () => _collectMedia(isVideo: false),
                 onMountMedia: (mediaId) => _mediaBinding!.mountMedia(context, mediaId),
-                onEraseMedia: _mediaBinding!.eraseStagedMedia,
+                onEraseMedia: (mediaId) => _mediaBinding!.eraseStagedMedia(context, mediaId),
+                onUnmountMedia: _mediaBinding!.unmountMedia,
+                mountRefusals: _mediaBinding!.mountRefusals,
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),
@@ -386,8 +405,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             WritingDock(
               controller: _activeController,
               onEnsureTextController: () => _paginationHandler!.ensureActiveTextSheet(),
-              onPickImage: () => _mediaBinding!.pickMedia(context, isVideo: false),
-              onPickVideo: () => _mediaBinding!.pickMedia(context, isVideo: true),
+              onPickImage: () => _collectMedia(isVideo: false),
+              onPickVideo: () => _collectMedia(isVideo: true),
               onToggleDictation: () {
                 if (!_isDictating) {
                   _paginationHandler?.ensureActiveTextSheet();
@@ -399,8 +418,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               backgroundColor: paperColor.withValues(alpha: 0.95),
               inkColor: inkColor,
               isPaperDark: isPaperDark,
-              initiallyCollapsed: _isDockCollapsed,
-              onCollapsedChanged: (collapsed) => _isDockCollapsed = collapsed,
+              isWorkstationCollapsed: _workstationController.isCollapsed,
+              onToggleWorkstation: _workstationController.toggle,
             ),
           ],
         ),

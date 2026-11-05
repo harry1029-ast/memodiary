@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -12,6 +13,7 @@ import '../controllers/editor_autosave_manager.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/thought_spark.dart';
 import '../services/editor_pagination_coordinator.dart';
+import '../services/sheet_media_operations.dart';
 import '../services/thought_spark_service.dart';
 
 /// Modular helpers for sandboxed media ingestion (photos and short videos)
@@ -19,8 +21,26 @@ import '../services/thought_spark_service.dart';
 class EditorMediaActions {
   const EditorMediaActions._();
 
-  /// Prompts the user to pick an image (camera or gallery), compresses to WebP,
-  /// copies into private sandbox storage, and Collects it into the Staging Handscroll.
+  static void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Refuses a collect with "画卷已满 15 影" when the Staging Handscroll is full.
+  static bool _refuseWhenHandscrollFull(
+    BuildContext context,
+    EditorPaginationCoordinator coordinator,
+  ) {
+    if (coordinator.media.handscrollRoom > 0) return false;
+    _showSnackBar(context, '画卷已满 ${SheetMediaOperations.kHandscrollCapacity} 影');
+    return true;
+  }
+
+  /// Prompts the user to take one photo or pick several from the gallery,
+  /// compresses each to WebP, copies it into private sandbox storage, and
+  /// Collects it into the Staging Handscroll. A pick beyond the handscroll's
+  /// remaining room collects what fits and reports how many were left out.
   static Future<void> handleImagePick({
     required BuildContext context,
     required ImagePicker imagePicker,
@@ -31,6 +51,7 @@ class EditorMediaActions {
     EditorAutosaveManager? autosaveManager,
     VoidCallback? onStateChanged,
   }) async {
+    if (_refuseWhenHandscrollFull(context, coordinator)) return;
     final tokens = InkDiaryTheme.tokensOf(context);
 
     final source = await showModalBottomSheet<ImageSource>(
@@ -66,29 +87,45 @@ class EditorMediaActions {
     if (source == null || !context.mounted) return;
 
     try {
-      final picked = await imagePicker.pickImage(source: source);
-      if (picked == null) return;
+      final List<XFile> picks;
+      if (source == ImageSource.gallery) {
+        picks = await imagePicker.pickMultiImage();
+      } else {
+        final photo = await imagePicker.pickImage(source: source);
+        picks = [if (photo != null) photo];
+      }
+      if (picks.isEmpty) return;
 
-      final relativePath = await mediaSandboxService.copyAndCompressImage(
-        File(picked.path),
-      );
+      final room = coordinator.media.handscrollRoom;
+      final leftOut = math.max(0, picks.length - room);
+      for (final picked in picks.take(room)) {
+        final relativePath = await mediaSandboxService.copyAndCompressImage(
+          File(picked.path),
+        );
 
-      final mediaId = const Uuid().v4();
-      await database.attachMediaToEntry(
-        id: mediaId,
-        entryId: entryId,
-        relativePath: relativePath,
-        mediaType: EphemeraMediaType.image.embedKey,
-      );
-
-      coordinator.media.collect(
-        SheetMediaItem(
+        final mediaId = const Uuid().v4();
+        await database.attachMediaToEntry(
           id: mediaId,
-          mediaType: EphemeraMediaType.image,
+          entryId: entryId,
           relativePath: relativePath,
-        ),
-      );
+          mediaType: EphemeraMediaType.image.embedKey,
+        );
+
+        coordinator.media.collect(
+          SheetMediaItem(
+            id: mediaId,
+            mediaType: EphemeraMediaType.image,
+            relativePath: relativePath,
+          ),
+        );
+      }
       onStateChanged?.call();
+      if (leftOut > 0 && context.mounted) {
+        _showSnackBar(
+          context,
+          '画卷已满 ${SheetMediaOperations.kHandscrollCapacity} 影 · $leftOut 影未入卷',
+        );
+      }
       await autosaveManager?.saveDraft();
     } catch (error) {
       if (context.mounted) {
@@ -113,6 +150,7 @@ class EditorMediaActions {
     EditorAutosaveManager? autosaveManager,
     VoidCallback? onStateChanged,
   }) async {
+    if (_refuseWhenHandscrollFull(context, coordinator)) return;
     final tokens = InkDiaryTheme.tokensOf(context);
 
     final source = await showModalBottomSheet<ImageSource>(
@@ -241,26 +279,6 @@ class EditorMediaActions {
     controller.document.insert(index, '【灵感拾遗】$prompt\n');
     controller.formatText(index, prompt.length + 6, Attribute.blockQuote);
     autosaveManager?.saveDraft(force: true);
-    onStateChanged?.call();
-  }
-
-  /// Erases a staged item from the Staging Handscroll and removes its SQLite
-  /// attachment record, then saves a draft.
-  static Future<void> handleEraseStagedMedia({
-    required EditorPaginationCoordinator coordinator,
-    required AppDatabase database,
-    required String entryId,
-    required String mediaId,
-    EditorAutosaveManager? autosaveManager,
-    VoidCallback? onStateChanged,
-  }) async {
-    final removed = coordinator.media.removeStaged(mediaId);
-    if (removed == null) return;
-    await database.deleteMediaForEntryByPath(
-      entryId: entryId,
-      relativePath: removed.relativePath,
-    );
-    await autosaveManager?.saveDraft();
     onStateChanged?.call();
   }
 }

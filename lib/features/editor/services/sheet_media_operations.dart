@@ -40,13 +40,59 @@ class SheetMediaOperations {
     }
   }
 
+  /// Most items the Staging Handscroll holds at once.
+  static const int kHandscrollCapacity = 15;
+
+  /// Attachment ids in collect order, so items returning to the handscroll
+  /// (Unmount, undo of an erase) rejoin it where they were collected.
+  final List<String> _collectOrder = <String>[];
+
+  /// Adopts [mediaIds] (the persisted collect order) as the collect order.
+  void adoptCollectOrder(Iterable<String> mediaIds) {
+    _collectOrder
+      ..clear()
+      ..addAll(mediaIds);
+  }
+
   int _stagedIndexOf(String mediaId) =>
       _stagedItems.indexWhere((item) => item.id == mediaId);
 
+  int _collectRank(String mediaId) {
+    final rank = _collectOrder.indexOf(mediaId);
+    return rank == -1 ? _collectOrder.length : rank;
+  }
+
+  void _stageInCollectOrder(SheetMediaItem item) {
+    final rank = _collectRank(item.id);
+    final insertAt = _stagedItems.indexWhere((staged) => _collectRank(staged.id) > rank);
+    _stagedItems.insert(insertAt == -1 ? _stagedItems.length : insertAt, item);
+  }
+
+  /// Re-sorts the Staging Handscroll into collect order, so items that reflow
+  /// returned to it (a deleted passage, last-sheet overflow) rejoin it where
+  /// they were collected, as an Unmount does.
+  void orderStagedByCollect() {
+    final ordered = List.of(_stagedItems)
+      ..sort((left, right) => _collectRank(left.id).compareTo(_collectRank(right.id)));
+    _stagedItems
+      ..clear()
+      ..addAll(ordered);
+  }
+
+  /// Free slots left in the Staging Handscroll.
+  int get handscrollRoom => math.max(0, kHandscrollCapacity - _stagedItems.length);
+
   /// Collects [item] into the Staging Handscroll, after every earlier item.
-  void collect(SheetMediaItem item) {
+  ///
+  /// Returns false, collecting nothing, when the handscroll is full.
+  bool collect(SheetMediaItem item) {
+    if (handscrollRoom == 0) return false;
+    _collectOrder
+      ..remove(item.id)
+      ..add(item.id);
     _stagedItems.add(item);
     _onContentMutated();
+    return true;
   }
 
   /// Mounts the staged item [mediaId] onto the active text sheet by inserting a
@@ -75,13 +121,59 @@ class SheetMediaOperations {
     return true;
   }
 
-  /// Removes the staged item [mediaId] from the Staging Handscroll.
+  /// Unmounts [mediaId]: removes its mount marker from the sheet holding it and
+  /// returns the item to the Staging Handscroll in collect order.
+  ///
+  /// Returns false when no sheet has [mediaId] mounted.
+  bool unmount(String mediaId) {
+    for (final sheet in _sheets) {
+      if (sheet is! TextStationerySheet) continue;
+      final mountedIndex = sheet.mediaAttachments.indexWhere((item) => item.id == mediaId);
+      if (mountedIndex == -1) continue;
+      // A cascaded item shows on a later sheet than the one holding its marker.
+      for (final markerSheet in _sheets.whereType<TextStationerySheet>()) {
+        final markerOffset = _markerOffsetIn(markerSheet, mediaId);
+        if (markerOffset == null) continue;
+        final selection = markerSheet.controller.selection;
+        final base = selection.isValid ? selection.baseOffset : 0;
+        markerSheet.controller.replaceText(
+          markerOffset,
+          1,
+          '',
+          TextSelection.collapsed(offset: base > markerOffset ? base - 1 : base),
+        );
+      }
+      _stageInCollectOrder(sheet.mediaAttachments.removeAt(mountedIndex));
+      _onContentMutated();
+      return true;
+    }
+    return false;
+  }
+
+  static int? _markerOffsetIn(TextStationerySheet sheet, String mediaId) {
+    var offset = 0;
+    for (final operation in sheet.document.toDelta().operations) {
+      if (MountMarker.mediaIdOf(operation) == mediaId) return offset;
+      offset += operation.length ?? 0;
+    }
+    return null;
+  }
+
+  /// Removes the staged item [mediaId] from the Staging Handscroll; it keeps
+  /// its collect position so [restoreStaged] can put it back in place.
   SheetMediaItem? removeStaged(String mediaId) {
     final stagedIndex = _stagedIndexOf(mediaId);
     if (stagedIndex == -1) return null;
     final removed = _stagedItems.removeAt(stagedIndex);
     _onContentMutated();
     return removed;
+  }
+
+  /// Puts an erased [item] back into the Staging Handscroll where it was (undo).
+  void restoreStaged(SheetMediaItem item) {
+    if (_stagedIndexOf(item.id) != -1) return;
+    _stageInCollectOrder(item);
+    _onContentMutated();
   }
 
   /// Updates the in-memory caption of [mediaId], wherever it is staged or mounted.

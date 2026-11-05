@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
@@ -8,6 +9,8 @@ import '../../templates/widgets/template_canvas_container.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../services/editor_pagination_coordinator.dart';
+import 'desk_workstation/desk_space_budget.dart';
+import 'desk_workstation/desk_workstation_controller.dart';
 import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
 import 'paper_heart_metrics.dart';
@@ -17,15 +20,20 @@ import 'stationery_sheet_border_chrome.dart';
 /// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
 /// resting on a scholar's writing desk.
 ///
-/// Beneath the active sheet rest its Sheet Mount Strip and the Staging Handscroll.
-/// When the sheet has no mounted items and the handscroll is empty, the 14-row integer-locked
-/// stationery card automatically centers vertically on the desk mat with the diarist's
-/// Cinnabar Signature Seal resting cleanly beneath it, eliminating empty whitespace voids.
+/// Beneath the active sheet rest its Sheet Mount Strip and the Desk Workstation holding
+/// the Staging Handscroll, sharing the desk by a [DeskSpaceBudget]. When the sheet has no
+/// mounted items, the 14-row integer-locked stationery card centers vertically above the
+/// workstation with the diarist's Cinnabar Signature Seal resting cleanly beneath it.
 class EditorPaperCanvas extends StatelessWidget {
   final StationerySheetThemeConfig themeConfig;
   final StationeryLetterheadConfig letterheadConfig;
   final MediaSandboxService mediaSandboxService;
   final VoidCallback onSaveDraft;
+  final DeskWorkstationController workstationController;
+
+  /// Whether the software keyboard is open. Read above the [Scaffold], which
+  /// strips the keyboard inset from its body's [MediaQuery].
+  final bool isKeyboardVisible;
 
   final EditorPaginationCoordinator coordinator;
   final PageController pageController;
@@ -35,8 +43,11 @@ class EditorPaperCanvas extends StatelessWidget {
   final VoidCallback? onNextSheet;
   final ValueChanged<int>? onPageChanged;
   final void Function(int sheetIndex)? onDeleteEphemera;
+  final VoidCallback? onCollectMedia;
   final ValueChanged<String>? onMountMedia;
   final ValueChanged<String>? onEraseMedia;
+  final ValueChanged<String>? onUnmountMedia;
+  final ValueListenable<int>? mountRefusals;
   final void Function(String mediaId, String newCaption)? onMediaCaptionChanged;
   final void Function(int sheetIndex)? onSpillBack;
 
@@ -46,6 +57,8 @@ class EditorPaperCanvas extends StatelessWidget {
     required this.letterheadConfig,
     required this.mediaSandboxService,
     required this.onSaveDraft,
+    required this.workstationController,
+    this.isKeyboardVisible = false,
     required this.coordinator,
     required this.pageController,
     this.currentSheetIndex = 0,
@@ -54,8 +67,11 @@ class EditorPaperCanvas extends StatelessWidget {
     this.onNextSheet,
     this.onPageChanged,
     this.onDeleteEphemera,
+    this.onCollectMedia,
     this.onMountMedia,
     this.onEraseMedia,
+    this.onUnmountMedia,
+    this.mountRefusals,
     this.onMediaCaptionChanged,
     this.onSpillBack,
   });
@@ -97,22 +113,27 @@ class EditorPaperCanvas extends StatelessWidget {
             : const <SheetMediaItem>[];
         final stagedItems = coordinator.stagedItems;
 
-        final bool hasAttachments = mountedItems.isNotEmpty || stagedItems.isNotEmpty;
-
-        final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+        final bool keyboardVisible = isKeyboardVisible;
 
         const sealSize = PaperHeartMetrics.kDefaultSealSize;
         const sealGap = 16.0;
         const sealBlockHeight = sealSize + sealGap;
 
-        // Vertical centering on the scholar's desk mat:
-        // For text-only entries: center card and seal as a unified vertical unit when keyboard is closed
-        final double topOffset;
-        if (!hasAttachments && !keyboardVisible && canvasHeight > cardHeight + sealBlockHeight + 24.0) {
-          topOffset = math.max(12.0, (canvasHeight - cardHeight - sealBlockHeight) / 2.0);
-        } else {
-          topOffset = 12.0;
-        }
+        DeskSpaceBudget resolveBudget({required bool isWorkstationCollapsed}) => DeskSpaceBudget.resolve(
+              canvasHeight: canvasHeight,
+              sheetHeight: cardHeight,
+              sealBlockHeight: sealBlockHeight,
+              hasMountedItems: mountedItems.isNotEmpty,
+              isHandscrollEmpty: stagedItems.isEmpty,
+              isWorkstationCollapsed: isWorkstationCollapsed,
+              isKeyboardVisible: keyboardVisible,
+              isLastSheet: currentSheetIndex == totalSheets - 1,
+            );
+        final isWorkstationCollapsed = workstationController.resolveInitial(
+          workstationFits: resolveBudget(isWorkstationCollapsed: false).workstationFits,
+        );
+        final budget = resolveBudget(isWorkstationCollapsed: isWorkstationCollapsed);
+        final topOffset = budget.sheetTop;
 
         final double innerContentPaddingLeft;
         if (templateStyle.type == TemplateBackgroundType.grid ||
@@ -146,10 +167,6 @@ class EditorPaperCanvas extends StatelessWidget {
             math.max(0.0, canvasWidth - metrics.innerFrameRect.right) + innerContentPaddingRight;
 
         final deskTopSeal = topOffset + cardHeight + sealGap;
-        final canRenderDeskSeal = !hasAttachments &&
-            !keyboardVisible &&
-            (currentSheetIndex == totalSheets - 1) &&
-            (deskTopSeal + sealSize <= canvasHeight);
 
         return Container(
           color: deskColor,
@@ -165,7 +182,7 @@ class EditorPaperCanvas extends StatelessWidget {
                     child: Text(
                       '书案 · 案头',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 12,
                         letterSpacing: 2.0,
                         color: isDark ? Colors.white38 : const Color(0xFF6B655B),
                       ),
@@ -260,43 +277,29 @@ class EditorPaperCanvas extends StatelessWidget {
                   },
                 ),
 
-                // Sheet Mount Strip and Staging Handscroll resting beneath the card
-                if (hasAttachments && canvasHeight - (topOffset + cardHeight + 10.0) > 12.0)
-                  Positioned(
-                    top: topOffset + cardHeight + 10.0,
-                    left: 16.0,
-                    right: 16.0,
-                    bottom: 12.0,
-                    child: AnimatedSlide(
-                      offset: keyboardVisible ? const Offset(0.0, 1.5) : Offset.zero,
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutCubic,
-                      child: AnimatedOpacity(
-                        opacity: keyboardVisible ? 0.0 : 1.0,
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOutCubic,
-                        child: IgnorePointer(
-                          ignoring: keyboardVisible,
-                          child: EditorDeskMediaArea(
-                            mountedItems: mountedItems,
-                            stagedItems: stagedItems,
-                            mediaSandboxService: mediaSandboxService,
-                            activeSheetNumber: currentSheetIndex + 1,
-                            isPaperDark: themeConfig.isPaperDark,
-                            onMountMedia: onMountMedia,
-                            onEraseMedia: onEraseMedia,
-                            onCaptionChanged: (mediaId, newCaption) {
-                              coordinator.media.updateCaption(mediaId, newCaption);
-                              onMediaCaptionChanged?.call(mediaId, newCaption);
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
+                // Sheet Mount Strip beneath the card and the Desk Workstation at the bottom
+                Positioned.fill(
+                  child: EditorDeskMediaArea(
+                    budget: budget,
+                    mountedItems: mountedItems,
+                    stagedItems: stagedItems,
+                    mediaSandboxService: mediaSandboxService,
+                    activeSheetNumber: currentSheetIndex + 1,
+                    isPaperDark: themeConfig.isPaperDark,
+                    onCollectMedia: onCollectMedia,
+                    onMountMedia: onMountMedia,
+                    onEraseMedia: onEraseMedia,
+                    onUnmountMedia: onUnmountMedia,
+                    mountRefusals: mountRefusals,
+                    onCaptionChanged: (mediaId, newCaption) {
+                      coordinator.media.updateCaption(mediaId, newCaption);
+                      onMediaCaptionChanged?.call(mediaId, newCaption);
+                    },
                   ),
+                ),
 
                 // Cinnabar Signature Seal resting cleanly beneath the card on text-only entries
-                if (canRenderDeskSeal)
+                if (budget.showSeal)
                   BoundedCinnabarSeal(
                     innerFrameRect: metrics.innerFrameRect,
                     containerSize: Size(canvasWidth, canvasHeight),
@@ -314,7 +317,7 @@ class EditorPaperCanvas extends StatelessWidget {
                   substrate: templateStyle.tokens.substrate,
                   isPaperDark: themeConfig.isPaperDark,
                   inkColor: themeConfig.inkColor,
-                  bottomInset: 12.0,
+                  bottomInset: budget.pageIndicatorBottomInset,
                 ),
               ],
             ),
