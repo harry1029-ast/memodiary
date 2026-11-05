@@ -25,6 +25,7 @@ import '../widgets/editor_media_feedback.dart';
 import '../widgets/editor_overlay_actions.dart';
 import '../widgets/editor_top_app_bar.dart';
 import '../widgets/scholar_chest/scholar_chest_drawer.dart';
+import '../widgets/staged_exit_reminder_dialog.dart';
 import '../widgets/writing_dock.dart';
 
 /// Full-Bleed rich-text multimodal diary editor in classical Ink & Paper stationery aesthetic.
@@ -306,6 +307,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   Future<void> _handleSaveAndExit() async {
     HapticFeedback.lightImpact();
+    if (_coordinator.stagedItems.isNotEmpty) {
+      final choice = await StagedExitReminderDialog.show(context, stagedCount: _coordinator.stagedItems.length);
+      if (!mounted || choice == StagedExitChoice.continueMounting) return;
+      if (choice == StagedExitChoice.discard) await _mediaBinding?.discardAllStaged();
+    }
     await _autosaveManager?.saveDraft(force: true);
     if (mounted) Navigator.pop(context, true);
   }
