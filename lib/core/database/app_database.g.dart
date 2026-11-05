@@ -868,6 +868,16 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
   late final GeneratedColumn<String> entryPinHash = GeneratedColumn<String>(
       'entry_pin_hash', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _legacyMountsPendingMeta =
+      const VerificationMeta('legacyMountsPending');
+  @override
+  late final GeneratedColumn<bool> legacyMountsPending = GeneratedColumn<bool>(
+      'legacy_mounts_pending', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("legacy_mounts_pending" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -886,7 +896,8 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         updatedAt,
         isDeleted,
         isLocked,
-        entryPinHash
+        entryPinHash,
+        legacyMountsPending
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -989,6 +1000,12 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
           entryPinHash.isAcceptableOrUnknown(
               data['entry_pin_hash']!, _entryPinHashMeta));
     }
+    if (data.containsKey('legacy_mounts_pending')) {
+      context.handle(
+          _legacyMountsPendingMeta,
+          legacyMountsPending.isAcceptableOrUnknown(
+              data['legacy_mounts_pending']!, _legacyMountsPendingMeta));
+    }
     return context;
   }
 
@@ -1032,6 +1049,8 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_locked'])!,
       entryPinHash: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}entry_pin_hash']),
+      legacyMountsPending: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}legacy_mounts_pending'])!,
     );
   }
 
@@ -1092,6 +1111,12 @@ class Entry extends DataClass implements Insertable<Entry> {
 
   /// Salted SHA-256 PIN hash (format: "salt:hash") or null if protected by master app PIN
   final String? entryPinHash;
+
+  /// Whether this entry still awaits the one-time legacy mounting pass
+  /// (ADR-0009): set by the schema v8 upgrade on entries that had attachments
+  /// but no mount markers, cleared once the editor has written their markers.
+  /// Records only that the pass is due, never where anything is mounted.
+  final bool legacyMountsPending;
   const Entry(
       {required this.id,
       required this.notebookId,
@@ -1109,7 +1134,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       required this.updatedAt,
       required this.isDeleted,
       required this.isLocked,
-      this.entryPinHash});
+      this.entryPinHash,
+      required this.legacyMountsPending});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1142,6 +1168,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     if (!nullToAbsent || entryPinHash != null) {
       map['entry_pin_hash'] = Variable<String>(entryPinHash);
     }
+    map['legacy_mounts_pending'] = Variable<bool>(legacyMountsPending);
     return map;
   }
 
@@ -1173,6 +1200,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       entryPinHash: entryPinHash == null && nullToAbsent
           ? const Value.absent()
           : Value(entryPinHash),
+      legacyMountsPending: Value(legacyMountsPending),
     );
   }
 
@@ -1197,6 +1225,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       isLocked: serializer.fromJson<bool>(json['isLocked']),
       entryPinHash: serializer.fromJson<String?>(json['entryPinHash']),
+      legacyMountsPending:
+          serializer.fromJson<bool>(json['legacyMountsPending']),
     );
   }
   @override
@@ -1220,6 +1250,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'isLocked': serializer.toJson<bool>(isLocked),
       'entryPinHash': serializer.toJson<String?>(entryPinHash),
+      'legacyMountsPending': serializer.toJson<bool>(legacyMountsPending),
     };
   }
 
@@ -1240,7 +1271,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           DateTime? updatedAt,
           bool? isDeleted,
           bool? isLocked,
-          Value<String?> entryPinHash = const Value.absent()}) =>
+          Value<String?> entryPinHash = const Value.absent(),
+          bool? legacyMountsPending}) =>
       Entry(
         id: id ?? this.id,
         notebookId: notebookId ?? this.notebookId,
@@ -1260,6 +1292,7 @@ class Entry extends DataClass implements Insertable<Entry> {
         isLocked: isLocked ?? this.isLocked,
         entryPinHash:
             entryPinHash.present ? entryPinHash.value : this.entryPinHash,
+        legacyMountsPending: legacyMountsPending ?? this.legacyMountsPending,
       );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -1289,6 +1322,9 @@ class Entry extends DataClass implements Insertable<Entry> {
       entryPinHash: data.entryPinHash.present
           ? data.entryPinHash.value
           : this.entryPinHash,
+      legacyMountsPending: data.legacyMountsPending.present
+          ? data.legacyMountsPending.value
+          : this.legacyMountsPending,
     );
   }
 
@@ -1311,7 +1347,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('isLocked: $isLocked, ')
-          ..write('entryPinHash: $entryPinHash')
+          ..write('entryPinHash: $entryPinHash, ')
+          ..write('legacyMountsPending: $legacyMountsPending')
           ..write(')'))
         .toString();
   }
@@ -1334,7 +1371,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       updatedAt,
       isDeleted,
       isLocked,
-      entryPinHash);
+      entryPinHash,
+      legacyMountsPending);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1355,7 +1393,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted &&
           other.isLocked == this.isLocked &&
-          other.entryPinHash == this.entryPinHash);
+          other.entryPinHash == this.entryPinHash &&
+          other.legacyMountsPending == this.legacyMountsPending);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -1376,6 +1415,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<bool> isDeleted;
   final Value<bool> isLocked;
   final Value<String?> entryPinHash;
+  final Value<bool> legacyMountsPending;
   final Value<int> rowid;
   const EntriesCompanion({
     this.id = const Value.absent(),
@@ -1395,6 +1435,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.isDeleted = const Value.absent(),
     this.isLocked = const Value.absent(),
     this.entryPinHash = const Value.absent(),
+    this.legacyMountsPending = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   EntriesCompanion.insert({
@@ -1415,6 +1456,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.isDeleted = const Value.absent(),
     this.isLocked = const Value.absent(),
     this.entryPinHash = const Value.absent(),
+    this.legacyMountsPending = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         notebookId = Value(notebookId),
@@ -1440,6 +1482,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<bool>? isDeleted,
     Expression<bool>? isLocked,
     Expression<String>? entryPinHash,
+    Expression<bool>? legacyMountsPending,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1460,6 +1503,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (isLocked != null) 'is_locked': isLocked,
       if (entryPinHash != null) 'entry_pin_hash': entryPinHash,
+      if (legacyMountsPending != null)
+        'legacy_mounts_pending': legacyMountsPending,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1482,6 +1527,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       Value<bool>? isDeleted,
       Value<bool>? isLocked,
       Value<String?>? entryPinHash,
+      Value<bool>? legacyMountsPending,
       Value<int>? rowid}) {
     return EntriesCompanion(
       id: id ?? this.id,
@@ -1501,6 +1547,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       isDeleted: isDeleted ?? this.isDeleted,
       isLocked: isLocked ?? this.isLocked,
       entryPinHash: entryPinHash ?? this.entryPinHash,
+      legacyMountsPending: legacyMountsPending ?? this.legacyMountsPending,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1559,6 +1606,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (entryPinHash.present) {
       map['entry_pin_hash'] = Variable<String>(entryPinHash.value);
     }
+    if (legacyMountsPending.present) {
+      map['legacy_mounts_pending'] = Variable<bool>(legacyMountsPending.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1585,6 +1635,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('isDeleted: $isDeleted, ')
           ..write('isLocked: $isLocked, ')
           ..write('entryPinHash: $entryPinHash, ')
+          ..write('legacyMountsPending: $legacyMountsPending, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3994,6 +4045,7 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<bool> isDeleted,
   Value<bool> isLocked,
   Value<String?> entryPinHash,
+  Value<bool> legacyMountsPending,
   Value<int> rowid,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
@@ -4014,6 +4066,7 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<bool> isDeleted,
   Value<bool> isLocked,
   Value<String?> entryPinHash,
+  Value<bool> legacyMountsPending,
   Value<int> rowid,
 });
 
@@ -4077,6 +4130,10 @@ class $$EntriesTableFilterComposer
 
   ColumnFilters<String> get entryPinHash => $composableBuilder(
       column: $table.entryPinHash, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get legacyMountsPending => $composableBuilder(
+      column: $table.legacyMountsPending,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$EntriesTableOrderingComposer
@@ -4141,6 +4198,10 @@ class $$EntriesTableOrderingComposer
   ColumnOrderings<String> get entryPinHash => $composableBuilder(
       column: $table.entryPinHash,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get legacyMountsPending => $composableBuilder(
+      column: $table.legacyMountsPending,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$EntriesTableAnnotationComposer
@@ -4202,6 +4263,9 @@ class $$EntriesTableAnnotationComposer
 
   GeneratedColumn<String> get entryPinHash => $composableBuilder(
       column: $table.entryPinHash, builder: (column) => column);
+
+  GeneratedColumn<bool> get legacyMountsPending => $composableBuilder(
+      column: $table.legacyMountsPending, builder: (column) => column);
 }
 
 class $$EntriesTableTableManager extends RootTableManager<
@@ -4244,6 +4308,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             Value<bool> isDeleted = const Value.absent(),
             Value<bool> isLocked = const Value.absent(),
             Value<String?> entryPinHash = const Value.absent(),
+            Value<bool> legacyMountsPending = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               EntriesCompanion(
@@ -4264,6 +4329,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             isDeleted: isDeleted,
             isLocked: isLocked,
             entryPinHash: entryPinHash,
+            legacyMountsPending: legacyMountsPending,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -4284,6 +4350,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             Value<bool> isDeleted = const Value.absent(),
             Value<bool> isLocked = const Value.absent(),
             Value<String?> entryPinHash = const Value.absent(),
+            Value<bool> legacyMountsPending = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               EntriesCompanion.insert(
@@ -4304,6 +4371,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             isDeleted: isDeleted,
             isLocked: isLocked,
             entryPinHash: entryPinHash,
+            legacyMountsPending: legacyMountsPending,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

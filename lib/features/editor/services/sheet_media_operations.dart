@@ -2,13 +2,13 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/media_embed_data.dart';
 import '../models/mount_marker.dart';
 import 'stationery_sheet_spill_mutator.dart';
 
 /// Media-specific mutations over the coordinator's ordered Stationery Sheets and
-/// its Staging Handscroll: Collect, Mount (via Delta mount markers), ephemera
-/// sheets, and inline media inserts.
+/// its Staging Handscroll: Collect, Mount (via Delta mount markers), and removal
+/// of legacy ephemera sheets. The Staging Handscroll is the only authoring path
+/// for media; legacy inline embeds are render-only.
 ///
 /// Operates directly on the coordinator's mutable sheet list and reports every
 /// content mutation through [onContentMutated] so the coordinator can bump its
@@ -107,41 +107,6 @@ class SheetMediaOperations {
       return true;
     }
     return false;
-  }
-
-  /// Inserts a new ephemera sheet at [atIndex] or after the active sheet.
-  void insertEphemeraSheet({
-    required EphemeraMediaType mediaType,
-    required MediaEmbedData mediaData,
-    int? atIndex,
-  }) {
-    final targetIndex = (atIndex ?? (_readActiveIndex() + 1)).clamp(0, _sheets.length);
-    _sheets.insert(
-      targetIndex,
-      EphemeraSheet(
-        sheetIndex: targetIndex,
-        mediaType: mediaType,
-        mediaData: mediaData,
-      ),
-    );
-    StationerySheetSpillMutator.reindexSheets(_sheets);
-    _writeActiveIndex(targetIndex);
-    _onContentMutated();
-  }
-
-  /// Inserts media at the active selection, splitting mid-sheet prose cleanly.
-  void insertMediaAtCurrentSelection({
-    required EphemeraMediaType mediaType,
-    required MediaEmbedData mediaData,
-  }) {
-    _ensureOpeningSheet();
-    _writeActiveIndex(StationerySheetSpillMutator.insertMediaAtSelection(
-      sheets: _sheets,
-      activeIndex: _clampedActiveIndex(),
-      mediaType: mediaType,
-      mediaData: mediaData,
-    ));
-    _onContentMutated();
   }
 
   /// Removes an ephemera sheet at [sheetIndex], maintaining contiguous indexing.

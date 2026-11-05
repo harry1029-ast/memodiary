@@ -386,6 +386,7 @@ void main() {
         isWeeklyReview: false,
         isDeleted: false,
         isLocked: false,
+        legacyMountsPending: false,
       );
       await db.createEntry(entry.toCompanion(false));
 

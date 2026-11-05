@@ -68,7 +68,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   /// Creates the `media_fts` FTS5 virtual table and its 6 synchronization triggers.
   Future<void> _createMediaFts() async {
@@ -300,6 +300,20 @@ class AppDatabase extends _$AppDatabase {
                 AND (ocr_blocks_json IS NULL OR ocr_blocks_json = '[]');
             ''');
           }
+          if (from < 8) {
+            await m.addColumn(entries, entries.legacyMountsPending);
+            // Entries whose attachments predate mount markers are mounted
+            // first-come by the editor on their next open. An entry already
+            // holding a marker was written by the marker-aware editor.
+            await customStatement('''
+              UPDATE entries SET legacy_mounts_pending = 1
+              WHERE content_delta NOT LIKE '%"mount":%'
+                AND EXISTS (
+                  SELECT 1 FROM media_attachments
+                  WHERE media_attachments.entry_id = entries.id
+                );
+            ''');
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON;');
@@ -386,6 +400,18 @@ class AppDatabase extends _$AppDatabase {
         contentDelta: Value(contentDelta),
         plainText: Value(plainText),
         updatedAt: Value(DateTime.now()),
+      ),
+    );
+  }
+
+  /// Persists the legacy mounting pass result for [entryId]: its Delta with
+  /// mount markers written, and the pending flag cleared so the pass never
+  /// runs again. Not a diarist edit, so `updatedAt` is left untouched.
+  Future<int> completeLegacyMountPass(String entryId, {required String contentDelta}) {
+    return (update(entries)..where((t) => t.id.equals(entryId))).write(
+      EntriesCompanion(
+        contentDelta: Value(contentDelta),
+        legacyMountsPending: const Value(false),
       ),
     );
   }

@@ -33,6 +33,7 @@ void main() {
       updatedAt: d,
       isDeleted: isDeleted,
       isLocked: isLocked,
+      legacyMountsPending: false,
       entryPinHash: null,
     );
   }

@@ -6,6 +6,7 @@ import '../models/mount_marker.dart';
 import '../models/typography_settings.dart';
 import 'editor_pagination_models.dart';
 import 'stationery_delta_splitter.dart';
+import 'stationery_delta_synthesizer.dart';
 import 'stationery_line_measurer.dart';
 
 export 'editor_pagination_models.dart' show EditorPartition;
@@ -137,7 +138,7 @@ class EditorDeltaPartitioner {
 
           final split = StationeryDeltaSplitter.splitDeltaAtCharacterOffset(
             sourceDelta: remainingParagraphDelta,
-            splitOffset: cutOffset,
+            splitOffset: _deltaOffsetOfTextOffset(remainingParagraphDelta, cutOffset),
             trailingParagraphAttributes: block.blockAttributes,
           );
 
@@ -179,6 +180,60 @@ class EditorDeltaPartitioner {
     return EditorPartition(sheets: sheets, stagedItems: stagedItems);
   }
 
+  /// Legacy mounting pass for entries written before mount markers existed
+  /// (ADR-0009): returns [unifiedDelta] with a marker written for every
+  /// unanchored item of [media], placed with the pre-marker first-come rule
+  /// (the first text sheet with fewer than three items, else the last text
+  /// sheet) at the end of that sheet's text, in [media] order.
+  ///
+  /// Returns [unifiedDelta] unchanged when nothing is unanchored, so applying
+  /// it twice is a no-op.
+  static Delta mountLegacyAttachments({
+    required Delta unifiedDelta,
+    required List<SheetMediaItem> media,
+    required TypographySettings typography,
+    double? contentWidth,
+    required TemplateStyle templateStyle,
+    double? lineStridePx,
+  }) {
+    final partitioned = partition(
+      unifiedDelta: unifiedDelta,
+      media: media,
+      typography: typography,
+      contentWidth: contentWidth,
+      templateStyle: templateStyle,
+      lineStridePx: lineStridePx,
+    );
+    try {
+      final textSheets = partitioned.sheets.whereType<TextStationerySheet>().toList();
+      if (partitioned.stagedItems.isEmpty || textSheets.isEmpty) return unifiedDelta;
+
+      final assignedIds = <TextStationerySheet, List<String>>{};
+      for (final item in partitioned.stagedItems) {
+        final target = textSheets.firstWhere(
+          (sheet) => !sheet.isAtMediaCapacity,
+          orElse: () => textSheets.last,
+        );
+        target.mediaAttachments.add(item);
+        (assignedIds[target] ??= <String>[]).add(item.id);
+      }
+
+      for (final MapEntry(key: sheet, value: mediaIds) in assignedIds.entries) {
+        final endOfText = math.max(0, sheet.document.length - 1);
+        final markers = Delta()..retain(endOfText);
+        for (final mediaId in mediaIds) {
+          markers.insert(MountMarker.embeddable(mediaId).toJson());
+        }
+        sheet.setDelta(sheet.delta.compose(markers));
+      }
+      return StationeryDeltaSynthesizer.synthesize(partitioned.sheets);
+    } finally {
+      for (final sheet in partitioned.sheets) {
+        sheet.dispose();
+      }
+    }
+  }
+
   /// Mounts each item of [media] on the text sheet whose Delta holds its marker
   /// (in marker order) and returns the items no marker references. Items backing
   /// a legacy inline embed (rendered as an [EphemeraSheet]) are neither.
@@ -206,6 +261,28 @@ class EditorDeltaPartitioner {
     return media
         .where((item) => mediaById.containsKey(item.id) && !mountedIds.contains(item.id))
         .toList();
+  }
+
+  /// Maps a plain-text [textOffset] (which excludes mount markers) to the
+  /// matching Delta offset, where each marker takes one position. Markers at
+  /// or before the offset stay with the leading slice, so an item mounted at
+  /// the end of a sheet's text stays on that sheet.
+  static int _deltaOffsetOfTextOffset(Delta delta, int textOffset) {
+    var textCount = 0;
+    var deltaCount = 0;
+    for (final operation in delta.operations) {
+      if (!operation.isInsert) continue;
+      final data = operation.data;
+      if (data is String) {
+        final remaining = textOffset - textCount;
+        if (remaining < data.length) return deltaCount + remaining;
+        textCount += data.length;
+        deltaCount += data.length;
+      } else {
+        deltaCount += 1;
+      }
+    }
+    return deltaCount;
   }
 
   static String _extractPlainText(Delta delta) {

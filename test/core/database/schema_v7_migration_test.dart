@@ -84,7 +84,7 @@ void main() {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(() => db.close());
 
-      expect(db.schemaVersion, equals(7));
+      expect(db.schemaVersion, greaterThanOrEqualTo(7));
       await db.getAllTemplates();
 
       await db.createEntry(

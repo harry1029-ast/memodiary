@@ -73,6 +73,7 @@ void main() {
       weather: 'sunny',
       isWeeklyReview: false,
       isLocked: false,
+      legacyMountsPending: false,
       createdAt: DateTime(2026, 10, 16, 14, 0),
       updatedAt: DateTime(2026, 10, 16, 14, 0),
       isDeleted: false,

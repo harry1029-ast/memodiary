@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
-import 'package:memodiary/features/editor/models/media_embed_data.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/services/editor_pagination_coordinator.dart';
 
@@ -138,42 +138,6 @@ void main() {
       coordinator.dispose();
     });
 
-    test('insertMediaAtCurrentSelection splits mid-sheet prose around new EphemeraSheet', () {
-      final coordinator = EditorPaginationCoordinator();
-      final delta = Delta()..insert('上阕开篇春色。\n下阕归舟晚唱。\n');
-      coordinator.initializeFromDelta(jsonEncode(delta.toJson()));
-
-      final sheet0 = coordinator.sheets[0] as OpeningSheet;
-      sheet0.controller.updateSelection(
-        const TextSelection.collapsed(offset: 8), // right after '上阕开篇春色。\n'
-        ChangeSource.local,
-      );
-
-      coordinator.media.insertMediaAtCurrentSelection(
-        mediaType: EphemeraMediaType.image,
-        mediaData: const MediaEmbedData(path: 'media/mid_split.webp'),
-      );
-
-      expect(coordinator.totalSheets, equals(3));
-      expect(coordinator.sheets[0], isA<OpeningSheet>());
-      expect(coordinator.sheets[1], isA<EphemeraSheet>());
-      expect(coordinator.sheets[2], isA<ContinuationSheet>());
-      expect(coordinator.activeSheetIndex, equals(1));
-
-      expect((coordinator.sheets[0] as OpeningSheet).plainText.trim(), equals('上阕开篇春色。'));
-      expect((coordinator.sheets[2] as ContinuationSheet).plainText.trim(), equals('下阕归舟晚唱。'));
-
-      final (resynthesizedJson, _) = coordinator.reSynthesize();
-      final expected = Delta()
-        ..insert('上阕开篇春色。\n')
-        ..insert({'image': 'media/mid_split.webp'})
-        ..insert('\n')
-        ..insert('下阕归舟晚唱。\n');
-      expect(resynthesizedJson, equals(jsonEncode(expected.toJson())));
-
-      coordinator.dispose();
-    });
-
     test('Ephemera caption edits propagate losslessly to re-synthesized Delta', () {
       final coordinator = EditorPaginationCoordinator();
       final delta = Delta()
@@ -237,27 +201,62 @@ void main() {
       coordinator.dispose();
     });
 
-    test('Insert and remove ephemera sheets update total sheets and indices', () {
+    test('Removing a legacy ephemera sheet updates total sheets and indices', () {
       final coordinator = EditorPaginationCoordinator();
-      coordinator.initializeFromDelta(jsonEncode((Delta()..insert('初开日记\n')).toJson()));
-
-      expect(coordinator.totalSheets, equals(1));
-
-      coordinator.media.insertEphemeraSheet(
-        mediaType: EphemeraMediaType.image,
-        mediaData: const MediaEmbedData(
-          path: 'media/inserted_image.webp',
-          caption: '即时插入照片',
-        ),
-      );
+      final delta = Delta()
+        ..insert('初开日记\n')
+        ..insert({'image': 'media/legacy_image.webp'})
+        ..insert('\n');
+      coordinator.initializeFromDelta(jsonEncode(delta.toJson()));
 
       expect(coordinator.totalSheets, equals(2));
       expect(coordinator.sheets[1], isA<EphemeraSheet>());
-      expect(coordinator.activeSheetIndex, equals(1));
 
+      coordinator.activeSheetIndex = 1;
       coordinator.media.removeEphemeraSheet(1);
       expect(coordinator.totalSheets, equals(1));
       expect(coordinator.activeSheetIndex, equals(0));
+
+      coordinator.dispose();
+    });
+
+    test('legacy mounting pass waits for the measured layout and places items at that width', () {
+      final coordinator = EditorPaginationCoordinator();
+      final prose = '${List.filled(60, '湖光山色').join()}\n';
+      final attachments = [
+        for (final id in ['a', 'b', 'c', 'd'])
+          MediaAttachment(
+            id: id,
+            entryId: 'entry',
+            mediaType: 'image',
+            relativePath: 'media/$id.webp',
+            createdAt: DateTime(2026, 2, 14),
+          ),
+      ];
+      coordinator.initializeFromDelta(
+        jsonEncode((Delta()..insert(prose)).toJson()),
+        attachments: attachments,
+      );
+      bool? didMount;
+      coordinator.runLegacyMountPassOnFirstLayout((mounted) => didMount = mounted);
+
+      expect(didMount, isNull);
+      expect(coordinator.stagedItems, hasLength(4));
+
+      coordinator.syncLayoutMetrics(contentWidth: 120, lineStridePx: 28);
+
+      expect(didMount, isTrue);
+      expect(coordinator.stagedItems, isEmpty);
+      expect(
+        [
+          for (final sheet in coordinator.sheets.whereType<TextStationerySheet>())
+            sheet.mediaAttachments.map((item) => item.id).toList(),
+        ].take(2),
+        [
+          ['a', 'b', 'c'],
+          ['d'],
+        ],
+      );
 
       coordinator.dispose();
     });

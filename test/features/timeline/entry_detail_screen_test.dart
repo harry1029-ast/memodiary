@@ -43,6 +43,7 @@ void main() {
         createdAt: now,
         updatedAt: now,
         isLocked: false,
+        legacyMountsPending: false,
         isDeleted: false,
       );
 

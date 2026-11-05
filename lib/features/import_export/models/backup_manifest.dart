@@ -111,6 +111,20 @@ class BackupDatabaseSnapshot {
     return {...json, 'caption': ocrText, 'ocrText': null, 'ocrBlocksJson': null};
   }
 
+  /// Pre-v8 backups have no `legacyMountsPending` key. Mirrors the schema v8
+  /// migration: an entry is due the legacy mounting pass when it has
+  /// attachments ([entryIdsWithMedia]) but its Delta holds no mount marker.
+  static Map<String, dynamic> _withLegacyMountsPending(
+    Map<String, dynamic> json,
+    Set<String> entryIdsWithMedia,
+  ) {
+    if (json.containsKey('legacyMountsPending')) return json;
+    final delta = json['contentDelta'];
+    final isPending = entryIdsWithMedia.contains(json['id']) &&
+        !(delta is String && delta.contains('"mount":'));
+    return {...json, 'legacyMountsPending': isPending};
+  }
+
   factory BackupDatabaseSnapshot.fromJson(Map<String, dynamic> json) {
     try {
       final rawTemplates = (json['templates'] as List<dynamic>? ?? [])
@@ -121,12 +135,14 @@ class BackupDatabaseSnapshot {
           .map((item) =>
               Notebook.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
-      final rawEntries = (json['entries'] as List<dynamic>? ?? [])
-          .map((item) => Entry.fromJson(Map<String, dynamic>.from(item as Map)))
-          .toList();
       final rawMedia = (json['mediaAttachments'] as List<dynamic>? ?? [])
           .map((item) => MediaAttachment.fromJson(
               _withLegacyCaption(Map<String, dynamic>.from(item as Map))))
+          .toList();
+      final entryIdsWithMedia = {for (final media in rawMedia) media.entryId};
+      final rawEntries = (json['entries'] as List<dynamic>? ?? [])
+          .map((item) => Entry.fromJson(_withLegacyMountsPending(
+              Map<String, dynamic>.from(item as Map), entryIdsWithMedia)))
           .toList();
       final rawAlbumCollections =
           (json['albumCollections'] as List<dynamic>? ?? []).map((item) {
@@ -159,7 +175,7 @@ class BackupDatabaseSnapshot {
 class BackupManifest {
   static const String expectedFormat = 'memodiary-backup';
   static const int currentFormatVersion = 1;
-  static const int maxSupportedSchemaVersion = 7;
+  static const int maxSupportedSchemaVersion = 8;
 
   final String format;
   final int formatVersion;

@@ -47,7 +47,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     this.lineStridePx,
   });
 
-  /// Media mutations (collect, mount, ephemera sheets, inline inserts).
+  /// Media mutations (collect, mount, legacy ephemera sheet removal).
   late final SheetMediaOperations media = SheetMediaOperations(
     sheets: _sheets,
     stagedItems: _stagedItems,
@@ -161,6 +161,15 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
     this.contentWidth = contentWidth;
     this.lineStridePx = lineStridePx;
+
+    final onLegacyMountPass = _onLegacyMountPass;
+    if (onLegacyMountPass != null) {
+      // Partitioned at the measured width, so placement matches what the
+      // pre-marker editor showed; no separate re-balance is needed.
+      _onLegacyMountPass = null;
+      onLegacyMountPass(_mountLegacyAttachments());
+      return;
+    }
 
     if (!widthChanged && !strideChanged) return;
     if (_sheets.isEmpty) return;
@@ -329,6 +338,32 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     if (newLineStridePx != null) lineStridePx = newLineStridePx;
 
     _initialize(jsonEncode(unifiedDelta.toJson()), media: allMedia);
+  }
+
+  void Function(bool didMount)? _onLegacyMountPass;
+
+  /// Schedules the legacy mounting pass (ADR-0009) for the first
+  /// [syncLayoutMetrics], once the Paper Heart width and stride are measured:
+  /// every staged item is then mounted first-come by writing its marker into
+  /// the Delta, as the pre-marker editor placed them. [onComplete] receives
+  /// whether any marker was written.
+  void runLegacyMountPassOnFirstLayout(void Function(bool didMount) onComplete) {
+    _onLegacyMountPass = onComplete;
+  }
+
+  bool _mountLegacyAttachments() {
+    if (_stagedItems.isEmpty) return false;
+    final allMedia = media.allItems();
+    final mountedDelta = EditorDeltaPartitioner.mountLegacyAttachments(
+      unifiedDelta: synthesizeUnifiedDelta(),
+      media: allMedia,
+      typography: typography,
+      contentWidth: contentWidth,
+      templateStyle: templateStyle,
+      lineStridePx: lineStridePx,
+    );
+    _initialize(jsonEncode(mountedDelta.toJson()), media: allMedia);
+    return true;
   }
 
   /// Finds or creates a text-bearing sheet immediately following [fromIndex].

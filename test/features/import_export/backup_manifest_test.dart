@@ -48,6 +48,7 @@ void main() {
             updatedAt: now,
             isDeleted: false,
             isLocked: true,
+            legacyMountsPending: false,
             entryPinHash: 'salt123:hash456',
           ),
         ],
@@ -237,6 +238,66 @@ void main() {
       expect(
         legacyV6.snapshot.mediaAttachments.map((media) => media.ocrText),
         equals([null, null, '狮峰龙井', '']),
+      );
+    });
+
+    test('pre-v8 manifests flag entries with unanchored attachments for the legacy mounting pass', () {
+      Map<String, dynamic> legacyEntry(String id, String delta) => {
+            'id': id,
+            'notebookId': 'notebook_default',
+            'templateId': 'template_minimalist_white',
+            'title': null,
+            'contentDelta': delta,
+            'plainText': '',
+            'entryDate': 0,
+            'mood': null,
+            'weather': null,
+            'isWeeklyReview': false,
+            'weekNumber': null,
+            'unlockAt': null,
+            'createdAt': 0,
+            'updatedAt': 0,
+            'isDeleted': false,
+            'isLocked': false,
+            'entryPinHash': null,
+          };
+      Map<String, dynamic> attachment(String id, String entryId) => {
+            'id': id,
+            'entryId': entryId,
+            'mediaType': 'image',
+            'relativePath': 'media/$id.webp',
+            'thumbnailPath': null,
+            'ocrText': null,
+            'ocrBlocksJson': null,
+            'overlayXRatio': null,
+            'overlayYRatio': null,
+            'caption': null,
+            'createdAt': 0,
+          };
+
+      final legacyV7 = BackupManifest.fromJson({
+        'format': 'memodiary-backup',
+        'formatVersion': 1,
+        'appSchemaVersion': 7,
+        'tables': {
+          'templates': [],
+          'notebooks': [],
+          'entries': [
+            legacyEntry('sheet_paired', '[{"insert":"游湖\\n"}]'),
+            legacyEntry('anchored', '[{"insert":{"mount":"peak"}},{"insert":"\\n"}]'),
+            legacyEntry('text_only', '[{"insert":"无图\\n"}]'),
+          ],
+          'mediaAttachments': [
+            attachment('lake', 'sheet_paired'),
+            attachment('peak', 'anchored'),
+          ],
+        },
+        'mediaFiles': [],
+      });
+
+      expect(
+        {for (final entry in legacyV7.snapshot.entries) entry.id: entry.legacyMountsPending},
+        equals({'sheet_paired': true, 'anchored': false, 'text_only': false}),
       );
     });
 

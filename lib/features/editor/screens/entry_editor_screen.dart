@@ -123,7 +123,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       final derivedTypography = TypographySettings.fromTemplate(template);
       final templateStyle = TemplateStyle.fromTemplate(template);
       final attachments = await widget.database.getMediaForEntry(widget.entryId);
-
       _coordinator = EditorPaginationCoordinator(
         typography: derivedTypography,
         templateStyle: templateStyle,
@@ -132,6 +131,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           fallbackPlainText: entry.plainText,
           attachments: attachments,
         );
+      if (entry.legacyMountsPending) {
+        _coordinator.runLegacyMountPassOnFirstLayout(
+          (didMount) => _persistLegacyMountPass(entry, didMount: didMount),
+        );
+      }
 
       _titleController.text = entry.title ?? '';
 
@@ -182,6 +186,14 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         Navigator.pop(context);
       }
     }
+  }
+
+  /// Mounts a pre-SPEC-010 entry's unanchored attachments first-come and
+  /// persists the markers once, so upgrading never empties sheets into the
+  /// Staging Handscroll (ADR-0009).
+  Future<void> _persistLegacyMountPass(Entry entry, {required bool didMount}) async {
+    final contentDelta = didMount ? _coordinator.reSynthesize().$1 : entry.contentDelta;
+    await widget.database.completeLegacyMountPass(entry.id, contentDelta: contentDelta);
   }
 
   void _toggleCenterAlignment() {

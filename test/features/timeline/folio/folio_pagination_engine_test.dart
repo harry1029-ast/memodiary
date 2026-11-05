@@ -37,6 +37,7 @@ void main() {
       updatedAt: testDate,
       isDeleted: false,
       isLocked: false,
+      legacyMountsPending: false,
     );
   }
 

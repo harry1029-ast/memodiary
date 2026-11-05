@@ -129,6 +129,7 @@ void main() {
         updatedAt: now,
         isWeeklyReview: false,
         isLocked: false,
+        legacyMountsPending: false,
         isDeleted: false,
       );
 
@@ -151,6 +152,7 @@ void main() {
         updatedAt: now,
         isWeeklyReview: false,
         isLocked: false,
+        legacyMountsPending: false,
         isDeleted: false,
       );
 
