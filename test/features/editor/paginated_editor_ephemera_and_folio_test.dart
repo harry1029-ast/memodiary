@@ -94,6 +94,10 @@ void main() {
 
       expect(find.byKey(const Key('staging_handscroll')), findsNothing);
 
+      // The record is purged once the erase undo window lapses
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
+
       // Verify SQLite media_attachments row is deleted
       final attachmentsAfterDelete = await database.getMediaForEntry('ephemera_folio_entry');
       expect(attachmentsAfterDelete, isEmpty);

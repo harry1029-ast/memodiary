@@ -96,6 +96,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     String? fallbackPlainText,
     List<MediaAttachment> attachments = const [],
   }) {
+    media.adoptCollectOrder(attachments.map((attachment) => attachment.id));
     _initialize(
       contentDeltaJson,
       fallbackPlainText: fallbackPlainText,

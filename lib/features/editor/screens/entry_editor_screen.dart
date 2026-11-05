@@ -96,6 +96,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   @override
   void dispose() {
     _paginationHandler?.dispose();
+    _mediaBinding?.dispose();
     _pageController.dispose();
     _coordinator.dispose();
     _autosaveManager?.dispose();
@@ -358,7 +359,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onPageChanged: _paginationHandler!.handlePageChanged,
                 onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
                 onMountMedia: (mediaId) => _mediaBinding!.mountMedia(context, mediaId),
-                onEraseMedia: _mediaBinding!.eraseStagedMedia,
+                onEraseMedia: (mediaId) => _mediaBinding!.eraseStagedMedia(context, mediaId),
+                onUnmountMedia: _mediaBinding!.unmountMedia,
+                mountRefusals: _mediaBinding!.mountRefusals,
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),

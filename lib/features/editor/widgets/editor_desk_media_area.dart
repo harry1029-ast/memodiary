@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
@@ -20,9 +21,13 @@ class EditorDeskMediaArea extends StatelessWidget {
   final bool isPaperDark;
   final ValueChanged<String>? onMountMedia;
   final ValueChanged<String>? onEraseMedia;
+  final ValueChanged<String>? onUnmountMedia;
+
+  /// Ticks when a mount onto the active sheet is refused, shaking its strip.
+  final ValueListenable<int>? mountRefusals;
   final void Function(String mediaId, String newCaption)? onCaptionChanged;
 
-  static const double kStripHeight = 72.0;
+  static const double kStripHeight = SheetMountStrip.kStripHeight + 4.0;
   static const double kHandscrollMinHeight = 100.0;
   static const double kGap = 8.0;
 
@@ -35,6 +40,8 @@ class EditorDeskMediaArea extends StatelessWidget {
     this.isPaperDark = false,
     this.onMountMedia,
     this.onEraseMedia,
+    this.onUnmountMedia,
+    this.mountRefusals,
     this.onCaptionChanged,
   });
 
@@ -75,6 +82,8 @@ class EditorDeskMediaArea extends StatelessWidget {
                       mediaSandboxService: mediaSandboxService,
                       isPaperDark: isPaperDark,
                       onTapItem: (item) => _openLightbox(context, mountedItems, item),
+                      onUnmountItem: (item) => onUnmountMedia?.call(item.id),
+                      refusalSignal: mountRefusals,
                     ),
                   ),
                 ),

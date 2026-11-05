@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
@@ -62,6 +63,7 @@ class StagingHandscroll extends StatelessWidget {
               itemCount: items.length,
               itemExtent: slotWidth,
               itemBuilder: (itemContext, itemIndex) => _HandscrollSlot(
+                key: ValueKey(items[itemIndex].id),
                 item: items[itemIndex],
                 ordinal: itemIndex + 1,
                 activeSheetNumber: activeSheetNumber,
@@ -79,7 +81,10 @@ class StagingHandscroll extends StatelessWidget {
   }
 }
 
-class _HandscrollSlot extends StatelessWidget {
+/// One handscroll slot. ✕ plays an in-place ink-wash dissolve (the print
+/// drains to grey and fades) before reporting the erase; with reduce-motion
+/// the erase is reported at once.
+class _HandscrollSlot extends StatefulWidget {
   final SheetMediaItem item;
   final int ordinal;
   final int activeSheetNumber;
@@ -90,6 +95,7 @@ class _HandscrollSlot extends StatelessWidget {
   final ValueChanged<SheetMediaItem>? onErase;
 
   const _HandscrollSlot({
+    super.key,
     required this.item,
     required this.ordinal,
     required this.activeSheetNumber,
@@ -101,7 +107,69 @@ class _HandscrollSlot extends StatelessWidget {
   });
 
   @override
+  State<_HandscrollSlot> createState() => _HandscrollSlotState();
+}
+
+class _HandscrollSlotState extends State<_HandscrollSlot> with SingleTickerProviderStateMixin {
+  static const Duration kDissolveDuration = Duration(milliseconds: 450);
+
+  late final AnimationController _dissolve = AnimationController(
+    vsync: this,
+    duration: kDissolveDuration,
+  );
+
+  Future<void> _erase() async {
+    if (_dissolve.isAnimating) return;
+    if (!MediaQuery.disableAnimationsOf(context)) {
+      await _dissolve.forward();
+    }
+    if (mounted) widget.onErase?.call(widget.item);
+  }
+
+  @override
+  void dispose() {
+    _dissolve.dispose();
+    super.dispose();
+  }
+
+  static ColorFilter _inkWash(double amount) {
+    // Linear blend between identity and luminance greyscale.
+    final keep = 1.0 - amount;
+    const r = 0.2126, g = 0.7152, b = 0.0722;
+    return ColorFilter.matrix(<double>[
+      keep + amount * r, amount * g, amount * b, 0, 0,
+      amount * r, keep + amount * g, amount * b, 0, 0,
+      amount * r, amount * g, keep + amount * b, 0, 0,
+      0, 0, 0, 1, 0,
+    ]);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _dissolve,
+      builder: (animatedContext, child) {
+        final progress = Curves.easeIn.transform(_dissolve.value);
+        return IgnorePointer(
+          ignoring: _dissolve.isAnimating,
+          child: Opacity(
+            key: Key('handscroll_dissolve_${widget.item.id}'),
+            opacity: 1.0 - progress,
+            child: ColorFiltered(
+              colorFilter: _inkWash(math.min(1.0, progress * 2.0)),
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: _buildSlot(context),
+    );
+  }
+
+  Widget _buildSlot(BuildContext context) {
+    final item = widget.item;
+    final ordinal = widget.ordinal;
+    final isPaperDark = widget.isPaperDark;
     final inkColor = isPaperDark ? const Color(0xFFD6D1C7) : const Color(0xFF3C3836);
     final cinnabar = isPaperDark ? const Color(0xFFE57373) : const Color(0xFFB83B2E);
     final kind = item.mediaType == EphemeraMediaType.video ? '短影' : '影札';
@@ -117,13 +185,13 @@ class _HandscrollSlot extends StatelessWidget {
               excludeSemantics: true,
               child: GestureDetector(
                 key: Key('handscroll_item_${item.id}'),
-                onTap: () => onTap?.call(item),
+                onTap: () => widget.onTap?.call(item),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(4.0),
                   child: SizedBox.expand(
                     child: KeepsakeThumbnail(
                       item: item,
-                      mediaSandboxService: mediaSandboxService,
+                      mediaSandboxService: widget.mediaSandboxService,
                       isPaperDark: isPaperDark,
                     ),
                   ),
@@ -138,15 +206,15 @@ class _HandscrollSlot extends StatelessWidget {
                 key: Key('handscroll_mount_${item.id}'),
                 icon: Icons.push_pin_outlined,
                 color: inkColor,
-                semanticLabel: '贴至本页：待贴第 $ordinal 影 → 第 $activeSheetNumber 页',
-                onPressed: () => onMount?.call(item),
+                semanticLabel: '贴至本页：待贴第 $ordinal 影 → 第 ${widget.activeSheetNumber} 页',
+                onPressed: () => widget.onMount?.call(item),
               ),
               _SlotControl(
                 key: Key('handscroll_erase_${item.id}'),
                 icon: Icons.close,
                 color: cinnabar,
-                semanticLabel: '舍弃待贴第 $ordinal 影',
-                onPressed: () => onErase?.call(item),
+                semanticLabel: '舍弃待贴第 $ordinal 影 · $kind',
+                onPressed: _erase,
               ),
             ],
           ),
