@@ -119,3 +119,23 @@ _Avoid_: Editor page, paper screen, scroll card
 **Auto-Spill**:
 The deterministic pagination advance mechanism (`AutoSpill` · 溢行分叶) that automatically allocates and smoothly glides to a subsequent Stationery Sheet as soon as text exceeds the integer-locked line capacity of the active sheet.
 _Avoid_: Auto scroll, page push, overflow wrap
+
+**Staging Handscroll**:
+The single entry-wide handscroll (待贴画卷) resting on the desk below the Stationery Sheets, holding collected photos and videos that have not yet been mounted onto any sheet. Rolled closed when empty.
+_Avoid_: Media tray, global tray, upload queue, gallery
+
+**Sheet Mount Strip**:
+The band of up to three mounted photos or videos (本页影札栏) belonging to one Stationery Sheet, shown outside its Paper Heart so the sheet's line capacity never changes. Its items follow the passage of text they were mounted beside, not a fixed page number.
+_Avoid_: Media & Keepsake Tray, sheet tray, attachment bar
+
+**Collect**:
+To bring a new photo or video into the Staging Handscroll (入卷), accompanied by the Brush Reveal.
+_Avoid_: Upload, import, attach
+
+**Mount / Unmount**:
+To move an item from the Staging Handscroll onto a Stationery Sheet's Mount Strip (贴至本页), or to return it from the sheet back to the handscroll (揭回画卷). An item is mounted on at most one sheet at a time.
+_Avoid_: Assign, pin, link, copy
+
+**Brush Reveal**:
+The one-time splash-ink animation (泼墨显影) in which a brush paints a newly collected item into the Staging Handscroll, first as monochrome ink wash and then blooming into full colour.
+_Avoid_: Paint animation, loading effect, reveal transition

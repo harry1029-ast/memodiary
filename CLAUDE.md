@@ -15,3 +15,17 @@ The imports above contain some Antigravity-specific instructions. For Claude Cod
 - **Flutter/Dart**: If `flutter` is not on `$PATH`, use `/home/harry1029/development/flutter/bin/flutter` (and `.../dart`).
 - **Skills**: Skills live in `.agents/skills/` (shared with Antigravity) and are symlinked into `.claude/skills/`. Never rename or edit them in place; they are tracked in `skills-lock.json` for upstream updates. When a new skill is added under `.agents/skills/`, add a matching symlink in `.claude/skills/`.
 - **`code-review`**: Means the project skill (`.agents/skills/code-review`, Standards + Spec review), not the built-in `/code-review`.
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown: specs in `docs/specs/NNNN-<slug>.md` (committed), tickets in `.scratch/<slug>/issues/` (gitignored). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five roles, recorded as `Status:` lines, plus `claimed` / `completed`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
