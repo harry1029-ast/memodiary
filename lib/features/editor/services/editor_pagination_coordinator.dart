@@ -12,6 +12,7 @@ import 'editor_delta_partitioner.dart';
 import '../models/mount_marker.dart';
 import 'editor_pagination_models.dart';
 import 'sheet_media_operations.dart';
+import 'sheet_mount_resolver.dart';
 import 'stationery_delta_synthesizer.dart';
 import 'stationery_sheet_spill_mutator.dart';
 
@@ -34,6 +35,12 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   double? lineStridePx;
   bool isImeComposing = false;
   ValueChanged<AutoSpillResult>? onAutoSpill;
+
+  /// Receives items that reflow pushed past the last sheet's capacity and that
+  /// were therefore unmounted back to the Staging Handscroll.
+  ValueChanged<List<SheetMediaItem>>? onOverflowUnmount;
+
+  final MountReflowTracker _mounts = MountReflowTracker();
 
   EditorPaginationCoordinator({
     this.typography = const TypographySettings(),
@@ -140,12 +147,40 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     );
 
     _sheets.addAll(partition.sheets);
-    _stagedItems
-      ..clear()
-      ..addAll(partition.stagedItems);
+    _adoptPartitionMounts(partition);
     _activeSheetIndex = 0;
     notifyListeners();
   }
+
+  void _adoptPartitionMounts(EditorPartition partition) {
+    _stagedItems
+      ..clear()
+      ..addAll(partition.stagedItems);
+    _mounts.adoptPartition(partition);
+  }
+
+  /// Re-resolves which sheet shows each mounted item after the text changed:
+  /// items follow the sheet their marker's passage now lies on, cascade past
+  /// full sheets, and those pushed past the last sheet are unmounted (reported
+  /// through [onOverflowUnmount]). A marker removed with its text stages its
+  /// item; a marker restored by undo remounts it. Deferred while any sheet is
+  /// composing, so IME input is never disturbed.
+  void reflowMounts() {
+    if (_isDisposed) return;
+    if (_sheets.any((sheet) => isSheetComposing(sheet.sheetIndex))) return;
+
+    final outcome = _mounts.reflow(_sheets, _stagedItems);
+    media.orderStagedByCollect();
+    if (outcome.didChange) {
+      _markContentMutated();
+      notifyListeners();
+    }
+    if (outcome.unmountedByOverflow.isNotEmpty) {
+      onOverflowUnmount?.call(outcome.unmountedByOverflow);
+    }
+  }
+
+  List<SheetMediaItem> _knownItems() => _mounts.knownItems(_sheets, _stagedItems);
 
   /// Synchronizes measured Paper Heart text width and stride outside `build()`,
   /// re-balancing sheets cleanly if dimensions changed significantly while not composing.
@@ -188,7 +223,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     final unifiedDelta = synthesizeUnifiedDelta();
     final partition = EditorDeltaPartitioner.partition(
       unifiedDelta: unifiedDelta,
-      media: media.allItems(),
+      media: _knownItems(),
       typography: typography,
       contentWidth: contentWidth,
       templateStyle: templateStyle,
@@ -218,9 +253,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     _sheets
       ..clear()
       ..addAll(partitioned);
-    _stagedItems
-      ..clear()
-      ..addAll(partition.stagedItems);
+    _adoptPartitionMounts(partition);
     _activeSheetIndex = previousIndex.clamp(0, _sheets.length - 1);
 
     final restoredSheet = _sheets[_activeSheetIndex];
@@ -239,9 +272,13 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
   Delta synthesizeUnifiedDelta() => StationeryDeltaSynthesizer.synthesize(_sheets);
 
-  /// Re-synthesizes the unified Delta JSON string and plain text representation.
+  /// Re-synthesizes the unified Delta JSON string and plain text representation,
+  /// stripping mount markers that reference no known attachment (or repeat one).
   (String deltaJson, String plainText) reSynthesize() {
-    final unified = synthesizeUnifiedDelta();
+    final unified = SheetMountResolver.stripOrphanMarkers(
+      synthesizeUnifiedDelta(),
+      knownMediaIds: {for (final item in _knownItems()) item.id},
+    );
     final hasMountMarkers = MountMarker.mediaIdsIn(unified).isNotEmpty;
     final plainText = Document.fromDelta(MountMarker.strip(unified)).toPlainText().trim();
     if (plainText.isEmpty &&
@@ -267,6 +304,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     if (outcome == null) return null;
 
     _activeSheetIndex = outcome.activeSheetIndex;
+    reflowMounts();
     _markContentMutated();
     notifyListeners();
     onAutoSpill?.call(outcome.result);
@@ -288,6 +326,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
     _activeSheetIndex = outcome.activeSheetIndex;
     if (outcome.didMutateContent) {
+      reflowMounts();
       _markContentMutated();
     }
     notifyListeners();
@@ -317,6 +356,8 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     if (didCollapse) {
       StationerySheetSpillMutator.reindexSheets(_sheets);
       _activeSheetIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
+      // A collapsed sheet may have shown items cascaded from earlier sheets.
+      reflowMounts();
       _markContentMutated();
       notifyListeners();
     }
@@ -331,7 +372,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     double? newLineStridePx,
   }) {
     final unifiedDelta = synthesizeUnifiedDelta();
-    final allMedia = media.allItems();
+    final allMedia = _knownItems();
 
     typography = newTypography;
     if (newContentWidth != null) contentWidth = newContentWidth;
@@ -354,7 +395,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
   bool _mountLegacyAttachments() {
     if (_stagedItems.isEmpty) return false;
-    final allMedia = media.allItems();
+    final allMedia = _knownItems();
     final mountedDelta = EditorDeltaPartitioner.mountLegacyAttachments(
       unifiedDelta: synthesizeUnifiedDelta(),
       media: allMedia,

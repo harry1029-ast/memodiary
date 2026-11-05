@@ -5,11 +5,13 @@ import '../domain/stationery_sheet_descriptor.dart';
 import '../models/mount_marker.dart';
 import '../models/typography_settings.dart';
 import 'editor_pagination_models.dart';
+import 'sheet_mount_resolver.dart';
 import 'stationery_delta_splitter.dart';
 import 'stationery_delta_synthesizer.dart';
 import 'stationery_line_measurer.dart';
 
-export 'editor_pagination_models.dart' show EditorPartition;
+export 'editor_pagination_models.dart' show EditorPartition, MountResolution;
+export 'sheet_mount_resolver.dart' show SheetMountResolver;
 
 /// Pure algorithmic partitioner segmenting a continuous Quill Delta
 /// into discrete [StationerySheetDescriptor] instances.
@@ -138,7 +140,10 @@ class EditorDeltaPartitioner {
 
           final split = StationeryDeltaSplitter.splitDeltaAtCharacterOffset(
             sourceDelta: remainingParagraphDelta,
-            splitOffset: _deltaOffsetOfTextOffset(remainingParagraphDelta, cutOffset),
+            splitOffset: StationeryDeltaSplitter.deltaOffsetOfTextOffset(
+              remainingParagraphDelta,
+              cutOffset,
+            ),
             trailingParagraphAttributes: block.blockAttributes,
           );
 
@@ -171,13 +176,19 @@ class EditorDeltaPartitioner {
       flushTextSheet();
     }
 
-    final stagedItems = _resolveMountMarkers(sheets, media);
+    // Opening never unmounts: overflow past the last sheet is tolerated there.
+    final mounts = SheetMountResolver.resolveMounts(sheets: sheets, media: media);
 
     for (int index = 0; index < sheets.length; index++) {
       sheets[index] = sheets[index].copyWithIndex(index);
     }
 
-    return EditorPartition(sheets: sheets, stagedItems: stagedItems);
+    return EditorPartition(
+      sheets: sheets,
+      stagedItems: mounts.stagedItems,
+      toleratedOverflowIds: mounts.toleratedOverflowIds,
+      markerHomes: mounts.markerHomes,
+    );
   }
 
   /// Legacy mounting pass for entries written before mount markers existed
@@ -232,57 +243,6 @@ class EditorDeltaPartitioner {
         sheet.dispose();
       }
     }
-  }
-
-  /// Mounts each item of [media] on the text sheet whose Delta holds its marker
-  /// (in marker order) and returns the items no marker references. Items backing
-  /// a legacy inline embed (rendered as an [EphemeraSheet]) are neither.
-  static List<SheetMediaItem> _resolveMountMarkers(
-    List<StationerySheetDescriptor> sheets,
-    List<SheetMediaItem> media,
-  ) {
-    final legacyEmbedPaths = sheets
-        .whereType<EphemeraSheet>()
-        .map((ephemera) => ephemera.sandboxedRelativePath)
-        .toSet();
-    final mediaById = {
-      for (final item in media)
-        if (!legacyEmbedPaths.contains(item.relativePath)) item.id: item,
-    };
-    final mountedIds = <String>{};
-    for (final sheet in sheets) {
-      if (sheet is! TextStationerySheet) continue;
-      for (final mediaId in MountMarker.mediaIdsIn(sheet.delta)) {
-        final item = mediaById[mediaId];
-        if (item == null || !mountedIds.add(mediaId)) continue;
-        sheet.mediaAttachments.add(item);
-      }
-    }
-    return media
-        .where((item) => mediaById.containsKey(item.id) && !mountedIds.contains(item.id))
-        .toList();
-  }
-
-  /// Maps a plain-text [textOffset] (which excludes mount markers) to the
-  /// matching Delta offset, where each marker takes one position. Markers at
-  /// or before the offset stay with the leading slice, so an item mounted at
-  /// the end of a sheet's text stays on that sheet.
-  static int _deltaOffsetOfTextOffset(Delta delta, int textOffset) {
-    var textCount = 0;
-    var deltaCount = 0;
-    for (final operation in delta.operations) {
-      if (!operation.isInsert) continue;
-      final data = operation.data;
-      if (data is String) {
-        final remaining = textOffset - textCount;
-        if (remaining < data.length) return deltaCount + remaining;
-        textCount += data.length;
-        deltaCount += data.length;
-      } else {
-        deltaCount += 1;
-      }
-    }
-    return deltaCount;
   }
 
   static String _extractPlainText(Delta delta) {

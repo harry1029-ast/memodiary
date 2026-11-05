@@ -72,6 +72,28 @@ class StationeryDeltaSplitter {
     }
   }
 
+  /// Maps a plain-text [textOffset] (which excludes mount markers) to the
+  /// matching Delta offset, where each marker takes one position. Markers at
+  /// or before the offset stay with the leading slice, so an item mounted at
+  /// the end of a sheet's text stays on that sheet.
+  static int deltaOffsetOfTextOffset(Delta delta, int textOffset) {
+    var textCount = 0;
+    var deltaCount = 0;
+    for (final operation in delta.operations) {
+      if (!operation.isInsert) continue;
+      final data = operation.data;
+      if (data is String) {
+        final remaining = textOffset - textCount;
+        if (remaining < data.length) return deltaCount + remaining;
+        textCount += data.length;
+        deltaCount += data.length;
+      } else {
+        deltaCount += 1;
+      }
+    }
+    return deltaCount;
+  }
+
   /// Splits [sourceDelta] at character [splitOffset].
   ///
   /// If the split occurs mid-paragraph, an artificial soft newline is appended
@@ -196,7 +218,7 @@ class StationeryDeltaSplitter {
       sheetDelta,
     );
     int remainingRows = rowCapacity;
-    int cumulativeCharacterOffset = 0;
+    int cumulativeDocumentOffset = 0;
 
     final headDelta = Delta();
     final tailDelta = Delta();
@@ -227,7 +249,11 @@ class StationeryDeltaSplitter {
           headDelta.push(operation);
         }
         remainingRows -= measured.totalRows;
-        cumulativeCharacterOffset += paragraph.plainText.length;
+        // Document offsets, where each mount marker takes one position.
+        cumulativeDocumentOffset += paragraph.operations.fold<int>(
+          0,
+          (sum, operation) => sum + (operation.length ?? 0),
+        );
       } else {
         isOverflowing = true;
         final rawLinesThatFit = math.max(0, remainingRows ~/ measured.rowWeight);
@@ -235,7 +261,7 @@ class StationeryDeltaSplitter {
             (rawLinesThatFit == 0 && headDelta.isEmpty) ? 1 : rawLinesThatFit;
 
         if (linesThatFit == 0) {
-          splitOffset = cumulativeCharacterOffset;
+          splitOffset = cumulativeDocumentOffset;
           hasTrailingSoftNewline = false;
           for (final operation in paragraph.operations) {
             tailDelta.push(operation);
@@ -249,16 +275,16 @@ class StationeryDeltaSplitter {
           if (paragraphCutOffset <= 0 && paragraph.plainText.isNotEmpty) {
             paragraphCutOffset = math.min(paragraph.plainText.length, 1);
           }
-          splitOffset = cumulativeCharacterOffset + paragraphCutOffset;
-
           final paragraphDelta = Delta();
           for (final operation in paragraph.operations) {
             paragraphDelta.push(operation);
           }
+          final paragraphDeltaCut = deltaOffsetOfTextOffset(paragraphDelta, paragraphCutOffset);
+          splitOffset = cumulativeDocumentOffset + paragraphDeltaCut;
 
           final split = splitDeltaAtCharacterOffset(
             sourceDelta: paragraphDelta,
-            splitOffset: paragraphCutOffset,
+            splitOffset: paragraphDeltaCut,
             trailingParagraphAttributes: paragraph.blockAttributes,
           );
 
@@ -277,7 +303,7 @@ class StationeryDeltaSplitter {
       return SheetOverflowResult(
         remainingDelta: sheetDelta,
         overflowingDelta: Delta(),
-        splitOffset: cumulativeCharacterOffset,
+        splitOffset: cumulativeDocumentOffset,
         hasTrailingSoftNewline: false,
       );
     }

@@ -11,6 +11,7 @@ import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../controllers/editor_media_binding.dart';
 import '../controllers/editor_pagination_handler.dart';
+import '../domain/sheet_media_item.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
@@ -145,6 +146,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           fallbackPlainText: entry.plainText,
           attachments: attachments,
         );
+      _coordinator.onOverflowUnmount = _showOverflowUnmountNotice;
       if (entry.legacyMountsPending) {
         _coordinator.runLegacyMountPassOnFirstLayout(
           (didMount) => _persistLegacyMountPass(entry, didMount: didMount),
@@ -200,6 +202,18 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         Navigator.pop(context);
       }
     }
+  }
+
+  /// Tells the diarist which items reflow pushed past the last sheet and
+  /// returned to the Staging Handscroll.
+  void _showOverflowUnmountNotice(List<SheetMediaItem> unmountedItems) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        key: const Key('overflow_unmount_snackbar'),
+        content: Text('末页已满三影 · ${unmountedItems.length} 影已揭回画卷'),
+      ));
   }
 
   /// Mounts a pre-SPEC-010 entry's unanchored attachments first-come and

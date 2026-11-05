@@ -1,3 +1,4 @@
+import 'package:flutter_quill/flutter_quill.dart' show QuillController;
 import 'package:flutter_quill/quill_delta.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 
@@ -63,8 +64,44 @@ class EditorPartition {
   final List<StationerySheetDescriptor> sheets;
   final List<SheetMediaItem> stagedItems;
 
+  /// Items shown beyond the three-item cap on the last text sheet because
+  /// opening an entry never unmounts (see [MountResolution.toleratedOverflowIds]).
+  final Set<String> toleratedOverflowIds;
+
+  /// The sheet controller whose Delta anchors each mounted item.
+  final Map<String, QuillController> markerHomes;
+
   const EditorPartition({
     required this.sheets,
     required this.stagedItems,
+    this.toleratedOverflowIds = const {},
+    this.markerHomes = const {},
+  });
+}
+
+/// Outcome of resolving mount markers to the Stationery Sheets that show them.
+class MountResolution {
+  /// Items no marker references, in the order of the media they were resolved from.
+  final List<SheetMediaItem> stagedItems;
+
+  /// Items whose markers overflowed the last text sheet during reflow and were
+  /// removed, returning the items to the Staging Handscroll.
+  final List<SheetMediaItem> unmountedByOverflow;
+
+  /// Items shown beyond the cap on the last text sheet without being unmounted:
+  /// overflow present when the entry was opened (e.g. legacy entries mounted
+  /// first-come with extras on the last sheet). An id loses the exemption once
+  /// it fits within the cap again.
+  final Set<String> toleratedOverflowIds;
+
+  /// The sheet controller whose Delta anchors each mounted item, used to tell
+  /// the original marker from a pasted duplicate on the next resolution.
+  final Map<String, QuillController> markerHomes;
+
+  const MountResolution({
+    required this.stagedItems,
+    required this.unmountedByOverflow,
+    required this.toleratedOverflowIds,
+    required this.markerHomes,
   });
 }

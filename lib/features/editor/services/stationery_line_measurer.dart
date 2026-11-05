@@ -350,7 +350,9 @@ class StationeryLineMeasurer {
       if (!op.isInsert) continue;
 
       if (MountMarker.mediaIdOf(op) != null) {
-        // Zero-height mount marker: occupies no row and never breaks a paragraph.
+        // Zero-height mount marker: travels with its paragraph (so a split or
+        // spill carries it along) but occupies no row and adds no plain text.
+        currentOps.add(op);
         continue;
       }
 

@@ -68,16 +68,19 @@ class SheetMediaOperations {
     _stagedItems.insert(insertAt == -1 ? _stagedItems.length : insertAt, item);
   }
 
+  /// Re-sorts the Staging Handscroll into collect order, so items that reflow
+  /// returned to it (a deleted passage, last-sheet overflow) rejoin it where
+  /// they were collected, as an Unmount does.
+  void orderStagedByCollect() {
+    final ordered = List.of(_stagedItems)
+      ..sort((left, right) => _collectRank(left.id).compareTo(_collectRank(right.id)));
+    _stagedItems
+      ..clear()
+      ..addAll(ordered);
+  }
+
   /// Free slots left in the Staging Handscroll.
   int get handscrollRoom => math.max(0, kHandscrollCapacity - _stagedItems.length);
-
-  /// Every known item: mounted items in sheet order, then staged items, so a
-  /// re-partition can resolve markers again without losing captions.
-  List<SheetMediaItem> allItems() => [
-        for (final sheet in _sheets)
-          if (sheet is TextStationerySheet) ...sheet.mediaAttachments,
-        ..._stagedItems,
-      ];
 
   /// Collects [item] into the Staging Handscroll, after every earlier item.
   ///
@@ -127,11 +130,13 @@ class SheetMediaOperations {
       if (sheet is! TextStationerySheet) continue;
       final mountedIndex = sheet.mediaAttachments.indexWhere((item) => item.id == mediaId);
       if (mountedIndex == -1) continue;
-      final markerOffset = _markerOffsetIn(sheet, mediaId);
-      if (markerOffset != null) {
-        final selection = sheet.controller.selection;
+      // A cascaded item shows on a later sheet than the one holding its marker.
+      for (final markerSheet in _sheets.whereType<TextStationerySheet>()) {
+        final markerOffset = _markerOffsetIn(markerSheet, mediaId);
+        if (markerOffset == null) continue;
+        final selection = markerSheet.controller.selection;
         final base = selection.isValid ? selection.baseOffset : 0;
-        sheet.controller.replaceText(
+        markerSheet.controller.replaceText(
           markerOffset,
           1,
           '',
