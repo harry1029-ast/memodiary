@@ -1,13 +1,12 @@
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
 import '../../templates/widgets/template_canvas_container.dart';
-import '../controllers/brush_reveal_queue.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import '../models/desk_media_handlers.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'desk_workstation/desk_space_budget.dart';
@@ -44,12 +43,7 @@ class EditorPaperCanvas extends StatelessWidget {
   final VoidCallback? onNextSheet;
   final ValueChanged<int>? onPageChanged;
   final void Function(int sheetIndex)? onDeleteEphemera;
-  final VoidCallback? onCollectMedia;
-  final ValueChanged<String>? onMountMedia;
-  final ValueChanged<String>? onEraseMedia;
-  final ValueChanged<String>? onUnmountMedia;
-  final ValueListenable<int>? mountRefusals;
-  final BrushRevealQueue? brushReveals;
+  final DeskMediaHandlers deskMedia;
   final void Function(String mediaId, String newCaption)? onMediaCaptionChanged;
   final void Function(int sheetIndex)? onSpillBack;
 
@@ -69,12 +63,7 @@ class EditorPaperCanvas extends StatelessWidget {
     this.onNextSheet,
     this.onPageChanged,
     this.onDeleteEphemera,
-    this.onCollectMedia,
-    this.onMountMedia,
-    this.onEraseMedia,
-    this.onUnmountMedia,
-    this.mountRefusals,
-    this.brushReveals,
+    this.deskMedia = const DeskMediaHandlers(),
     this.onMediaCaptionChanged,
     this.onSpillBack,
   });
@@ -289,12 +278,7 @@ class EditorPaperCanvas extends StatelessWidget {
                     mediaSandboxService: mediaSandboxService,
                     activeSheetNumber: currentSheetIndex + 1,
                     isPaperDark: themeConfig.isPaperDark,
-                    onCollectMedia: onCollectMedia,
-                    onMountMedia: onMountMedia,
-                    onEraseMedia: onEraseMedia,
-                    onUnmountMedia: onUnmountMedia,
-                    mountRefusals: mountRefusals,
-                    brushReveals: brushReveals,
+                    handlers: deskMedia,
                     onCaptionChanged: (mediaId, newCaption) {
                       coordinator.media.updateCaption(mediaId, newCaption);
                       onMediaCaptionChanged?.call(mediaId, newCaption);

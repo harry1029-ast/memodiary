@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -8,7 +7,7 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../editor/services/vertical_typography_mapper.dart';
 import '../../settings/services/signature_seal_service.dart';
 import '../../templates/models/template_style.dart';
-import '../../timeline/widgets/folio/folio_media_pairing.dart';
+import '../../timeline/services/folio_media_pairing.dart';
 import '../models/pdf_layout_mode.dart';
 import 'pdf_entry_serializer.dart';
 import 'pdf_font_resolver.dart';
@@ -47,7 +46,7 @@ class PdfExportEngine {
 
     // 2b. Pair mounted media with sheets exactly as the Thread-Bound Folio does;
     // staged (unmounted) attachments are left out.
-    final mountPlan = FolioMediaPairing.resolveMounts(
+    final mountPlan = FolioMediaPairing.pairLeaves(
       entry: entry,
       attachments: await database.getMediaForEntry(entry.id),
       templateStyle: style,
@@ -73,26 +72,37 @@ class PdfExportEngine {
     }
 
     // 4. Standard Horizontal Stationery mode (default): one section per sheet,
-    // each carrying the overlay cards of the items mounted on it.
-    // An entry with nothing mounted renders as one continuous flow.
-    final sections = mountPlan.textSheetMounts.every((mounts) => mounts.isEmpty)
-        ? [FolioSheetSection(isText: true, deltaOps: _decodeOps(entry.contentDelta))]
-        : mountPlan.sections;
+    // each carrying the overlay cards of the items mounted on it (at most three,
+    // paired exactly as the Folio pairs leaves). An entry with nothing mounted
+    // renders as one continuous flow.
     final sectionWidgets = <pw.Widget>[];
+    if (!mountPlan.hasMounts) {
+      sectionWidgets.addAll(await PdfEntrySerializer.convertDeltaToWidgets(
+        contentDeltaJson: entry.contentDelta,
+        fallbackPlainText: entry.plainText,
+        mediaService: mediaService,
+        style: style,
+        fontResolver: resolver,
+      ));
+    }
+    final sections = mountPlan.hasMounts ? mountPlan.sections : const <FolioSheetSection>[];
+    final mountsBySheet = mountPlan.mountsByLeaf(mountPlan.textSheetMounts.length);
+    var textSheetOrdinal = 0;
     for (final section in sections) {
-      final widgets = await PdfEntrySerializer.convertDeltaToWidgets(
-        contentDeltaJson: section.deltaOps.isEmpty ? '' : jsonEncode(section.deltaOps),
+      final widgets = await PdfEntrySerializer.convertOpsToWidgets(
+        ops: section.deltaOps,
         fallbackPlainText: entry.plainText,
         mediaService: mediaService,
         style: style,
         fontResolver: resolver,
       );
-      if (section.mounted.isEmpty) {
+      final mounted = section.isText ? mountsBySheet[textSheetOrdinal++] : const <MediaAttachment>[];
+      if (mounted.isEmpty) {
         sectionWidgets.addAll(widgets);
         continue;
       }
       final overlayCards = await PdfPolaroidOverlayBuilder.buildOverlayCards(
-        attachments: section.mounted,
+        attachments: mounted,
         mediaService: mediaService,
         resolver: resolver,
         availableWidth: pageFormat.width - (style.marginHorizontal.clamp(20.0, 60.0) * 2),
@@ -136,17 +146,6 @@ class PdfExportEngine {
     );
 
     return doc.save();
-  }
-
-  static List<dynamic> _decodeOps(String contentDeltaJson) {
-    try {
-      final decoded = jsonDecode(contentDeltaJson);
-      if (decoded is List) return decoded;
-      if (decoded is Map && decoded['ops'] is List) return decoded['ops'] as List;
-    } catch (_) {
-      // Malformed or empty Delta: the serializer falls back to plain text.
-    }
-    return const [];
   }
 
   /// Generates a consolidated multi-entry PDF document (Journal Book) with an archive cover page

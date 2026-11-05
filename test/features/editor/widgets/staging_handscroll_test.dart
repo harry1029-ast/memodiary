@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
+import 'package:memodiary/features/editor/models/desk_media_handlers.dart';
 import 'package:memodiary/features/editor/widgets/sheet_mount_strip.dart';
 import 'package:memodiary/features/editor/widgets/staging_handscroll.dart';
 import '../../../helpers/editor_test_harness.dart';
@@ -91,8 +92,7 @@ void main() {
         mediaSandboxService: sandboxService,
         activeSheetNumber: 2,
         onTapItem: (item) => tapped.add(item.id),
-        onMountItem: (item) => mounted.add(item.id),
-        onEraseItem: (item) => erased.add(item.id),
+        handlers: DeskMediaHandlers(onMount: mounted.add, onErase: erased.add),
       )));
       await tester.pumpAndSettle();
 

@@ -63,7 +63,7 @@ void main() {
   final closedScroll = find.byKey(const Key('closed_brocade_scroll'));
   final handscroll = find.byKey(const Key('staging_handscroll'));
   final strip = find.byKey(const Key('sheet_mount_strip'));
-  final handle = find.byKey(const Key('writing_dock_workstation_handle'));
+  final handle = find.byKey(const Key('writing_dock_workstation_grip'));
 
   Future<void> pickFromGallery(WidgetTester tester) async {
     await tester.tap(find.text('相册选撷 · Photo Gallery'));

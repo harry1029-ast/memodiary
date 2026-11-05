@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import 'desk_media_control.dart';
 import 'keepsake_thumbnail.dart';
 
 /// The Sheet Mount Strip (本页影札栏): up to three photos or videos mounted on one
@@ -25,7 +26,7 @@ class SheetMountStrip extends StatelessWidget {
   static const double kItemExtent = 64.0;
 
   /// Edge of the ↩ touch target beneath each print.
-  static const double kControlExtent = 44.0;
+  static const double kControlExtent = DeskMediaControl.kExtent;
 
   /// Total strip height: print plus its ↩ control.
   static const double kStripHeight = kItemExtent + kControlExtent;
@@ -44,9 +45,7 @@ class SheetMountStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
 
-    final matteColor = isPaperDark ? const Color(0xFF1E1D1B) : const Color(0xFFFBF8F1);
-    final borderColor = isPaperDark ? const Color(0x33FFFFFF) : const Color(0x1F000000);
-    final inkColor = isPaperDark ? const Color(0xFFD6D1C7) : const Color(0xFF3C3836);
+    final palette = DeskMediaPalette(isPaperDark: isPaperDark);
 
     final strip = Semantics(
       container: true,
@@ -73,9 +72,9 @@ class SheetMountStrip extends StatelessWidget {
                         height: kItemExtent,
                         padding: const EdgeInsets.all(3.0),
                         decoration: BoxDecoration(
-                          color: matteColor,
+                          color: palette.matte,
                           borderRadius: BorderRadius.circular(4.0),
-                          border: Border.all(color: borderColor, width: 0.8),
+                          border: Border.all(color: palette.matteBorder, width: 0.8),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: isPaperDark ? 0.35 : 0.08),
@@ -95,23 +94,13 @@ class SheetMountStrip extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Semantics(
-                    button: true,
-                    label: '揭回画卷：本页第 ${itemIndex + 1} 影 · '
+                  DeskMediaControl(
+                    key: Key('mount_strip_unmount_${item.id}'),
+                    icon: Icons.undo,
+                    isPaperDark: isPaperDark,
+                    semanticLabel: '揭回画卷：本页第 ${itemIndex + 1} 影 · '
                         '${item.mediaType == EphemeraMediaType.video ? '短影' : '影札'}',
-                    excludeSemantics: true,
-                    child: IconButton(
-                      key: Key('mount_strip_unmount_${item.id}'),
-                      icon: const Icon(Icons.undo, size: 20),
-                      color: inkColor,
-                      constraints: const BoxConstraints.tightFor(
-                        width: kControlExtent,
-                        height: kControlExtent,
-                      ),
-                      padding: EdgeInsets.zero,
-                      style: IconButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                      onPressed: () => onUnmountItem?.call(item),
-                    ),
+                    onPressed: () => onUnmountItem?.call(item),
                   ),
                 ],
               ),

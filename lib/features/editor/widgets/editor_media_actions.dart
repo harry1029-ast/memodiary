@@ -99,27 +99,30 @@ class EditorMediaActions {
 
       final room = coordinator.media.handscrollRoom;
       final leftOut = math.max(0, picks.length - room);
-      for (final picked in picks.take(room)) {
-        final relativePath = await mediaSandboxService.copyAndCompressImage(
-          File(picked.path),
-        );
-
-        final mediaId = const Uuid().v4();
-        await database.attachMediaToEntry(
-          id: mediaId,
-          entryId: entryId,
-          relativePath: relativePath,
-          mediaType: EphemeraMediaType.image.embedKey,
-        );
-
-        final didCollect = coordinator.media.collect(
+      final collected = <SheetMediaItem>[
+        for (final picked in picks.take(room))
           SheetMediaItem(
-            id: mediaId,
+            id: const Uuid().v4(),
             mediaType: EphemeraMediaType.image,
-            relativePath: relativePath,
+            relativePath: await mediaSandboxService.copyAndCompressImage(File(picked.path)),
           ),
-        );
-        if (didCollect) onCollected?.call(mediaId);
+      ];
+
+      // One transaction for the whole pick, so a multi-pick is a single write.
+      await database.transaction(() async {
+        for (final item in collected) {
+          await database.attachMediaToEntry(
+            id: item.id,
+            entryId: entryId,
+            relativePath: item.relativePath,
+            mediaType: EphemeraMediaType.image.embedKey,
+          );
+        }
+      });
+
+      // Collect in pick order so the Brush Reveals play one after another.
+      for (final item in collected) {
+        if (coordinator.media.collect(item)) onCollected?.call(item.id);
       }
       onStateChanged?.call();
       if (leftOut > 0 && context.mounted) {

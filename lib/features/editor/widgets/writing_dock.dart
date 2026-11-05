@@ -39,6 +39,12 @@ class WritingDock extends StatefulWidget {
     this.onToggleWorkstation,
   });
 
+  /// Height of the visible grip band at the top of the dock.
+  static const double kHandleBandHeight = 22.0;
+
+  /// Height of the workstation handle's touch target (a11y minimum).
+  static const double kHandleTouchHeight = 44.0;
+
   @override
   State<WritingDock> createState() => _WritingDockState();
 }
@@ -64,12 +70,10 @@ class _WritingDockState extends State<WritingDock> {
   Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
     final effectiveBackground = widget.backgroundColor ??
-        (widget.isPaperDark
-            ? tokens.xuanGround.withValues(alpha: 0.96)
-            : tokens.xuanPureLeaf.withValues(alpha: 0.96));
+        (widget.isPaperDark ? tokens.xuanGround.withValues(alpha: 0.96) : tokens.xuanPureLeaf.withValues(alpha: 0.96));
 
-    final effectiveInkColor = widget.inkColor ??
-        (widget.isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF2D2D2D));
+    final effectiveInkColor =
+        widget.inkColor ?? (widget.isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF2D2D2D));
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
@@ -118,33 +122,38 @@ class _WritingDockState extends State<WritingDock> {
             _toggleWorkstation();
           }
         },
+        // The slim grip band sits at the top of a transparent 44px touch target.
         child: Container(
-          height: 22,
+          height: WritingDock.kHandleTouchHeight,
           width: double.infinity,
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36,
-                height: 3.5,
-                decoration: BoxDecoration(
-                  color: tokens.deckleBorder,
-                  borderRadius: BorderRadius.circular(2),
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            key: const Key('writing_dock_workstation_grip'),
+            height: WritingDock.kHandleBandHeight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 3.5,
+                  decoration: BoxDecoration(
+                    color: tokens.deckleBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              AnimatedRotation(
-                turns: isCollapsed ? 0.5 : 0.0,
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeInOutCubic,
-                child: Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 16,
-                  color: effectiveInkColor.withValues(alpha: 0.65),
+                const SizedBox(width: 4),
+                AnimatedRotation(
+                  turns: isCollapsed ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeInOutCubic,
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: effectiveInkColor.withValues(alpha: 0.65),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -152,25 +161,39 @@ class _WritingDockState extends State<WritingDock> {
   }
 
   Widget _buildExpandedContent(InkDiaryTokens tokens, Color effectiveInkColor) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    // The handle's touch target reaches beneath the band into the tools below,
+    // which sit above it and keep their own taps; the gaps between them fall
+    // through to the handle, so the dock keeps its height.
+    return Stack(
       children: [
-        _buildWorkstationHandle(tokens, effectiveInkColor),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeInOutCubic,
-          alignment: Alignment.bottomCenter,
-          child: _isFormattingOpen
-              ? WritingDockFormattingRibbon(
-                  controller: widget.controller,
-                  onEnsureTextController: widget.onEnsureTextController,
-                  tokens: tokens,
-                  inkColor: effectiveInkColor,
-                  isPaperDark: widget.isPaperDark,
-                )
-              : const SizedBox.shrink(),
+        Positioned(
+          top: 0.0,
+          left: 0.0,
+          right: 0.0,
+          height: WritingDock.kHandleTouchHeight,
+          child: _buildWorkstationHandle(tokens, effectiveInkColor),
         ),
-        _buildPrimaryToolbar(tokens, effectiveInkColor),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: WritingDock.kHandleBandHeight),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeInOutCubic,
+              alignment: Alignment.bottomCenter,
+              child: _isFormattingOpen
+                  ? WritingDockFormattingRibbon(
+                      controller: widget.controller,
+                      onEnsureTextController: widget.onEnsureTextController,
+                      tokens: tokens,
+                      inkColor: effectiveInkColor,
+                      isPaperDark: widget.isPaperDark,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            _buildPrimaryToolbar(tokens, effectiveInkColor),
+          ],
+        ),
       ],
     );
   }

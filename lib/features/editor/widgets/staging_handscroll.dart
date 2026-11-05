@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
-import '../controllers/brush_reveal_queue.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import '../models/desk_media_handlers.dart';
 import 'brush_reveal/brush_reveal.dart';
 import 'staging_handscroll_slot.dart';
 
@@ -10,7 +10,7 @@ import 'staging_handscroll_slot.dart';
 /// videos that are not yet mounted on any Stationery Sheet.
 ///
 /// Scrolls horizontally with about three slots visible, reading left to right
-/// in collect order. Items awaiting their Brush Reveal in [brushReveals] are
+/// in collect order. Items awaiting their Brush Reveal in the handlers' queue are
 /// painted one at a time: the handscroll first glides to the slot, then the
 /// slot plays its reveal. With reduce-motion every pending item settles at
 /// once. When [unrollOnOpen] is set (it has just opened from closed) the
@@ -23,10 +23,10 @@ class StagingHandscroll extends StatefulWidget {
   /// 1-based number of the active Stationery Sheet that 📌 mounts onto.
   final int activeSheetNumber;
   final ValueChanged<SheetMediaItem>? onTapItem;
-  final ValueChanged<SheetMediaItem>? onMountItem;
-  final ValueChanged<SheetMediaItem>? onEraseItem;
+
+  /// Mount, erase and Brush Reveal plumbing.
+  final DeskMediaHandlers handlers;
   final bool isPaperDark;
-  final BrushRevealQueue? brushReveals;
   final bool unrollOnOpen;
 
   static const double kVisibleSlots = 3;
@@ -39,10 +39,8 @@ class StagingHandscroll extends StatefulWidget {
     required this.mediaSandboxService,
     required this.activeSheetNumber,
     this.onTapItem,
-    this.onMountItem,
-    this.onEraseItem,
+    this.handlers = const DeskMediaHandlers(),
     this.isPaperDark = false,
-    this.brushReveals,
     this.unrollOnOpen = false,
   });
 
@@ -65,7 +63,7 @@ class _StagingHandscrollState extends State<StagingHandscroll> with SingleTicker
   @override
   void initState() {
     super.initState();
-    widget.brushReveals?.addListener(_onRevealsChanged);
+    widget.handlers.brushReveals?.addListener(_onRevealsChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (MediaQuery.disableAnimationsOf(context)) {
@@ -80,16 +78,16 @@ class _StagingHandscrollState extends State<StagingHandscroll> with SingleTicker
   @override
   void didUpdateWidget(covariant StagingHandscroll oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.brushReveals != widget.brushReveals) {
-      oldWidget.brushReveals?.removeListener(_onRevealsChanged);
-      widget.brushReveals?.addListener(_onRevealsChanged);
+    if (oldWidget.handlers.brushReveals != widget.handlers.brushReveals) {
+      oldWidget.handlers.brushReveals?.removeListener(_onRevealsChanged);
+      widget.handlers.brushReveals?.addListener(_onRevealsChanged);
     }
     _scheduleAdvance();
   }
 
   @override
   void dispose() {
-    widget.brushReveals?.removeListener(_onRevealsChanged);
+    widget.handlers.brushReveals?.removeListener(_onRevealsChanged);
     _scrollController.dispose();
     _unroll.dispose();
     super.dispose();
@@ -99,7 +97,7 @@ class _StagingHandscrollState extends State<StagingHandscroll> with SingleTicker
     if (!mounted) return;
     setState(() {
       final revealing = _revealingId;
-      if (revealing != null && !(widget.brushReveals?.isPending(revealing) ?? false)) {
+      if (revealing != null && !(widget.handlers.brushReveals?.isPending(revealing) ?? false)) {
         _revealingId = null;
       }
     });
@@ -112,7 +110,7 @@ class _StagingHandscrollState extends State<StagingHandscroll> with SingleTicker
   /// Starts the next pending reveal: waits for the unroll, glides to the slot,
   /// then marks it revealing.
   Future<void> _advanceReveals() async {
-    final queue = widget.brushReveals;
+    final queue = widget.handlers.brushReveals;
     if (!mounted || queue == null || !queue.hasPending) return;
     if (MediaQuery.disableAnimationsOf(context)) {
       queue.clear();
@@ -155,7 +153,7 @@ class _StagingHandscrollState extends State<StagingHandscroll> with SingleTicker
   BrushRevealStatus _statusOf(String mediaId, bool reduceMotion) {
     if (reduceMotion) return BrushRevealStatus.settled;
     if (mediaId == _revealingId) return BrushRevealStatus.revealing;
-    final isPending = widget.brushReveals?.isPending(mediaId) ?? false;
+    final isPending = widget.handlers.brushReveals?.isPending(mediaId) ?? false;
     return isPending ? BrushRevealStatus.waiting : BrushRevealStatus.settled;
   }
 
@@ -200,10 +198,10 @@ class _StagingHandscrollState extends State<StagingHandscroll> with SingleTicker
                   mediaSandboxService: widget.mediaSandboxService,
                   isPaperDark: isPaperDark,
                   revealStatus: _statusOf(item.id, reduceMotion),
-                  onRevealComplete: () => widget.brushReveals?.complete(item.id),
+                  onRevealComplete: () => widget.handlers.brushReveals?.complete(item.id),
                   onTap: widget.onTapItem,
-                  onMount: widget.onMountItem,
-                  onErase: widget.onEraseItem,
+                  onMount: (item) => widget.handlers.onMount?.call(item.id),
+                  onErase: (item) => widget.handlers.onErase?.call(item.id),
                 );
               },
             );

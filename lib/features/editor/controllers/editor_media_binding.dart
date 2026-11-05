@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/database/app_database.dart';
@@ -79,22 +79,19 @@ class EditorMediaBinding {
     }
   }
 
-  /// Mounts the staged item [mediaId] onto the active Stationery Sheet; a full
-  /// sheet refuses with a shake and "本页已满三影", leaving the item staged.
-  Future<void> mountMedia(BuildContext context, String mediaId) async {
+  /// Mounts the staged item [mediaId] onto the active Stationery Sheet and
+  /// returns whether it mounted. A full sheet refuses (ticking [mountRefusals]
+  /// so its strip shakes), leaving the item staged.
+  Future<bool> mountMedia(String mediaId) async {
     final didMount = coordinator.media.mountOnActiveSheet(mediaId);
     if (didMount) brushReveals.complete(mediaId);
     onStateChanged();
     if (!didMount) {
       mountRefusals.value++;
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('本页已满三影')));
-      }
-      return;
+      return false;
     }
     await autosaveManager.saveDraft();
+    return true;
   }
 
   /// Unmounts [mediaId] from its sheet back into the Staging Handscroll.
@@ -104,41 +101,29 @@ class EditorMediaBinding {
     await autosaveManager.saveDraft();
   }
 
-  /// Erases the staged item [mediaId] from the handscroll and offers undo; once
-  /// the undo window passes, its `media_attachments` row and sandboxed file are
-  /// purged (Bidirectional Media Lifecycle Parity).
-  void eraseStagedMedia(BuildContext context, String mediaId) {
+  /// Erases the staged item [mediaId] from the handscroll and returns whether
+  /// it was erased. It stays restorable through [undoErase] for
+  /// [kEraseUndoWindow]; [purgeErased] then deletes its `media_attachments` row
+  /// and sandboxed file (Bidirectional Media Lifecycle Parity).
+  bool eraseStagedMedia(String mediaId) {
     final removed = coordinator.media.removeStaged(mediaId);
-    if (removed == null) return;
+    if (removed == null) return false;
     brushReveals.complete(mediaId);
     _pendingErasures[mediaId] = removed;
     onStateChanged();
-
-    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
-    messenger
-        .showSnackBar(
-          SnackBar(
-            content: const Text('已舍弃一影'),
-            duration: kEraseUndoWindow,
-            persist: false,
-            action: SnackBarAction(
-              label: '撤销',
-              onPressed: () => _undoErase(mediaId),
-            ),
-          ),
-        )
-        .closed
-        .then((reason) {
-      if (reason != SnackBarClosedReason.action) _purge(mediaId);
-    });
+    return true;
   }
 
-  void _undoErase(String mediaId) {
+  /// Restores the erased item [mediaId] to the handscroll, if still pending.
+  void undoErase(String mediaId) {
     final item = _pendingErasures.remove(mediaId);
     if (item == null) return;
     coordinator.media.restoreStaged(item);
     onStateChanged();
   }
+
+  /// Purges the erased item [mediaId] once its undo window has passed.
+  Future<void> purgeErased(String mediaId) => _purge(mediaId);
 
   Future<void> _purge(String mediaId) async {
     final item = _pendingErasures.remove(mediaId);

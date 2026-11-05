@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import 'brush_reveal/brush_reveal.dart';
+import 'desk_media_control.dart';
 import 'keepsake_thumbnail.dart';
 
 /// One Staging Handscroll slot. A freshly collected item plays its Brush
@@ -21,8 +22,6 @@ class StagingHandscrollSlot extends StatefulWidget {
   final ValueChanged<SheetMediaItem>? onTap;
   final ValueChanged<SheetMediaItem>? onMount;
   final ValueChanged<SheetMediaItem>? onErase;
-
-  static const double kControlExtent = 44.0;
 
   const StagingHandscrollSlot({
     super.key,
@@ -90,8 +89,7 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
     final item = widget.item;
     final ordinal = widget.ordinal;
     final isPaperDark = widget.isPaperDark;
-    final inkColor = isPaperDark ? const Color(0xFFD6D1C7) : const Color(0xFF3C3836);
-    final cinnabar = isPaperDark ? const Color(0xFFE57373) : const Color(0xFFB83B2E);
+    final cinnabar = DeskMediaPalette(isPaperDark: isPaperDark).cinnabar;
     final isVideo = item.mediaType == EphemeraMediaType.video;
     final kind = isVideo ? '短影' : '影札';
 
@@ -131,17 +129,18 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _SlotControl(
+              DeskMediaControl(
                 key: Key('handscroll_mount_${item.id}'),
                 icon: Icons.push_pin_outlined,
-                color: inkColor,
+                isPaperDark: isPaperDark,
                 semanticLabel: '贴至本页：待贴第 $ordinal 影 → 第 ${widget.activeSheetNumber} 页',
                 onPressed: () => widget.onMount?.call(item),
               ),
-              _SlotControl(
+              DeskMediaControl(
                 key: Key('handscroll_erase_${item.id}'),
                 icon: Icons.close,
-                color: cinnabar,
+                tone: DeskMediaControlTone.cinnabar,
+                isPaperDark: isPaperDark,
                 semanticLabel: '舍弃待贴第 $ordinal 影 · $kind',
                 onPressed: _erase,
               ),
@@ -171,42 +170,6 @@ class _CinnabarPlaySeal extends StatelessWidget {
         boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 2.0)],
       ),
       child: const Icon(Icons.play_arrow_rounded, size: 18, color: Color(0xFFFBF7EE)),
-    );
-  }
-}
-
-/// A 44×44 slot action whose semantics name only that action.
-class _SlotControl extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String semanticLabel;
-  final VoidCallback onPressed;
-
-  const _SlotControl({
-    super.key,
-    required this.icon,
-    required this.color,
-    required this.semanticLabel,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      excludeSemantics: true,
-      child: IconButton(
-        icon: Icon(icon, size: 20),
-        color: color,
-        constraints: const BoxConstraints.tightFor(
-          width: StagingHandscrollSlot.kControlExtent,
-          height: StagingHandscrollSlot.kControlExtent,
-        ),
-        padding: EdgeInsets.zero,
-        style: IconButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-        onPressed: onPressed,
-      ),
     );
   }
 }

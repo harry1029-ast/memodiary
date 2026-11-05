@@ -21,6 +21,7 @@ import '../widgets/desk_workstation/desk_workstation_controller.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_media_actions.dart';
+import '../widgets/editor_media_feedback.dart';
 import '../widgets/editor_overlay_actions.dart';
 import '../widgets/editor_top_app_bar.dart';
 import '../widgets/scholar_chest/scholar_chest_drawer.dart';
@@ -387,12 +388,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
                 onPageChanged: _paginationHandler!.handlePageChanged,
                 onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
-                onCollectMedia: () => _collectMedia(isVideo: false),
-                onMountMedia: (mediaId) => _mediaBinding!.mountMedia(context, mediaId),
-                onEraseMedia: (mediaId) => _mediaBinding!.eraseStagedMedia(context, mediaId),
-                onUnmountMedia: _mediaBinding!.unmountMedia,
-                mountRefusals: _mediaBinding!.mountRefusals,
-                brushReveals: _mediaBinding!.brushReveals,
+                deskMedia: EditorMediaFeedback.handlersFor(
+                  context,
+                  _mediaBinding!,
+                  onCollect: () => _collectMedia(isVideo: false),
+                ),
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),

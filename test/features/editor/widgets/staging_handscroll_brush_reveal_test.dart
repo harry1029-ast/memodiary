@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/controllers/brush_reveal_queue.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
+import 'package:memodiary/features/editor/models/desk_media_handlers.dart';
 import 'package:memodiary/features/editor/widgets/brush_reveal/brush_reveal_choreography.dart';
 import 'package:memodiary/features/editor/widgets/staging_handscroll.dart';
 import '../../../helpers/editor_test_harness.dart';
@@ -66,7 +67,7 @@ void main() {
                 items: items,
                 mediaSandboxService: sandboxService,
                 activeSheetNumber: 1,
-                brushReveals: queue,
+                handlers: DeskMediaHandlers(brushReveals: queue),
               ),
             ),
           ),
@@ -168,8 +169,7 @@ void main() {
             items: [_photo('fresh')],
             mediaSandboxService: sandboxService,
             activeSheetNumber: 1,
-            brushReveals: queue,
-            onMountItem: (item) => mounted.add(item.id),
+            handlers: DeskMediaHandlers(brushReveals: queue, onMount: mounted.add),
           ),
         ),
       ),

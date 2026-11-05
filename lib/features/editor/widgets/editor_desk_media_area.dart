@@ -1,9 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
-import '../controllers/brush_reveal_queue.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import '../models/desk_media_handlers.dart';
 import 'desk_workstation/desk_space_budget.dart';
 import 'desk_workstation/desk_workstation.dart';
 import 'fullscreen_media_lightbox.dart';
@@ -25,16 +24,9 @@ class EditorDeskMediaArea extends StatelessWidget {
   /// 1-based number of the active Stationery Sheet.
   final int activeSheetNumber;
   final bool isPaperDark;
-  final VoidCallback? onCollectMedia;
-  final ValueChanged<String>? onMountMedia;
-  final ValueChanged<String>? onEraseMedia;
-  final ValueChanged<String>? onUnmountMedia;
 
-  /// Ticks when a mount onto the active sheet is refused, shaking its strip.
-  final ValueListenable<int>? mountRefusals;
-
-  /// Items awaiting their Brush Reveal in the Staging Handscroll.
-  final BrushRevealQueue? brushReveals;
+  /// Collect, mount, erase, unmount and Brush Reveal plumbing.
+  final DeskMediaHandlers handlers;
   final void Function(String mediaId, String newCaption)? onCaptionChanged;
 
   static const Duration kStepAsideDuration = Duration(milliseconds: 250);
@@ -47,12 +39,7 @@ class EditorDeskMediaArea extends StatelessWidget {
     required this.mediaSandboxService,
     required this.activeSheetNumber,
     this.isPaperDark = false,
-    this.onCollectMedia,
-    this.onMountMedia,
-    this.onEraseMedia,
-    this.onUnmountMedia,
-    this.mountRefusals,
-    this.brushReveals,
+    this.handlers = const DeskMediaHandlers(),
     this.onCaptionChanged,
   });
 
@@ -83,8 +70,8 @@ class EditorDeskMediaArea extends StatelessWidget {
                 mediaSandboxService: mediaSandboxService,
                 isPaperDark: isPaperDark,
                 onTapItem: (item) => _openLightbox(context, mountedItems, item),
-                onUnmountItem: (item) => onUnmountMedia?.call(item.id),
-                refusalSignal: mountRefusals,
+                onUnmountItem: (item) => handlers.onUnmount?.call(item.id),
+                refusalSignal: handlers.mountRefusals,
               ),
             ),
           ),
@@ -100,11 +87,8 @@ class EditorDeskMediaArea extends StatelessWidget {
               stagedItems: stagedItems,
               mediaSandboxService: mediaSandboxService,
               activeSheetNumber: activeSheetNumber,
-              onCollect: onCollectMedia,
-              brushReveals: brushReveals,
+              handlers: handlers,
               onTapItem: (item) => _openLightbox(context, stagedItems, item),
-              onMountItem: (item) => onMountMedia?.call(item.id),
-              onEraseItem: (item) => onEraseMedia?.call(item.id),
             ),
           ),
         ),

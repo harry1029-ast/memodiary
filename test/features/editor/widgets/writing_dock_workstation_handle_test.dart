@@ -46,6 +46,7 @@ void main() {
     }
 
     final handle = find.byKey(const Key('writing_dock_workstation_handle'));
+    final grip = find.byKey(const Key('writing_dock_workstation_grip'));
 
     testWidgets('tools stay visible and the handle names the action it performs', (tester) async {
       await tester.pumpWidget(buildTestHarness());
@@ -58,18 +59,34 @@ void main() {
       expect(find.bySemanticsLabel('收起画案'), findsOneWidget);
     });
 
+    testWidgets('the handle offers a full 44px touch target while its bar stays slim', (tester) async {
+      final toggles = <bool>[];
+      await tester.pumpWidget(buildTestHarness(onToggled: toggles.add));
+      await tester.pumpAndSettle();
+
+      final handleRect = tester.getRect(handle);
+      expect(handleRect.height, greaterThanOrEqualTo(44.0));
+      expect(tester.getSize(grip).height, lessThan(44.0));
+
+      // A tap below the grip, clear of the tool buttons, still reaches the handle.
+      await tester.tapAt(Offset(handleRect.left + 6, handleRect.bottom - 6));
+      await tester.pumpAndSettle();
+      expect(toggles, [true]);
+      expect(find.byKey(const Key('writing_dock_photo_btn')), findsOneWidget);
+    });
+
     testWidgets('tapping the handle collapses the workstation and tapping again restores it', (tester) async {
       final toggles = <bool>[];
       await tester.pumpWidget(buildTestHarness(onToggled: toggles.add));
       await tester.pumpAndSettle();
 
-      await tester.tap(handle);
+      await tester.tap(grip);
       await tester.pumpAndSettle();
       expect(toggles, [true]);
       expect(find.bySemanticsLabel('展开画案'), findsOneWidget);
       expect(find.byKey(const Key('writing_dock_photo_btn')), findsOneWidget);
 
-      await tester.tap(handle);
+      await tester.tap(grip);
       await tester.pumpAndSettle();
       expect(toggles, [true, false]);
       expect(find.bySemanticsLabel('收起画案'), findsOneWidget);
@@ -80,11 +97,11 @@ void main() {
       await tester.pumpWidget(buildTestHarness(onToggled: toggles.add));
       await tester.pumpAndSettle();
 
-      await tester.drag(handle, const Offset(0, 40));
+      await tester.drag(grip, const Offset(0, 40));
       await tester.pumpAndSettle();
       expect(toggles, [true]);
 
-      await tester.drag(handle, const Offset(0, -40));
+      await tester.drag(grip, const Offset(0, -40));
       await tester.pumpAndSettle();
       expect(toggles, [true, false]);
     });
@@ -98,7 +115,7 @@ void main() {
       addTearDown(tester.view.resetViewInsets);
       await tester.pumpAndSettle();
 
-      await tester.tap(handle);
+      await tester.tap(grip);
       await tester.pumpAndSettle();
       expect(toggles, isEmpty);
     });

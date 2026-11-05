@@ -280,8 +280,10 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       knownMediaIds: {for (final item in _knownItems()) item.id},
     );
     final hasMountMarkers = MountMarker.mediaIdsIn(unified).isNotEmpty;
-    final plainText = Document.fromDelta(MountMarker.strip(unified)).toPlainText().trim();
-    if (plainText.isEmpty &&
+    final textDocument = Document.fromDelta(MountMarker.strip(unified));
+    final plainText = textDocument.toPlainText().trim();
+    // Structural emptiness: whitespace and blank lines are kept as content.
+    if (textDocument.length <= 1 &&
         !hasMountMarkers &&
         _sheets.every((sheet) => sheet is! EphemeraSheet)) {
       return ('[]', '');

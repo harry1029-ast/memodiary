@@ -164,6 +164,25 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('unmounting into an empty, closed handscroll opens it in place without the unroll', (tester) async {
+    await openEditor(tester);
+    await startCollecting(tester);
+    await _pumpFor(tester, StagingHandscroll.kUnrollDuration + _photoReveal.total);
+    final mediaId = (await attachmentIds()).single;
+
+    await tester.tap(find.byKey(Key('handscroll_mount_$mediaId')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('closed_brocade_scroll')), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('mount_strip_unmount_$mediaId')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(Key('handscroll_item_$mediaId')), findsOneWidget);
+    expect(unrollFraction(tester), 1.0);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('an item unmounted by reflow rejoins the handscroll without replaying its reveal', (tester) async {
     File('${tempDirectory.path}/media/plum.webp')
       ..parent.createSync(recursive: true)

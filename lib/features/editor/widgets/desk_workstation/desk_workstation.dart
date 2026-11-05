@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/services/media_sandbox_service.dart';
-import '../../controllers/brush_reveal_queue.dart';
 import '../../domain/stationery_sheet_descriptor.dart';
+import '../../models/desk_media_handlers.dart';
 import '../staging_handscroll.dart';
 import 'closed_brocade_scroll.dart';
 import 'walnut_desk_painter.dart';
@@ -17,13 +17,10 @@ class DeskWorkstation extends StatefulWidget {
 
   /// 1-based number of the active Stationery Sheet that 📌 mounts onto.
   final int activeSheetNumber;
-  final VoidCallback? onCollect;
   final ValueChanged<SheetMediaItem>? onTapItem;
-  final ValueChanged<SheetMediaItem>? onMountItem;
-  final ValueChanged<SheetMediaItem>? onEraseItem;
 
-  /// Items awaiting their Brush Reveal in the Staging Handscroll.
-  final BrushRevealQueue? brushReveals;
+  /// Collect, mount, erase and Brush Reveal plumbing.
+  final DeskMediaHandlers handlers;
 
   static const double kHeaderHeight = 26.0;
   static const EdgeInsets kMatInsets = EdgeInsets.fromLTRB(10.0, kHeaderHeight, 10.0, 8.0);
@@ -33,11 +30,8 @@ class DeskWorkstation extends StatefulWidget {
     required this.stagedItems,
     required this.mediaSandboxService,
     required this.activeSheetNumber,
-    this.onCollect,
     this.onTapItem,
-    this.onMountItem,
-    this.onEraseItem,
-    this.brushReveals,
+    this.handlers = const DeskMediaHandlers(),
   });
 
   @override
@@ -54,14 +48,23 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
   late bool _opensFromClosed = _allAwaitingReveal(widget.stagedItems);
 
   bool _allAwaitingReveal(List<SheetMediaItem> items) {
-    final queue = widget.brushReveals;
+    final queue = widget.handlers.brushReveals;
     return items.isNotEmpty && queue != null && items.every((item) => queue.isPending(item.id));
+  }
+
+  bool _anyAwaitingReveal(List<SheetMediaItem> items) {
+    final queue = widget.handlers.brushReveals;
+    return queue != null && items.any((item) => queue.isPending(item.id));
   }
 
   @override
   void didUpdateWidget(covariant DeskWorkstation oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.stagedItems.isEmpty && widget.stagedItems.isNotEmpty) _opensFromClosed = true;
+    // Only a Collect (new items awaiting their reveal) unrolls the scroll;
+    // unmounting, undoing an erase or reflow opens it in place.
+    if (oldWidget.stagedItems.isEmpty && widget.stagedItems.isNotEmpty) {
+      _opensFromClosed = _anyAwaitingReveal(widget.stagedItems);
+    }
   }
 
   @override
@@ -106,7 +109,7 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
                   child: isClosed
                       ? ClosedBrocadeScroll(
                           key: const Key('closed_brocade_scroll'),
-                          onTap: widget.onCollect,
+                          onTap: widget.handlers.onCollect,
                         )
                       : StagingHandscroll(
                           items: widget.stagedItems,
@@ -114,9 +117,7 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
                           activeSheetNumber: widget.activeSheetNumber,
                           isPaperDark: false,
                           onTapItem: widget.onTapItem,
-                          onMountItem: widget.onMountItem,
-                          onEraseItem: widget.onEraseItem,
-                          brushReveals: widget.brushReveals,
+                          handlers: widget.handlers,
                           unrollOnOpen: _opensFromClosed,
                         ),
                 ),

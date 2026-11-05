@@ -8,7 +8,7 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../editor/models/media_embed_data.dart';
 import '../../editor/services/vertical_typography_mapper.dart';
 import '../../templates/models/template_style.dart';
-import '../../timeline/widgets/folio/folio_media_pairing.dart';
+import '../../timeline/services/folio_media_pairing.dart';
 import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
 import 'pdf_polaroid_overlay_builder.dart';
@@ -108,8 +108,8 @@ class PdfVerticalScrollBuilder {
 
     // Pair mounted items with pages exactly as the Folio pairs them with leaves.
     final overlayCardsByPage = <List<pw.Widget>>[];
-    for (int pageIndex = 0; pageIndex < pagesItems.length; pageIndex++) {
-      final mounted = mountPlan.mountsForLeaf(pageIndex, pagesItems.length);
+    final mountsByPage = mountPlan.mountsByLeaf(pagesItems.length);
+    for (final mounted in mountsByPage) {
       overlayCardsByPage.add(mounted.isEmpty
           ? const <pw.Widget>[]
           : await PdfPolaroidOverlayBuilder.buildOverlayCards(

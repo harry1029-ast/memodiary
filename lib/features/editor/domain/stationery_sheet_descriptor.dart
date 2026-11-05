@@ -82,8 +82,11 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   /// Whether this sheet has at least one paired photo or video keepsake.
   bool get hasMediaAttachments => mediaAttachments.isNotEmpty;
 
-  /// Whether this sheet has reached the maximum allowed attachment capacity (3 items).
-  bool get isAtMediaCapacity => mediaAttachments.length >= 3;
+  /// Most items a sheet's Mount Strip (and a Folio leaf or PDF page) shows.
+  static const int kMountCapacity = 3;
+
+  /// Whether this sheet has reached the maximum allowed attachment capacity.
+  bool get isAtMediaCapacity => mediaAttachments.length >= kMountCapacity;
 
   /// Maximum integer visual row capacity on this stationery sheet.
   int get rowCapacity;

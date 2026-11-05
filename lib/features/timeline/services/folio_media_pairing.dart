@@ -1,13 +1,13 @@
-import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/quill_delta.dart';
-import '../../../../core/database/app_database.dart';
-import '../../../editor/domain/stationery_sheet_descriptor.dart';
-import '../../../editor/models/typography_settings.dart';
-import '../../../editor/services/editor_delta_partitioner.dart';
-import '../../../editor/services/stationery_delta_synthesizer.dart';
-import '../../../templates/models/template_style.dart';
-import 'folio_leaf_model.dart';
+import '../../../core/database/app_database.dart';
+import '../../../core/utils/delta_ops_decoder.dart';
+import '../../editor/domain/stationery_sheet_descriptor.dart';
+import '../../editor/models/typography_settings.dart';
+import '../../editor/services/editor_delta_partitioner.dart';
+import '../../editor/services/stationery_delta_synthesizer.dart';
+import '../../templates/models/template_style.dart';
 
 /// One Stationery Sheet of an entry as the editor partitions it: its slice of
 /// the Delta and the attachments mounted on it (in marker order).
@@ -42,25 +42,62 @@ class FolioMountPlan {
       .map((section) => section.mounted)
       .toList();
 
+  /// Whether any text sheet has a mounted item.
+  bool get hasMounts => textSheetMounts.any((mounts) => mounts.isNotEmpty);
+
   /// Attachments mounted on the first text sheet (the Frontispiece showcase).
   List<MediaAttachment> get firstSheetMounts {
     final mounts = textSheetMounts;
     return mounts.isEmpty ? const [] : mounts.first;
   }
 
-  /// Mounted attachments for the [ordinal]-th of [leafCount] body leaves:
+  /// Mounted attachments of each of [leafCount] body leaves (Folio leaves or
+  /// PDF pages), in leaf order. No leaf holds more than
+  /// [TextStationerySheet.kMountCapacity] items.
+  ///
   /// Sheet N rides on Leaf N, and sheets beyond the last leaf fold onto it.
-  List<MediaAttachment> mountsForLeaf(int ordinal, int leafCount) {
+  /// Items past a leaf's capacity (in leaf order) move to the nearest earlier
+  /// leaf with room, else the nearest later one; items with no room on any
+  /// leaf are left out.
+  List<List<MediaAttachment>> mountsByLeaf(int leafCount) {
+    if (leafCount <= 0) return const [];
+    const capacity = TextStationerySheet.kMountCapacity;
+    final leaves = List.generate(leafCount, (_) => <MediaAttachment>[]);
     final mounts = textSheetMounts;
-    if (leafCount <= 0 || ordinal >= mounts.length) return const [];
-    if (ordinal < leafCount - 1) return mounts[ordinal];
-    return mounts.skip(ordinal).expand((sheetMounts) => sheetMounts).toList();
+    for (int sheetIndex = 0; sheetIndex < mounts.length; sheetIndex++) {
+      leaves[math.min(sheetIndex, leafCount - 1)].addAll(mounts[sheetIndex]);
+    }
+
+    final overflow = <(int, MediaAttachment)>[];
+    for (int leafIndex = 0; leafIndex < leafCount; leafIndex++) {
+      final leaf = leaves[leafIndex];
+      if (leaf.length <= capacity) continue;
+      overflow.addAll(leaf.skip(capacity).map((item) => (leafIndex, item)));
+      leaf.removeRange(capacity, leaf.length);
+    }
+
+    for (final (origin, item) in overflow) {
+      final candidates = [
+        for (int leafIndex = origin - 1; leafIndex >= 0; leafIndex--) leafIndex,
+        for (int leafIndex = origin + 1; leafIndex < leafCount; leafIndex++) leafIndex,
+      ];
+      for (final leafIndex in candidates) {
+        if (leaves[leafIndex].length < capacity) {
+          leaves[leafIndex].add(item);
+          break;
+        }
+      }
+    }
+    return leaves;
   }
 }
 
 /// Pure pairing rules deciding which attachments appear on which Folio leaf or
 /// PDF section: an attachment is shown on the sheet whose text holds its mount
 /// marker; staged (unmarked) attachments are shown nowhere.
+///
+/// The partition is computed without the editor's measured sheet width, so it
+/// is approximate for long wrapped paragraphs.
 class FolioMediaPairing {
   const FolioMediaPairing._();
 
@@ -71,10 +108,10 @@ class FolioMediaPairing {
     marginHorizontal: 24.0,
   );
 
-  /// Partitions [entry] into sheets the way the editor does and resolves each
-  /// mount marker to its sheet. Entries still awaiting the legacy mounting pass
+  /// Partitions [entry] into sheets the way the editor does and pairs each
+  /// mount marker with its sheet. Entries still awaiting the legacy mounting pass
   /// (`legacyMountsPending`) are mounted first-come headlessly, without persisting.
-  static FolioMountPlan resolveMounts({
+  static FolioMountPlan pairLeaves({
     required Entry entry,
     required List<MediaAttachment> attachments,
     TemplateStyle? templateStyle,
@@ -124,48 +161,13 @@ class FolioMediaPairing {
     }
   }
 
-  /// Converts the attachments mounted on a leaf into Folio photo cards targeting
-  /// [targetLeafIndex], preserving persisted overlay drag positions.
-  static List<FolioPhotoAttachment> photosForLeaf({
-    required List<MediaAttachment> mounted,
-    required int targetLeafIndex,
-    required String entryDateStr,
-  }) {
-    return [
-      for (int index = 0; index < mounted.length; index++)
-        _toPhoto(mounted[index], index, targetLeafIndex, entryDateStr),
-    ];
-  }
-
-  static FolioPhotoAttachment _toPhoto(
-    MediaAttachment attachment,
-    int indexOnLeaf,
-    int targetLeafIndex,
-    String entryDateStr,
-  ) {
-    final caption = attachment.caption?.trim() ?? '';
-    return FolioPhotoAttachment(
-      id: attachment.id,
-      relativePath: attachment.relativePath,
-      mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
-      title: caption.isNotEmpty ? caption.split('\n').first : '随文影札 ${indexOnLeaf + 1}',
-      caption: caption.isNotEmpty ? caption : '随文影札 · 拾光留影',
-      date: entryDateStr,
-      pageNumber: targetLeafIndex,
-      targetLeafIndex: targetLeafIndex,
-      overlayXRatio: attachment.overlayXRatio,
-      overlayYRatio: attachment.overlayYRatio,
-    );
-  }
-
   static Delta _decodeDelta(String contentDeltaJson, String fallbackPlainText) {
-    if (contentDeltaJson.trim().isNotEmpty) {
+    final ops = decodeDeltaOps(contentDeltaJson);
+    if (ops != null) {
       try {
-        final decoded = jsonDecode(contentDeltaJson);
-        final ops = decoded is List ? decoded : (decoded is Map ? decoded['ops'] : null);
-        if (ops is List && ops.isNotEmpty) return Delta.fromJson(ops);
+        return Delta.fromJson(ops);
       } catch (_) {
-        // Malformed Delta: fall back to plain text below.
+        // Ops that are not a valid Delta: fall back to plain text below.
       }
     }
     final delta = Delta();
