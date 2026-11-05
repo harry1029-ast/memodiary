@@ -264,10 +264,16 @@ void main() {
       picker = StubEditorImagePicker(multiImageResults: picks);
       await openEditor(tester);
 
-      await collectPhoto(tester);
+      await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('相册选撷 · Photo Gallery'));
+      // Bounded pumps: the collected items are still being painted in.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(await attachmentIds(), hasLength(15));
       expect(snackBarText('2 影未入卷'), findsOneWidget);
+      await tester.pumpAndSettle();
     });
 
     testWidgets('mounting onto a sheet with three items is refused with a shake and the item stays staged', (tester) async {

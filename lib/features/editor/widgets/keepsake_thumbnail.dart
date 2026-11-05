@@ -11,11 +11,16 @@ class KeepsakeThumbnail extends StatefulWidget {
   final MediaSandboxService mediaSandboxService;
   final bool isPaperDark;
 
+  /// Whether a video shows the play glyph; the Staging Handscroll marks videos
+  /// with its cinnabar seal play stamp instead.
+  final bool showPlayGlyph;
+
   const KeepsakeThumbnail({
     super.key,
     required this.item,
     required this.mediaSandboxService,
     this.isPaperDark = false,
+    this.showPlayGlyph = true,
   });
 
   @override
@@ -53,9 +58,11 @@ class _KeepsakeThumbnailState extends State<KeepsakeThumbnail> {
     if (widget.item.mediaType == EphemeraMediaType.video) {
       return Container(
         color: widget.isPaperDark ? const Color(0xFF101010) : const Color(0xFF202020),
-        child: const Center(
-          child: Icon(Icons.play_circle_fill, size: 28, color: Colors.white70),
-        ),
+        child: widget.showPlayGlyph
+            ? const Center(
+                child: Icon(Icons.play_circle_fill, size: 28, color: Colors.white70),
+              )
+            : null,
       );
     }
     return FutureBuilder<File>(

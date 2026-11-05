@@ -1,16 +1,22 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
+import '../controllers/brush_reveal_queue.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import 'keepsake_thumbnail.dart';
+import 'brush_reveal/brush_reveal.dart';
+import 'staging_handscroll_slot.dart';
 
 /// The entry-wide Staging Handscroll (待贴画卷) holding collected photos and
 /// videos that are not yet mounted on any Stationery Sheet.
 ///
 /// Scrolls horizontally with about three slots visible, reading left to right
-/// in collect order. Pure presentation: every action bubbles through callbacks.
-class StagingHandscroll extends StatelessWidget {
+/// in collect order. Items awaiting their Brush Reveal in [brushReveals] are
+/// painted one at a time: the handscroll first glides to the slot, then the
+/// slot plays its reveal. With reduce-motion every pending item settles at
+/// once. When [unrollOnOpen] is set (it has just opened from closed) the
+/// handscroll unrolls before the first reveal. Pure presentation: every action
+/// bubbles through callbacks.
+class StagingHandscroll extends StatefulWidget {
   final List<SheetMediaItem> items;
   final MediaSandboxService mediaSandboxService;
 
@@ -20,9 +26,12 @@ class StagingHandscroll extends StatelessWidget {
   final ValueChanged<SheetMediaItem>? onMountItem;
   final ValueChanged<SheetMediaItem>? onEraseItem;
   final bool isPaperDark;
+  final BrushRevealQueue? brushReveals;
+  final bool unrollOnOpen;
 
   static const double kVisibleSlots = 3;
-  static const double kControlExtent = 44.0;
+  static const Duration kGlideDuration = Duration(milliseconds: 420);
+  static const Duration kUnrollDuration = Duration(milliseconds: 520);
 
   const StagingHandscroll({
     super.key,
@@ -33,16 +42,134 @@ class StagingHandscroll extends StatelessWidget {
     this.onMountItem,
     this.onEraseItem,
     this.isPaperDark = false,
+    this.brushReveals,
+    this.unrollOnOpen = false,
   });
 
   @override
+  State<StagingHandscroll> createState() => _StagingHandscrollState();
+}
+
+class _StagingHandscrollState extends State<StagingHandscroll> with SingleTickerProviderStateMixin {
+  final ScrollController _scrollController = ScrollController();
+  late final AnimationController _unroll = AnimationController(
+    vsync: this,
+    duration: StagingHandscroll.kUnrollDuration,
+    value: widget.unrollOnOpen ? 0.0 : 1.0,
+  );
+
+  String? _revealingId;
+  bool _isGliding = false;
+  double _slotWidth = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.brushReveals?.addListener(_onRevealsChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _unroll.value = 1.0;
+      } else if (_unroll.value < 1.0) {
+        _unroll.forward();
+      }
+      _advanceReveals();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant StagingHandscroll oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.brushReveals != widget.brushReveals) {
+      oldWidget.brushReveals?.removeListener(_onRevealsChanged);
+      widget.brushReveals?.addListener(_onRevealsChanged);
+    }
+    _scheduleAdvance();
+  }
+
+  @override
+  void dispose() {
+    widget.brushReveals?.removeListener(_onRevealsChanged);
+    _scrollController.dispose();
+    _unroll.dispose();
+    super.dispose();
+  }
+
+  void _onRevealsChanged() {
+    if (!mounted) return;
+    setState(() {
+      final revealing = _revealingId;
+      if (revealing != null && !(widget.brushReveals?.isPending(revealing) ?? false)) {
+        _revealingId = null;
+      }
+    });
+    _scheduleAdvance();
+  }
+
+  void _scheduleAdvance() =>
+      WidgetsBinding.instance.addPostFrameCallback((_) => _advanceReveals());
+
+  /// Starts the next pending reveal: waits for the unroll, glides to the slot,
+  /// then marks it revealing.
+  Future<void> _advanceReveals() async {
+    final queue = widget.brushReveals;
+    if (!mounted || queue == null || !queue.hasPending) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      queue.clear();
+      return;
+    }
+    final next = queue.current!;
+    final index = widget.items.indexWhere((item) => item.id == next);
+    if (_revealingId != null || _isGliding || index == -1) return;
+
+    _isGliding = true;
+    try {
+      if (_unroll.isAnimating) await _unroll.forward().orCancel;
+      await _glideTo(index);
+    } on TickerCanceled {
+      return;
+    } finally {
+      _isGliding = false;
+    }
+    if (!mounted) return;
+    if (queue.current != next) {
+      _scheduleAdvance();
+      return;
+    }
+    setState(() => _revealingId = next);
+  }
+
+  Future<void> _glideTo(int index) async {
+    if (!_scrollController.hasClients || _slotWidth == 0.0) return;
+    final position = _scrollController.position;
+    final centred = index * _slotWidth - (position.viewportDimension - _slotWidth) / 2;
+    final target = centred.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((target - position.pixels).abs() < 0.5) return;
+    await _scrollController.animateTo(
+      target,
+      duration: StagingHandscroll.kGlideDuration,
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  BrushRevealStatus _statusOf(String mediaId, bool reduceMotion) {
+    if (reduceMotion) return BrushRevealStatus.settled;
+    if (mediaId == _revealingId) return BrushRevealStatus.revealing;
+    final isPending = widget.brushReveals?.isPending(mediaId) ?? false;
+    return isPending ? BrushRevealStatus.waiting : BrushRevealStatus.settled;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final items = widget.items;
     if (items.isEmpty) return const SizedBox.shrink();
 
+    final isPaperDark = widget.isPaperDark;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final silkColor = isPaperDark ? const Color(0xFF2A2724) : const Color(0xFFF3ECDD);
     final rollerColor = isPaperDark ? const Color(0xFF5A4632) : const Color(0xFF8A6A48);
 
-    return Semantics(
+    final handscroll = Semantics(
       container: true,
       label: '待贴画卷 · ${items.length} 影',
       child: Container(
@@ -57,205 +184,76 @@ class StagingHandscroll extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
         child: LayoutBuilder(
           builder: (layoutContext, constraints) {
-            final slotWidth = constraints.maxWidth / kVisibleSlots;
+            _slotWidth = constraints.maxWidth / StagingHandscroll.kVisibleSlots;
             return ListView.builder(
+              controller: _scrollController,
               scrollDirection: Axis.horizontal,
               itemCount: items.length,
-              itemExtent: slotWidth,
-              itemBuilder: (itemContext, itemIndex) => _HandscrollSlot(
-                key: ValueKey(items[itemIndex].id),
-                item: items[itemIndex],
-                ordinal: itemIndex + 1,
-                activeSheetNumber: activeSheetNumber,
-                mediaSandboxService: mediaSandboxService,
-                isPaperDark: isPaperDark,
-                onTap: onTapItem,
-                onMount: onMountItem,
-                onErase: onEraseItem,
-              ),
+              itemExtent: _slotWidth,
+              itemBuilder: (itemContext, itemIndex) {
+                final item = items[itemIndex];
+                return StagingHandscrollSlot(
+                  key: ValueKey(item.id),
+                  item: item,
+                  ordinal: itemIndex + 1,
+                  activeSheetNumber: widget.activeSheetNumber,
+                  mediaSandboxService: widget.mediaSandboxService,
+                  isPaperDark: isPaperDark,
+                  revealStatus: _statusOf(item.id, reduceMotion),
+                  onRevealComplete: () => widget.brushReveals?.complete(item.id),
+                  onTap: widget.onTapItem,
+                  onMount: widget.onMountItem,
+                  onErase: widget.onEraseItem,
+                );
+              },
             );
           },
         ),
       ),
     );
-  }
-}
 
-/// One handscroll slot. ✕ plays an in-place ink-wash dissolve (the print
-/// drains to grey and fades) before reporting the erase; with reduce-motion
-/// the erase is reported at once.
-class _HandscrollSlot extends StatefulWidget {
-  final SheetMediaItem item;
-  final int ordinal;
-  final int activeSheetNumber;
-  final MediaSandboxService mediaSandboxService;
-  final bool isPaperDark;
-  final ValueChanged<SheetMediaItem>? onTap;
-  final ValueChanged<SheetMediaItem>? onMount;
-  final ValueChanged<SheetMediaItem>? onErase;
-
-  const _HandscrollSlot({
-    super.key,
-    required this.item,
-    required this.ordinal,
-    required this.activeSheetNumber,
-    required this.mediaSandboxService,
-    required this.isPaperDark,
-    this.onTap,
-    this.onMount,
-    this.onErase,
-  });
-
-  @override
-  State<_HandscrollSlot> createState() => _HandscrollSlotState();
-}
-
-class _HandscrollSlotState extends State<_HandscrollSlot> with SingleTickerProviderStateMixin {
-  static const Duration kDissolveDuration = Duration(milliseconds: 450);
-
-  late final AnimationController _dissolve = AnimationController(
-    vsync: this,
-    duration: kDissolveDuration,
-  );
-
-  Future<void> _erase() async {
-    if (_dissolve.isAnimating) return;
-    if (!MediaQuery.disableAnimationsOf(context)) {
-      await _dissolve.forward();
-    }
-    if (mounted) widget.onErase?.call(widget.item);
-  }
-
-  @override
-  void dispose() {
-    _dissolve.dispose();
-    super.dispose();
-  }
-
-  static ColorFilter _inkWash(double amount) {
-    // Linear blend between identity and luminance greyscale.
-    final keep = 1.0 - amount;
-    const r = 0.2126, g = 0.7152, b = 0.0722;
-    return ColorFilter.matrix(<double>[
-      keep + amount * r, amount * g, amount * b, 0, 0,
-      amount * r, keep + amount * g, amount * b, 0, 0,
-      amount * r, amount * g, keep + amount * b, 0, 0,
-      0, 0, 0, 1, 0,
-    ]);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _dissolve,
+      animation: _unroll,
       builder: (animatedContext, child) {
-        final progress = Curves.easeIn.transform(_dissolve.value);
-        return IgnorePointer(
-          ignoring: _dissolve.isAnimating,
-          child: Opacity(
-            key: Key('handscroll_dissolve_${widget.item.id}'),
-            opacity: 1.0 - progress,
-            child: ColorFiltered(
-              colorFilter: _inkWash(math.min(1.0, progress * 2.0)),
-              child: child,
+        final fraction = Curves.easeOutCubic.transform(_unroll.value);
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: ClipRect(
+                key: const Key('staging_handscroll_unroll'),
+                clipper: HandscrollUnrollClipper(fraction),
+                child: child,
+              ),
             ),
-          ),
-        );
-      },
-      child: _buildSlot(context),
-    );
-  }
-
-  Widget _buildSlot(BuildContext context) {
-    final item = widget.item;
-    final ordinal = widget.ordinal;
-    final isPaperDark = widget.isPaperDark;
-    final inkColor = isPaperDark ? const Color(0xFFD6D1C7) : const Color(0xFF3C3836);
-    final cinnabar = isPaperDark ? const Color(0xFFE57373) : const Color(0xFFB83B2E);
-    final kind = item.mediaType == EphemeraMediaType.video ? '短影' : '影札';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Column(
-        children: [
-          Expanded(
-            child: Semantics(
-              button: true,
-              label: '待贴第 $ordinal 影 · $kind，点按查看',
-              excludeSemantics: true,
-              child: GestureDetector(
-                key: Key('handscroll_item_${item.id}'),
-                onTap: () => widget.onTap?.call(item),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4.0),
-                  child: SizedBox.expand(
-                    child: KeepsakeThumbnail(
-                      item: item,
-                      mediaSandboxService: widget.mediaSandboxService,
-                      isPaperDark: isPaperDark,
-                    ),
+            if (fraction < 1.0)
+              Positioned.fill(
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: fraction,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    // The roller travelling with the unrolling edge.
+                    child: Container(width: 8.0, color: rollerColor),
                   ),
                 ),
               ),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _SlotControl(
-                key: Key('handscroll_mount_${item.id}'),
-                icon: Icons.push_pin_outlined,
-                color: inkColor,
-                semanticLabel: '贴至本页：待贴第 $ordinal 影 → 第 ${widget.activeSheetNumber} 页',
-                onPressed: () => widget.onMount?.call(item),
-              ),
-              _SlotControl(
-                key: Key('handscroll_erase_${item.id}'),
-                icon: Icons.close,
-                color: cinnabar,
-                semanticLabel: '舍弃待贴第 $ordinal 影 · $kind',
-                onPressed: _erase,
-              ),
-            ],
-          ),
-        ],
-      ),
+          ],
+        );
+      },
+      child: handscroll,
     );
   }
 }
 
-/// A 44×44 slot action whose semantics name only that action.
-class _SlotControl extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String semanticLabel;
-  final VoidCallback onPressed;
+/// Clips the handscroll to the unrolled [fraction] of its width, from the left.
+class HandscrollUnrollClipper extends CustomClipper<Rect> {
+  final double fraction;
 
-  const _SlotControl({
-    super.key,
-    required this.icon,
-    required this.color,
-    required this.semanticLabel,
-    required this.onPressed,
-  });
+  const HandscrollUnrollClipper(this.fraction);
 
   @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      excludeSemantics: true,
-      child: IconButton(
-        icon: Icon(icon, size: 20),
-        color: color,
-        constraints: const BoxConstraints.tightFor(
-          width: StagingHandscroll.kControlExtent,
-          height: StagingHandscroll.kControlExtent,
-        ),
-        padding: EdgeInsets.zero,
-        style: IconButton.styleFrom(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-        onPressed: onPressed,
-      ),
-    );
-  }
+  Rect getClip(Size size) => Rect.fromLTWH(0.0, 0.0, size.width * fraction, size.height);
+
+  @override
+  bool shouldReclip(covariant HandscrollUnrollClipper oldClipper) => oldClipper.fraction != fraction;
 }

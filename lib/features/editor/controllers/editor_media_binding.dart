@@ -6,6 +6,7 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../widgets/editor_media_actions.dart';
+import 'brush_reveal_queue.dart';
 import 'editor_autosave_manager.dart';
 
 /// Binds the entry editor's media interactions (collect, mount, unmount, erase,
@@ -28,6 +29,9 @@ class EditorMediaBinding {
   /// Ticks each time a mount is refused because the active sheet is full, so
   /// its Sheet Mount Strip can shake.
   final ValueNotifier<int> mountRefusals = ValueNotifier<int>(0);
+
+  /// Items collected in this session awaiting their one-time Brush Reveal.
+  final BrushRevealQueue brushReveals = BrushRevealQueue();
 
   /// Erased items still inside their undo window, by attachment id.
   final Map<String, SheetMediaItem> _pendingErasures = <String, SheetMediaItem>{};
@@ -58,6 +62,7 @@ class EditorMediaBinding {
         entryId: entryId,
         autosaveManager: autosaveManager,
         onStateChanged: onDone,
+        onCollected: brushReveals.enqueue,
       );
     } else {
       await EditorMediaActions.handleImagePick(
@@ -69,6 +74,7 @@ class EditorMediaBinding {
         entryId: entryId,
         autosaveManager: autosaveManager,
         onStateChanged: onDone,
+        onCollected: brushReveals.enqueue,
       );
     }
   }
@@ -77,6 +83,7 @@ class EditorMediaBinding {
   /// sheet refuses with a shake and "本页已满三影", leaving the item staged.
   Future<void> mountMedia(BuildContext context, String mediaId) async {
     final didMount = coordinator.media.mountOnActiveSheet(mediaId);
+    if (didMount) brushReveals.complete(mediaId);
     onStateChanged();
     if (!didMount) {
       mountRefusals.value++;
@@ -103,6 +110,7 @@ class EditorMediaBinding {
   void eraseStagedMedia(BuildContext context, String mediaId) {
     final removed = coordinator.media.removeStaged(mediaId);
     if (removed == null) return;
+    brushReveals.complete(mediaId);
     _pendingErasures[mediaId] = removed;
     onStateChanged();
 
@@ -154,5 +162,6 @@ class EditorMediaBinding {
       _purge(mediaId);
     }
     mountRefusals.dispose();
+    brushReveals.dispose();
   }
 }

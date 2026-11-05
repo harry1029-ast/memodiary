@@ -378,6 +378,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onEraseMedia: (mediaId) => _mediaBinding!.eraseStagedMedia(context, mediaId),
                 onUnmountMedia: _mediaBinding!.unmountMedia,
                 mountRefusals: _mediaBinding!.mountRefusals,
+                brushReveals: _mediaBinding!.brushReveals,
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),

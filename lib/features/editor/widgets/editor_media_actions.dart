@@ -50,6 +50,7 @@ class EditorMediaActions {
     required String entryId,
     EditorAutosaveManager? autosaveManager,
     VoidCallback? onStateChanged,
+    ValueChanged<String>? onCollected,
   }) async {
     if (_refuseWhenHandscrollFull(context, coordinator)) return;
     final tokens = InkDiaryTheme.tokensOf(context);
@@ -111,13 +112,14 @@ class EditorMediaActions {
           mediaType: EphemeraMediaType.image.embedKey,
         );
 
-        coordinator.media.collect(
+        final didCollect = coordinator.media.collect(
           SheetMediaItem(
             id: mediaId,
             mediaType: EphemeraMediaType.image,
             relativePath: relativePath,
           ),
         );
+        if (didCollect) onCollected?.call(mediaId);
       }
       onStateChanged?.call();
       if (leftOut > 0 && context.mounted) {
@@ -149,6 +151,7 @@ class EditorMediaActions {
     required String entryId,
     EditorAutosaveManager? autosaveManager,
     VoidCallback? onStateChanged,
+    ValueChanged<String>? onCollected,
   }) async {
     if (_refuseWhenHandscrollFull(context, coordinator)) return;
     final tokens = InkDiaryTheme.tokensOf(context);
@@ -205,7 +208,7 @@ class EditorMediaActions {
         thumbnailPath: result.thumbnailPath,
       );
 
-      coordinator.media.collect(
+      final didCollect = coordinator.media.collect(
         SheetMediaItem(
           id: mediaId,
           mediaType: EphemeraMediaType.video,
@@ -213,6 +216,7 @@ class EditorMediaActions {
           thumbnailPath: result.thumbnailPath,
         ),
       );
+      if (didCollect) onCollected?.call(mediaId);
       onStateChanged?.call();
       await autosaveManager?.saveDraft();
     } on VideoDurationExceededException catch (error) {

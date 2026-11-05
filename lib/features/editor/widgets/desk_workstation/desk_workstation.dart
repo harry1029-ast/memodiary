@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/services/media_sandbox_service.dart';
+import '../../controllers/brush_reveal_queue.dart';
 import '../../domain/stationery_sheet_descriptor.dart';
 import '../staging_handscroll.dart';
 import 'closed_brocade_scroll.dart';
@@ -21,6 +22,9 @@ class DeskWorkstation extends StatefulWidget {
   final ValueChanged<SheetMediaItem>? onMountItem;
   final ValueChanged<SheetMediaItem>? onEraseItem;
 
+  /// Items awaiting their Brush Reveal in the Staging Handscroll.
+  final BrushRevealQueue? brushReveals;
+
   static const double kHeaderHeight = 26.0;
   static const EdgeInsets kMatInsets = EdgeInsets.fromLTRB(10.0, kHeaderHeight, 10.0, 8.0);
 
@@ -33,6 +37,7 @@ class DeskWorkstation extends StatefulWidget {
     this.onTapItem,
     this.onMountItem,
     this.onEraseItem,
+    this.brushReveals,
   });
 
   @override
@@ -41,6 +46,23 @@ class DeskWorkstation extends StatefulWidget {
 
 class _DeskWorkstationState extends State<DeskWorkstation> {
   final _deskPainter = WalnutDeskPainter(matInsets: DeskWorkstation.kMatInsets);
+
+  /// Whether the open handscroll got there by opening from closed, so it
+  /// unrolls. A workstation built with items that are all awaiting their
+  /// reveal was closed before that collect (e.g. it was collapsed and the
+  /// collect expanded it); otherwise it was already open (reopen, re-expand).
+  late bool _opensFromClosed = _allAwaitingReveal(widget.stagedItems);
+
+  bool _allAwaitingReveal(List<SheetMediaItem> items) {
+    final queue = widget.brushReveals;
+    return items.isNotEmpty && queue != null && items.every((item) => queue.isPending(item.id));
+  }
+
+  @override
+  void didUpdateWidget(covariant DeskWorkstation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.stagedItems.isEmpty && widget.stagedItems.isNotEmpty) _opensFromClosed = true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +116,8 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
                           onTapItem: widget.onTapItem,
                           onMountItem: widget.onMountItem,
                           onEraseItem: widget.onEraseItem,
+                          brushReveals: widget.brushReveals,
+                          unrollOnOpen: _opensFromClosed,
                         ),
                 ),
               ),
