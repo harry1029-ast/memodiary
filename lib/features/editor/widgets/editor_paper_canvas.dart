@@ -14,6 +14,7 @@ import 'desk_workstation/desk_workstation_controller.dart';
 import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
 import 'paper_heart_metrics.dart';
+import 'sheet_drop_target.dart';
 import 'stationery_ephemera_sheet.dart';
 import 'stationery_sheet_border_chrome.dart';
 
@@ -204,7 +205,11 @@ class EditorPaperCanvas extends StatelessWidget {
                           alignment: Alignment.topCenter,
                           minHeight: 0,
                           maxHeight: double.infinity,
-                          child: Container(
+                          child: SheetDropTarget(
+                            isActive: sheetIndex == currentSheetIndex,
+                            sheetIndex: sheetIndex,
+                            onDrop: deskMedia.onMount,
+                            child: Container(
                             width: canvasWidth,
                             height: cardHeight,
                             decoration: BoxDecoration(
@@ -262,6 +267,7 @@ class EditorPaperCanvas extends StatelessWidget {
                                 ],
                               ),
                             ),
+                          ),
                           ),
                         ),
                       ),
