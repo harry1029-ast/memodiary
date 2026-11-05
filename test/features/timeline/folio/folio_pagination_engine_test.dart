@@ -20,6 +20,7 @@ void main() {
     int? mood = 4,
     bool isWeeklyReview = false,
     int? weekNumber,
+    bool legacyMountsPending = false,
   }) {
     return Entry(
       id: id,
@@ -37,7 +38,7 @@ void main() {
       updatedAt: testDate,
       isDeleted: false,
       isLocked: false,
-      legacyMountsPending: false,
+      legacyMountsPending: legacyMountsPending,
     );
   }
 
@@ -237,80 +238,157 @@ void main() {
       final lastBody = leaves.last as FolioContentBodyLeaf;
       expect(lastBody.sealText, equals('心迹安放'));
     });
+  });
 
-    test('media attachments emit dedicated TippedInEphemeraLeaf', () {
-      final entry = createTestEntry(
-        contentDelta: jsonEncode([
-          {'insert': '窗外细雨蒙蒙。\n'},
-        ]),
-        plainText: '窗外细雨蒙蒙。',
-      );
-
-      final attachment = MediaAttachment(
-        id: 'media-1',
-        entryId: entry.id,
-        mediaType: 'image',
-        relativePath: 'media/test_photo.webp',
-        thumbnailPath: 'media/thumb_test_photo.webp',
-        caption: '竹窗听雨图',
-        createdAt: testDate,
-      );
-
-      final leaves = FolioPaginationEngine.paginate(
-        entry: entry,
-        attachments: [attachment],
-      );
-
-      expect(leaves.length, equals(3));
-      expect(leaves[0], isA<FolioFrontispieceCoverLeaf>());
-      final cover = leaves[0] as FolioFrontispieceCoverLeaf;
-      expect(cover.heroPhotoPath, equals('media/test_photo.webp'));
-
-      // Contains content leaf and tipped-in ephemera leaf
-      final ephemeraLeaves = leaves.whereType<FolioTippedInEphemeraLeaf>().toList();
-      expect(ephemeraLeaves.length, equals(1));
-      expect(ephemeraLeaves.first.sandboxedRelativePath, equals('media/test_photo.webp'));
-      expect(ephemeraLeaves.first.caption, contains('竹窗听雨图'));
-      expect(leaves.last.isConcludingLeaf, isTrue);
-    });
-
-    test('curates FolioPhotoAttachment on CoverLeaf for multiple attachments (N=4)', () {
-      final entry = createTestEntry(
-        contentDelta: jsonEncode([
-          {'insert': '全卷随文影札集锦。\n'},
-        ]),
-        plainText: '全卷随文影札集锦。',
-      );
-
-      final attachments = List.generate(4, (index) {
-        final num = index + 1;
-        return MediaAttachment(
-          id: 'media-$num',
-          entryId: entry.id,
+  group('FolioPaginationEngine mount-marker pairing', () {
+    MediaAttachment photo(String id, {double? overlayX, double? overlayY}) => MediaAttachment(
+          id: id,
+          entryId: 'test-1',
           mediaType: 'image',
-          relativePath: 'media/photo_$num.webp',
-          thumbnailPath: 'media/thumb_$num.webp',
-          caption: '随文小景 $num',
+          relativePath: 'media/$id.webp',
+          caption: '$id 小景',
           createdAt: testDate,
+          overlayXRatio: overlayX,
+          overlayYRatio: overlayY,
         );
+
+    /// Thirty short lines span three Stationery Sheets (10 + 14 + 6 rows) and
+    /// three horizontal Folio body leaves (14 + 14 + 2 rows). [mountsAfterLine]
+    /// writes mount markers at the end of the given 0-based lines.
+    Entry threeSheetEntry({Map<int, List<String>> mountsAfterLine = const {}, bool legacyMountsPending = false}) {
+      final ops = <Map<String, dynamic>>[];
+      final lines = <String>[];
+      for (int line = 0; line < 30; line++) {
+        final text = '第${line + 1}行墨迹';
+        lines.add(text);
+        ops.add({'insert': text});
+        for (final mediaId in mountsAfterLine[line] ?? const <String>[]) {
+          ops.add({
+            'insert': {'mount': mediaId},
+          });
+        }
+        ops.add({'insert': '\n'});
+      }
+      return createTestEntry(
+        contentDelta: jsonEncode(ops),
+        plainText: lines.join('\n'),
+        legacyMountsPending: legacyMountsPending,
+      );
+    }
+
+    List<List<String>> bodyLeafPhotoIds(List<FolioLeaf> leaves) => leaves
+        .whereType<FolioContentBodyLeaf>()
+        .map((leaf) => leaf.photos.map((photo) => photo.id).toList())
+        .toList();
+
+    test('each mounted item rides on the leaf of the sheet holding its marker', () {
+      final entry = threeSheetEntry(mountsAfterLine: {
+        2: ['photo_a'],
+        15: ['photo_b', 'photo_c'],
       });
 
       final leaves = FolioPaginationEngine.paginate(
         entry: entry,
-        attachments: attachments,
+        attachments: [photo('photo_a'), photo('photo_b'), photo('photo_c')],
       );
 
-      expect(leaves.first, isA<FolioFrontispieceCoverLeaf>());
-      final cover = leaves.first as FolioFrontispieceCoverLeaf;
-      expect(cover.photos.length, equals(4));
+      expect(bodyLeafPhotoIds(leaves), [
+        ['photo_a'],
+        ['photo_b', 'photo_c'],
+        <String>[],
+      ]);
+      final secondLeaf = leaves.whereType<FolioContentBodyLeaf>().elementAt(1);
+      expect(secondLeaf.photos.map((photo) => photo.targetLeafIndex), [secondLeaf.leafIndex, secondLeaf.leafIndex]);
+    });
 
-      for (int index = 0; index < 4; index++) {
-        final photo = cover.photos[index];
-        expect(photo.pageNumber, equals(index + 1));
-        expect(photo.relativePath, equals('media/photo_${index + 1}.webp'));
-        expect(photo.title, equals('随文小景 ${index + 1}'));
-        expect(photo.targetLeafIndex, greaterThan(0));
-      }
+    test('staged items appear on no leaf, no tipped-in leaf and not on the Frontispiece', () {
+      final entry = threeSheetEntry(mountsAfterLine: {
+        2: ['photo_a'],
+      });
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        attachments: [photo('photo_staged'), photo('photo_a')],
+      );
+
+      final cover = leaves.first as FolioFrontispieceCoverLeaf;
+      expect(cover.photos.map((photo) => photo.id), ['photo_a']);
+      expect(cover.heroPhotoPath, 'media/photo_a.webp');
+      expect(leaves.whereType<FolioTippedInEphemeraLeaf>(), isEmpty);
+      expect(bodyLeafPhotoIds(leaves).expand((ids) => ids), ['photo_a']);
+    });
+
+    test('an entry with only staged items and no text is a zero-word draft', () {
+      final entry = createTestEntry(contentDelta: jsonEncode([{'insert': '\n'}]), plainText: '');
+
+      final leaves = FolioPaginationEngine.paginate(entry: entry, attachments: [photo('photo_staged')]);
+
+      expect(leaves, hasLength(1));
+      final cover = leaves.single as FolioFrontispieceCoverLeaf;
+      expect(cover.isZeroWordDraft, isTrue);
+      expect(cover.heroPhotoPath, isNull);
+    });
+
+    test('the Frontispiece showcase counts only the items mounted on sheet 1', () {
+      final entry = threeSheetEntry(mountsAfterLine: {
+        0: ['photo_a'],
+        9: ['photo_b'],
+        20: ['photo_c'],
+      });
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        attachments: [photo('photo_a'), photo('photo_b'), photo('photo_c')],
+      );
+
+      final cover = leaves.first as FolioFrontispieceCoverLeaf;
+      expect(cover.photos.map((photo) => photo.id), ['photo_a', 'photo_b']);
+      expect(cover.photos.first.targetLeafIndex, 1);
+    });
+
+    test('overlay cards keep their persisted drag position', () {
+      final entry = threeSheetEntry(mountsAfterLine: {
+        15: ['photo_a'],
+      });
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        attachments: [photo('photo_a', overlayX: 0.25, overlayY: 0.75)],
+      );
+
+      final card = leaves.whereType<FolioContentBodyLeaf>().elementAt(1).photos.single;
+      expect(card.overlayXRatio, 0.25);
+      expect(card.overlayYRatio, 0.75);
+    });
+
+    test('an entry awaiting the legacy mounting pass pairs its items first-come', () {
+      final entry = threeSheetEntry(legacyMountsPending: true);
+      final attachments = List.generate(4, (index) => photo('photo_$index'));
+
+      final leaves = FolioPaginationEngine.paginate(entry: entry, attachments: attachments);
+
+      expect(bodyLeafPhotoIds(leaves), [
+        ['photo_0', 'photo_1', 'photo_2'],
+        ['photo_3'],
+        <String>[],
+      ]);
+    });
+
+    test('an entry past the legacy pass keeps its unmarked items staged', () {
+      final entry = threeSheetEntry(mountsAfterLine: {
+        27: ['photo_1'],
+      });
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        attachments: [photo('photo_0'), photo('photo_1')],
+      );
+
+      expect(bodyLeafPhotoIds(leaves), [
+        <String>[],
+        <String>[],
+        ['photo_1'],
+      ]);
     });
   });
 }
