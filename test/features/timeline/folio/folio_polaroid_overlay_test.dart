@@ -378,7 +378,13 @@ void main() {
         notebookId: 'notebook_default',
         templateId: 'template_minimalist_white',
         title: '西湖记事',
-        contentDelta: jsonEncode([{'insert': '西湖断桥初雪。\n'}]),
+        contentDelta: jsonEncode([
+          {'insert': '西湖断桥初雪。'},
+          {
+            'insert': {'mount': 'media_persist_1'},
+          },
+          {'insert': '\n'},
+        ]),
         plainText: '西湖断桥初雪。',
         entryDate: now,
         createdAt: now,
