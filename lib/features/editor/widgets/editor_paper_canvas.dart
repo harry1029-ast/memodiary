@@ -14,6 +14,7 @@ import 'desk_workstation/desk_workstation_controller.dart';
 import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
 import 'paper_heart_metrics.dart';
+import 'desk_media_control.dart';
 import 'sheet_drop_target.dart';
 import 'stationery_ephemera_sheet.dart';
 import 'stationery_sheet_border_chrome.dart';
@@ -76,7 +77,8 @@ class EditorPaperCanvas extends StatelessWidget {
     final isDark = themeConfig.isPaperDark;
 
     // Scholar desk mat tone: warm parchment / tea-wood in light, deep walnut in dark
-    final deskColor = isDark ? const Color(0xFF151413) : const Color(0xFFE9E5DC);
+    final deskColor =
+        isDark ? const Color(0xFF151413) : const Color(0xFFE9E5DC);
 
     return LayoutBuilder(
       builder: (layoutContext, layoutConstraints) {
@@ -84,7 +86,8 @@ class EditorPaperCanvas extends StatelessWidget {
         final canvasHeight = layoutConstraints.maxHeight;
 
         // Bounded card canvas dimensions for integer-locked 14-row calculation
-        final cardCanvasSize = Size(canvasWidth, math.max(380.0, math.min(canvasHeight, 420.0)));
+        final cardCanvasSize =
+            Size(canvasWidth, math.max(380.0, math.min(canvasHeight, 420.0)));
         final metrics = StationeryLayoutCalculator.calculate(
           canvasSize: cardCanvasSize,
           style: templateStyle,
@@ -98,7 +101,8 @@ class EditorPaperCanvas extends StatelessWidget {
         final cardHeight = metrics.innerFrameRect.bottom + 16.0;
 
         // Resolve the active sheet's mounted items and the staged handscroll items
-        final activeSheet = (currentSheetIndex >= 0 && currentSheetIndex < coordinator.sheets.length)
+        final activeSheet = (currentSheetIndex >= 0 &&
+                currentSheetIndex < coordinator.sheets.length)
             ? coordinator.sheets[currentSheetIndex]
             : (coordinator.sheets.isNotEmpty ? coordinator.sheets.first : null);
         final mountedItems = activeSheet is TextStationerySheet
@@ -112,7 +116,8 @@ class EditorPaperCanvas extends StatelessWidget {
         const sealGap = 16.0;
         const sealBlockHeight = sealSize + sealGap;
 
-        DeskSpaceBudget resolveBudget({required bool isWorkstationCollapsed}) => DeskSpaceBudget.resolve(
+        DeskSpaceBudget resolveBudget({required bool isWorkstationCollapsed}) =>
+            DeskSpaceBudget.resolve(
               canvasHeight: canvasHeight,
               sheetHeight: cardHeight,
               sealBlockHeight: sealBlockHeight,
@@ -123,9 +128,11 @@ class EditorPaperCanvas extends StatelessWidget {
               isLastSheet: currentSheetIndex == totalSheets - 1,
             );
         final isWorkstationCollapsed = workstationController.resolveInitial(
-          workstationFits: resolveBudget(isWorkstationCollapsed: false).workstationFits,
+          workstationFits:
+              resolveBudget(isWorkstationCollapsed: false).workstationFits,
         );
-        final budget = resolveBudget(isWorkstationCollapsed: isWorkstationCollapsed);
+        final budget =
+            resolveBudget(isWorkstationCollapsed: isWorkstationCollapsed);
         final topOffset = budget.sheetTop;
 
         final double innerContentPaddingLeft;
@@ -145,7 +152,9 @@ class EditorPaperCanvas extends StatelessWidget {
 
         final usableTextWidth = math.max(
           120.0,
-          metrics.innerFrameRect.width - innerContentPaddingLeft - innerContentPaddingRight,
+          metrics.innerFrameRect.width -
+              innerContentPaddingLeft -
+              innerContentPaddingRight,
         );
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -155,9 +164,11 @@ class EditorPaperCanvas extends StatelessWidget {
           );
         });
 
-        final horizontalLeft = metrics.innerFrameRect.left + innerContentPaddingLeft;
+        final horizontalLeft =
+            metrics.innerFrameRect.left + innerContentPaddingLeft;
         final horizontalRight =
-            math.max(0.0, canvasWidth - metrics.innerFrameRect.right) + innerContentPaddingRight;
+            math.max(0.0, canvasWidth - metrics.innerFrameRect.right) +
+                innerContentPaddingRight;
 
         final deskTopSeal = topOffset + cardHeight + sealGap;
 
@@ -177,7 +188,8 @@ class EditorPaperCanvas extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         letterSpacing: 2.0,
-                        color: isDark ? Colors.white38 : const Color(0xFF6B655B),
+                        color:
+                            isDark ? Colors.white38 : const Color(0xFF6B655B),
                       ),
                     ),
                   ),
@@ -190,10 +202,76 @@ class EditorPaperCanvas extends StatelessWidget {
                   physics: const PageScrollPhysics(),
                   onPageChanged: onPageChanged,
                   itemBuilder: (pageContext, sheetIndex) {
-                    if (sheetIndex < 0 || sheetIndex >= coordinator.sheets.length) {
+                    if (sheetIndex < 0 ||
+                        sheetIndex >= coordinator.sheets.length) {
                       return const SizedBox.shrink();
                     }
                     final sheet = coordinator.sheets[sheetIndex];
+
+                    final sheetCard = Container(
+                      width: canvasWidth,
+                      height: cardHeight,
+                      decoration: BoxDecoration(
+                        color: templateStyle.backgroundColor,
+                        borderRadius: BorderRadius.circular(8.0),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0x33FFFFFF)
+                              : const Color(0x1F000000),
+                          width: 0.8,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black
+                                .withValues(alpha: isDark ? 0.45 : 0.08),
+                            blurRadius: 18.0,
+                            offset: const Offset(0, 6),
+                          ),
+                          BoxShadow(
+                            color: Colors.black
+                                .withValues(alpha: isDark ? 0.30 : 0.03),
+                            blurRadius: 4.0,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            TemplateCanvasContainer(
+                              style: templateStyle,
+                              typography: typography,
+                              scrollOffset: 0.0,
+                              headerHeight: sheet is OpeningSheet
+                                  ? letterheadConfig.headerHeight
+                                  : 0.0,
+                              layoutMetrics: metrics,
+                              customPadding: EdgeInsets.zero,
+                              child: const SizedBox.expand(),
+                            ),
+                            Theme(
+                              data: themeConfig.paperBaseTheme.copyWith(
+                                textTheme:
+                                    themeConfig.paperBaseTheme.textTheme.apply(
+                                  bodyColor: themeConfig.inkColor,
+                                  displayColor: themeConfig.inkColor,
+                                ),
+                              ),
+                              child: _buildSheetBody(
+                                sheet: sheet,
+                                sheetIndex: sheetIndex,
+                                metrics: metrics,
+                                activeRowHeight: activeRowHeight,
+                                horizontalLeft: horizontalLeft,
+                                horizontalRight: horizontalRight,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
 
                     return Align(
                       alignment: Alignment.topCenter,
@@ -205,70 +283,16 @@ class EditorPaperCanvas extends StatelessWidget {
                           alignment: Alignment.topCenter,
                           minHeight: 0,
                           maxHeight: double.infinity,
-                          child: SheetDropTarget(
-                            isActive: sheetIndex == currentSheetIndex,
-                            sheetIndex: sheetIndex,
-                            onDrop: deskMedia.onMount,
-                            child: Container(
-                            width: canvasWidth,
-                            height: cardHeight,
-                            decoration: BoxDecoration(
-                              color: templateStyle.backgroundColor,
-                              borderRadius: BorderRadius.circular(8.0),
-                              border: Border.all(
-                                color: isDark ? const Color(0x33FFFFFF) : const Color(0x1F000000),
-                                width: 0.8,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
-                                  blurRadius: 18.0,
-                                  offset: const Offset(0, 6),
-                                ),
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.03),
-                                  blurRadius: 4.0,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8.0),
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  TemplateCanvasContainer(
-                                    style: templateStyle,
-                                    typography: typography,
-                                    scrollOffset: 0.0,
-                                    headerHeight: sheet is OpeningSheet
-                                        ? letterheadConfig.headerHeight
-                                        : 0.0,
-                                    layoutMetrics: metrics,
-                                    customPadding: EdgeInsets.zero,
-                                    child: const SizedBox.expand(),
-                                  ),
-                                  Theme(
-                                    data: themeConfig.paperBaseTheme.copyWith(
-                                      textTheme: themeConfig.paperBaseTheme.textTheme.apply(
-                                        bodyColor: themeConfig.inkColor,
-                                        displayColor: themeConfig.inkColor,
-                                      ),
-                                    ),
-                                    child: _buildSheetBody(
-                                      sheet: sheet,
-                                      sheetIndex: sheetIndex,
-                                      metrics: metrics,
-                                      activeRowHeight: activeRowHeight,
-                                      horizontalLeft: horizontalLeft,
-                                      horizontalRight: horizontalRight,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          ),
+                          child: sheetIndex == currentSheetIndex &&
+                                  deskMedia.onMount != null
+                              ? SheetDropTarget(
+                                  sheetIndex: sheetIndex,
+                                  palette:
+                                      DeskMediaPalette(isPaperDark: isDark),
+                                  onMount: deskMedia.onMount!,
+                                  child: sheetCard,
+                                )
+                              : sheetCard,
                         ),
                       ),
                     );
@@ -350,7 +374,9 @@ class EditorPaperCanvas extends StatelessWidget {
         title: letterheadConfig.titleController.text.trim(),
         mediaSandboxService: mediaSandboxService,
         isActiveSheet: currentSheetIndex == sheet.sheetIndex,
-        onDelete: onDeleteEphemera != null ? () => onDeleteEphemera!(sheet.sheetIndex) : null,
+        onDelete: onDeleteEphemera != null
+            ? () => onDeleteEphemera!(sheet.sheetIndex)
+            : null,
         onCaptionChanged: (newCaption) => onSaveDraft(),
         isPaperDark: themeConfig.isPaperDark,
         substrate: themeConfig.templateStyle.tokens.substrate,

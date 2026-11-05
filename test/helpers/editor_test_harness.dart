@@ -223,6 +223,7 @@ Future<void> pumpEntryEditorScreen(
   AudioSanctumService? audioSanctumService,
   Size? viewportSize,
   ThemeData? theme,
+  bool launchFromRoute = false,
 }) async {
   if (viewportSize != null) {
     tester.view.physicalSize = viewportSize;
@@ -233,10 +234,7 @@ Future<void> pumpEntryEditorScreen(
     });
   }
 
-  await tester.pumpWidget(
-    MaterialApp(
-      theme: theme ?? InkDiaryTheme.light,
-      home: EntryEditorScreen(
+  EntryEditorScreen buildEditor() => EntryEditorScreen(
         database: database,
         mediaSandboxService: mediaSandboxService,
         entryId: entryId,
@@ -244,9 +242,33 @@ Future<void> pumpEntryEditorScreen(
         dictationService: dictationService,
         thoughtSparkService: thoughtSparkService,
         audioSanctumService: audioSanctumService,
-      ),
+      );
+
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: theme ?? InkDiaryTheme.light,
+      home: launchFromRoute
+          ? Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    key: const Key('launch_editor'),
+                    onPressed: () => Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(builder: (_) => buildEditor()),
+                    ),
+                    child: const Text('launch'),
+                  ),
+                ),
+              ),
+            )
+          : buildEditor(),
     ),
   );
   await tester.pumpAndSettle();
+  if (launchFromRoute) {
+    await tester.tap(find.byKey(const Key('launch_editor')));
+    await tester.pumpAndSettle();
+  }
 }
 

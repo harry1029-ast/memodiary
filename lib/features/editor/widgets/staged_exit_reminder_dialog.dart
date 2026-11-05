@@ -29,6 +29,20 @@ class StagedExitReminderDialog extends StatelessWidget {
     return choice ?? StagedExitChoice.continueMounting;
   }
 
+  /// Runs the exit reminder for [stagedCount] staged items and returns whether
+  /// the editor should be left. [discardStaged] runs first on 舍弃待贴.
+  static Future<bool> confirmLeave(
+    BuildContext context, {
+    required int stagedCount,
+    required Future<void> Function() discardStaged,
+  }) async {
+    if (stagedCount == 0) return true;
+    final choice = await show(context, stagedCount: stagedCount);
+    if (choice == StagedExitChoice.continueMounting) return false;
+    if (choice == StagedExitChoice.discard) await discardStaged();
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     const minTapSize = Size(44, 44);

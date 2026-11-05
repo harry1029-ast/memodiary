@@ -6,6 +6,7 @@ import '../domain/stationery_sheet_descriptor.dart';
 import 'brush_reveal/brush_reveal.dart';
 import 'desk_media_control.dart';
 import 'keepsake_thumbnail.dart';
+import 'staged_media_drag_data.dart';
 
 /// One Staging Handscroll slot. A freshly collected item plays its Brush
 /// Reveal here (its controls stay inert until painted). ✕ plays an in-place
@@ -108,9 +109,9 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
             // Long-press lifts the print to drop it on the active sheet (same
             // mount as 📌); a plain tap still opens the lightbox and a swipe
             // still scrolls the handscroll.
-            child: LongPressDraggable<String>(
+            child: LongPressDraggable<StagedMediaDragData>(
               key: Key('handscroll_item_${item.id}'),
-              data: item.id,
+              data: StagedMediaDragData(item.id),
               maxSimultaneousDrags: 1,
               feedback: SizedBox(
                 width: _kDragFeedbackSize,

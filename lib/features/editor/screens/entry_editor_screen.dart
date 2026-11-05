@@ -307,11 +307,10 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   Future<void> _handleSaveAndExit() async {
     HapticFeedback.lightImpact();
-    if (_coordinator.stagedItems.isNotEmpty) {
-      final choice = await StagedExitReminderDialog.show(context, stagedCount: _coordinator.stagedItems.length);
-      if (!mounted || choice == StagedExitChoice.continueMounting) return;
-      if (choice == StagedExitChoice.discard) await _mediaBinding?.discardAllStaged();
-    }
+    final stagedCount = _coordinator.stagedItems.length;
+    final shouldLeave = await StagedExitReminderDialog.confirmLeave(context,
+        stagedCount: stagedCount, discardStaged: () async => _mediaBinding?.discardAllStaged());
+    if (!mounted || !shouldLeave) return;
     await _autosaveManager?.saveDraft(force: true);
     if (mounted) Navigator.pop(context, true);
   }
