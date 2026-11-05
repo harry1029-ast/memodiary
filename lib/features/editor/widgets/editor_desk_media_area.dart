@@ -1,16 +1,21 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import 'desk_workstation/desk_space_budget.dart';
+import 'desk_workstation/desk_workstation.dart';
 import 'fullscreen_media_lightbox.dart';
 import 'sheet_mount_strip.dart';
-import 'staging_handscroll.dart';
 
-/// The desk area beneath the active Stationery Sheet: that sheet's Sheet Mount
-/// Strip, then the entry-wide Staging Handscroll. Tapping any item opens the
-/// fullscreen lightbox; mount and erase bubble up through callbacks.
+/// The desk area around the active Stationery Sheet, laid out by a
+/// [DeskSpaceBudget]: that sheet's Sheet Mount Strip just beneath it, and the
+/// Desk Workstation holding the entry-wide Staging Handscroll at the bottom.
+/// Both step aside (slide and fade) when the budget hides them. Tapping any
+/// item opens the fullscreen lightbox; collect, mount and erase bubble up.
+///
+/// Fills the canvas [Stack]; only the strip and workstation take hits.
 class EditorDeskMediaArea extends StatelessWidget {
+  final DeskSpaceBudget budget;
   final List<SheetMediaItem> mountedItems;
   final List<SheetMediaItem> stagedItems;
   final MediaSandboxService mediaSandboxService;
@@ -18,27 +23,26 @@ class EditorDeskMediaArea extends StatelessWidget {
   /// 1-based number of the active Stationery Sheet.
   final int activeSheetNumber;
   final bool isPaperDark;
+  final VoidCallback? onCollectMedia;
   final ValueChanged<String>? onMountMedia;
   final ValueChanged<String>? onEraseMedia;
   final void Function(String mediaId, String newCaption)? onCaptionChanged;
 
-  static const double kStripHeight = 72.0;
-  static const double kHandscrollMinHeight = 100.0;
-  static const double kGap = 8.0;
+  static const Duration kStepAsideDuration = Duration(milliseconds: 250);
 
   const EditorDeskMediaArea({
     super.key,
+    required this.budget,
     required this.mountedItems,
     required this.stagedItems,
     required this.mediaSandboxService,
     required this.activeSheetNumber,
     this.isPaperDark = false,
+    this.onCollectMedia,
     this.onMountMedia,
     this.onEraseMedia,
     this.onCaptionChanged,
   });
-
-  bool get isEmpty => mountedItems.isEmpty && stagedItems.isEmpty;
 
   void _openLightbox(BuildContext context, List<SheetMediaItem> items, SheetMediaItem item) {
     FullscreenMediaLightbox.show(
@@ -52,51 +56,72 @@ class EditorDeskMediaArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isEmpty) return const SizedBox.shrink();
-
-    return LayoutBuilder(
-      builder: (layoutContext, constraints) {
-        final stripBlock = mountedItems.isEmpty ? 0.0 : kStripHeight + kGap;
-        final handscrollHeight = math.max(
-          kHandscrollMinHeight,
-          constraints.maxHeight - stripBlock,
-        );
-        return SingleChildScrollView(
-          physics: const ClampingScrollPhysics(),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (mountedItems.isNotEmpty) ...[
-                SizedBox(
-                  height: kStripHeight,
-                  child: Center(
-                    child: SheetMountStrip(
-                      items: mountedItems,
-                      mediaSandboxService: mediaSandboxService,
-                      isPaperDark: isPaperDark,
-                      onTapItem: (item) => _openLightbox(context, mountedItems, item),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: kGap),
-              ],
-              if (stagedItems.isNotEmpty)
-                SizedBox(
-                  height: handscrollHeight,
-                  child: StagingHandscroll(
-                    items: stagedItems,
-                    mediaSandboxService: mediaSandboxService,
-                    activeSheetNumber: activeSheetNumber,
-                    isPaperDark: isPaperDark,
-                    onTapItem: (item) => _openLightbox(context, stagedItems, item),
-                    onMountItem: (item) => onMountMedia?.call(item.id),
-                    onEraseItem: (item) => onEraseMedia?.call(item.id),
-                  ),
-                ),
-            ],
+    return Stack(
+      children: [
+        Positioned(
+          top: budget.stripTop,
+          left: 16.0,
+          right: 16.0,
+          height: DeskSpaceBudget.kStripHeight,
+          child: _StepAside(
+            isShown: budget.showStrip && mountedItems.isNotEmpty,
+            child: Center(
+              child: SheetMountStrip(
+                items: mountedItems,
+                mediaSandboxService: mediaSandboxService,
+                isPaperDark: isPaperDark,
+                onTapItem: (item) => _openLightbox(context, mountedItems, item),
+              ),
+            ),
           ),
-        );
-      },
+        ),
+        Positioned(
+          left: 0.0,
+          right: 0.0,
+          bottom: 0.0,
+          height: budget.workstationHeight,
+          child: _StepAside(
+            isShown: budget.showWorkstation,
+            child: DeskWorkstation(
+              stagedItems: stagedItems,
+              mediaSandboxService: mediaSandboxService,
+              activeSheetNumber: activeSheetNumber,
+              onCollect: onCollectMedia,
+              onTapItem: (item) => _openLightbox(context, stagedItems, item),
+              onMountItem: (item) => onMountMedia?.call(item.id),
+              onEraseItem: (item) => onEraseMedia?.call(item.id),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Slides a desk element down and fades it out when hidden, then drops it from
+/// the tree so it takes no hits and no semantics.
+class _StepAside extends StatelessWidget {
+  final bool isShown;
+  final Widget child;
+
+  const _StepAside({required this.isShown, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: EditorDeskMediaArea.kStepAsideDuration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (transitionChild, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0.0, 0.4), end: Offset.zero).animate(animation),
+          child: transitionChild,
+        ),
+      ),
+      child: isShown
+          ? KeyedSubtree(key: const ValueKey('shown'), child: child)
+          : const SizedBox.shrink(key: ValueKey('hidden')),
     );
   }
 }

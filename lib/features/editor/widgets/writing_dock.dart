@@ -8,6 +8,7 @@ import 'writing_dock_formatting_ribbon.dart';
 /// Progressive two-tier bottom writing dock anchored above the soft keyboard.
 /// Tier 1 presents 5 high-frequency tools: Aa Formatting, Photo, Video, Dictation, Spark.
 /// Tier 2 smoothly unfolds on-demand as an inline formatting ribbon.
+/// Its footer handle collapses and restores the Desk Workstation above it.
 class WritingDock extends StatefulWidget {
   final QuillController controller;
   final QuillController Function()? onEnsureTextController;
@@ -19,8 +20,8 @@ class WritingDock extends StatefulWidget {
   final Color? backgroundColor;
   final Color? inkColor;
   final bool isPaperDark;
-  final bool initiallyCollapsed;
-  final ValueChanged<bool>? onCollapsedChanged;
+  final bool isWorkstationCollapsed;
+  final VoidCallback? onToggleWorkstation;
 
   const WritingDock({
     super.key,
@@ -34,8 +35,8 @@ class WritingDock extends StatefulWidget {
     this.backgroundColor,
     this.inkColor,
     this.isPaperDark = false,
-    this.initiallyCollapsed = false,
-    this.onCollapsedChanged,
+    this.isWorkstationCollapsed = false,
+    this.onToggleWorkstation,
   });
 
   @override
@@ -44,24 +45,19 @@ class WritingDock extends StatefulWidget {
 
 class _WritingDockState extends State<WritingDock> {
   bool _isFormattingOpen = false;
-  late bool _isManuallyCollapsed;
+  bool _hasToggledThisDrag = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _isManuallyCollapsed = widget.initiallyCollapsed;
-  }
-
-  void _toggleCollapse() {
+  /// With the keyboard open the workstation is already stepped aside, so the
+  /// handle first dismisses the keyboard and only then restores a collapsed one.
+  void _toggleWorkstation() {
     HapticFeedback.lightImpact();
-    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-    if (isKeyboardOpen && !_isManuallyCollapsed) {
+    // The Scaffold strips the keyboard inset from its body, so read the view's.
+    final isKeyboardOpen = View.of(context).viewInsets.bottom > 0;
+    if (isKeyboardOpen) {
       FocusScope.of(context).unfocus();
+      if (!widget.isWorkstationCollapsed) return;
     }
-    setState(() {
-      _isManuallyCollapsed = !_isManuallyCollapsed;
-    });
-    widget.onCollapsedChanged?.call(_isManuallyCollapsed);
+    widget.onToggleWorkstation?.call();
   }
 
   @override
@@ -74,9 +70,6 @@ class _WritingDockState extends State<WritingDock> {
 
     final effectiveInkColor = widget.inkColor ??
         (widget.isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF2D2D2D));
-
-    final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-    final isCollapsed = _isManuallyCollapsed && !isKeyboardOpen;
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
@@ -99,81 +92,60 @@ class _WritingDockState extends State<WritingDock> {
         ),
         child: SafeArea(
           top: false,
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeInOutCubic,
-            alignment: Alignment.bottomCenter,
-            child: isCollapsed
-                ? _buildHandleBar(
-                    key: const Key('writing_dock_collapsed_tab'),
-                    height: 28,
-                    isCollapsed: true,
-                    tokens: tokens,
-                    effectiveInkColor: effectiveInkColor,
-                  )
-                : _buildExpandedContent(tokens, effectiveInkColor),
-          ),
+          child: _buildExpandedContent(tokens, effectiveInkColor),
         ),
       ),
     );
   }
 
-  Widget _buildHandleBar({
-    required Key key,
-    required double height,
-    required bool isCollapsed,
-    required InkDiaryTokens tokens,
-    required Color effectiveInkColor,
-  }) {
-    return GestureDetector(
-      key: key,
-      behavior: HitTestBehavior.opaque,
-      onTap: _toggleCollapse,
-      onVerticalDragUpdate: (dragDetails) {
-        final delta = dragDetails.primaryDelta;
-        if (delta == null) return;
-        if (isCollapsed && delta < -6) {
-          _toggleCollapse();
-        } else if (!isCollapsed && delta > 6) {
-          _toggleCollapse();
-        }
-      },
-      onVerticalDragEnd: (dragDetails) {
-        final velocity = dragDetails.primaryVelocity;
-        if (velocity == null) return;
-        if (isCollapsed && velocity < -80) {
-          _toggleCollapse();
-        } else if (!isCollapsed && velocity > 80) {
-          _toggleCollapse();
-        }
-      },
-      child: Container(
-        height: height,
-        width: double.infinity,
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: isCollapsed ? 32 : 36,
-              height: 3.5,
-              decoration: BoxDecoration(
-                color: tokens.deckleBorder,
-                borderRadius: BorderRadius.circular(2),
+  Widget _buildWorkstationHandle(InkDiaryTokens tokens, Color effectiveInkColor) {
+    final isCollapsed = widget.isWorkstationCollapsed;
+    return Semantics(
+      button: true,
+      label: isCollapsed ? '展开画案' : '收起画案',
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: const Key('writing_dock_workstation_handle'),
+        behavior: HitTestBehavior.opaque,
+        onTap: _toggleWorkstation,
+        onVerticalDragStart: (_) => _hasToggledThisDrag = false,
+        onVerticalDragUpdate: (dragDetails) {
+          final delta = dragDetails.primaryDelta;
+          if (delta == null || _hasToggledThisDrag) return;
+          // Pull up to raise the workstation, push down to put it away.
+          if ((isCollapsed && delta < -6) || (!isCollapsed && delta > 6)) {
+            _hasToggledThisDrag = true;
+            _toggleWorkstation();
+          }
+        },
+        child: Container(
+          height: 22,
+          width: double.infinity,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 3.5,
+                decoration: BoxDecoration(
+                  color: tokens.deckleBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            AnimatedRotation(
-              turns: isCollapsed ? 0.5 : 0.0,
-              duration: const Duration(milliseconds: 240),
-              curve: Curves.easeInOutCubic,
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: effectiveInkColor.withValues(alpha: 0.65),
+              const SizedBox(width: 4),
+              AnimatedRotation(
+                turns: isCollapsed ? 0.5 : 0.0,
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeInOutCubic,
+                child: Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: effectiveInkColor.withValues(alpha: 0.65),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -183,13 +155,7 @@ class _WritingDockState extends State<WritingDock> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildHandleBar(
-          key: const Key('writing_dock_collapse_toggle'),
-          height: 18,
-          isCollapsed: false,
-          tokens: tokens,
-          effectiveInkColor: effectiveInkColor,
-        ),
+        _buildWorkstationHandle(tokens, effectiveInkColor),
         AnimatedSize(
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeInOutCubic,
