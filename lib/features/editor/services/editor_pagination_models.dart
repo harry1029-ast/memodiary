@@ -55,3 +55,16 @@ class EditorEphemeraBlock extends EditorContentBlock {
     required this.rawData,
   });
 }
+
+/// Outcome of partitioning an entry: its Stationery Sheets (with mounted items
+/// resolved from mount markers) and the attachments waiting in the Staging
+/// Handscroll because no marker references them.
+class EditorPartition {
+  final List<StationerySheetDescriptor> sheets;
+  final List<SheetMediaItem> stagedItems;
+
+  const EditorPartition({
+    required this.sheets,
+    required this.stagedItems,
+  });
+}

@@ -8,17 +8,17 @@ import '../../templates/widgets/template_canvas_container.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../services/editor_pagination_coordinator.dart';
+import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
-import 'fullscreen_media_lightbox.dart';
 import 'paper_heart_metrics.dart';
 import 'stationery_ephemera_sheet.dart';
-import 'stationery_media_tray.dart';
 import 'stationery_sheet_border_chrome.dart';
 
 /// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
 /// resting on a scholar's writing desk.
 ///
-/// When an entry or sheet is text-only (zero photos attached), the 14-row integer-locked
+/// Beneath the active sheet rest its Sheet Mount Strip and the Staging Handscroll.
+/// When the sheet has no mounted items and the handscroll is empty, the 14-row integer-locked
 /// stationery card automatically centers vertically on the desk mat with the diarist's
 /// Cinnabar Signature Seal resting cleanly beneath it, eliminating empty whitespace voids.
 class EditorPaperCanvas extends StatelessWidget {
@@ -35,8 +35,9 @@ class EditorPaperCanvas extends StatelessWidget {
   final VoidCallback? onNextSheet;
   final ValueChanged<int>? onPageChanged;
   final void Function(int sheetIndex)? onDeleteEphemera;
-  final void Function(int sheetIndex, String mediaId)? onDeleteMedia;
-  final void Function(int sheetIndex, String mediaId, String newCaption)? onMediaCaptionChanged;
+  final ValueChanged<String>? onMountMedia;
+  final ValueChanged<String>? onEraseMedia;
+  final void Function(String mediaId, String newCaption)? onMediaCaptionChanged;
   final void Function(int sheetIndex)? onSpillBack;
 
   const EditorPaperCanvas({
@@ -53,7 +54,8 @@ class EditorPaperCanvas extends StatelessWidget {
     this.onNextSheet,
     this.onPageChanged,
     this.onDeleteEphemera,
-    this.onDeleteMedia,
+    this.onMountMedia,
+    this.onEraseMedia,
     this.onMediaCaptionChanged,
     this.onSpillBack,
   });
@@ -86,13 +88,16 @@ class EditorPaperCanvas extends StatelessWidget {
         // Card height wraps innerFrameRect with 16px bottom padding
         final cardHeight = metrics.innerFrameRect.bottom + 16.0;
 
-        // Resolve active sheet and check whether it currently contains media attachments
+        // Resolve the active sheet's mounted items and the staged handscroll items
         final activeSheet = (currentSheetIndex >= 0 && currentSheetIndex < coordinator.sheets.length)
             ? coordinator.sheets[currentSheetIndex]
             : (coordinator.sheets.isNotEmpty ? coordinator.sheets.first : null);
+        final mountedItems = activeSheet is TextStationerySheet
+            ? List<SheetMediaItem>.unmodifiable(activeSheet.mediaAttachments)
+            : const <SheetMediaItem>[];
+        final stagedItems = coordinator.stagedItems;
 
-        final bool hasSheetAttachments = activeSheet is TextStationerySheet && activeSheet.hasMediaAttachments;
-        final bool hasAttachments = hasSheetAttachments;
+        final bool hasAttachments = mountedItems.isNotEmpty || stagedItems.isNotEmpty;
 
         final bool keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
 
@@ -255,8 +260,8 @@ class EditorPaperCanvas extends StatelessWidget {
                   },
                 ),
 
-                // Lower Media & Keepsake Tray on Split Desk when active sheet has attachments
-                if (activeSheet is TextStationerySheet && activeSheet.hasMediaAttachments)
+                // Sheet Mount Strip and Staging Handscroll resting beneath the card
+                if (hasAttachments && canvasHeight - (topOffset + cardHeight + 10.0) > 12.0)
                   Positioned(
                     top: topOffset + cardHeight + 10.0,
                     left: 16.0,
@@ -272,31 +277,18 @@ class EditorPaperCanvas extends StatelessWidget {
                         curve: Curves.easeOutCubic,
                         child: IgnorePointer(
                           ignoring: keyboardVisible,
-                          child: StationeryMediaTray(
-                            items: activeSheet.mediaAttachments,
+                          child: EditorDeskMediaArea(
+                            mountedItems: mountedItems,
+                            stagedItems: stagedItems,
                             mediaSandboxService: mediaSandboxService,
-                            onTapMedia: (item) {
-                              FullscreenMediaLightbox.show(
-                                context,
-                                item: item,
-                                mediaSandboxService: mediaSandboxService,
-                                onCaptionChanged: (mediaId, newCaption) {
-                                  coordinator.media.updateMediaCaption(currentSheetIndex, mediaId, newCaption);
-                                  onMediaCaptionChanged?.call(currentSheetIndex, mediaId, newCaption);
-                                  onSaveDraft();
-                                },
-                              );
-                            },
-                            onDeleteItem: (mediaId) {
-                              if (onDeleteMedia != null) {
-                                onDeleteMedia!(currentSheetIndex, mediaId);
-                              } else {
-                                coordinator.media.removeMediaAttachment(currentSheetIndex, mediaId);
-                                onSaveDraft();
-                              }
-                            },
+                            activeSheetNumber: currentSheetIndex + 1,
                             isPaperDark: themeConfig.isPaperDark,
-                            inkColor: themeConfig.inkColor,
+                            onMountMedia: onMountMedia,
+                            onEraseMedia: onEraseMedia,
+                            onCaptionChanged: (mediaId, newCaption) {
+                              coordinator.media.updateCaption(mediaId, newCaption);
+                              onMediaCaptionChanged?.call(mediaId, newCaption);
+                            },
                           ),
                         ),
                       ),

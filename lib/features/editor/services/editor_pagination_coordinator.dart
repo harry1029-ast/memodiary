@@ -9,6 +9,7 @@ import '../../templates/models/template_style.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/typography_settings.dart';
 import 'editor_delta_partitioner.dart';
+import '../models/mount_marker.dart';
 import 'editor_pagination_models.dart';
 import 'sheet_media_operations.dart';
 import 'stationery_delta_synthesizer.dart';
@@ -20,6 +21,9 @@ export 'editor_pagination_models.dart';
 /// and discrete, integer-locked Stationery Sheets in the authoring canvas.
 class EditorPaginationCoordinator extends ChangeNotifier {
   final List<StationerySheetDescriptor> _sheets = <StationerySheetDescriptor>[];
+
+  /// Items in the Staging Handscroll (no mount marker), in collect order.
+  final List<SheetMediaItem> _stagedItems = <SheetMediaItem>[];
   final ValueNotifier<int> contentRevision = ValueNotifier<int>(0);
   int _activeSheetIndex = 0;
   bool _isDisposed = false;
@@ -43,9 +47,10 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     this.lineStridePx,
   });
 
-  /// Media mutations (sheet-paired keepsakes, ephemera sheets, inline inserts).
+  /// Media mutations (collect, mount, ephemera sheets, inline inserts).
   late final SheetMediaOperations media = SheetMediaOperations(
     sheets: _sheets,
+    stagedItems: _stagedItems,
     readActiveIndex: () => _activeSheetIndex,
     writeActiveIndex: (index) => _activeSheetIndex = index,
     onContentMutated: () {
@@ -55,6 +60,9 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   );
 
   List<StationerySheetDescriptor> get sheets => List.unmodifiable(_sheets);
+
+  /// Items waiting in the Staging Handscroll, in collect order.
+  List<SheetMediaItem> get stagedItems => List.unmodifiable(_stagedItems);
   int get totalSheets => _sheets.length;
   int get activeSheetIndex => _activeSheetIndex;
 
@@ -80,10 +88,25 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   }
 
   /// Populates the coordinator from a raw continuous Quill Delta JSON array.
+  ///
+  /// [attachments] are resolved against the Delta's mount markers: referenced
+  /// ones are mounted on their sheets, the rest are staged in collect order.
   void initializeFromDelta(
     String contentDeltaJson, {
     String? fallbackPlainText,
     List<MediaAttachment> attachments = const [],
+  }) {
+    _initialize(
+      contentDeltaJson,
+      fallbackPlainText: fallbackPlainText,
+      media: attachments.map(SheetMediaItem.fromMediaAttachment).toList(),
+    );
+  }
+
+  void _initialize(
+    String contentDeltaJson, {
+    String? fallbackPlainText,
+    required List<SheetMediaItem> media,
   }) {
     for (final sheet in _sheets) {
       sheet.dispose();
@@ -106,16 +129,19 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       unifiedDelta = Delta()..insert('\n');
     }
 
-    final partitioned = EditorDeltaPartitioner.partition(
+    final partition = EditorDeltaPartitioner.partition(
       unifiedDelta: unifiedDelta,
-      attachments: attachments,
+      media: media,
       typography: typography,
       contentWidth: contentWidth,
       templateStyle: templateStyle,
       lineStridePx: lineStridePx,
     );
 
-    _sheets.addAll(partitioned);
+    _sheets.addAll(partition.sheets);
+    _stagedItems
+      ..clear()
+      ..addAll(partition.stagedItems);
     _activeSheetIndex = 0;
     notifyListeners();
   }
@@ -150,14 +176,15 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     }
 
     final unifiedDelta = synthesizeUnifiedDelta();
-    final partitioned = EditorDeltaPartitioner.partition(
+    final partition = EditorDeltaPartitioner.partition(
       unifiedDelta: unifiedDelta,
+      media: media.allItems(),
       typography: typography,
       contentWidth: contentWidth,
       templateStyle: templateStyle,
       lineStridePx: lineStridePx,
     );
-    StationerySheetSpillMutator.preserveAttachments(_sheets, partitioned);
+    final partitioned = partition.sheets;
 
     if (StationerySheetSpillMutator.areSheetsEquivalent(_sheets, partitioned)) {
       for (final candidate in partitioned) {
@@ -181,6 +208,9 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     _sheets
       ..clear()
       ..addAll(partitioned);
+    _stagedItems
+      ..clear()
+      ..addAll(partition.stagedItems);
     _activeSheetIndex = previousIndex.clamp(0, _sheets.length - 1);
 
     final restoredSheet = _sheets[_activeSheetIndex];
@@ -202,8 +232,11 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   /// Re-synthesizes the unified Delta JSON string and plain text representation.
   (String deltaJson, String plainText) reSynthesize() {
     final unified = synthesizeUnifiedDelta();
-    final plainText = Document.fromDelta(unified).toPlainText().trim();
-    if (plainText.isEmpty && _sheets.every((sheet) => sheet is! EphemeraSheet)) {
+    final hasMountMarkers = MountMarker.mediaIdsIn(unified).isNotEmpty;
+    final plainText = Document.fromDelta(MountMarker.strip(unified)).toPlainText().trim();
+    if (plainText.isEmpty &&
+        !hasMountMarkers &&
+        _sheets.every((sheet) => sheet is! EphemeraSheet)) {
       return ('[]', '');
     }
     return (jsonEncode(unified.toJson()), plainText);
@@ -288,17 +321,14 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     double? newLineStridePx,
   }) {
     final unifiedDelta = synthesizeUnifiedDelta();
-    final allAttachments = media.collectSheetAttachments();
+    final allMedia = media.allItems();
 
     typography = newTypography;
     if (newContentWidth != null) contentWidth = newContentWidth;
     if (newTemplateStyle != null) templateStyle = newTemplateStyle;
     if (newLineStridePx != null) lineStridePx = newLineStridePx;
 
-    initializeFromDelta(
-      jsonEncode(unifiedDelta.toJson()),
-      attachments: allAttachments,
-    );
+    _initialize(jsonEncode(unifiedDelta.toJson()), media: allMedia);
   }
 
   /// Finds or creates a text-bearing sheet immediately following [fromIndex].

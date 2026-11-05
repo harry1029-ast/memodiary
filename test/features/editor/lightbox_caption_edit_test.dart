@@ -61,7 +61,7 @@ void main() {
       entryId: entryId,
       viewportSize: const Size(360.0, 780.0),
     );
-    await tester.tap(find.byKey(const Key('media_tray_card_$mediaId')));
+    await tester.tap(find.byKey(const Key('handscroll_item_$mediaId')));
     await tester.pumpAndSettle();
     expect(find.byType(FullscreenMediaLightbox), findsOneWidget);
   }

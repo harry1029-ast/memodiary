@@ -449,9 +449,14 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
-  /// Retrieves all media attachments associated with a specific entry
+  /// Retrieves all media attachments of [entryId] in collect order (oldest first).
   Future<List<MediaAttachment>> getMediaForEntry(String entryId) {
-    return (select(mediaAttachments)..where((t) => t.entryId.equals(entryId)))
+    return (select(mediaAttachments)
+          ..where((t) => t.entryId.equals(entryId))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.createdAt),
+            (t) => OrderingTerm.asc(const CustomExpression<int>('rowid')),
+          ]))
         .get();
   }
 

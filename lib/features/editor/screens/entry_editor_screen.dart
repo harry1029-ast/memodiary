@@ -162,9 +162,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             entryId: widget.entryId,
             imagePicker: _imagePicker,
             coordinator: _coordinator,
-            pageController: _pageController,
             autosaveManager: autosave,
-            paginationHandler: handler,
             onStateChanged: () {
               if (mounted) setState(() {});
             },
@@ -347,9 +345,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
                 onPageChanged: _paginationHandler!.handlePageChanged,
                 onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
-                onDeleteMedia: _mediaBinding!.deleteMedia,
-                onMediaCaptionChanged: (sheetIndex, mediaId, newCaption) =>
-                    _mediaBinding!.updateCaption(mediaId, newCaption),
+                onMountMedia: (mediaId) => _mediaBinding!.mountMedia(context, mediaId),
+                onEraseMedia: _mediaBinding!.eraseStagedMedia,
+                onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),
             ),

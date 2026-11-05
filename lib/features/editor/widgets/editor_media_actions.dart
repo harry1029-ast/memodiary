@@ -10,7 +10,6 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/media_embed_data.dart';
 import '../models/thought_spark.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
@@ -21,7 +20,7 @@ class EditorMediaActions {
   const EditorMediaActions._();
 
   /// Prompts the user to pick an image (camera or gallery), compresses to WebP,
-  /// copies into private sandbox storage, and mounts onto a dedicated EphemeraSheet.
+  /// copies into private sandbox storage, and Collects it into the Staging Handscroll.
   static Future<void> handleImagePick({
     required BuildContext context,
     required ImagePicker imagePicker,
@@ -82,29 +81,13 @@ class EditorMediaActions {
         mediaType: EphemeraMediaType.image.embedKey,
       );
 
-      final activeSheet = coordinator.sheets.isNotEmpty &&
-              coordinator.activeSheetIndex < coordinator.sheets.length
-          ? coordinator.sheets[coordinator.activeSheetIndex]
-          : null;
-
-      if (activeSheet is TextStationerySheet && !activeSheet.isAtMediaCapacity) {
-        coordinator.media.attachMediaToActiveSheet(
-          SheetMediaItem(
-            id: mediaId,
-            mediaType: EphemeraMediaType.image,
-            relativePath: relativePath,
-          ),
-        );
-      } else {
-        coordinator.media.insertMediaAtCurrentSelection(
+      coordinator.media.collect(
+        SheetMediaItem(
+          id: mediaId,
           mediaType: EphemeraMediaType.image,
-          mediaData: MediaEmbedData(
-            path: relativePath,
-            caption: '',
-            aspect: 'auto',
-          ),
-        );
-      }
+          relativePath: relativePath,
+        ),
+      );
       onStateChanged?.call();
       await autosaveManager?.saveDraft();
     } catch (error) {
@@ -119,7 +102,7 @@ class EditorMediaActions {
   }
 
   /// Prompts the user to pick or record a video (camera or gallery, <= 60s),
-  /// sandboxes into private storage, and mounts onto a dedicated EphemeraSheet.
+  /// sandboxes into private storage, and Collects it into the Staging Handscroll.
   static Future<void> handleVideoPick({
     required BuildContext context,
     required ImagePicker imagePicker,
@@ -184,30 +167,14 @@ class EditorMediaActions {
         thumbnailPath: result.thumbnailPath,
       );
 
-      final activeSheet = coordinator.sheets.isNotEmpty &&
-              coordinator.activeSheetIndex < coordinator.sheets.length
-          ? coordinator.sheets[coordinator.activeSheetIndex]
-          : null;
-
-      if (activeSheet is TextStationerySheet && !activeSheet.isAtMediaCapacity) {
-        coordinator.media.attachMediaToActiveSheet(
-          SheetMediaItem(
-            id: mediaId,
-            mediaType: EphemeraMediaType.video,
-            relativePath: result.relativePath,
-            thumbnailPath: result.thumbnailPath,
-          ),
-        );
-      } else {
-        coordinator.media.insertMediaAtCurrentSelection(
+      coordinator.media.collect(
+        SheetMediaItem(
+          id: mediaId,
           mediaType: EphemeraMediaType.video,
-          mediaData: MediaEmbedData(
-            path: result.relativePath,
-            caption: '',
-            aspect: 'auto',
-          ),
-        );
-      }
+          relativePath: result.relativePath,
+          thumbnailPath: result.thumbnailPath,
+        ),
+      );
       onStateChanged?.call();
       await autosaveManager?.saveDraft();
     } on VideoDurationExceededException catch (error) {
@@ -277,31 +244,23 @@ class EditorMediaActions {
     onStateChanged?.call();
   }
 
-  /// Deletes an attached media item from the given sheet, removes it from SQLite,
-  /// and saves a draft.
-  static Future<void> handleDeleteMedia({
+  /// Erases a staged item from the Staging Handscroll and removes its SQLite
+  /// attachment record, then saves a draft.
+  static Future<void> handleEraseStagedMedia({
     required EditorPaginationCoordinator coordinator,
     required AppDatabase database,
     required String entryId,
-    required int sheetIndex,
     required String mediaId,
     EditorAutosaveManager? autosaveManager,
     VoidCallback? onStateChanged,
   }) async {
-    if (sheetIndex >= 0 && sheetIndex < coordinator.sheets.length) {
-      final sheet = coordinator.sheets[sheetIndex];
-      if (sheet is TextStationerySheet) {
-        final items = sheet.mediaAttachments.where((item) => item.id == mediaId).toList();
-        coordinator.media.removeMediaAttachment(sheetIndex, mediaId);
-        for (final item in items) {
-          await database.deleteMediaForEntryByPath(
-            entryId: entryId,
-            relativePath: item.relativePath,
-          );
-        }
-        await autosaveManager?.saveDraft();
-        onStateChanged?.call();
-      }
-    }
+    final removed = coordinator.media.removeStaged(mediaId);
+    if (removed == null) return;
+    await database.deleteMediaForEntryByPath(
+      entryId: entryId,
+      relativePath: removed.relativePath,
+    );
+    await autosaveManager?.saveDraft();
+    onStateChanged?.call();
   }
 }

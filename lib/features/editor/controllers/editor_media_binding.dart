@@ -6,9 +6,8 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../widgets/editor_media_actions.dart';
 import 'editor_autosave_manager.dart';
-import 'editor_pagination_handler.dart';
 
-/// Binds the entry editor's media interactions (pick, delete, caption) to the
+/// Binds the entry editor's media interactions (collect, mount, erase, caption) to the
 /// pagination coordinator, database and autosave pipeline, keeping
 /// `EntryEditorScreen` free of media plumbing.
 class EditorMediaBinding {
@@ -17,9 +16,7 @@ class EditorMediaBinding {
   final String entryId;
   final ImagePicker imagePicker;
   final EditorPaginationCoordinator coordinator;
-  final PageController pageController;
   final EditorAutosaveManager autosaveManager;
-  final EditorPaginationHandler paginationHandler;
 
   /// Requests a rebuild of the hosting screen (only invoked while mounted).
   final VoidCallback onStateChanged;
@@ -30,26 +27,14 @@ class EditorMediaBinding {
     required this.entryId,
     required this.imagePicker,
     required this.coordinator,
-    required this.pageController,
     required this.autosaveManager,
-    required this.paginationHandler,
     required this.onStateChanged,
   });
 
-  /// Picks a photo or video and attaches it, then glides to the active sheet.
+  /// Picks a photo or video and Collects it into the Staging Handscroll.
   Future<void> pickMedia(BuildContext context, {required bool isVideo}) async {
     void onDone() {
-      paginationHandler.attachSheetListeners();
-      if (!context.mounted) return;
-      paginationHandler.currentSheetIndex = coordinator.activeSheetIndex;
-      onStateChanged();
-      if (pageController.hasClients) {
-        pageController.animateToPage(
-          coordinator.activeSheetIndex,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-        );
-      }
+      if (context.mounted) onStateChanged();
     }
 
     if (isVideo) {
@@ -77,13 +62,27 @@ class EditorMediaBinding {
     }
   }
 
-  /// Removes a sheet-paired keepsake from [sheetIndex] and its database record.
-  Future<void> deleteMedia(int sheetIndex, String mediaId) async {
-    await EditorMediaActions.handleDeleteMedia(
+  /// Mounts the staged item [mediaId] onto the active Stationery Sheet.
+  Future<void> mountMedia(BuildContext context, String mediaId) async {
+    final didMount = coordinator.media.mountOnActiveSheet(mediaId);
+    onStateChanged();
+    if (!didMount) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('本页已满三影')));
+      }
+      return;
+    }
+    await autosaveManager.saveDraft();
+  }
+
+  /// Erases the staged item [mediaId] and its database record.
+  Future<void> eraseStagedMedia(String mediaId) async {
+    await EditorMediaActions.handleEraseStagedMedia(
       coordinator: coordinator,
       database: database,
       entryId: entryId,
-      sheetIndex: sheetIndex,
       mediaId: mediaId,
       autosaveManager: autosaveManager,
       onStateChanged: onStateChanged,

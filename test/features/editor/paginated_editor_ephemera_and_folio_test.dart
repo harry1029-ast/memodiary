@@ -13,7 +13,6 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/stationery_ephemera_sheet.dart';
-import 'package:memodiary/features/editor/widgets/stationery_media_tray.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_leaf_model.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_pagination_engine.dart';
 import '../../helpers/editor_test_harness.dart';
@@ -80,20 +79,20 @@ void main() {
       await tester.tap(find.text('相册选撷 · Photo Gallery'));
       await tester.pumpAndSettle();
 
-      // In Split Desk architecture: photo mounts into lower StationeryMediaTray on Sheet 1
+      // The picked photo is collected into the Staging Handscroll, not onto a sheet
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byType(StationeryMediaTray), findsOneWidget);
+      expect(find.byKey(const Key('staging_handscroll')), findsOneWidget);
 
       final attachmentsBeforeDelete = await database.getMediaForEntry('ephemera_folio_entry');
       expect(attachmentsBeforeDelete, hasLength(1));
 
-      // Delete the photo from the StationeryMediaTray
-      final deleteBtnFinder = find.byKey(Key('media_tray_delete_${attachmentsBeforeDelete.first.id}'));
-      expect(deleteBtnFinder, findsOneWidget);
-      await tester.tap(deleteBtnFinder);
+      // Erase the photo from the Staging Handscroll
+      final eraseBtnFinder = find.byKey(Key('handscroll_erase_${attachmentsBeforeDelete.first.id}'));
+      expect(eraseBtnFinder, findsOneWidget);
+      await tester.tap(eraseBtnFinder);
       await tester.pumpAndSettle();
 
-      expect(find.byType(StationeryMediaTray), findsNothing);
+      expect(find.byKey(const Key('staging_handscroll')), findsNothing);
 
       // Verify SQLite media_attachments row is deleted
       final attachmentsAfterDelete = await database.getMediaForEntry('ephemera_folio_entry');
@@ -119,10 +118,10 @@ void main() {
         viewportSize: const Size(360.0, 780.0),
       );
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byType(StationeryMediaTray), findsNothing);
+      expect(find.byKey(const Key('staging_handscroll')), findsNothing);
     });
 
-    testWidgets('mid-sheet photo insertion preserves uninterrupted prose on active sheet and mounts tray', (tester) async {
+    testWidgets('collecting a photo mid-sheet preserves uninterrupted prose and fills the handscroll', (tester) async {
       final initialDelta = Delta()..insert('上卷春风十里。\n下卷秋水人家。\n');
       await database.updateEntryContent(
         'ephemera_folio_entry',
@@ -159,9 +158,9 @@ void main() {
       await tester.tap(find.text('相册选撷 · Photo Gallery'));
       await tester.pumpAndSettle();
 
-      // Preserves uninterrupted prose on Sheet 1 while mounting lower StationeryMediaTray
+      // Preserves uninterrupted prose on Sheet 1 while the photo waits in the handscroll
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byType(StationeryMediaTray), findsOneWidget);
+      expect(find.byKey(const Key('staging_handscroll')), findsOneWidget);
 
       final editorAfterAttach = tester.widget<QuillEditor>(find.byType(QuillEditor));
       expect(editorAfterAttach.controller.document.toPlainText().trim(), equals('上卷春风十里。\n下卷秋水人家。'));

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import '../../templates/models/template_style.dart';
+import '../models/mount_marker.dart';
 import '../models/typography_settings.dart';
 import '../widgets/editor_quill_styles_builder.dart';
 import 'baseline_metrics_calculator.dart';
@@ -347,6 +348,11 @@ class StationeryLineMeasurer {
 
     for (final op in delta.operations) {
       if (!op.isInsert) continue;
+
+      if (MountMarker.mediaIdOf(op) != null) {
+        // Zero-height mount marker: occupies no row and never breaks a paragraph.
+        continue;
+      }
 
       if (op.data is Map) {
         // Embed node

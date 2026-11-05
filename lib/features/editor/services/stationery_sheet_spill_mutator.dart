@@ -362,24 +362,4 @@ class StationerySheetSpillMutator {
     reindexSheets(sheets);
     return activeIndex + 1;
   }
-
-  /// Preserves attached keepsake media when sheets are re-partitioned.
-  static void preserveAttachments(
-    List<StationerySheetDescriptor> source,
-    List<StationerySheetDescriptor> target,
-  ) {
-    var sourceIndex = 0;
-    for (final targetSheet in target) {
-      if (targetSheet is TextStationerySheet) {
-        while (sourceIndex < source.length && source[sourceIndex] is! TextStationerySheet) {
-          sourceIndex++;
-        }
-        if (sourceIndex < source.length) {
-          final sourceSheet = source[sourceIndex] as TextStationerySheet;
-          targetSheet.mediaAttachments.addAll(sourceSheet.mediaAttachments);
-          sourceIndex++;
-        }
-      }
-    }
-  }
 }
