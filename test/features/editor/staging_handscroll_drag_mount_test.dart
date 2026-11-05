@@ -1,27 +1,20 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:drift/drift.dart' hide isNotNull, isNull;
-import 'package:drift/native.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
-import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/fullscreen_media_lightbox.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/staged_editor_fixture.dart';
 import '../../helpers/widget_test_helpers.dart';
 
 const _entryId = 'drag_mount_entry';
 const _viewport = Size(360.0, 780.0);
 
 void main() {
-  late AppDatabase database;
-  late Directory tempDirectory;
-  late MediaSandboxService sandboxService;
+  final fixture = StagedEditorFixture(entryId: _entryId);
   late StubEditorImagePicker picker;
 
   setUpAll(() {
@@ -29,40 +22,21 @@ void main() {
   });
 
   setUp(() async {
-    database = AppDatabase.forTesting(NativeDatabase.memory());
-    tempDirectory = Directory.systemTemp.createTempSync('handscroll_drag_mount_test_');
-    sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
-    final photo = File('${tempDirectory.path}/picked_photo.png')..writeAsBytesSync(kValid1x1PngBytes);
-    final video = File('${tempDirectory.path}/picked_video.mp4')..writeAsBytesSync(kValidMp4FtypBytes);
+    await fixture.setUp();
+    final photo = File('${fixture.tempDirectory.path}/picked_photo.png')..writeAsBytesSync(kValid1x1PngBytes);
+    final video = File('${fixture.tempDirectory.path}/picked_video.mp4')..writeAsBytesSync(kValidMp4FtypBytes);
     picker = StubEditorImagePicker(
       imageResult: XFile(photo.path),
       videoResult: XFile(video.path),
     );
-
-    await database.into(database.entries).insert(
-          EntriesCompanion.insert(
-            id: _entryId,
-            notebookId: 'notebook_default',
-            templateId: 'template_minimalist_white',
-            title: const Value('孤山访梅'),
-            contentDelta: jsonEncode((Delta()..insert('疏影横斜。\n')).toJson()),
-            plainText: '疏影横斜。',
-            entryDate: DateTime(2026, 11, 6, 9),
-          ),
-        );
   });
 
-  tearDown(() async {
-    await database.close();
-    if (tempDirectory.existsSync()) {
-      tempDirectory.deleteSync(recursive: true);
-    }
-  });
+  tearDown(fixture.tearDown);
 
   Future<void> openEditor(WidgetTester tester) => pumpEntryEditorScreen(
         tester,
-        database: database,
-        mediaSandboxService: sandboxService,
+        database: fixture.database,
+        mediaSandboxService: fixture.sandboxService,
         entryId: _entryId,
         imagePicker: picker,
         viewportSize: _viewport,
@@ -76,20 +50,7 @@ void main() {
     await openEditor(tester);
   }
 
-  /// Seeds [count] staged photos (attachments without mount markers) before opening.
-  Future<void> seedStagedPhotos(int count) async {
-    for (var index = 0; index < count; index++) {
-      final relativePath = 'media/seeded_$index.webp';
-      File('${tempDirectory.path}/$relativePath')
-        ..parent.createSync(recursive: true)
-        ..writeAsBytesSync(kValid1x1PngBytes);
-      await database.attachMediaToEntry(
-        id: 'seeded_$index',
-        entryId: _entryId,
-        relativePath: relativePath,
-      );
-    }
-  }
+  Future<void> seedStagedPhotos(int count) => fixture.seedStagedPhotos(count);
 
   Future<void> mount(WidgetTester tester, String mediaId) async {
     await tester.tap(find.byKey(Key('handscroll_mount_$mediaId')));
