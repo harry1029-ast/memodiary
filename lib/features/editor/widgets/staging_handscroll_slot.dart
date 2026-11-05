@@ -43,6 +43,7 @@ class StagingHandscrollSlot extends StatefulWidget {
 
 class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with SingleTickerProviderStateMixin {
   static const Duration kDissolveDuration = Duration(milliseconds: 450);
+  static const double _kDragFeedbackSize = 72.0;
 
   late final AnimationController _dissolve = AnimationController(
     vsync: this,
@@ -104,8 +105,30 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
             label: '待贴第 $ordinal 影 · $kind，点按查看',
             onTap: widget.onTap == null ? null : () => widget.onTap!(item),
             excludeSemantics: true,
-            child: GestureDetector(
+            // Long-press lifts the print to drop it on the active sheet (same
+            // mount as 📌); a plain tap still opens the lightbox and a swipe
+            // still scrolls the handscroll.
+            child: LongPressDraggable<String>(
               key: Key('handscroll_item_${item.id}'),
+              data: item.id,
+              maxSimultaneousDrags: 1,
+              feedback: SizedBox(
+                width: _kDragFeedbackSize,
+                height: _kDragFeedbackSize,
+                child: Material(
+                  elevation: 6.0,
+                  borderRadius: BorderRadius.circular(4.0),
+                  clipBehavior: Clip.antiAlias,
+                  child: KeepsakeThumbnail(
+                    item: item,
+                    mediaSandboxService: widget.mediaSandboxService,
+                    isPaperDark: isPaperDark,
+                    showPlayGlyph: false,
+                  ),
+                ),
+              ),
+              childWhenDragging: const Opacity(opacity: 0.3, child: SizedBox.expand()),
+              child: GestureDetector(
               onTap: () => widget.onTap?.call(item),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4.0),
@@ -124,6 +147,7 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
                     showPlayGlyph: false,
                   ),
                 ),
+              ),
               ),
             ),
           ),
