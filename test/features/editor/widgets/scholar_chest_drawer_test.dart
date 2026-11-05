@@ -252,8 +252,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('scholar_chest_drawer')), findsNothing);
 
-      // 2. Verify writing dock collapse toggle is present on dock
-      expect(find.byKey(const Key('writing_dock_collapse_toggle')), findsOneWidget);
+      // 2. Verify the dock's workstation handle is present
+      expect(find.byKey(const Key('writing_dock_workstation_handle')), findsOneWidget);
     });
 
     testWidgets('displays soundscape pill when music is playing and opens Guqin zither', (tester) async {

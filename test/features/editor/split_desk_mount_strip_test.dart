@@ -10,7 +10,6 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/editor/widgets/paper_heart_metrics.dart';
-import 'package:memodiary/features/editor/widgets/stationery_media_tray.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
 
@@ -37,7 +36,8 @@ void main() {
             notebookId: 'notebook_default',
             templateId: 'template_minimalist_white',
             title: const Value('江南雨景'),
-            contentDelta: '[]',
+            // Photo 1 is mounted on Sheet 1 by its marker.
+            contentDelta: '[{"insert":{"mount":"photo_attachment_1"}},{"insert":"\\n"}]',
             plainText: '',
             entryDate: DateTime(2026, 11, 4, 21, 30),
             mood: const Value(4),
@@ -60,8 +60,8 @@ void main() {
     }
   });
 
-  group('Split Desk Media Tray & Auto-Collapsing Keyboard Dynamics (Seam 2)', () {
-    testWidgets('attaching photo to sheet shifts 14-row card to top dock and mounts StationeryMediaTray', (tester) async {
+  group('Split Desk Sheet Mount Strip & Auto-Collapsing Keyboard Dynamics (Seam 2)', () {
+    testWidgets('a mounted photo shifts the card to the top dock and shows the Sheet Mount Strip beneath it', (tester) async {
       await pumpEntryEditorScreen(
         tester,
         database: database,
@@ -78,8 +78,8 @@ void main() {
       final cardRect = tester.getRect(cardFinder);
       expect(cardRect.top - canvasRect.top, lessThanOrEqualTo(20.0));
 
-      // Lower StationeryMediaTray is mounted beneath the card
-      final trayFinder = find.byType(StationeryMediaTray);
+      // The Sheet Mount Strip rests beneath the card, outside the Paper Heart
+      final trayFinder = find.byKey(const Key('sheet_mount_strip'));
       expect(trayFinder, findsOneWidget);
       final trayRect = tester.getRect(trayFinder);
       expect(trayRect.top, greaterThanOrEqualTo(cardRect.bottom));
@@ -88,7 +88,7 @@ void main() {
       expect(find.byType(BoundedCinnabarSeal), findsNothing);
     });
 
-    testWidgets('software keyboard appearance collapses lower tray downward while writing card stays stationary', (tester) async {
+    testWidgets('software keyboard appearance collapses the mount strip downward while writing card stays stationary', (tester) async {
       await pumpEntryEditorScreen(
         tester,
         database: database,
@@ -98,7 +98,7 @@ void main() {
       );
 
       final initialCardRect = tester.getRect(find.byType(TemplateCanvasContainer));
-      final initialTrayRect = tester.getRect(find.byType(StationeryMediaTray));
+      final initialTrayRect = tester.getRect(find.byKey(const Key('sheet_mount_strip')));
 
       // Simulate software keyboard opening with 300px bottom viewInsets
       final binding = tester.view;
@@ -127,7 +127,7 @@ void main() {
       final restoredCardRect = tester.getRect(find.byType(TemplateCanvasContainer));
       expect(restoredCardRect.top, closeTo(initialCardRect.top, 1.0));
 
-      final restoredTrayRect = tester.getRect(find.byType(StationeryMediaTray));
+      final restoredTrayRect = tester.getRect(find.byKey(const Key('sheet_mount_strip')));
       expect(restoredTrayRect.top, closeTo(initialTrayRect.top, 2.0));
     });
   });
@@ -150,7 +150,8 @@ void main() {
 
       // Rapidly type enough rows to trigger Auto-Spill past row 14
       final longProse = List.generate(16, (index) => '第 $index 行细雨蒙蒙落入青石古巷。').join('\n');
-      sheet1.controller.document = Document()..insert(0, '$longProse\n');
+      // Write after the marker so the mounted passage stays at the top of Sheet 1.
+      sheet1.controller.document.insert(sheet1.controller.document.length - 1, longProse);
       sheet1.controller.updateSelection(
         TextSelection.collapsed(offset: sheet1.controller.document.length - 1),
         ChangeSource.local,

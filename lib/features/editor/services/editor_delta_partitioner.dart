@@ -1,23 +1,29 @@
 import 'dart:math' as math;
 import 'package:flutter_quill/quill_delta.dart';
-import '../../../../core/database/app_database.dart';
 import '../../templates/models/template_style.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/media_embed_data.dart';
+import '../models/mount_marker.dart';
 import '../models/typography_settings.dart';
 import 'editor_pagination_models.dart';
+import 'sheet_mount_resolver.dart';
 import 'stationery_delta_splitter.dart';
+import 'stationery_delta_synthesizer.dart';
 import 'stationery_line_measurer.dart';
+
+export 'editor_pagination_models.dart' show EditorPartition, MountResolution;
+export 'sheet_mount_resolver.dart' show SheetMountResolver;
 
 /// Pure algorithmic partitioner segmenting a continuous Quill Delta
 /// into discrete [StationerySheetDescriptor] instances.
 class EditorDeltaPartitioner {
   const EditorDeltaPartitioner._();
 
-  /// Partitions [unifiedDelta] and [attachments] into a sequence of stationery sheets.
-  static List<StationerySheetDescriptor> partition({
+  /// Partitions [unifiedDelta] into a sequence of stationery sheets, mounting each
+  /// item of [media] on the sheet holding its mount marker and reporting the
+  /// unreferenced items (in [media] order) as staged.
+  static EditorPartition partition({
     required Delta unifiedDelta,
-    List<MediaAttachment> attachments = const [],
+    List<SheetMediaItem> media = const [],
     required TypographySettings typography,
     double? contentWidth,
     required TemplateStyle templateStyle,
@@ -27,14 +33,10 @@ class EditorDeltaPartitioner {
     final blocks = extractContentBlocks(unifiedDelta);
 
     if (blocks.isEmpty) {
-      final emptySheet = OpeningSheet.empty(sheetIndex: 0);
-      for (final attachment in attachments) {
-        if (!emptySheet.isAtMediaCapacity) {
-          emptySheet.mediaAttachments.add(SheetMediaItem.fromMediaAttachment(attachment));
-        }
-      }
-      sheets.add(emptySheet);
-      return sheets;
+      return EditorPartition(
+        sheets: [OpeningSheet.empty(sheetIndex: 0)],
+        stagedItems: List.of(media),
+      );
     }
 
     Delta currentTextDelta = Delta();
@@ -138,7 +140,10 @@ class EditorDeltaPartitioner {
 
           final split = StationeryDeltaSplitter.splitDeltaAtCharacterOffset(
             sourceDelta: remainingParagraphDelta,
-            splitOffset: cutOffset,
+            splitOffset: StationeryDeltaSplitter.deltaOffsetOfTextOffset(
+              remainingParagraphDelta,
+              cutOffset,
+            ),
             trailingParagraphAttributes: block.blockAttributes,
           );
 
@@ -171,44 +176,73 @@ class EditorDeltaPartitioner {
       flushTextSheet();
     }
 
-    final existingEphemeraPaths = sheets
-        .whereType<EphemeraSheet>()
-        .map((ephemera) => ephemera.sandboxedRelativePath)
-        .toSet();
-
-    final textSheets = sheets.whereType<TextStationerySheet>().toList();
-    if (textSheets.isNotEmpty) {
-      for (final attachment in attachments) {
-        if (existingEphemeraPaths.contains(attachment.relativePath)) continue;
-        final item = SheetMediaItem.fromMediaAttachment(attachment);
-        final targetSheet = textSheets.firstWhere(
-          (sheet) => !sheet.isAtMediaCapacity,
-          orElse: () => textSheets.last,
-        );
-        if (!targetSheet.mediaAttachments.any((candidate) => candidate.id == item.id || candidate.relativePath == item.relativePath)) {
-          targetSheet.mediaAttachments.add(item);
-        }
-      }
-    } else {
-      for (final attachment in attachments) {
-        if (!existingEphemeraPaths.contains(attachment.relativePath)) {
-          sheets.add(EphemeraSheet(
-            sheetIndex: sheets.length,
-            mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
-            mediaData: MediaEmbedData(
-              path: attachment.relativePath,
-              caption: attachment.ocrText ?? '',
-            ),
-          ));
-        }
-      }
-    }
+    // Opening never unmounts: overflow past the last sheet is tolerated there.
+    final mounts = SheetMountResolver.resolveMounts(sheets: sheets, media: media);
 
     for (int index = 0; index < sheets.length; index++) {
       sheets[index] = sheets[index].copyWithIndex(index);
     }
 
-    return sheets;
+    return EditorPartition(
+      sheets: sheets,
+      stagedItems: mounts.stagedItems,
+      toleratedOverflowIds: mounts.toleratedOverflowIds,
+      markerHomes: mounts.markerHomes,
+    );
+  }
+
+  /// Legacy mounting pass for entries written before mount markers existed
+  /// (ADR-0009): returns [unifiedDelta] with a marker written for every
+  /// unanchored item of [media], placed with the pre-marker first-come rule
+  /// (the first text sheet with fewer than three items, else the last text
+  /// sheet) at the end of that sheet's text, in [media] order.
+  ///
+  /// Returns [unifiedDelta] unchanged when nothing is unanchored, so applying
+  /// it twice is a no-op.
+  static Delta mountLegacyAttachments({
+    required Delta unifiedDelta,
+    required List<SheetMediaItem> media,
+    required TypographySettings typography,
+    double? contentWidth,
+    required TemplateStyle templateStyle,
+    double? lineStridePx,
+  }) {
+    final partitioned = partition(
+      unifiedDelta: unifiedDelta,
+      media: media,
+      typography: typography,
+      contentWidth: contentWidth,
+      templateStyle: templateStyle,
+      lineStridePx: lineStridePx,
+    );
+    try {
+      final textSheets = partitioned.sheets.whereType<TextStationerySheet>().toList();
+      if (partitioned.stagedItems.isEmpty || textSheets.isEmpty) return unifiedDelta;
+
+      final assignedIds = <TextStationerySheet, List<String>>{};
+      for (final item in partitioned.stagedItems) {
+        final target = textSheets.firstWhere(
+          (sheet) => !sheet.isAtMediaCapacity,
+          orElse: () => textSheets.last,
+        );
+        target.mediaAttachments.add(item);
+        (assignedIds[target] ??= <String>[]).add(item.id);
+      }
+
+      for (final MapEntry(key: sheet, value: mediaIds) in assignedIds.entries) {
+        final endOfText = math.max(0, sheet.document.length - 1);
+        final markers = Delta()..retain(endOfText);
+        for (final mediaId in mediaIds) {
+          markers.insert(MountMarker.embeddable(mediaId).toJson());
+        }
+        sheet.setDelta(sheet.delta.compose(markers));
+      }
+      return StationeryDeltaSynthesizer.synthesize(partitioned.sheets);
+    } finally {
+      for (final sheet in partitioned.sheets) {
+        sheet.dispose();
+      }
+    }
   }
 
   static String _extractPlainText(Delta delta) {
@@ -230,6 +264,12 @@ class EditorDeltaPartitioner {
 
     for (final operation in delta.operations) {
       if (!operation.isInsert) continue;
+
+      if (MountMarker.mediaIdOf(operation) != null) {
+        // Zero-height marker: travels with its line but adds no text or rows.
+        currentOps.add(operation);
+        continue;
+      }
 
       if (operation.data is Map) {
         final map = operation.data as Map;

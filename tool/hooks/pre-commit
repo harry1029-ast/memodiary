@@ -1,0 +1,31 @@
+#!/bin/bash
+# Pre-commit guardrail hook for MemoDiary
+# Ensures static analysis and security invariants pass before any commit.
+
+set -e
+
+# Clean up Git worktree environment variables that break Flutter SDK's internal version resolution
+unset GIT_DIR GIT_WORK_TREE
+
+# Resolve flutter binary
+if command -v flutter >/dev/null 2>&1; then
+  FLUTTER_BIN="flutter"
+elif [ -x "/home/harry1029/development/flutter/bin/flutter" ]; then
+  FLUTTER_BIN="/home/harry1029/development/flutter/bin/flutter"
+else
+  echo "[Pre-commit Guardrail] Error: Flutter SDK not found in PATH or /home/harry1029/development/flutter/bin." >&2
+  exit 1
+fi
+
+echo "[Pre-commit Guardrail] Running flutter analyze..."
+$FLUTTER_BIN analyze
+
+echo "[Pre-commit Guardrail] Running Network Quarantine Audit..."
+$FLUTTER_BIN test test/hardening/network_quarantine_audit_test.dart
+
+echo "[Pre-commit Guardrail] Running Code Style Audit (CODING_STANDARDS.md § 1)..."
+$FLUTTER_BIN test test/hardening/code_style_audit_test.dart
+
+echo "[Pre-commit Guardrail] All pre-commit checks passed cleanly."
+exit 0
+

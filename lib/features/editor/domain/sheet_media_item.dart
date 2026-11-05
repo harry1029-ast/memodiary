@@ -27,7 +27,7 @@ class SheetMediaItem {
       id: attachment.id,
       mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
       relativePath: attachment.relativePath,
-      caption: attachment.ocrText ?? '',
+      caption: attachment.caption ?? '',
       thumbnailPath: attachment.thumbnailPath,
     );
   }

@@ -13,7 +13,6 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/stationery_ephemera_sheet.dart';
-import 'package:memodiary/features/editor/widgets/stationery_media_tray.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_leaf_model.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_pagination_engine.dart';
 import '../../helpers/editor_test_harness.dart';
@@ -80,20 +79,24 @@ void main() {
       await tester.tap(find.text('相册选撷 · Photo Gallery'));
       await tester.pumpAndSettle();
 
-      // In Split Desk architecture: photo mounts into lower StationeryMediaTray on Sheet 1
+      // The picked photo is collected into the Staging Handscroll, not onto a sheet
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byType(StationeryMediaTray), findsOneWidget);
+      expect(find.byKey(const Key('staging_handscroll')), findsOneWidget);
 
       final attachmentsBeforeDelete = await database.getMediaForEntry('ephemera_folio_entry');
       expect(attachmentsBeforeDelete, hasLength(1));
 
-      // Delete the photo from the StationeryMediaTray
-      final deleteBtnFinder = find.byKey(Key('media_tray_delete_${attachmentsBeforeDelete.first.id}'));
-      expect(deleteBtnFinder, findsOneWidget);
-      await tester.tap(deleteBtnFinder);
+      // Erase the photo from the Staging Handscroll
+      final eraseBtnFinder = find.byKey(Key('handscroll_erase_${attachmentsBeforeDelete.first.id}'));
+      expect(eraseBtnFinder, findsOneWidget);
+      await tester.tap(eraseBtnFinder);
       await tester.pumpAndSettle();
 
-      expect(find.byType(StationeryMediaTray), findsNothing);
+      expect(find.byKey(const Key('staging_handscroll')), findsNothing);
+
+      // The record is purged once the erase undo window lapses
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpAndSettle();
 
       // Verify SQLite media_attachments row is deleted
       final attachmentsAfterDelete = await database.getMediaForEntry('ephemera_folio_entry');
@@ -119,10 +122,10 @@ void main() {
         viewportSize: const Size(360.0, 780.0),
       );
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byType(StationeryMediaTray), findsNothing);
+      expect(find.byKey(const Key('staging_handscroll')), findsNothing);
     });
 
-    testWidgets('mid-sheet photo insertion preserves uninterrupted prose on active sheet and mounts tray', (tester) async {
+    testWidgets('collecting a photo mid-sheet preserves uninterrupted prose and fills the handscroll', (tester) async {
       final initialDelta = Delta()..insert('上卷春风十里。\n下卷秋水人家。\n');
       await database.updateEntryContent(
         'ephemera_folio_entry',
@@ -159,9 +162,9 @@ void main() {
       await tester.tap(find.text('相册选撷 · Photo Gallery'));
       await tester.pumpAndSettle();
 
-      // Preserves uninterrupted prose on Sheet 1 while mounting lower StationeryMediaTray
+      // Preserves uninterrupted prose on Sheet 1 while the photo waits in the handscroll
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byType(StationeryMediaTray), findsOneWidget);
+      expect(find.byKey(const Key('staging_handscroll')), findsOneWidget);
 
       final editorAfterAttach = tester.widget<QuillEditor>(find.byType(QuillEditor));
       expect(editorAfterAttach.controller.document.toPlainText().trim(), equals('上卷春风十里。\n下卷秋水人家。'));
@@ -322,6 +325,66 @@ void main() {
 
       final concludingLeaf = folioLeaves[3] as FolioContentBodyLeaf;
       expect(concludingLeaf.isConcludingLeaf, isTrue);
+    });
+
+    testWidgets('Folio leaves carry exactly the items each editor sheet mounts; staged items stay out', (tester) async {
+      final lines = List.generate(30, (index) => '第${index + 1}行墨迹').join('\n');
+      await database.updateEntryContent(
+        'ephemera_folio_entry',
+        jsonEncode((Delta()..insert('$lines\n')).toJson()),
+        lines,
+      );
+      final sampleImageFile = File('${tempDirectory.path}/parity_photo.png')
+        ..writeAsBytesSync(kValid1x1PngBytes);
+
+      await pumpEntryEditorScreen(
+        tester,
+        database: database,
+        mediaSandboxService: sandboxService,
+        entryId: 'ephemera_folio_entry',
+        imagePicker: StubEditorImagePicker(imageResult: XFile(sampleImageFile.path)),
+        viewportSize: const Size(360.0, 780.0),
+      );
+      expect(find.text('第 1 / 3 页'), findsOneWidget);
+
+      for (int pick = 0; pick < 3; pick++) {
+        await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('相册选撷 · Photo Gallery'));
+        await tester.pumpAndSettle();
+      }
+      final ids = (await database.getMediaForEntry('ephemera_folio_entry')).map((media) => media.id).toList();
+      expect(ids, hasLength(3));
+
+      await tester.tap(find.byKey(Key('handscroll_mount_${ids[0]}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('handscroll_mount_${ids[1]}')));
+      await tester.pumpAndSettle();
+      expect(find.text('第 2 / 3 页'), findsOneWidget);
+      expect(find.byKey(Key('mount_strip_item_${ids[1]}')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
+      await tester.pumpAndSettle();
+
+      final savedEntry = await database.getEntryById('ephemera_folio_entry');
+      final folioLeaves = FolioPaginationEngine.paginate(
+        entry: savedEntry!,
+        attachments: await database.getMediaForEntry('ephemera_folio_entry'),
+      );
+
+      final cover = folioLeaves.first as FolioFrontispieceCoverLeaf;
+      expect(cover.photos.map((photo) => photo.id), [ids[0]]);
+      expect(
+        folioLeaves.whereType<FolioContentBodyLeaf>().map((leaf) => leaf.photos.map((photo) => photo.id).toList()),
+        [
+          [ids[0]],
+          [ids[1]],
+          <String>[],
+        ],
+      );
+      expect(folioLeaves.whereType<FolioTippedInEphemeraLeaf>(), isEmpty);
     });
   });
 }

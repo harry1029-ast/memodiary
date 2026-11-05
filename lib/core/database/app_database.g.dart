@@ -868,6 +868,16 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
   late final GeneratedColumn<String> entryPinHash = GeneratedColumn<String>(
       'entry_pin_hash', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _legacyMountsPendingMeta =
+      const VerificationMeta('legacyMountsPending');
+  @override
+  late final GeneratedColumn<bool> legacyMountsPending = GeneratedColumn<bool>(
+      'legacy_mounts_pending', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("legacy_mounts_pending" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -886,7 +896,8 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
         updatedAt,
         isDeleted,
         isLocked,
-        entryPinHash
+        entryPinHash,
+        legacyMountsPending
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -989,6 +1000,12 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
           entryPinHash.isAcceptableOrUnknown(
               data['entry_pin_hash']!, _entryPinHashMeta));
     }
+    if (data.containsKey('legacy_mounts_pending')) {
+      context.handle(
+          _legacyMountsPendingMeta,
+          legacyMountsPending.isAcceptableOrUnknown(
+              data['legacy_mounts_pending']!, _legacyMountsPendingMeta));
+    }
     return context;
   }
 
@@ -1032,6 +1049,8 @@ class $EntriesTable extends Entries with TableInfo<$EntriesTable, Entry> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_locked'])!,
       entryPinHash: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}entry_pin_hash']),
+      legacyMountsPending: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}legacy_mounts_pending'])!,
     );
   }
 
@@ -1092,6 +1111,12 @@ class Entry extends DataClass implements Insertable<Entry> {
 
   /// Salted SHA-256 PIN hash (format: "salt:hash") or null if protected by master app PIN
   final String? entryPinHash;
+
+  /// Whether this entry still awaits the one-time legacy mounting pass
+  /// (ADR-0009): set by the schema v8 upgrade on entries that had attachments
+  /// but no mount markers, cleared once the editor has written their markers.
+  /// Records only that the pass is due, never where anything is mounted.
+  final bool legacyMountsPending;
   const Entry(
       {required this.id,
       required this.notebookId,
@@ -1109,7 +1134,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       required this.updatedAt,
       required this.isDeleted,
       required this.isLocked,
-      this.entryPinHash});
+      this.entryPinHash,
+      required this.legacyMountsPending});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1142,6 +1168,7 @@ class Entry extends DataClass implements Insertable<Entry> {
     if (!nullToAbsent || entryPinHash != null) {
       map['entry_pin_hash'] = Variable<String>(entryPinHash);
     }
+    map['legacy_mounts_pending'] = Variable<bool>(legacyMountsPending);
     return map;
   }
 
@@ -1173,6 +1200,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       entryPinHash: entryPinHash == null && nullToAbsent
           ? const Value.absent()
           : Value(entryPinHash),
+      legacyMountsPending: Value(legacyMountsPending),
     );
   }
 
@@ -1197,6 +1225,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       isLocked: serializer.fromJson<bool>(json['isLocked']),
       entryPinHash: serializer.fromJson<String?>(json['entryPinHash']),
+      legacyMountsPending:
+          serializer.fromJson<bool>(json['legacyMountsPending']),
     );
   }
   @override
@@ -1220,6 +1250,7 @@ class Entry extends DataClass implements Insertable<Entry> {
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'isLocked': serializer.toJson<bool>(isLocked),
       'entryPinHash': serializer.toJson<String?>(entryPinHash),
+      'legacyMountsPending': serializer.toJson<bool>(legacyMountsPending),
     };
   }
 
@@ -1240,7 +1271,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           DateTime? updatedAt,
           bool? isDeleted,
           bool? isLocked,
-          Value<String?> entryPinHash = const Value.absent()}) =>
+          Value<String?> entryPinHash = const Value.absent(),
+          bool? legacyMountsPending}) =>
       Entry(
         id: id ?? this.id,
         notebookId: notebookId ?? this.notebookId,
@@ -1260,6 +1292,7 @@ class Entry extends DataClass implements Insertable<Entry> {
         isLocked: isLocked ?? this.isLocked,
         entryPinHash:
             entryPinHash.present ? entryPinHash.value : this.entryPinHash,
+        legacyMountsPending: legacyMountsPending ?? this.legacyMountsPending,
       );
   Entry copyWithCompanion(EntriesCompanion data) {
     return Entry(
@@ -1289,6 +1322,9 @@ class Entry extends DataClass implements Insertable<Entry> {
       entryPinHash: data.entryPinHash.present
           ? data.entryPinHash.value
           : this.entryPinHash,
+      legacyMountsPending: data.legacyMountsPending.present
+          ? data.legacyMountsPending.value
+          : this.legacyMountsPending,
     );
   }
 
@@ -1311,7 +1347,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('isLocked: $isLocked, ')
-          ..write('entryPinHash: $entryPinHash')
+          ..write('entryPinHash: $entryPinHash, ')
+          ..write('legacyMountsPending: $legacyMountsPending')
           ..write(')'))
         .toString();
   }
@@ -1334,7 +1371,8 @@ class Entry extends DataClass implements Insertable<Entry> {
       updatedAt,
       isDeleted,
       isLocked,
-      entryPinHash);
+      entryPinHash,
+      legacyMountsPending);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1355,7 +1393,8 @@ class Entry extends DataClass implements Insertable<Entry> {
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted &&
           other.isLocked == this.isLocked &&
-          other.entryPinHash == this.entryPinHash);
+          other.entryPinHash == this.entryPinHash &&
+          other.legacyMountsPending == this.legacyMountsPending);
 }
 
 class EntriesCompanion extends UpdateCompanion<Entry> {
@@ -1376,6 +1415,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
   final Value<bool> isDeleted;
   final Value<bool> isLocked;
   final Value<String?> entryPinHash;
+  final Value<bool> legacyMountsPending;
   final Value<int> rowid;
   const EntriesCompanion({
     this.id = const Value.absent(),
@@ -1395,6 +1435,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.isDeleted = const Value.absent(),
     this.isLocked = const Value.absent(),
     this.entryPinHash = const Value.absent(),
+    this.legacyMountsPending = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   EntriesCompanion.insert({
@@ -1415,6 +1456,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     this.isDeleted = const Value.absent(),
     this.isLocked = const Value.absent(),
     this.entryPinHash = const Value.absent(),
+    this.legacyMountsPending = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         notebookId = Value(notebookId),
@@ -1440,6 +1482,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     Expression<bool>? isDeleted,
     Expression<bool>? isLocked,
     Expression<String>? entryPinHash,
+    Expression<bool>? legacyMountsPending,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1460,6 +1503,8 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (isLocked != null) 'is_locked': isLocked,
       if (entryPinHash != null) 'entry_pin_hash': entryPinHash,
+      if (legacyMountsPending != null)
+        'legacy_mounts_pending': legacyMountsPending,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1482,6 +1527,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       Value<bool>? isDeleted,
       Value<bool>? isLocked,
       Value<String?>? entryPinHash,
+      Value<bool>? legacyMountsPending,
       Value<int>? rowid}) {
     return EntriesCompanion(
       id: id ?? this.id,
@@ -1501,6 +1547,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
       isDeleted: isDeleted ?? this.isDeleted,
       isLocked: isLocked ?? this.isLocked,
       entryPinHash: entryPinHash ?? this.entryPinHash,
+      legacyMountsPending: legacyMountsPending ?? this.legacyMountsPending,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1559,6 +1606,9 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
     if (entryPinHash.present) {
       map['entry_pin_hash'] = Variable<String>(entryPinHash.value);
     }
+    if (legacyMountsPending.present) {
+      map['legacy_mounts_pending'] = Variable<bool>(legacyMountsPending.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1585,6 +1635,7 @@ class EntriesCompanion extends UpdateCompanion<Entry> {
           ..write('isDeleted: $isDeleted, ')
           ..write('isLocked: $isLocked, ')
           ..write('entryPinHash: $entryPinHash, ')
+          ..write('legacyMountsPending: $legacyMountsPending, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1638,6 +1689,12 @@ class $MediaAttachmentsTable extends MediaAttachments
   late final GeneratedColumn<String> ocrBlocksJson = GeneratedColumn<String>(
       'ocr_blocks_json', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _captionMeta =
+      const VerificationMeta('caption');
+  @override
+  late final GeneratedColumn<String> caption = GeneratedColumn<String>(
+      'caption', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _overlayXRatioMeta =
       const VerificationMeta('overlayXRatio');
   @override
@@ -1667,6 +1724,7 @@ class $MediaAttachmentsTable extends MediaAttachments
         thumbnailPath,
         ocrText,
         ocrBlocksJson,
+        caption,
         overlayXRatio,
         overlayYRatio,
         createdAt
@@ -1722,6 +1780,10 @@ class $MediaAttachmentsTable extends MediaAttachments
           ocrBlocksJson.isAcceptableOrUnknown(
               data['ocr_blocks_json']!, _ocrBlocksJsonMeta));
     }
+    if (data.containsKey('caption')) {
+      context.handle(_captionMeta,
+          caption.isAcceptableOrUnknown(data['caption']!, _captionMeta));
+    }
     if (data.containsKey('overlay_x_ratio')) {
       context.handle(
           _overlayXRatioMeta,
@@ -1761,6 +1823,8 @@ class $MediaAttachmentsTable extends MediaAttachments
           .read(DriftSqlType.string, data['${effectivePrefix}ocr_text']),
       ocrBlocksJson: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}ocr_blocks_json']),
+      caption: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}caption']),
       overlayXRatio: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}overlay_x_ratio']),
       overlayYRatio: attachedDatabase.typeMapping
@@ -1798,6 +1862,10 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
   /// Normalized line bounding boxes JSON (if processed)
   final String? ocrBlocksJson;
 
+  /// Diarist-authored caption, kept apart from [ocrText] so captions never
+  /// enter photo text search and OCR never overwrites what the diarist wrote.
+  final String? caption;
+
   /// Normalized horizontal anchor offset [0.0..1.0] for folio ephemera overlay.
   final double? overlayXRatio;
 
@@ -1814,6 +1882,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       this.thumbnailPath,
       this.ocrText,
       this.ocrBlocksJson,
+      this.caption,
       this.overlayXRatio,
       this.overlayYRatio,
       required this.createdAt});
@@ -1832,6 +1901,9 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
     }
     if (!nullToAbsent || ocrBlocksJson != null) {
       map['ocr_blocks_json'] = Variable<String>(ocrBlocksJson);
+    }
+    if (!nullToAbsent || caption != null) {
+      map['caption'] = Variable<String>(caption);
     }
     if (!nullToAbsent || overlayXRatio != null) {
       map['overlay_x_ratio'] = Variable<double>(overlayXRatio);
@@ -1858,6 +1930,9 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       ocrBlocksJson: ocrBlocksJson == null && nullToAbsent
           ? const Value.absent()
           : Value(ocrBlocksJson),
+      caption: caption == null && nullToAbsent
+          ? const Value.absent()
+          : Value(caption),
       overlayXRatio: overlayXRatio == null && nullToAbsent
           ? const Value.absent()
           : Value(overlayXRatio),
@@ -1879,6 +1954,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       thumbnailPath: serializer.fromJson<String?>(json['thumbnailPath']),
       ocrText: serializer.fromJson<String?>(json['ocrText']),
       ocrBlocksJson: serializer.fromJson<String?>(json['ocrBlocksJson']),
+      caption: serializer.fromJson<String?>(json['caption']),
       overlayXRatio: serializer.fromJson<double?>(json['overlayXRatio']),
       overlayYRatio: serializer.fromJson<double?>(json['overlayYRatio']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -1895,6 +1971,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       'thumbnailPath': serializer.toJson<String?>(thumbnailPath),
       'ocrText': serializer.toJson<String?>(ocrText),
       'ocrBlocksJson': serializer.toJson<String?>(ocrBlocksJson),
+      'caption': serializer.toJson<String?>(caption),
       'overlayXRatio': serializer.toJson<double?>(overlayXRatio),
       'overlayYRatio': serializer.toJson<double?>(overlayYRatio),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -1909,6 +1986,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           Value<String?> thumbnailPath = const Value.absent(),
           Value<String?> ocrText = const Value.absent(),
           Value<String?> ocrBlocksJson = const Value.absent(),
+          Value<String?> caption = const Value.absent(),
           Value<double?> overlayXRatio = const Value.absent(),
           Value<double?> overlayYRatio = const Value.absent(),
           DateTime? createdAt}) =>
@@ -1922,6 +2000,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
         ocrText: ocrText.present ? ocrText.value : this.ocrText,
         ocrBlocksJson:
             ocrBlocksJson.present ? ocrBlocksJson.value : this.ocrBlocksJson,
+        caption: caption.present ? caption.value : this.caption,
         overlayXRatio:
             overlayXRatio.present ? overlayXRatio.value : this.overlayXRatio,
         overlayYRatio:
@@ -1943,6 +2022,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       ocrBlocksJson: data.ocrBlocksJson.present
           ? data.ocrBlocksJson.value
           : this.ocrBlocksJson,
+      caption: data.caption.present ? data.caption.value : this.caption,
       overlayXRatio: data.overlayXRatio.present
           ? data.overlayXRatio.value
           : this.overlayXRatio,
@@ -1963,6 +2043,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('ocrText: $ocrText, ')
           ..write('ocrBlocksJson: $ocrBlocksJson, ')
+          ..write('caption: $caption, ')
           ..write('overlayXRatio: $overlayXRatio, ')
           ..write('overlayYRatio: $overlayYRatio, ')
           ..write('createdAt: $createdAt')
@@ -1979,6 +2060,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
       thumbnailPath,
       ocrText,
       ocrBlocksJson,
+      caption,
       overlayXRatio,
       overlayYRatio,
       createdAt);
@@ -1993,6 +2075,7 @@ class MediaAttachment extends DataClass implements Insertable<MediaAttachment> {
           other.thumbnailPath == this.thumbnailPath &&
           other.ocrText == this.ocrText &&
           other.ocrBlocksJson == this.ocrBlocksJson &&
+          other.caption == this.caption &&
           other.overlayXRatio == this.overlayXRatio &&
           other.overlayYRatio == this.overlayYRatio &&
           other.createdAt == this.createdAt);
@@ -2006,6 +2089,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
   final Value<String?> thumbnailPath;
   final Value<String?> ocrText;
   final Value<String?> ocrBlocksJson;
+  final Value<String?> caption;
   final Value<double?> overlayXRatio;
   final Value<double?> overlayYRatio;
   final Value<DateTime> createdAt;
@@ -2018,6 +2102,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     this.thumbnailPath = const Value.absent(),
     this.ocrText = const Value.absent(),
     this.ocrBlocksJson = const Value.absent(),
+    this.caption = const Value.absent(),
     this.overlayXRatio = const Value.absent(),
     this.overlayYRatio = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2031,6 +2116,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     this.thumbnailPath = const Value.absent(),
     this.ocrText = const Value.absent(),
     this.ocrBlocksJson = const Value.absent(),
+    this.caption = const Value.absent(),
     this.overlayXRatio = const Value.absent(),
     this.overlayYRatio = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2047,6 +2133,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     Expression<String>? thumbnailPath,
     Expression<String>? ocrText,
     Expression<String>? ocrBlocksJson,
+    Expression<String>? caption,
     Expression<double>? overlayXRatio,
     Expression<double>? overlayYRatio,
     Expression<DateTime>? createdAt,
@@ -2060,6 +2147,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
       if (ocrText != null) 'ocr_text': ocrText,
       if (ocrBlocksJson != null) 'ocr_blocks_json': ocrBlocksJson,
+      if (caption != null) 'caption': caption,
       if (overlayXRatio != null) 'overlay_x_ratio': overlayXRatio,
       if (overlayYRatio != null) 'overlay_y_ratio': overlayYRatio,
       if (createdAt != null) 'created_at': createdAt,
@@ -2075,6 +2163,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       Value<String?>? thumbnailPath,
       Value<String?>? ocrText,
       Value<String?>? ocrBlocksJson,
+      Value<String?>? caption,
       Value<double?>? overlayXRatio,
       Value<double?>? overlayYRatio,
       Value<DateTime>? createdAt,
@@ -2087,6 +2176,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
       thumbnailPath: thumbnailPath ?? this.thumbnailPath,
       ocrText: ocrText ?? this.ocrText,
       ocrBlocksJson: ocrBlocksJson ?? this.ocrBlocksJson,
+      caption: caption ?? this.caption,
       overlayXRatio: overlayXRatio ?? this.overlayXRatio,
       overlayYRatio: overlayYRatio ?? this.overlayYRatio,
       createdAt: createdAt ?? this.createdAt,
@@ -2118,6 +2208,9 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
     if (ocrBlocksJson.present) {
       map['ocr_blocks_json'] = Variable<String>(ocrBlocksJson.value);
     }
+    if (caption.present) {
+      map['caption'] = Variable<String>(caption.value);
+    }
     if (overlayXRatio.present) {
       map['overlay_x_ratio'] = Variable<double>(overlayXRatio.value);
     }
@@ -2143,6 +2236,7 @@ class MediaAttachmentsCompanion extends UpdateCompanion<MediaAttachment> {
           ..write('thumbnailPath: $thumbnailPath, ')
           ..write('ocrText: $ocrText, ')
           ..write('ocrBlocksJson: $ocrBlocksJson, ')
+          ..write('caption: $caption, ')
           ..write('overlayXRatio: $overlayXRatio, ')
           ..write('overlayYRatio: $overlayYRatio, ')
           ..write('createdAt: $createdAt, ')
@@ -3951,6 +4045,7 @@ typedef $$EntriesTableCreateCompanionBuilder = EntriesCompanion Function({
   Value<bool> isDeleted,
   Value<bool> isLocked,
   Value<String?> entryPinHash,
+  Value<bool> legacyMountsPending,
   Value<int> rowid,
 });
 typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
@@ -3971,6 +4066,7 @@ typedef $$EntriesTableUpdateCompanionBuilder = EntriesCompanion Function({
   Value<bool> isDeleted,
   Value<bool> isLocked,
   Value<String?> entryPinHash,
+  Value<bool> legacyMountsPending,
   Value<int> rowid,
 });
 
@@ -4034,6 +4130,10 @@ class $$EntriesTableFilterComposer
 
   ColumnFilters<String> get entryPinHash => $composableBuilder(
       column: $table.entryPinHash, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get legacyMountsPending => $composableBuilder(
+      column: $table.legacyMountsPending,
+      builder: (column) => ColumnFilters(column));
 }
 
 class $$EntriesTableOrderingComposer
@@ -4098,6 +4198,10 @@ class $$EntriesTableOrderingComposer
   ColumnOrderings<String> get entryPinHash => $composableBuilder(
       column: $table.entryPinHash,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get legacyMountsPending => $composableBuilder(
+      column: $table.legacyMountsPending,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$EntriesTableAnnotationComposer
@@ -4159,6 +4263,9 @@ class $$EntriesTableAnnotationComposer
 
   GeneratedColumn<String> get entryPinHash => $composableBuilder(
       column: $table.entryPinHash, builder: (column) => column);
+
+  GeneratedColumn<bool> get legacyMountsPending => $composableBuilder(
+      column: $table.legacyMountsPending, builder: (column) => column);
 }
 
 class $$EntriesTableTableManager extends RootTableManager<
@@ -4201,6 +4308,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             Value<bool> isDeleted = const Value.absent(),
             Value<bool> isLocked = const Value.absent(),
             Value<String?> entryPinHash = const Value.absent(),
+            Value<bool> legacyMountsPending = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               EntriesCompanion(
@@ -4221,6 +4329,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             isDeleted: isDeleted,
             isLocked: isLocked,
             entryPinHash: entryPinHash,
+            legacyMountsPending: legacyMountsPending,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -4241,6 +4350,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             Value<bool> isDeleted = const Value.absent(),
             Value<bool> isLocked = const Value.absent(),
             Value<String?> entryPinHash = const Value.absent(),
+            Value<bool> legacyMountsPending = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               EntriesCompanion.insert(
@@ -4261,6 +4371,7 @@ class $$EntriesTableTableManager extends RootTableManager<
             isDeleted: isDeleted,
             isLocked: isLocked,
             entryPinHash: entryPinHash,
+            legacyMountsPending: legacyMountsPending,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -4291,6 +4402,7 @@ typedef $$MediaAttachmentsTableCreateCompanionBuilder
   Value<String?> thumbnailPath,
   Value<String?> ocrText,
   Value<String?> ocrBlocksJson,
+  Value<String?> caption,
   Value<double?> overlayXRatio,
   Value<double?> overlayYRatio,
   Value<DateTime> createdAt,
@@ -4305,6 +4417,7 @@ typedef $$MediaAttachmentsTableUpdateCompanionBuilder
   Value<String?> thumbnailPath,
   Value<String?> ocrText,
   Value<String?> ocrBlocksJson,
+  Value<String?> caption,
   Value<double?> overlayXRatio,
   Value<double?> overlayYRatio,
   Value<DateTime> createdAt,
@@ -4340,6 +4453,9 @@ class $$MediaAttachmentsTableFilterComposer
 
   ColumnFilters<String> get ocrBlocksJson => $composableBuilder(
       column: $table.ocrBlocksJson, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get caption => $composableBuilder(
+      column: $table.caption, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get overlayXRatio => $composableBuilder(
       column: $table.overlayXRatio, builder: (column) => ColumnFilters(column));
@@ -4384,6 +4500,9 @@ class $$MediaAttachmentsTableOrderingComposer
       column: $table.ocrBlocksJson,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get caption => $composableBuilder(
+      column: $table.caption, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get overlayXRatio => $composableBuilder(
       column: $table.overlayXRatio,
       builder: (column) => ColumnOrderings(column));
@@ -4425,6 +4544,9 @@ class $$MediaAttachmentsTableAnnotationComposer
 
   GeneratedColumn<String> get ocrBlocksJson => $composableBuilder(
       column: $table.ocrBlocksJson, builder: (column) => column);
+
+  GeneratedColumn<String> get caption =>
+      $composableBuilder(column: $table.caption, builder: (column) => column);
 
   GeneratedColumn<double> get overlayXRatio => $composableBuilder(
       column: $table.overlayXRatio, builder: (column) => column);
@@ -4470,6 +4592,7 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             Value<String?> thumbnailPath = const Value.absent(),
             Value<String?> ocrText = const Value.absent(),
             Value<String?> ocrBlocksJson = const Value.absent(),
+            Value<String?> caption = const Value.absent(),
             Value<double?> overlayXRatio = const Value.absent(),
             Value<double?> overlayYRatio = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -4483,6 +4606,7 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             thumbnailPath: thumbnailPath,
             ocrText: ocrText,
             ocrBlocksJson: ocrBlocksJson,
+            caption: caption,
             overlayXRatio: overlayXRatio,
             overlayYRatio: overlayYRatio,
             createdAt: createdAt,
@@ -4496,6 +4620,7 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             Value<String?> thumbnailPath = const Value.absent(),
             Value<String?> ocrText = const Value.absent(),
             Value<String?> ocrBlocksJson = const Value.absent(),
+            Value<String?> caption = const Value.absent(),
             Value<double?> overlayXRatio = const Value.absent(),
             Value<double?> overlayYRatio = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -4509,6 +4634,7 @@ class $$MediaAttachmentsTableTableManager extends RootTableManager<
             thumbnailPath: thumbnailPath,
             ocrText: ocrText,
             ocrBlocksJson: ocrBlocksJson,
+            caption: caption,
             overlayXRatio: overlayXRatio,
             overlayYRatio: overlayYRatio,
             createdAt: createdAt,

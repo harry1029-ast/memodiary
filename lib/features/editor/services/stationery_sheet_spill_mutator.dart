@@ -4,7 +4,6 @@ import 'package:flutter_quill/flutter_quill.dart';
 
 import '../../templates/models/template_style.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/media_embed_data.dart';
 import '../models/typography_settings.dart';
 import 'editor_pagination_models.dart';
 import 'stationery_delta_splitter.dart';
@@ -287,99 +286,5 @@ class StationerySheetSpillMutator {
       activeSheetIndex: precedingIndex,
       didMutateContent: false,
     );
-  }
-
-  /// Inserts an [EphemeraSheet] at the active selection, splitting mid-sheet text
-  /// into leading (`activeIndex`) + ephemera (`activeIndex + 1`) + trailing (`activeIndex + 2`).
-  static int insertMediaAtSelection({
-    required List<StationerySheetDescriptor> sheets,
-    required int activeIndex,
-    required EphemeraMediaType mediaType,
-    required MediaEmbedData mediaData,
-  }) {
-    final activeSheet = sheets[activeIndex];
-    if (activeSheet is! TextStationerySheet) {
-      final targetIndex = (activeIndex + 1).clamp(0, sheets.length);
-      sheets.insert(
-        targetIndex,
-        EphemeraSheet(
-          sheetIndex: targetIndex,
-          mediaType: mediaType,
-          mediaData: mediaData,
-        ),
-      );
-      reindexSheets(sheets);
-      return targetIndex;
-    }
-
-    final maxOffset = math.max(0, activeSheet.document.length - 1);
-    final rawCaret = activeSheet.controller.selection.baseOffset;
-    final caretOffset = rawCaret >= 0 ? rawCaret.clamp(0, maxOffset) : maxOffset;
-
-    final split = StationeryDeltaSplitter.splitDeltaAtCharacterOffset(
-      sourceDelta: activeSheet.delta,
-      splitOffset: caretOffset,
-    );
-    final trailingPlainText =
-        Document.fromDelta(split.secondSlice).toPlainText().trim();
-
-    if (trailingPlainText.isEmpty) {
-      final targetIndex = (activeIndex + 1).clamp(0, sheets.length);
-      sheets.insert(
-        targetIndex,
-        EphemeraSheet(
-          sheetIndex: targetIndex,
-          mediaType: mediaType,
-          mediaData: mediaData,
-        ),
-      );
-      reindexSheets(sheets);
-      return targetIndex;
-    }
-
-    final originalHadSoftNewline = activeSheet.hasTrailingSoftNewline;
-    activeSheet.setDelta(
-      split.firstSlice,
-      selection: TextSelection.collapsed(offset: caretOffset),
-    );
-    activeSheet.hasTrailingSoftNewline = false;
-
-    final ephemera = EphemeraSheet(
-      sheetIndex: activeIndex + 1,
-      mediaType: mediaType,
-      mediaData: mediaData,
-    );
-    final trailingContinuation = ContinuationSheet.fromDelta(
-      sheetIndex: activeIndex + 2,
-      delta: split.secondSlice,
-      hasTrailingSoftNewline: originalHadSoftNewline,
-    );
-
-    sheets.insertAll(activeIndex + 1, <StationerySheetDescriptor>[
-      ephemera,
-      trailingContinuation,
-    ]);
-    reindexSheets(sheets);
-    return activeIndex + 1;
-  }
-
-  /// Preserves attached keepsake media when sheets are re-partitioned.
-  static void preserveAttachments(
-    List<StationerySheetDescriptor> source,
-    List<StationerySheetDescriptor> target,
-  ) {
-    var sourceIndex = 0;
-    for (final targetSheet in target) {
-      if (targetSheet is TextStationerySheet) {
-        while (sourceIndex < source.length && source[sourceIndex] is! TextStationerySheet) {
-          sourceIndex++;
-        }
-        if (sourceIndex < source.length) {
-          final sourceSheet = source[sourceIndex] as TextStationerySheet;
-          targetSheet.mediaAttachments.addAll(sourceSheet.mediaAttachments);
-          sourceIndex++;
-        }
-      }
-    }
   }
 }

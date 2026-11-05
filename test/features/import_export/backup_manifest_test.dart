@@ -1,3 +1,4 @@
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/import_export/models/backup_manifest.dart';
@@ -47,6 +48,7 @@ void main() {
             updatedAt: now,
             isDeleted: false,
             isLocked: true,
+            legacyMountsPending: false,
             entryPinHash: 'salt123:hash456',
           ),
         ],
@@ -190,6 +192,126 @@ void main() {
       });
       expect(legacyV2.snapshot.albumCollections, isEmpty);
       expect(legacyV2.snapshot.albumPhotos, isEmpty);
+    });
+
+    test('pre-v7 manifests move captions out of ocrText only for rows without OCR blocks', () {
+      Map<String, dynamic> legacyAttachment(String id, String? ocrText, String? blocks) => {
+            'id': id,
+            'entryId': 'entry_1',
+            'mediaType': 'image',
+            'relativePath': 'media/$id.webp',
+            'thumbnailPath': null,
+            'ocrText': ocrText,
+            'ocrBlocksJson': blocks,
+            'overlayXRatio': null,
+            'overlayYRatio': null,
+            'createdAt': 0,
+          };
+
+      final legacyV6 = BackupManifest.fromJson({
+        'format': 'memodiary-backup',
+        'formatVersion': 1,
+        'appSchemaVersion': 6,
+        'tables': {
+          'templates': [],
+          'notebooks': [],
+          'entries': [],
+          'mediaAttachments': [
+            legacyAttachment('never_scanned_caption', '湖畔品茶', null),
+            legacyAttachment('in_app_caption', '雨后西湖', '[]'),
+            legacyAttachment('ocr_scanned', '狮峰龙井', '[{"text":"狮峰龙井"}]'),
+            legacyAttachment('ocr_sentinel', '', '[]'),
+          ],
+        },
+        'mediaFiles': [],
+      });
+
+      final captions = {
+        for (final media in legacyV6.snapshot.mediaAttachments) media.id: media.caption,
+      };
+      expect(captions, equals({
+        'never_scanned_caption': '湖畔品茶',
+        'in_app_caption': '雨后西湖',
+        'ocr_scanned': null,
+        'ocr_sentinel': null,
+      }));
+      expect(
+        legacyV6.snapshot.mediaAttachments.map((media) => media.ocrText),
+        equals([null, null, '狮峰龙井', '']),
+      );
+    });
+
+    test('pre-v8 manifests flag entries with unanchored attachments for the legacy mounting pass', () {
+      Map<String, dynamic> legacyEntry(String id, String delta) => {
+            'id': id,
+            'notebookId': 'notebook_default',
+            'templateId': 'template_minimalist_white',
+            'title': null,
+            'contentDelta': delta,
+            'plainText': '',
+            'entryDate': 0,
+            'mood': null,
+            'weather': null,
+            'isWeeklyReview': false,
+            'weekNumber': null,
+            'unlockAt': null,
+            'createdAt': 0,
+            'updatedAt': 0,
+            'isDeleted': false,
+            'isLocked': false,
+            'entryPinHash': null,
+          };
+      Map<String, dynamic> attachment(String id, String entryId) => {
+            'id': id,
+            'entryId': entryId,
+            'mediaType': 'image',
+            'relativePath': 'media/$id.webp',
+            'thumbnailPath': null,
+            'ocrText': null,
+            'ocrBlocksJson': null,
+            'overlayXRatio': null,
+            'overlayYRatio': null,
+            'caption': null,
+            'createdAt': 0,
+          };
+
+      final legacyV7 = BackupManifest.fromJson({
+        'format': 'memodiary-backup',
+        'formatVersion': 1,
+        'appSchemaVersion': 7,
+        'tables': {
+          'templates': [],
+          'notebooks': [],
+          'entries': [
+            legacyEntry('sheet_paired', '[{"insert":"游湖\\n"}]'),
+            legacyEntry('anchored', '[{"insert":{"mount":"peak"}},{"insert":"\\n"}]'),
+            legacyEntry('text_only', '[{"insert":"无图\\n"}]'),
+          ],
+          'mediaAttachments': [
+            attachment('lake', 'sheet_paired'),
+            attachment('peak', 'anchored'),
+          ],
+        },
+        'mediaFiles': [],
+      });
+
+      expect(
+        {for (final entry in legacyV7.snapshot.entries) entry.id: entry.legacyMountsPending},
+        equals({'sheet_paired': true, 'anchored': false, 'text_only': false}),
+      );
+    });
+
+    test('accepts backups of the current database schema version', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+
+      expect(
+        BackupManifest.maxSupportedSchemaVersion,
+        equals(db.schemaVersion),
+        reason: 'Bumped AppDatabase.schemaVersion? Also bump '
+            'BackupManifest.maxSupportedSchemaVersion and map any legacy fields '
+            'in BackupDatabaseSnapshot.fromJson.',
+      );
     });
 
     test('rejects unsupported future formatVersion or appSchemaVersion', () {

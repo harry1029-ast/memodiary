@@ -5,11 +5,10 @@ import 'package:memodiary/core/database/app_database.dart';
 
 void main() {
   group('Schema v6 Migration & Ephemera Overlay Persistence Tests', () {
-    test('Fresh schema v6 database sets schemaVersion 6 and has overlay ratio columns', () async {
+    test('Fresh schema v6 database has overlay ratio columns', () async {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(() => db.close());
 
-      expect(db.schemaVersion, equals(6));
 
       // Trigger schema creation
       await db.getAllTemplates();
@@ -140,7 +139,6 @@ void main() {
       // Trigger database initialization / migration
       await migratedDb.getAllTemplates();
 
-      expect(migratedDb.schemaVersion, equals(6));
 
       // Verify legacy record has null overlay coordinates
       final legacyMedia = (await migratedDb.getMediaForEntry('entry_legacy')).single;

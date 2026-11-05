@@ -45,6 +45,7 @@ void main() {
           weekNumber: null,
           unlockAt: null,
           isLocked: false,
+          legacyMountsPending: false,
           entryPinHash: null,
           createdAt: date,
           updatedAt: date,

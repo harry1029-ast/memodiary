@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -10,9 +11,9 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/media_embed_data.dart';
 import '../models/thought_spark.dart';
 import '../services/editor_pagination_coordinator.dart';
+import '../services/sheet_media_operations.dart';
 import '../services/thought_spark_service.dart';
 
 /// Modular helpers for sandboxed media ingestion (photos and short videos)
@@ -20,8 +21,26 @@ import '../services/thought_spark_service.dart';
 class EditorMediaActions {
   const EditorMediaActions._();
 
-  /// Prompts the user to pick an image (camera or gallery), compresses to WebP,
-  /// copies into private sandbox storage, and mounts onto a dedicated EphemeraSheet.
+  static void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Refuses a collect with "画卷已满 15 影" when the Staging Handscroll is full.
+  static bool _refuseWhenHandscrollFull(
+    BuildContext context,
+    EditorPaginationCoordinator coordinator,
+  ) {
+    if (coordinator.media.handscrollRoom > 0) return false;
+    _showSnackBar(context, '画卷已满 ${SheetMediaOperations.kHandscrollCapacity} 影');
+    return true;
+  }
+
+  /// Prompts the user to take one photo or pick several from the gallery,
+  /// compresses each to WebP, copies it into private sandbox storage, and
+  /// Collects it into the Staging Handscroll. A pick beyond the handscroll's
+  /// remaining room collects what fits and reports how many were left out.
   static Future<void> handleImagePick({
     required BuildContext context,
     required ImagePicker imagePicker,
@@ -31,7 +50,9 @@ class EditorMediaActions {
     required String entryId,
     EditorAutosaveManager? autosaveManager,
     VoidCallback? onStateChanged,
+    ValueChanged<String>? onCollected,
   }) async {
+    if (_refuseWhenHandscrollFull(context, coordinator)) return;
     final tokens = InkDiaryTheme.tokensOf(context);
 
     final source = await showModalBottomSheet<ImageSource>(
@@ -67,45 +88,49 @@ class EditorMediaActions {
     if (source == null || !context.mounted) return;
 
     try {
-      final picked = await imagePicker.pickImage(source: source);
-      if (picked == null) return;
-
-      final relativePath = await mediaSandboxService.copyAndCompressImage(
-        File(picked.path),
-      );
-
-      final mediaId = const Uuid().v4();
-      await database.attachMediaToEntry(
-        id: mediaId,
-        entryId: entryId,
-        relativePath: relativePath,
-        mediaType: EphemeraMediaType.image.embedKey,
-      );
-
-      final activeSheet = coordinator.sheets.isNotEmpty &&
-              coordinator.activeSheetIndex < coordinator.sheets.length
-          ? coordinator.sheets[coordinator.activeSheetIndex]
-          : null;
-
-      if (activeSheet is TextStationerySheet && !activeSheet.isAtMediaCapacity) {
-        coordinator.attachMediaToActiveSheet(
-          SheetMediaItem(
-            id: mediaId,
-            mediaType: EphemeraMediaType.image,
-            relativePath: relativePath,
-          ),
-        );
+      final List<XFile> picks;
+      if (source == ImageSource.gallery) {
+        picks = await imagePicker.pickMultiImage();
       } else {
-        coordinator.insertMediaAtCurrentSelection(
-          mediaType: EphemeraMediaType.image,
-          mediaData: MediaEmbedData(
-            path: relativePath,
-            caption: '',
-            aspect: 'auto',
+        final photo = await imagePicker.pickImage(source: source);
+        picks = [if (photo != null) photo];
+      }
+      if (picks.isEmpty) return;
+
+      final room = coordinator.media.handscrollRoom;
+      final leftOut = math.max(0, picks.length - room);
+      final collected = <SheetMediaItem>[
+        for (final picked in picks.take(room))
+          SheetMediaItem(
+            id: const Uuid().v4(),
+            mediaType: EphemeraMediaType.image,
+            relativePath: await mediaSandboxService.copyAndCompressImage(File(picked.path)),
           ),
-        );
+      ];
+
+      // One transaction for the whole pick, so a multi-pick is a single write.
+      await database.transaction(() async {
+        for (final item in collected) {
+          await database.attachMediaToEntry(
+            id: item.id,
+            entryId: entryId,
+            relativePath: item.relativePath,
+            mediaType: EphemeraMediaType.image.embedKey,
+          );
+        }
+      });
+
+      // Collect in pick order so the Brush Reveals play one after another.
+      for (final item in collected) {
+        if (coordinator.media.collect(item)) onCollected?.call(item.id);
       }
       onStateChanged?.call();
+      if (leftOut > 0 && context.mounted) {
+        _showSnackBar(
+          context,
+          '画卷已满 ${SheetMediaOperations.kHandscrollCapacity} 影 · $leftOut 影未入卷',
+        );
+      }
       await autosaveManager?.saveDraft();
     } catch (error) {
       if (context.mounted) {
@@ -119,7 +144,7 @@ class EditorMediaActions {
   }
 
   /// Prompts the user to pick or record a video (camera or gallery, <= 60s),
-  /// sandboxes into private storage, and mounts onto a dedicated EphemeraSheet.
+  /// sandboxes into private storage, and Collects it into the Staging Handscroll.
   static Future<void> handleVideoPick({
     required BuildContext context,
     required ImagePicker imagePicker,
@@ -129,7 +154,9 @@ class EditorMediaActions {
     required String entryId,
     EditorAutosaveManager? autosaveManager,
     VoidCallback? onStateChanged,
+    ValueChanged<String>? onCollected,
   }) async {
+    if (_refuseWhenHandscrollFull(context, coordinator)) return;
     final tokens = InkDiaryTheme.tokensOf(context);
 
     final source = await showModalBottomSheet<ImageSource>(
@@ -184,30 +211,15 @@ class EditorMediaActions {
         thumbnailPath: result.thumbnailPath,
       );
 
-      final activeSheet = coordinator.sheets.isNotEmpty &&
-              coordinator.activeSheetIndex < coordinator.sheets.length
-          ? coordinator.sheets[coordinator.activeSheetIndex]
-          : null;
-
-      if (activeSheet is TextStationerySheet && !activeSheet.isAtMediaCapacity) {
-        coordinator.attachMediaToActiveSheet(
-          SheetMediaItem(
-            id: mediaId,
-            mediaType: EphemeraMediaType.video,
-            relativePath: result.relativePath,
-            thumbnailPath: result.thumbnailPath,
-          ),
-        );
-      } else {
-        coordinator.insertMediaAtCurrentSelection(
+      final didCollect = coordinator.media.collect(
+        SheetMediaItem(
+          id: mediaId,
           mediaType: EphemeraMediaType.video,
-          mediaData: MediaEmbedData(
-            path: result.relativePath,
-            caption: '',
-            aspect: 'auto',
-          ),
-        );
-      }
+          relativePath: result.relativePath,
+          thumbnailPath: result.thumbnailPath,
+        ),
+      );
+      if (didCollect) onCollected?.call(mediaId);
       onStateChanged?.call();
       await autosaveManager?.saveDraft();
     } on VideoDurationExceededException catch (error) {
@@ -275,33 +287,5 @@ class EditorMediaActions {
     controller.formatText(index, prompt.length + 6, Attribute.blockQuote);
     autosaveManager?.saveDraft(force: true);
     onStateChanged?.call();
-  }
-
-  /// Deletes an attached media item from the given sheet, removes it from SQLite,
-  /// and saves a draft.
-  static Future<void> handleDeleteMedia({
-    required EditorPaginationCoordinator coordinator,
-    required AppDatabase database,
-    required String entryId,
-    required int sheetIndex,
-    required String mediaId,
-    EditorAutosaveManager? autosaveManager,
-    VoidCallback? onStateChanged,
-  }) async {
-    if (sheetIndex >= 0 && sheetIndex < coordinator.sheets.length) {
-      final sheet = coordinator.sheets[sheetIndex];
-      if (sheet is TextStationerySheet) {
-        final items = sheet.mediaAttachments.where((item) => item.id == mediaId).toList();
-        coordinator.removeMediaAttachment(sheetIndex, mediaId);
-        for (final item in items) {
-          await database.deleteMediaForEntryByPath(
-            entryId: entryId,
-            relativePath: item.relativePath,
-          );
-        }
-        await autosaveManager?.saveDraft();
-        onStateChanged?.call();
-      }
-    }
   }
 }

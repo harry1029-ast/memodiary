@@ -56,6 +56,12 @@ class Entries extends Table {
   /// Salted SHA-256 PIN hash (format: "salt:hash") or null if protected by master app PIN
   TextColumn get entryPinHash => text().nullable()();
 
+  /// Whether this entry still awaits the one-time legacy mounting pass
+  /// (ADR-0009): set by the schema v8 upgrade on entries that had attachments
+  /// but no mount markers, cleared once the editor has written their markers.
+  /// Records only that the pass is due, never where anything is mounted.
+  BoolColumn get legacyMountsPending => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

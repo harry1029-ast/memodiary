@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/utils/delta_ops_decoder.dart';
 import '../../editor/services/vertical_typography_mapper.dart';
 import '../../templates/models/template_style.dart';
 import 'image_format_transcoder.dart';
@@ -57,22 +57,19 @@ class PdfEntrySerializer {
     required MediaSandboxService mediaService,
     required TemplateStyle style,
     required PdfFontResolver fontResolver,
+  }) => convertOpsToWidgets(ops: decodeDeltaOps(contentDeltaJson), fallbackPlainText: fallbackPlainText,
+      mediaService: mediaService, style: style, fontResolver: fontResolver);
+
+  /// Converts decoded Delta [ops] (or [fallbackPlainText] when there are none)
+  /// into PDF widgets.
+  static Future<List<pw.Widget>> convertOpsToWidgets({
+    required List<dynamic>? ops,
+    required String fallbackPlainText,
+    required MediaSandboxService mediaService,
+    required TemplateStyle style,
+    required PdfFontResolver fontResolver,
   }) async {
     final widgets = <pw.Widget>[];
-
-    List<dynamic>? ops;
-    if (contentDeltaJson.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(contentDeltaJson);
-        if (decoded is List) {
-          ops = decoded;
-        } else if (decoded is Map && decoded['ops'] is List) {
-          ops = decoded['ops'] as List;
-        }
-      } catch (_) {
-        ops = null;
-      }
-    }
 
     if (ops == null || ops.isEmpty) {
       // Fallback: render plain text line by line

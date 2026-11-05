@@ -8,6 +8,7 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../editor/models/media_embed_data.dart';
 import '../../editor/services/vertical_typography_mapper.dart';
 import '../../templates/models/template_style.dart';
+import '../../timeline/services/folio_media_pairing.dart';
 import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
 import 'pdf_polaroid_overlay_builder.dart';
@@ -69,7 +70,7 @@ class PdfVerticalScrollBuilder {
     required MediaSandboxService mediaService,
     required PdfFontResolver fontResolver,
     required String sealText,
-    List<MediaAttachment> attachments = const [],
+    FolioMountPlan mountPlan = const FolioMountPlan([]),
     PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
     final landscapeFormat = pageFormat.landscape;
@@ -78,14 +79,6 @@ class PdfVerticalScrollBuilder {
 
     final availableHeight = landscapeFormat.height - (marginY * 2);
     final availableWidth = landscapeFormat.width - (marginX * 2);
-
-    final overlayCards = attachments.isNotEmpty
-        ? await PdfPolaroidOverlayBuilder.buildOverlayCards(
-            attachments: attachments, mediaService: mediaService,
-            resolver: fontResolver, availableWidth: availableWidth,
-            availableHeight: availableHeight, isVertical: true,
-          )
-        : const <pw.Widget>[];
 
     // Collect all vertical items (title, columns, media cards, terminal colophon)
     final items = await _parseEntryItems(
@@ -113,6 +106,19 @@ class PdfVerticalScrollBuilder {
       pagesItems.add(currentPage);
     }
 
+    // Pair mounted items with pages exactly as the Folio pairs them with leaves.
+    final overlayCardsByPage = <List<pw.Widget>>[];
+    final mountsByPage = mountPlan.mountsByLeaf(pagesItems.length);
+    for (final mounted in mountsByPage) {
+      overlayCardsByPage.add(mounted.isEmpty
+          ? const <pw.Widget>[]
+          : await PdfPolaroidOverlayBuilder.buildOverlayCards(
+              attachments: mounted, mediaService: mediaService,
+              resolver: fontResolver, availableWidth: availableWidth,
+              availableHeight: availableHeight, isVertical: true,
+            ));
+    }
+
     // Build pw.Page for each slice (reversed to flow right-to-left in standard LTR coordinate space)
     final pages = <pw.Page>[];
     for (int pageIndex = 0; pageIndex < pagesItems.length; pageIndex++) {
@@ -136,7 +142,7 @@ class PdfVerticalScrollBuilder {
                         .toList(),
                   ),
                 ),
-                if (pageIndex == 0) ...overlayCards,
+                ...overlayCardsByPage[pageIndex],
               ],
             );
           },

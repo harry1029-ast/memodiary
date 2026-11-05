@@ -169,6 +169,10 @@ class EditorPaginationHandler {
     _runGuardedMutation(() {
       coordinator.checkAndPerformAutoSpill(liveIndex);
     });
+    // Mounted items follow their markers: a deleted passage unmounts its item,
+    // an undo remounts it, and reflow cascades or unmounts extras. Run outside
+    // the guard so a changed mount notifies the stage to rebuild.
+    if (!_isMutatingSheets) coordinator.reflowMounts();
   }
 
   void _runGuardedMutation(VoidCallback action) {
@@ -306,7 +310,7 @@ class EditorPaginationHandler {
         targetSheet is EphemeraSheet ? targetSheet.sandboxedRelativePath : null;
 
     _runGuardedMutation(() {
-      coordinator.removeEphemeraSheet(sheetIndex);
+      coordinator.media.removeEphemeraSheet(sheetIndex);
     });
     attachSheetListeners();
 

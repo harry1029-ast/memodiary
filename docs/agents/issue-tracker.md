@@ -12,6 +12,7 @@ Specs and tickets for this repo live as markdown files. Specs are committed; tic
 - An optional working draft may live at `.scratch/<slug>/spec.md`; `docs/specs/` is always the canonical copy.
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading.
 - `.scratch/` is gitignored: tickets are local to this machine and are not shared through git.
+- Only the orchestrating session edits ticket files: `.scratch/` lives in the main checkout, so worktree subagents return ticket comments and status changes in their final report instead.
 
 ## When a skill says "publish to the issue tracker"
 

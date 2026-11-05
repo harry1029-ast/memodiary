@@ -13,6 +13,7 @@ import 'integer_snapped_letterhead.dart';
 import 'journal_letterhead.dart';
 import 'sandboxed_image_embed_builder.dart';
 import 'sandboxed_video_embed_builder.dart';
+import 'mount_marker_embed_builder.dart';
 
 /// Renders an OpeningSheet (4-row JournalLetterhead + 10-row editor) or ContinuationSheet
 /// (running colophon + 14-row editor) constrained and clipped strictly inside the Paper Heart.
@@ -190,6 +191,7 @@ class EditorTextSheetView extends StatelessWidget {
           expands: false,
           scrollable: false,
           embedBuilders: [
+            const MountMarkerEmbedBuilder(),
             SandboxedImageEmbedBuilder(
               mediaSandboxService: mediaSandboxService,
               onImageRemoved: onSaveDraft,

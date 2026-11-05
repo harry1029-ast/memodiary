@@ -97,6 +97,7 @@ void main() {
                 thumbnailPath: const Value('media/entry_ticket_thumb.webp'),
                 ocrText: const Value('灵隐飞来峰门票 45元'),
                 ocrBlocksJson: const Value(ticketBlocksJson),
+                caption: const Value('山门留影'),
                 createdAt: Value(createdAt),
               ),
             );
@@ -201,6 +202,10 @@ void main() {
         expect(ticketMatches.length, equals(1));
         expect(ticketMatches.single.id, equals('att_ticket_1'));
         expect(ticketMatches.single.ocrBlocksJson, equals(ticketBlocksJson));
+
+        // Restored captions are round-tripped but never enter photo text search
+        expect(postRestoreSnapshot.mediaAttachments.first.caption, equals('山门留影'));
+        expect(await db.searchPhotoText('山门'), isEmpty);
 
         final menuMatches = await db.searchPhotoText('狮峰龙井');
         expect(menuMatches.length, equals(1));
@@ -350,17 +355,18 @@ void main() {
         expect(restoreRes.albumPhotosRestored, equals(1));
 
         final restoredMedia = (await db.getMediaForEntry('v4_entry_1')).single;
-        expect(restoredMedia.ocrText, equals('Legacy V4 Signpost'));
+        // Pre-v7 captions lived in ocrText; restore applies the v7 migration rule
+        expect(restoredMedia.caption, equals('Legacy V4 Signpost'));
+        expect(restoredMedia.ocrText, isNull);
         expect(restoredMedia.ocrBlocksJson, isNull);
 
         final restoredAlbumPhoto = (await db.select(db.albumPhotos).get()).single;
         expect(restoredAlbumPhoto.ocrText, isNull);
         expect(restoredAlbumPhoto.ocrBlocksJson, isNull);
 
-        // Legacy entry attachment with ocrText is searchable immediately, while legacy album photo is queued for backfill
-        final searchHits = await db.searchPhotoText('Signpost');
-        expect(searchHits.map((item) => item.id).toList(), equals(['v4_att_1']));
-        expect(await db.countUnindexedImages(), equals(1));
+        // The moved caption is not photo-searchable; both legacy images are queued for OCR backfill
+        expect(await db.searchPhotoText('Signpost'), isEmpty);
+        expect(await db.countUnindexedImages(), equals(2));
       },
     );
   });

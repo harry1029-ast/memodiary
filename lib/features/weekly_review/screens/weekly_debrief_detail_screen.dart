@@ -11,6 +11,7 @@ import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
 import '../../../core/theme/widgets/xuan_paper_card.dart';
 import '../../editor/models/typography_settings.dart';
 import '../../editor/screens/entry_editor_screen.dart';
+import '../../editor/widgets/mount_marker_embed_builder.dart';
 import '../../editor/widgets/sandboxed_image_embed_builder.dart';
 import '../../editor/widgets/sandboxed_video_embed_builder.dart';
 import '../../templates/models/template_style.dart';
@@ -395,6 +396,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                         scrollable: false,
                         padding: EdgeInsets.zero,
                         embedBuilders: [
+                          const MountMarkerEmbedBuilder(),
                           SandboxedImageEmbedBuilder(mediaSandboxService: widget.mediaService),
                           SandboxedVideoEmbedBuilder(mediaSandboxService: widget.mediaService),
                         ],

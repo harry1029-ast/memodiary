@@ -376,6 +376,7 @@ void main() {
         updatedAt: DateTime.utc(2026, 10, 19),
         isDeleted: false,
         isLocked: false,
+        legacyMountsPending: false,
       );
 
       final badSnapshot = BackupDatabaseSnapshot(

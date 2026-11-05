@@ -52,6 +52,10 @@ _Avoid_: OCR hit, image search result, reverse image match
 The explicit empty marker (`ocr_text = ''` and `ocr_blocks_json = '[]'`) persisted when an image contains zero recognizable text or cannot be decoded, distinguishing already-scanned photos from unindexed (`NULL`) photos.
 _Avoid_: Null OCR result, empty scan flag
 
+**Caption**:
+The diarist's own words about a photo or video (`media_attachments.caption`, schema v7+), edited only in the fullscreen lightbox. Never OCR text and never indexed by `media_fts`.
+_Avoid_: OCR text, photo text, annotation
+
 **Backfill Indexer**:
 The user-triggered, pauseable/resumable maintenance routine (`OcrQueueManager.runBackfill`) that scans historical unindexed photos (`ocr_text IS NULL`) sequentially without blocking launch or UI frames.
 _Avoid_: Background library scanner, batch OCR job

@@ -9,18 +9,23 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
+import '../controllers/editor_media_binding.dart';
 import '../controllers/editor_pagination_handler.dart';
+import '../domain/sheet_media_item.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
+import '../widgets/desk_workstation/desk_workstation_controller.dart';
 import '../widgets/dictation_bar.dart';
 import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_media_actions.dart';
+import '../widgets/editor_media_feedback.dart';
 import '../widgets/editor_overlay_actions.dart';
 import '../widgets/editor_top_app_bar.dart';
 import '../widgets/scholar_chest/scholar_chest_drawer.dart';
+import '../widgets/staged_exit_reminder_dialog.dart';
 import '../widgets/writing_dock.dart';
 
 /// Full-Bleed rich-text multimodal diary editor in classical Ink & Paper stationery aesthetic.
@@ -60,6 +65,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   final TextEditingController _titleController = TextEditingController();
   EditorAutosaveManager? _autosaveManager;
   EditorPaginationHandler? _paginationHandler;
+  EditorMediaBinding? _mediaBinding;
 
   final GlobalKey _letterheadKey = GlobalKey();
   double _headerHeight = 96.0;
@@ -69,7 +75,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   bool _isLoading = true;
   bool _isDictating = false;
-  bool _isDockCollapsed = false;
+  final DeskWorkstationController _workstationController = DeskWorkstationController();
 
   DateTime _entryDate = DateTime.now();
   int? _mood;
@@ -88,12 +94,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _thoughtSparkService = widget.thoughtSparkService ?? ThoughtSparkService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _imagePicker = widget.imagePicker ?? ImagePicker();
+    _workstationController.addListener(_handleWorkstationChanged);
     _loadEntryData();
   }
 
   @override
   void dispose() {
+    _workstationController.dispose();
     _paginationHandler?.dispose();
+    _mediaBinding?.dispose();
     _pageController.dispose();
     _coordinator.dispose();
     _autosaveManager?.dispose();
@@ -101,6 +110,16 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     if (widget.dictationService == null) _dictationService.dispose();
     if (widget.audioSanctumService == null) _audioSanctumService.dispose();
     super.dispose();
+  }
+
+  void _handleWorkstationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Collecting always opens the workstation so the new keepsake is seen landing.
+  void _collectMedia({required bool isVideo}) {
+    _workstationController.expand();
+    _mediaBinding!.pickMedia(context, isVideo: isVideo);
   }
 
   Future<void> _loadEntryData() async {
@@ -121,7 +140,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       final derivedTypography = TypographySettings.fromTemplate(template);
       final templateStyle = TemplateStyle.fromTemplate(template);
       final attachments = await widget.database.getMediaForEntry(widget.entryId);
-
       _coordinator = EditorPaginationCoordinator(
         typography: derivedTypography,
         templateStyle: templateStyle,
@@ -130,6 +148,12 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           fallbackPlainText: entry.plainText,
           attachments: attachments,
         );
+      _coordinator.onOverflowUnmount = _showOverflowUnmountNotice;
+      if (entry.legacyMountsPending) {
+        _coordinator.runLegacyMountPassOnFirstLayout(
+          (didMount) => _persistLegacyMountPass(entry, didMount: didMount),
+        );
+      }
 
       _titleController.text = entry.title ?? '';
 
@@ -154,6 +178,17 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           _currentTemplate = template;
           _autosaveManager = autosave;
           _paginationHandler = handler;
+          _mediaBinding = EditorMediaBinding(
+            database: widget.database,
+            mediaSandboxService: widget.mediaSandboxService,
+            entryId: widget.entryId,
+            imagePicker: _imagePicker,
+            coordinator: _coordinator,
+            autosaveManager: autosave,
+            onStateChanged: () {
+              if (mounted) setState(() {});
+            },
+          );
           _entryDate = entry.entryDate;
           _mood = entry.mood;
           _weather = entry.weather;
@@ -169,6 +204,26 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         Navigator.pop(context);
       }
     }
+  }
+
+  /// Tells the diarist which items reflow pushed past the last sheet and
+  /// returned to the Staging Handscroll.
+  void _showOverflowUnmountNotice(List<SheetMediaItem> unmountedItems) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        key: const Key('overflow_unmount_snackbar'),
+        content: Text('末页已满三影 · ${unmountedItems.length} 影已揭回画卷'),
+      ));
+  }
+
+  /// Mounts a pre-SPEC-010 entry's unanchored attachments first-come and
+  /// persists the markers once, so upgrading never empties sheets into the
+  /// Staging Handscroll (ADR-0009).
+  Future<void> _persistLegacyMountPass(Entry entry, {required bool didMount}) async {
+    final contentDelta = didMount ? _coordinator.reSynthesize().$1 : entry.contentDelta;
+    await widget.database.completeLegacyMountPass(entry.id, contentDelta: contentDelta);
   }
 
   void _toggleCenterAlignment() {
@@ -232,60 +287,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     );
   }
 
-  Future<void> _handleMediaPick({required bool isVideo}) async {
-    void onDone() {
-      _paginationHandler?.attachSheetListeners();
-      if (mounted) {
-        setState(() => _paginationHandler?.currentSheetIndex = _coordinator.activeSheetIndex);
-        if (_pageController.hasClients) {
-          _pageController.animateToPage(
-            _coordinator.activeSheetIndex,
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-          );
-        }
-      }
-    }
-
-    if (isVideo) {
-      await EditorMediaActions.handleVideoPick(
-        context: context,
-        imagePicker: _imagePicker,
-        coordinator: _coordinator,
-        mediaSandboxService: widget.mediaSandboxService,
-        database: widget.database,
-        entryId: widget.entryId,
-        autosaveManager: _autosaveManager,
-        onStateChanged: onDone,
-      );
-    } else {
-      await EditorMediaActions.handleImagePick(
-        context: context,
-        imagePicker: _imagePicker,
-        coordinator: _coordinator,
-        mediaSandboxService: widget.mediaSandboxService,
-        database: widget.database,
-        entryId: widget.entryId,
-        autosaveManager: _autosaveManager,
-        onStateChanged: onDone,
-      );
-    }
-  }
-
-  Future<void> _handleDeleteMedia(int sheetIndex, String mediaId) async {
-    await EditorMediaActions.handleDeleteMedia(
-      coordinator: _coordinator,
-      database: widget.database,
-      entryId: widget.entryId,
-      sheetIndex: sheetIndex,
-      mediaId: mediaId,
-      autosaveManager: _autosaveManager,
-      onStateChanged: () {
-        if (mounted) setState(() {});
-      },
-    );
-  }
-
   void _handleShuffleSpark() {
     EditorMediaActions.handleShuffleSpark(
       context: context,
@@ -306,6 +307,10 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   Future<void> _handleSaveAndExit() async {
     HapticFeedback.lightImpact();
+    final stagedCount = _coordinator.stagedItems.length;
+    final shouldLeave = await StagedExitReminderDialog.confirmLeave(context,
+        stagedCount: stagedCount, discardStaged: () async => _mediaBinding?.discardAllStaged());
+    if (!mounted || !shouldLeave) return;
     await _autosaveManager?.saveDraft(force: true);
     if (mounted) Navigator.pop(context, true);
   }
@@ -323,22 +328,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       );
     }
 
-    final templateStyle = TemplateStyle.fromTemplate(_currentTemplate!);
-    final isPaperDark =
-        ThemeData.estimateBrightnessForColor(templateStyle.backgroundColor) == Brightness.dark;
-    final paperBaseTheme = isPaperDark ? ThemeData.dark() : ThemeData.light();
-    final paperColor = templateStyle.backgroundColor;
-    final inkColor = isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF212121);
-    final iconColor = isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF2D2D2D);
-    final currentSheetIndex = _paginationHandler!.currentSheetIndex;
-
-    final themeConfig = StationerySheetThemeConfig(
-      templateStyle: templateStyle,
+    final themeConfig = StationerySheetThemeConfig.fromTemplateStyle(
+      templateStyle: TemplateStyle.fromTemplate(_currentTemplate!),
       typography: _typography,
-      paperBaseTheme: paperBaseTheme,
-      inkColor: inkColor,
-      isPaperDark: isPaperDark,
     );
+    final isPaperDark = themeConfig.isPaperDark;
+    final paperColor = themeConfig.templateStyle.backgroundColor;
+    final inkColor = themeConfig.inkColor;
+    final iconColor = themeConfig.iconColor;
+    final currentSheetIndex = _paginationHandler!.currentSheetIndex;
 
     final letterheadConfig = StationeryLetterheadConfig(
       letterheadKey: _letterheadKey,
@@ -385,6 +383,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 letterheadConfig: letterheadConfig,
                 mediaSandboxService: widget.mediaSandboxService,
                 onSaveDraft: () => _autosaveManager?.saveDraft(),
+                workstationController: _workstationController,
+                isKeyboardVisible: MediaQuery.viewInsetsOf(context).bottom > 0,
                 coordinator: _coordinator,
                 pageController: _pageController,
                 currentSheetIndex: currentSheetIndex,
@@ -393,9 +393,12 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
                 onPageChanged: _paginationHandler!.handlePageChanged,
                 onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
-                onDeleteMedia: _handleDeleteMedia,
-                onMediaCaptionChanged: (sheetIndex, mediaId, newCaption) =>
-                    widget.database.updateMediaOcr(mediaId, ocrText: newCaption, ocrBlocksJson: '[]'),
+                deskMedia: EditorMediaFeedback.handlersFor(
+                  context,
+                  _mediaBinding!,
+                  onCollect: () => _collectMedia(isVideo: false),
+                ),
+                onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),
             ),
@@ -408,8 +411,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             WritingDock(
               controller: _activeController,
               onEnsureTextController: () => _paginationHandler!.ensureActiveTextSheet(),
-              onPickImage: () => _handleMediaPick(isVideo: false),
-              onPickVideo: () => _handleMediaPick(isVideo: true),
+              onPickImage: () => _collectMedia(isVideo: false),
+              onPickVideo: () => _collectMedia(isVideo: true),
               onToggleDictation: () {
                 if (!_isDictating) {
                   _paginationHandler?.ensureActiveTextSheet();
@@ -421,8 +424,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               backgroundColor: paperColor.withValues(alpha: 0.95),
               inkColor: inkColor,
               isPaperDark: isPaperDark,
-              initiallyCollapsed: _isDockCollapsed,
-              onCollapsedChanged: (collapsed) => _isDockCollapsed = collapsed,
+              isWorkstationCollapsed: _workstationController.isCollapsed,
+              onToggleWorkstation: _workstationController.toggle,
             ),
           ],
         ),
