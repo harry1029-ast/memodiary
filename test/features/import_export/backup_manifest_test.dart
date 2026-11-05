@@ -1,3 +1,4 @@
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/import_export/models/backup_manifest.dart';
@@ -236,6 +237,19 @@ void main() {
       expect(
         legacyV6.snapshot.mediaAttachments.map((media) => media.ocrText),
         equals([null, null, '狮峰龙井', '']),
+      );
+    });
+
+    test('accepts backups of the current database schema version', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+
+      expect(
+        BackupManifest.maxSupportedSchemaVersion,
+        equals(db.schemaVersion),
+        reason: 'Bumped AppDatabase.schemaVersion? Also bump '
+            'BackupManifest.maxSupportedSchemaVersion and map any legacy fields '
+            'in BackupDatabaseSnapshot.fromJson.',
       );
     });
 

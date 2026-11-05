@@ -18,13 +18,12 @@
 - **Typography**: System built-in fonts + bundled SIL Open Font License (OFL) fonts (≥10 fonts total)
 
 ## 3. Core SQLite Schema Invariant
-Maintain the core tables and FTS5 indices in `lib/core/database/app_database.dart`[cite: 1, 5]:
-1. `templates`: `id`, `name`, `background_type` ('color', 'paper_texture', 'grid', 'lined'), `background_value`, `font_family`, `line_spacing`, `margin_horizontal`, `is_custom`[cite: 1, 5].
-2. `notebooks`: `id`, `title`, `default_template_id`, `created_at`[cite: 1, 2].
-3. `entries`: `id`, `notebook_id`, `template_id`, `title`, `content_delta` (Quill Delta JSON), `plain_text` (for FTS5), `entry_date` (epoch), `mood` (1-5), `weather`, `is_weekly_review`, `week_number`, `unlock_at` (epoch for Time Capsule), `created_at`, `updated_at`, `is_deleted` (0/1 for 30-day trash bin)[cite: 1, 3].
-4. `entries_fts`: FTS5 virtual table indexing `title` and segmented `plain_text`[cite: 1].
-5. `media_attachments`: `id`, `entry_id`, `media_type` ('image', 'video'), `relative_path`, `thumbnail_path`, `ocr_text`, `ocr_blocks_json`, `created_at`[cite: 1].
-6. `media_fts`: FTS5 virtual table (`unicode61`) indexing `ocr_text` across `media_attachments` and `album_photos`.
+Table definitions live in `lib/core/database/tables/`, the schema version and migrations in `lib/core/database/app_database.dart`. Read them for columns; these invariants hold across every schema version:
+- `entries.content_delta` stores Quill Delta JSON; `entries.plain_text` mirrors it for FTS. Templates (`templates` table) style presentation only and never mutate content.
+- `entries.is_deleted` (0/1) is a 30-day trash bin, not a hard delete.
+- `entries_fts` (FTS5 + `jieba` segmentation) indexes `title` and `plain_text`.
+- Media rows (`media_attachments`, `album_photos`) store strictly relative sandbox paths.
+- `media_fts` (FTS5 `unicode61`) indexes `ocr_text` only, across `media_attachments` and `album_photos`. Diarist captions (`caption`) are never indexed.
 
 ## 4. Coding & Verification Standards
 - Keep UI widgets decoupled from SQLite queries using repository/provider layers.
@@ -35,7 +34,7 @@ Maintain the core tables and FTS5 indices in `lib/core/database/app_database.dar
 - **Specs & ADRs**: Numbered specifications live at `docs/specs/000X-<slug>.md` and architecture records at `docs/adr/000X-<slug>.md`.
 - **Agent Skills Config**: Issue tracker, triage labels, and domain-doc conventions used by the engineering skills are defined in `docs/agents/` (`issue-tracker.md`, `triage-labels.md`, `domain.md`).
 - **Execution & Tooling**: In environments where `flutter` or `dart` is not on the default sandbox `$PATH`, invoke the Flutter SDK binary directly at `/home/harry1029/development/flutter/bin/flutter` (or `/home/harry1029/development/flutter/bin/dart`). Note that external SDK binaries (`/home/harry1029/development/...`) and Git index writes (`git add`, `git rm`, `git commit`) reside outside or are protected by the sandbox mount, requiring execution outside the sandbox (`BypassSandbox: true`). Prefer Standard Sandbox Mode (`BypassSandbox: false`) for all read-only inspection, search, and file commands (`find`, `grep`, `wc`, `git status`, `git log`, `git diff`) to prevent unnecessary user approval stalls in autonomous subagents. For one-off Dart evaluations, write a scratch script in `<appDataDir>/brain/<id>/scratch/` and run with `dart run <file>` (the Dart CLI does not support inline `-e` flags).
-- **Tool Economy & Token Hygiene**: Always run targeted test commands using `--reporter=compact` (e.g. `/home/harry1029/development/flutter/bin/flutter test --reporter=compact test/features/<feature>/`) to minimize console token bloat. Reserve full-suite test runs exclusively for milestone certification. Restrict log/search inspections using pipe limits (`head -n 20`, `grep -m 5`).
+- **Tool Economy & Token Hygiene**: Run tests with `tool/test.sh <paths>` (no paths = full suite): one summary line on success, only failing test names and Expected/Actual lines on failure. Reserve full-suite runs for milestone certification. Restrict log/search inspections using pipe limits (`head -n 20`, `grep -m 5`).
 - **Headless Release Diagnostics**: When investigating release APK crashes without a physical device, inspect R8 mapping outputs under `build/app/outputs/mapping/release/` (`usage.txt` lists stripped classes/constructors, `seeds.txt` lists preserved entry points) and verify merged APK binary manifest attributes (`extractNativeLibs`) via `/home/harry1029/android-sdk/build-tools/34.0.0/aapt2 dump xmltree --file AndroidManifest.xml build/app/outputs/flutter-apk/app-release.apk`.
 - **Generative Canvas Decomposition**: When implementing custom canvas painters (`CustomPainter`) or complex vector graphics, decompose the implementation into modular units (< 450 lines per file): separate static background geometry (recorded into immutable `ui.Picture` layers) from dynamic 60 FPS animation painters to prevent stream timeouts, context bloat, and maintain 60 FPS UI performance.
 

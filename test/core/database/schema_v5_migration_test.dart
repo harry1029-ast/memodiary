@@ -6,12 +6,11 @@ import 'package:memodiary/core/database/app_database.dart';
 void main() {
   group('Schema v5 Migration & media_fts Initialization Tests', () {
     test(
-      'Fresh schema v5 database sets schemaVersion 5, creates media_fts virtual table, 6 triggers, and new OCR columns',
+      'Fresh schema v5 database creates media_fts virtual table, 6 triggers, and new OCR columns',
       () async {
         final db = AppDatabase(NativeDatabase.memory());
         addTearDown(() => db.close());
 
-        expect(db.schemaVersion, equals(7));
 
         // Trigger database creation
         await db.getAllTemplates();

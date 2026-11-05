@@ -12,7 +12,6 @@ The imports above contain some Antigravity-specific instructions. For Claude Cod
 
 - **Sandbox flags**: Ignore `BypassSandbox: true/false`. Claude Code uses its own permission prompts.
 - **Scratch files**: Ignore `<appDataDir>/brain/<id>/scratch/`. Use the session scratchpad directory.
-- **Flutter/Dart**: If `flutter` is not on `$PATH`, use `/home/harry1029/development/flutter/bin/flutter` (and `.../dart`).
 - **Skills**: Skills live in `.agents/skills/` (shared with Antigravity) and are symlinked into `.claude/skills/`. Never rename or edit them in place; they are tracked in `skills-lock.json` for upstream updates. When a new skill is added under `.agents/skills/`, add a matching symlink in `.claude/skills/`.
 - **`code-review`**: Means the project skill (`.agents/skills/code-review`, Standards + Spec review), not the built-in `/code-review`.
 
