@@ -82,6 +82,12 @@ void main() {
   Future<void> reopenEditor(WidgetTester tester) async {
     await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
     await tester.pumpAndSettle();
+    // Items still staged on exit raise the reminder; keep them for reopening.
+    final keepButton = find.byKey(const Key('staged_exit_keep_button'));
+    if (keepButton.evaluate().isNotEmpty) {
+      await tester.tap(keepButton);
+      await tester.pumpAndSettle();
+    }
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
     await openEditor(tester);

@@ -114,6 +114,15 @@ class EditorMediaBinding {
     return true;
   }
 
+  /// Erases every item still staged and purges each immediately (there is no
+  /// undo: the editor is being left). Mounted items are untouched.
+  Future<void> discardAllStaged() async {
+    final stagedIds = coordinator.stagedItems.map((item) => item.id).toList();
+    for (final mediaId in stagedIds) {
+      if (eraseStagedMedia(mediaId)) await _purge(mediaId);
+    }
+  }
+
   /// Restores the erased item [mediaId] to the handscroll, if still pending.
   void undoErase(String mediaId) {
     final item = _pendingErasures.remove(mediaId);
