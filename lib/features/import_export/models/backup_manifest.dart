@@ -97,6 +97,18 @@ class BackupDatabaseSnapshot {
         'albumPhotos': albumPhotos.map((photo) => photo.toJson()).toList(),
       };
 
+  /// Pre-v7 backups have no `caption` key: captions lived in `ocrText`.
+  /// Mirrors the schema v7 migration: copy `ocrText` into `caption` only for
+  /// rows that were never OCR-scanned (`ocrBlocksJson` null) or captioned
+  /// in-app (empty blocks with non-empty text); `ocrText` is kept as-is.
+  static Map<String, dynamic> _withLegacyCaption(Map<String, dynamic> json) {
+    if (json.containsKey('caption')) return json;
+    final ocrText = json['ocrText'];
+    final blocks = json['ocrBlocksJson'];
+    final isCaption = ocrText is String && ocrText.isNotEmpty && (blocks == null || blocks == '[]');
+    return {...json, 'caption': isCaption ? ocrText : null};
+  }
+
   factory BackupDatabaseSnapshot.fromJson(Map<String, dynamic> json) {
     try {
       final rawTemplates = (json['templates'] as List<dynamic>? ?? [])
@@ -111,8 +123,8 @@ class BackupDatabaseSnapshot {
           .map((item) => Entry.fromJson(Map<String, dynamic>.from(item as Map)))
           .toList();
       final rawMedia = (json['mediaAttachments'] as List<dynamic>? ?? [])
-          .map((item) =>
-              MediaAttachment.fromJson(Map<String, dynamic>.from(item as Map)))
+          .map((item) => MediaAttachment.fromJson(
+              _withLegacyCaption(Map<String, dynamic>.from(item as Map))))
           .toList();
       final rawAlbumCollections =
           (json['albumCollections'] as List<dynamic>? ?? []).map((item) {
@@ -145,7 +157,7 @@ class BackupDatabaseSnapshot {
 class BackupManifest {
   static const String expectedFormat = 'memodiary-backup';
   static const int currentFormatVersion = 1;
-  static const int maxSupportedSchemaVersion = 6;
+  static const int maxSupportedSchemaVersion = 7;
 
   final String format;
   final int formatVersion;

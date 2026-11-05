@@ -11,7 +11,7 @@ void main() {
         final db = AppDatabase(NativeDatabase.memory());
         addTearDown(() => db.close());
 
-        expect(db.schemaVersion, equals(6));
+        expect(db.schemaVersion, equals(7));
 
         // Trigger database creation
         await db.getAllTemplates();

@@ -251,7 +251,7 @@ void main() {
         mediaType: 'image',
         relativePath: 'media/test_photo.webp',
         thumbnailPath: 'media/thumb_test_photo.webp',
-        ocrText: '竹窗听雨图',
+        caption: '竹窗听雨图',
         createdAt: testDate,
       );
 
@@ -289,7 +289,7 @@ void main() {
           mediaType: 'image',
           relativePath: 'media/photo_$num.webp',
           thumbnailPath: 'media/thumb_$num.webp',
-          ocrText: '随文小景 $num',
+          caption: '随文小景 $num',
           createdAt: testDate,
         );
       });

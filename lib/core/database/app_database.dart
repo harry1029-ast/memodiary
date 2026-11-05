@@ -68,7 +68,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   /// Creates the `media_fts` FTS5 virtual table and its 6 synchronization triggers.
   Future<void> _createMediaFts() async {
@@ -284,6 +284,18 @@ class AppDatabase extends _$AppDatabase {
               mediaAttachments,
               mediaAttachments.overlayYRatio,
             );
+          }
+          if (from < 7) {
+            await m.addColumn(mediaAttachments, mediaAttachments.caption);
+            // Captions previously lived in `ocr_text`. Rows with real OCR
+            // blocks keep it as OCR; rows never scanned (NULL blocks) or
+            // captioned in-app (empty blocks with non-empty text) are copied.
+            // `ocr_text` is left untouched so `media_fts` is unaffected.
+            await customStatement('''
+              UPDATE media_attachments SET caption = ocr_text
+              WHERE coalesce(ocr_text, '') <> ''
+                AND (ocr_blocks_json IS NULL OR ocr_blocks_json = '[]');
+            ''');
           }
         },
         beforeOpen: (details) async {
@@ -1111,6 +1123,14 @@ class AppDatabase extends _$AppDatabase {
         ocrText: Value(ocrText),
         ocrBlocksJson: Value(ocrBlocksJson),
       ),
+    );
+  }
+
+  /// Updates the diarist-authored caption of an entry media attachment,
+  /// leaving OCR text (and therefore `media_fts`) untouched.
+  Future<void> updateMediaCaption(String id, {required String caption}) async {
+    await (update(mediaAttachments)..where((tbl) => tbl.id.equals(id))).write(
+      MediaAttachmentsCompanion(caption: Value(caption)),
     );
   }
 

@@ -192,6 +192,53 @@ void main() {
       expect(legacyV2.snapshot.albumPhotos, isEmpty);
     });
 
+    test('pre-v7 manifests derive captions from ocrText only for rows without OCR blocks', () {
+      Map<String, dynamic> legacyAttachment(String id, String? ocrText, String? blocks) => {
+            'id': id,
+            'entryId': 'entry_1',
+            'mediaType': 'image',
+            'relativePath': 'media/$id.webp',
+            'thumbnailPath': null,
+            'ocrText': ocrText,
+            'ocrBlocksJson': blocks,
+            'overlayXRatio': null,
+            'overlayYRatio': null,
+            'createdAt': 0,
+          };
+
+      final legacyV6 = BackupManifest.fromJson({
+        'format': 'memodiary-backup',
+        'formatVersion': 1,
+        'appSchemaVersion': 6,
+        'tables': {
+          'templates': [],
+          'notebooks': [],
+          'entries': [],
+          'mediaAttachments': [
+            legacyAttachment('never_scanned_caption', '湖畔品茶', null),
+            legacyAttachment('in_app_caption', '雨后西湖', '[]'),
+            legacyAttachment('ocr_scanned', '狮峰龙井', '[{"text":"狮峰龙井"}]'),
+            legacyAttachment('ocr_sentinel', '', '[]'),
+          ],
+        },
+        'mediaFiles': [],
+      });
+
+      final captions = {
+        for (final media in legacyV6.snapshot.mediaAttachments) media.id: media.caption,
+      };
+      expect(captions, equals({
+        'never_scanned_caption': '湖畔品茶',
+        'in_app_caption': '雨后西湖',
+        'ocr_scanned': null,
+        'ocr_sentinel': null,
+      }));
+      expect(
+        legacyV6.snapshot.mediaAttachments.map((media) => media.ocrText),
+        equals(['湖畔品茶', '雨后西湖', '狮峰龙井', '']),
+      );
+    });
+
     test('rejects unsupported future formatVersion or appSchemaVersion', () {
       expect(
         () => BackupManifest.fromJson({

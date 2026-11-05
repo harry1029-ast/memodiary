@@ -97,6 +97,7 @@ void main() {
                 thumbnailPath: const Value('media/entry_ticket_thumb.webp'),
                 ocrText: const Value('灵隐飞来峰门票 45元'),
                 ocrBlocksJson: const Value(ticketBlocksJson),
+                caption: const Value('山门留影'),
                 createdAt: Value(createdAt),
               ),
             );
@@ -201,6 +202,10 @@ void main() {
         expect(ticketMatches.length, equals(1));
         expect(ticketMatches.single.id, equals('att_ticket_1'));
         expect(ticketMatches.single.ocrBlocksJson, equals(ticketBlocksJson));
+
+        // Restored captions are round-tripped but never enter photo text search
+        expect(postRestoreSnapshot.mediaAttachments.first.caption, equals('山门留影'));
+        expect(await db.searchPhotoText('山门'), isEmpty);
 
         final menuMatches = await db.searchPhotoText('狮峰龙井');
         expect(menuMatches.length, equals(1));
@@ -352,6 +357,8 @@ void main() {
         final restoredMedia = (await db.getMediaForEntry('v4_entry_1')).single;
         expect(restoredMedia.ocrText, equals('Legacy V4 Signpost'));
         expect(restoredMedia.ocrBlocksJson, isNull);
+        // Pre-v7 captions lived in ocrText; restore applies the v7 migration rule
+        expect(restoredMedia.caption, equals('Legacy V4 Signpost'));
 
         final restoredAlbumPhoto = (await db.select(db.albumPhotos).get()).single;
         expect(restoredAlbumPhoto.ocrText, isNull);

@@ -37,7 +37,6 @@ void main() {
   Widget buildTestableTray({
     required List<SheetMediaItem> items,
     ValueChanged<SheetMediaItem>? onTapMedia,
-    void Function(String mediaId, String newCaption)? onCaptionChanged,
     ValueChanged<String>? onDeleteItem,
     bool isPaperDark = false,
   }) {
@@ -51,7 +50,6 @@ void main() {
               items: items,
               mediaSandboxService: sandboxService,
               onTapMedia: onTapMedia,
-              onCaptionChanged: onCaptionChanged,
               onDeleteItem: onDeleteItem,
               isPaperDark: isPaperDark,
             ),
@@ -194,45 +192,28 @@ void main() {
       expect(deletedId, equals('item_to_delete'));
     });
 
-    testWidgets('editing caption triggers onCaptionChanged callback', (tester) async {
-      String? editedId;
-      String? updatedCaption;
+    testWidgets('shows caption read-only; captions are edited only in the lightbox', (tester) async {
       final items = [
         const SheetMediaItem(
-          id: 'item_caption_edit',
+          id: 'item_caption_read_only',
           mediaType: EphemeraMediaType.image,
           relativePath: 'media_photo_1.webp',
           caption: '初始题注',
         ),
       ];
 
-      await tester.pumpWidget(
-        buildTestableTray(
-          items: items,
-          onCaptionChanged: (mediaId, newCaption) {
-            editedId = mediaId;
-            updatedCaption = newCaption;
-          },
-        ),
-      );
+      await tester.pumpWidget(buildTestableTray(items: items));
       await tester.pumpAndSettle();
 
-      final captionFinder = find.byKey(const Key('media_tray_caption_item_caption_edit'));
+      final captionFinder = find.byKey(const Key('media_tray_caption_item_caption_read_only'));
       expect(captionFinder, findsOneWidget);
+      expect(find.text('初始题注'), findsOneWidget);
 
       await tester.tap(captionFinder);
       await tester.pumpAndSettle();
 
-      // Enter updated caption in the inline caption field or dialog
-      final inputFinder = find.byKey(const Key('media_tray_caption_input_item_caption_edit'));
-      if (inputFinder.evaluate().isNotEmpty) {
-        await tester.enterText(inputFinder, '修改后的题注');
-        await tester.testTextInput.receiveAction(TextInputAction.done);
-        await tester.pumpAndSettle();
-      }
-
-      expect(editedId, equals('item_caption_edit'));
-      expect(updatedCaption, equals('修改后的题注'));
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byType(AlertDialog), findsNothing);
     });
   });
 

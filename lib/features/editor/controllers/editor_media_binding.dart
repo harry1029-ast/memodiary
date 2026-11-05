@@ -92,6 +92,6 @@ class EditorMediaBinding {
 
   /// Persists an edited caption for [mediaId].
   Future<void> updateCaption(String mediaId, String newCaption) async {
-    await database.updateMediaOcr(mediaId, ocrText: newCaption, ocrBlocksJson: '[]');
+    await database.updateMediaCaption(mediaId, caption: newCaption);
   }
 }

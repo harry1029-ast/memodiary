@@ -30,8 +30,8 @@ class FolioMediaPairing {
           totalLeaves: 0,
           mediaType: attachment.mediaType,
           sandboxedRelativePath: attachment.relativePath,
-          caption: attachment.ocrText?.trim().isNotEmpty == true
-              ? '「图注 · ${attachment.ocrText!.trim().split('\n').first}」'
+          caption: attachment.caption?.trim().isNotEmpty == true
+              ? '「图注 · ${attachment.caption!.trim().split('\n').first}」'
               : null,
           title: title,
           lunarDate: lunarDate,
@@ -90,7 +90,7 @@ class FolioMediaPairing {
               orElse: () => null,
             );
         final targetLeafIndex = bodyMatch?.leafIndex ?? leafMatch?.leafIndex ?? (index + 1);
-        final caption = attachment.ocrText?.trim() ?? '';
+        final caption = attachment.caption?.trim() ?? '';
         final title = caption.isNotEmpty ? caption.split('\n').first : '随文影札 ${index + 1}';
         results.add(
           FolioPhotoAttachment(

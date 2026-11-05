@@ -197,7 +197,7 @@ class EditorDeltaPartitioner {
             mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
             mediaData: MediaEmbedData(
               path: attachment.relativePath,
-              caption: attachment.ocrText ?? '',
+              caption: attachment.caption ?? '',
             ),
           ));
         }

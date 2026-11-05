@@ -27,6 +27,10 @@ class MediaAttachments extends Table {
   /// Normalized line bounding boxes JSON (if processed)
   TextColumn get ocrBlocksJson => text().nullable()();
 
+  /// Diarist-authored caption, kept apart from [ocrText] so captions never
+  /// enter photo text search and OCR never overwrites what the diarist wrote.
+  TextColumn get caption => text().nullable()();
+
   /// Normalized horizontal anchor offset [0.0..1.0] for folio ephemera overlay.
   RealColumn get overlayXRatio => real().nullable()();
 

@@ -280,12 +280,12 @@ class EditorPaperCanvas extends StatelessWidget {
                                 context,
                                 item: item,
                                 mediaSandboxService: mediaSandboxService,
+                                onCaptionChanged: (mediaId, newCaption) {
+                                  coordinator.media.updateMediaCaption(currentSheetIndex, mediaId, newCaption);
+                                  onMediaCaptionChanged?.call(currentSheetIndex, mediaId, newCaption);
+                                  onSaveDraft();
+                                },
                               );
-                            },
-                            onCaptionChanged: (mediaId, newCaption) {
-                              coordinator.media.updateMediaCaption(currentSheetIndex, mediaId, newCaption);
-                              onMediaCaptionChanged?.call(currentSheetIndex, mediaId, newCaption);
-                              onSaveDraft();
                             },
                             onDeleteItem: (mediaId) {
                               if (onDeleteMedia != null) {

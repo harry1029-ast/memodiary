@@ -63,8 +63,8 @@ class PdfPolaroidOverlayBuilder {
     int? stackIndex,
     int? totalStackCount,
   }) {
-    final title = attachment.ocrText?.trim().isNotEmpty == true
-        ? attachment.ocrText!.trim().split('\n').first
+    final title = attachment.caption?.trim().isNotEmpty == true
+        ? attachment.caption!.trim().split('\n').first
         : '随文影札';
 
     return pw.Container(

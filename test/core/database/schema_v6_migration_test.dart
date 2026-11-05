@@ -9,7 +9,7 @@ void main() {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(() => db.close());
 
-      expect(db.schemaVersion, equals(6));
+      expect(db.schemaVersion, equals(7));
 
       // Trigger schema creation
       await db.getAllTemplates();
@@ -140,7 +140,7 @@ void main() {
       // Trigger database initialization / migration
       await migratedDb.getAllTemplates();
 
-      expect(migratedDb.schemaVersion, equals(6));
+      expect(migratedDb.schemaVersion, equals(7));
 
       // Verify legacy record has null overlay coordinates
       final legacyMedia = (await migratedDb.getMediaForEntry('entry_legacy')).single;

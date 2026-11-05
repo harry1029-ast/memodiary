@@ -3,14 +3,20 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import 'lightbox_caption_strip.dart';
 import 'sandboxed_video_player.dart';
 
 /// Immersive, distraction-free Fullscreen Lightbox viewer with pinch-to-zoom,
 /// multi-photo carousel swiping, and video playback controls.
+///
+/// The lightbox is the only place a media attachment's caption is edited
+/// (legacy inline-embed captions live in the Delta and are not covered here).
+/// Captions are editable when [onCaptionChanged] is provided, else read-only.
 class FullscreenMediaLightbox extends StatefulWidget {
   final List<SheetMediaItem> items;
   final int initialIndex;
   final MediaSandboxService mediaSandboxService;
+  final void Function(String mediaId, String newCaption)? onCaptionChanged;
 
   FullscreenMediaLightbox({
     super.key,
@@ -18,6 +24,7 @@ class FullscreenMediaLightbox extends StatefulWidget {
     List<SheetMediaItem>? items,
     this.initialIndex = 0,
     required this.mediaSandboxService,
+    this.onCaptionChanged,
   }) : items = items ?? (item != null ? [item] : const <SheetMediaItem>[]);
 
   /// Displays the [FullscreenMediaLightbox] as an accessible full-screen modal dialog.
@@ -27,6 +34,7 @@ class FullscreenMediaLightbox extends StatefulWidget {
     List<SheetMediaItem>? items,
     int initialIndex = 0,
     required MediaSandboxService mediaSandboxService,
+    void Function(String mediaId, String newCaption)? onCaptionChanged,
   }) {
     final effectiveItems = items ?? (item != null ? [item] : const <SheetMediaItem>[]);
     if (effectiveItems.isEmpty) return Future.value();
@@ -40,6 +48,7 @@ class FullscreenMediaLightbox extends StatefulWidget {
         items: effectiveItems,
         initialIndex: initialIndex.clamp(0, effectiveItems.length - 1),
         mediaSandboxService: mediaSandboxService,
+        onCaptionChanged: onCaptionChanged,
       ),
     );
   }
@@ -52,6 +61,10 @@ class _FullscreenMediaLightboxState extends State<FullscreenMediaLightbox> {
   late PageController _pageController;
   late int _currentIndex;
 
+  /// Captions saved while this lightbox is open, keyed by media id, so the
+  /// strip shows the new text without waiting for the caller to rebuild.
+  final Map<String, String> _savedCaptions = {};
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +76,11 @@ class _FullscreenMediaLightboxState extends State<FullscreenMediaLightbox> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _saveCaption(String mediaId, String newCaption) {
+    setState(() => _savedCaptions[mediaId] = newCaption);
+    widget.onCaptionChanged?.call(mediaId, newCaption);
   }
 
   Future<File> _resolveMediaFile(MediaSandboxService service, String rawPath) async {
@@ -202,31 +220,17 @@ class _FullscreenMediaLightboxState extends State<FullscreenMediaLightbox> {
               ),
             ),
 
-            // Bottom caption strip if present
-            if (activeItem.caption.trim().isNotEmpty)
-              Positioned(
-                bottom: 24,
-                left: 20,
-                right: 20,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white24, width: 0.8),
-                  ),
-                  child: Text(
-                    activeItem.caption.trim(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      height: 1.4,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                ),
+            // Bottom caption strip (the single caption editor)
+            Positioned(
+              bottom: 24,
+              left: 20,
+              right: 20,
+              child: LightboxCaptionStrip(
+                key: ValueKey('lightbox_caption_strip_${activeItem.id}'),
+                caption: _savedCaptions[activeItem.id] ?? activeItem.caption,
+                onSave: widget.onCaptionChanged == null ? null : (newCaption) => _saveCaption(activeItem.id, newCaption),
               ),
+            ),
           ],
         ),
       ),

@@ -11,7 +11,6 @@ class StationeryMediaTray extends StatefulWidget {
   final List<SheetMediaItem> items;
   final MediaSandboxService mediaSandboxService;
   final ValueChanged<SheetMediaItem>? onTapMedia;
-  final void Function(String mediaId, String newCaption)? onCaptionChanged;
   final ValueChanged<String>? onDeleteItem;
   final bool isPaperDark;
   final Color? inkColor;
@@ -21,7 +20,6 @@ class StationeryMediaTray extends StatefulWidget {
     required this.items,
     required this.mediaSandboxService,
     this.onTapMedia,
-    this.onCaptionChanged,
     this.onDeleteItem,
     this.isPaperDark = false,
     this.inkColor,
@@ -202,21 +200,12 @@ class _StationeryMediaTrayState extends State<StationeryMediaTray> {
                         child: Row(
                           children: [
                             Expanded(
-                              child: GestureDetector(
+                              child: Text(
+                                item.caption.trim(),
                                 key: Key('media_tray_caption_${item.id}'),
-                                onTap: () => _promptEditCaption(item),
-                                child: Text(
-                                  item.caption.trim().isNotEmpty ? item.caption : '点击添注随笔 · Add caption...',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11.5,
-                                    color: item.caption.trim().isNotEmpty
-                                        ? textInk
-                                        : textInk.withValues(alpha: 0.45),
-                                    fontStyle: item.caption.trim().isEmpty ? FontStyle.italic : FontStyle.normal,
-                                  ),
-                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11.5, color: textInk),
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -254,40 +243,6 @@ class _StationeryMediaTrayState extends State<StationeryMediaTray> {
         child: Icon(Icons.play_circle_fill, size: 36, color: Colors.white70),
       ),
     );
-  }
-
-  Future<void> _promptEditCaption(SheetMediaItem item) async {
-    final textController = TextEditingController(text: item.caption);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('编辑随笔题注', style: TextStyle(fontSize: 15)),
-        content: TextField(
-          key: Key('media_tray_caption_input_${item.id}'),
-          controller: textController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: '写下当下的心境与留白...',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (value) => Navigator.of(dialogContext).pop(true),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      widget.onCaptionChanged?.call(item.id, textController.text.trim());
-    }
   }
 
   Future<File> _resolveMediaFile(MediaSandboxService service, String rawPath) async {

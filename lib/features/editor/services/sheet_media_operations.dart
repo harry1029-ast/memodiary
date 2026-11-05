@@ -46,7 +46,7 @@ class SheetMediaOperations {
           mediaType: item.mediaType.embedKey,
           relativePath: item.relativePath,
           thumbnailPath: item.thumbnailPath,
-          ocrText: item.caption,
+          caption: item.caption,
           createdAt: DateTime.now(),
         ));
       }

@@ -141,7 +141,7 @@ When the handscroll is empty it rests closed as a brocade-wrapped scroll, inviti
 ### Schema (schema version 6 → 7)
 
 - Add nullable `caption` (TEXT) to `media_attachments`.
-- Migration copies `ocr_text` into `caption` only for rows where `ocr_blocks_json IS NULL`; rows with OCR data keep `ocr_text` as OCR and get a null caption. `media_fts` continues to index `ocr_text` only.
+- Migration copies non-empty `ocr_text` into `caption` only for rows where `ocr_blocks_json IS NULL` or `'[]'` (the pre-v7 in-app caption editor wrote captions with empty blocks; real OCR text always carries blocks, and the OCR Sentinel has empty text); rows with OCR data keep `ocr_text` as OCR and get a null caption. Pre-v7 backups are restored with the same rule. `media_fts` continues to index `ocr_text` only.
 - No column records mounting; anchoring lives in `entries.content_delta`.
 - Backup manifest and restore carry the new column; mount markers travel inside the Delta.
 
