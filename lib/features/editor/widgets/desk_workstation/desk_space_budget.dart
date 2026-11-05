@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import '../sheet_mount_strip.dart';
+
 /// How the scholar's desk below the app bar is shared between the active
 /// Stationery Sheet, its Sheet Mount Strip and the Desk Workstation.
 ///
@@ -7,13 +9,19 @@ import 'dart:math' as math;
 /// sheet and strip leave, never less than [kOpenMinHeight] (open handscroll) or
 /// [kClosedMinHeight] (closed brocade scroll). While the software keyboard is
 /// open the strip and workstation step aside so the active line stays visible.
+///
+/// Whether the workstation fits is an entry-wide, start-up decision, so it is
+/// judged against the sheet alone: strips come and go with page turns. Where a
+/// strip is shown the open handscroll may settle to [kClosedMinHeight] rather
+/// than cover the strip.
 class DeskSpaceBudget {
   static const double kOpenMinHeight = 150.0;
   static const double kClosedMinHeight = 110.0;
   static const double kTopMargin = 12.0;
   static const double kBottomMargin = 12.0;
   static const double kSheetGap = 10.0;
-  static const double kStripHeight = 72.0;
+  /// The Sheet Mount Strip's band, with breathing room for its shake.
+  static const double kStripHeight = SheetMountStrip.kStripHeight + 4.0;
   static const double kStripGap = 8.0;
 
   /// Distance from the canvas top to the Stationery Sheet card.
@@ -61,9 +69,9 @@ class DeskSpaceBudget {
     final showStrip = hasMountedItems && !isKeyboardVisible;
     final stripBlock = hasMountedItems ? kStripHeight + kStripGap : 0.0;
     final minHeight = isHandscrollEmpty ? kClosedMinHeight : kOpenMinHeight;
-    final roomBelowSheet =
-        canvasHeight - kTopMargin - sheetHeight - kSheetGap - stripBlock;
+    final roomBelowSheet = canvasHeight - kTopMargin - sheetHeight - kSheetGap;
     final workstationFits = roomBelowSheet >= minHeight;
+    final floorHeight = showStrip ? kClosedMinHeight : minHeight;
     final showWorkstation = !isWorkstationCollapsed && !isKeyboardVisible;
 
     // Text-only sheets keep SPEC-009's centering in the room above the workstation.
@@ -90,7 +98,7 @@ class DeskSpaceBudget {
       stripTop: stripTop,
       showStrip: showStrip,
       showWorkstation: showWorkstation,
-      workstationHeight: math.max(minHeight, canvasHeight - occupied),
+      workstationHeight: math.max(floorHeight, canvasHeight - occupied),
       showSeal: showSeal,
       workstationFits: workstationFits,
     );

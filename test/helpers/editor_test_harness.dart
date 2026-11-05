@@ -85,9 +85,13 @@ class StubEditorImagePicker extends ImagePicker {
   final XFile? imageResult;
   final XFile? videoResult;
 
+  /// Gallery multi-pick result; defaults to [imageResult] alone.
+  final List<XFile>? multiImageResults;
+
   StubEditorImagePicker({
     this.imageResult,
     this.videoResult,
+    this.multiImageResults,
   });
 
   @override
@@ -100,6 +104,16 @@ class StubEditorImagePicker extends ImagePicker {
     bool requestFullMetadata = true,
   }) async =>
       imageResult;
+
+  @override
+  Future<List<XFile>> pickMultiImage({
+    double? maxWidth,
+    double? maxHeight,
+    int? imageQuality,
+    int? limit,
+    bool requestFullMetadata = true,
+  }) async =>
+      multiImageResults ?? [if (imageResult != null) imageResult!];
 
   @override
   Future<XFile?> pickVideo({

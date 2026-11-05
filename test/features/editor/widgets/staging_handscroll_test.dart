@@ -99,6 +99,9 @@ void main() {
       await tester.tap(find.byKey(const Key('handscroll_item_item_2')));
       await tester.tap(find.byKey(const Key('handscroll_mount_item_1')));
       await tester.tap(find.byKey(const Key('handscroll_erase_item_2')));
+      // ✕ reports the erase once the ink-wash dissolve has played.
+      expect(erased, isEmpty);
+      await tester.pumpAndSettle();
 
       expect(tapped, ['item_2']);
       expect(mounted, ['item_1']);
