@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -159,6 +160,35 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(Key('handscroll_item_$mediaId')), findsOneWidget);
+    expect(anyCover, findsNothing);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('an item unmounted by reflow rejoins the handscroll without replaying its reveal', (tester) async {
+    File('${tempDirectory.path}/media/plum.webp')
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(kValid1x1PngBytes);
+    await database.attachMediaToEntry(id: 'plum', entryId: _entryId, relativePath: 'media/plum.webp');
+    await (database.update(database.entries)..where((row) => row.id.equals(_entryId))).write(
+          EntriesCompanion(
+            contentDelta: Value(jsonEncode((Delta()
+                  ..insert('断桥残雪')
+                  ..insert({'mount': 'plum'})
+                  ..insert('\n'))
+                .toJson())),
+          ),
+        );
+    await openEditor(tester);
+    expect(find.byKey(const Key('mount_strip_item_plum')), findsOneWidget);
+
+    tester
+        .widget<QuillEditor>(find.byType(QuillEditor).first)
+        .controller
+        .replaceText(2, 3, '', const TextSelection.collapsed(offset: 2));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const Key('handscroll_item_plum')), findsOneWidget);
     expect(anyCover, findsNothing);
     await tester.pumpAndSettle();
   });
