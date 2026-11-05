@@ -9,6 +9,7 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
+import '../controllers/editor_media_binding.dart';
 import '../controllers/editor_pagination_handler.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../models/typography_settings.dart';
@@ -60,6 +61,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   final TextEditingController _titleController = TextEditingController();
   EditorAutosaveManager? _autosaveManager;
   EditorPaginationHandler? _paginationHandler;
+  EditorMediaBinding? _mediaBinding;
 
   final GlobalKey _letterheadKey = GlobalKey();
   double _headerHeight = 96.0;
@@ -154,6 +156,19 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           _currentTemplate = template;
           _autosaveManager = autosave;
           _paginationHandler = handler;
+          _mediaBinding = EditorMediaBinding(
+            database: widget.database,
+            mediaSandboxService: widget.mediaSandboxService,
+            entryId: widget.entryId,
+            imagePicker: _imagePicker,
+            coordinator: _coordinator,
+            pageController: _pageController,
+            autosaveManager: autosave,
+            paginationHandler: handler,
+            onStateChanged: () {
+              if (mounted) setState(() {});
+            },
+          );
           _entryDate = entry.entryDate;
           _mood = entry.mood;
           _weather = entry.weather;
@@ -232,60 +247,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     );
   }
 
-  Future<void> _handleMediaPick({required bool isVideo}) async {
-    void onDone() {
-      _paginationHandler?.attachSheetListeners();
-      if (mounted) {
-        setState(() => _paginationHandler?.currentSheetIndex = _coordinator.activeSheetIndex);
-        if (_pageController.hasClients) {
-          _pageController.animateToPage(
-            _coordinator.activeSheetIndex,
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-          );
-        }
-      }
-    }
-
-    if (isVideo) {
-      await EditorMediaActions.handleVideoPick(
-        context: context,
-        imagePicker: _imagePicker,
-        coordinator: _coordinator,
-        mediaSandboxService: widget.mediaSandboxService,
-        database: widget.database,
-        entryId: widget.entryId,
-        autosaveManager: _autosaveManager,
-        onStateChanged: onDone,
-      );
-    } else {
-      await EditorMediaActions.handleImagePick(
-        context: context,
-        imagePicker: _imagePicker,
-        coordinator: _coordinator,
-        mediaSandboxService: widget.mediaSandboxService,
-        database: widget.database,
-        entryId: widget.entryId,
-        autosaveManager: _autosaveManager,
-        onStateChanged: onDone,
-      );
-    }
-  }
-
-  Future<void> _handleDeleteMedia(int sheetIndex, String mediaId) async {
-    await EditorMediaActions.handleDeleteMedia(
-      coordinator: _coordinator,
-      database: widget.database,
-      entryId: widget.entryId,
-      sheetIndex: sheetIndex,
-      mediaId: mediaId,
-      autosaveManager: _autosaveManager,
-      onStateChanged: () {
-        if (mounted) setState(() {});
-      },
-    );
-  }
-
   void _handleShuffleSpark() {
     EditorMediaActions.handleShuffleSpark(
       context: context,
@@ -323,22 +284,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       );
     }
 
-    final templateStyle = TemplateStyle.fromTemplate(_currentTemplate!);
-    final isPaperDark =
-        ThemeData.estimateBrightnessForColor(templateStyle.backgroundColor) == Brightness.dark;
-    final paperBaseTheme = isPaperDark ? ThemeData.dark() : ThemeData.light();
-    final paperColor = templateStyle.backgroundColor;
-    final inkColor = isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF212121);
-    final iconColor = isPaperDark ? const Color(0xFFDCD6CA) : const Color(0xFF2D2D2D);
-    final currentSheetIndex = _paginationHandler!.currentSheetIndex;
-
-    final themeConfig = StationerySheetThemeConfig(
-      templateStyle: templateStyle,
+    final themeConfig = StationerySheetThemeConfig.fromTemplateStyle(
+      templateStyle: TemplateStyle.fromTemplate(_currentTemplate!),
       typography: _typography,
-      paperBaseTheme: paperBaseTheme,
-      inkColor: inkColor,
-      isPaperDark: isPaperDark,
     );
+    final isPaperDark = themeConfig.isPaperDark;
+    final paperColor = themeConfig.templateStyle.backgroundColor;
+    final inkColor = themeConfig.inkColor;
+    final iconColor = themeConfig.iconColor;
+    final currentSheetIndex = _paginationHandler!.currentSheetIndex;
 
     final letterheadConfig = StationeryLetterheadConfig(
       letterheadKey: _letterheadKey,
@@ -393,9 +347,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
                 onPageChanged: _paginationHandler!.handlePageChanged,
                 onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
-                onDeleteMedia: _handleDeleteMedia,
+                onDeleteMedia: _mediaBinding!.deleteMedia,
                 onMediaCaptionChanged: (sheetIndex, mediaId, newCaption) =>
-                    widget.database.updateMediaOcr(mediaId, ocrText: newCaption, ocrBlocksJson: '[]'),
+                    _mediaBinding!.updateCaption(mediaId, newCaption),
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),
             ),
@@ -408,8 +362,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             WritingDock(
               controller: _activeController,
               onEnsureTextController: () => _paginationHandler!.ensureActiveTextSheet(),
-              onPickImage: () => _handleMediaPick(isVideo: false),
-              onPickVideo: () => _handleMediaPick(isVideo: true),
+              onPickImage: () => _mediaBinding!.pickMedia(context, isVideo: false),
+              onPickVideo: () => _mediaBinding!.pickMedia(context, isVideo: true),
               onToggleDictation: () {
                 if (!_isDictating) {
                   _paginationHandler?.ensureActiveTextSheet();

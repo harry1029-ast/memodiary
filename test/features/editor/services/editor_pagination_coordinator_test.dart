@@ -149,7 +149,7 @@ void main() {
         ChangeSource.local,
       );
 
-      coordinator.insertMediaAtCurrentSelection(
+      coordinator.media.insertMediaAtCurrentSelection(
         mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(path: 'media/mid_split.webp'),
       );
@@ -243,7 +243,7 @@ void main() {
 
       expect(coordinator.totalSheets, equals(1));
 
-      coordinator.insertEphemeraSheet(
+      coordinator.media.insertEphemeraSheet(
         mediaType: EphemeraMediaType.image,
         mediaData: const MediaEmbedData(
           path: 'media/inserted_image.webp',
@@ -255,7 +255,7 @@ void main() {
       expect(coordinator.sheets[1], isA<EphemeraSheet>());
       expect(coordinator.activeSheetIndex, equals(1));
 
-      coordinator.removeEphemeraSheet(1);
+      coordinator.media.removeEphemeraSheet(1);
       expect(coordinator.totalSheets, equals(1));
       expect(coordinator.activeSheetIndex, equals(0));
 

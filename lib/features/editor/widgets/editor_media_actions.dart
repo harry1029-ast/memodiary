@@ -88,7 +88,7 @@ class EditorMediaActions {
           : null;
 
       if (activeSheet is TextStationerySheet && !activeSheet.isAtMediaCapacity) {
-        coordinator.attachMediaToActiveSheet(
+        coordinator.media.attachMediaToActiveSheet(
           SheetMediaItem(
             id: mediaId,
             mediaType: EphemeraMediaType.image,
@@ -96,7 +96,7 @@ class EditorMediaActions {
           ),
         );
       } else {
-        coordinator.insertMediaAtCurrentSelection(
+        coordinator.media.insertMediaAtCurrentSelection(
           mediaType: EphemeraMediaType.image,
           mediaData: MediaEmbedData(
             path: relativePath,
@@ -190,7 +190,7 @@ class EditorMediaActions {
           : null;
 
       if (activeSheet is TextStationerySheet && !activeSheet.isAtMediaCapacity) {
-        coordinator.attachMediaToActiveSheet(
+        coordinator.media.attachMediaToActiveSheet(
           SheetMediaItem(
             id: mediaId,
             mediaType: EphemeraMediaType.video,
@@ -199,7 +199,7 @@ class EditorMediaActions {
           ),
         );
       } else {
-        coordinator.insertMediaAtCurrentSelection(
+        coordinator.media.insertMediaAtCurrentSelection(
           mediaType: EphemeraMediaType.video,
           mediaData: MediaEmbedData(
             path: result.relativePath,
@@ -292,7 +292,7 @@ class EditorMediaActions {
       final sheet = coordinator.sheets[sheetIndex];
       if (sheet is TextStationerySheet) {
         final items = sheet.mediaAttachments.where((item) => item.id == mediaId).toList();
-        coordinator.removeMediaAttachment(sheetIndex, mediaId);
+        coordinator.media.removeMediaAttachment(sheetIndex, mediaId);
         for (final item in items) {
           await database.deleteMediaForEntryByPath(
             entryId: entryId,

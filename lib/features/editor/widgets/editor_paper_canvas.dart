@@ -283,7 +283,7 @@ class EditorPaperCanvas extends StatelessWidget {
                               );
                             },
                             onCaptionChanged: (mediaId, newCaption) {
-                              coordinator.updateMediaCaption(currentSheetIndex, mediaId, newCaption);
+                              coordinator.media.updateMediaCaption(currentSheetIndex, mediaId, newCaption);
                               onMediaCaptionChanged?.call(currentSheetIndex, mediaId, newCaption);
                               onSaveDraft();
                             },
@@ -291,7 +291,7 @@ class EditorPaperCanvas extends StatelessWidget {
                               if (onDeleteMedia != null) {
                                 onDeleteMedia!(currentSheetIndex, mediaId);
                               } else {
-                                coordinator.removeMediaAttachment(currentSheetIndex, mediaId);
+                                coordinator.media.removeMediaAttachment(currentSheetIndex, mediaId);
                                 onSaveDraft();
                               }
                             },

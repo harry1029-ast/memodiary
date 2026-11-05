@@ -7,10 +7,10 @@ import 'package:flutter_quill/quill_delta.dart';
 import '../../../../core/database/app_database.dart';
 import '../../templates/models/template_style.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/media_embed_data.dart';
 import '../models/typography_settings.dart';
 import 'editor_delta_partitioner.dart';
 import 'editor_pagination_models.dart';
+import 'sheet_media_operations.dart';
 import 'stationery_delta_synthesizer.dart';
 import 'stationery_sheet_spill_mutator.dart';
 
@@ -42,6 +42,17 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     this.contentWidth,
     this.lineStridePx,
   });
+
+  /// Media mutations (sheet-paired keepsakes, ephemera sheets, inline inserts).
+  late final SheetMediaOperations media = SheetMediaOperations(
+    sheets: _sheets,
+    readActiveIndex: () => _activeSheetIndex,
+    writeActiveIndex: (index) => _activeSheetIndex = index,
+    onContentMutated: () {
+      _markContentMutated();
+      notifyListeners();
+    },
+  );
 
   List<StationerySheetDescriptor> get sheets => List.unmodifiable(_sheets);
   int get totalSheets => _sheets.length;
@@ -277,22 +288,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     double? newLineStridePx,
   }) {
     final unifiedDelta = synthesizeUnifiedDelta();
-    final allAttachments = <MediaAttachment>[];
-    for (final sheet in _sheets) {
-      if (sheet is TextStationerySheet) {
-        for (final item in sheet.mediaAttachments) {
-          allAttachments.add(MediaAttachment(
-            id: item.id,
-            entryId: '',
-            mediaType: item.mediaType.embedKey,
-            relativePath: item.relativePath,
-            thumbnailPath: item.thumbnailPath,
-            ocrText: item.caption,
-            createdAt: DateTime.now(),
-          ));
-        }
-      }
-    }
+    final allAttachments = media.collectSheetAttachments();
 
     typography = newTypography;
     if (newContentWidth != null) contentWidth = newContentWidth;
@@ -303,108 +299,6 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       jsonEncode(unifiedDelta.toJson()),
       attachments: allAttachments,
     );
-  }
-
-  /// Inserts a new ephemera sheet at [atIndex] or after the active sheet.
-  void insertEphemeraSheet({
-    required EphemeraMediaType mediaType,
-    required MediaEmbedData mediaData,
-    int? atIndex,
-  }) {
-    final targetIndex = (atIndex ?? (_activeSheetIndex + 1)).clamp(0, _sheets.length);
-    _sheets.insert(
-      targetIndex,
-      EphemeraSheet(
-        sheetIndex: targetIndex,
-        mediaType: mediaType,
-        mediaData: mediaData,
-      ),
-    );
-    StationerySheetSpillMutator.reindexSheets(_sheets);
-    _activeSheetIndex = targetIndex;
-    _markContentMutated();
-    notifyListeners();
-  }
-
-  /// Inserts media at the active selection, splitting mid-sheet prose cleanly.
-  void insertMediaAtCurrentSelection({
-    required EphemeraMediaType mediaType,
-    required MediaEmbedData mediaData,
-  }) {
-    if (_sheets.isEmpty) {
-      _sheets.add(OpeningSheet.empty(sheetIndex: 0));
-    }
-    final activeIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
-    _activeSheetIndex = StationerySheetSpillMutator.insertMediaAtSelection(
-      sheets: _sheets,
-      activeIndex: activeIndex,
-      mediaType: mediaType,
-      mediaData: mediaData,
-    );
-    _markContentMutated();
-    notifyListeners();
-  }
-
-  /// Attaches a keepsake photo or video directly to the active text sheet.
-  bool attachMediaToActiveSheet(SheetMediaItem item) {
-    if (_sheets.isEmpty) {
-      _sheets.add(OpeningSheet.empty(sheetIndex: 0));
-    }
-    final activeIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
-    final sheet = _sheets[activeIndex];
-    if (sheet is TextStationerySheet) {
-      if (sheet.isAtMediaCapacity) {
-        return false;
-      }
-      sheet.mediaAttachments.add(item);
-      _markContentMutated();
-      notifyListeners();
-      return true;
-    }
-    return false;
-  }
-
-  /// Removes an attached keepsake from a text sheet at [sheetIndex].
-  bool removeMediaAttachment(int sheetIndex, String mediaId) {
-    if (sheetIndex < 0 || sheetIndex >= _sheets.length) return false;
-    final sheet = _sheets[sheetIndex];
-    if (sheet is TextStationerySheet) {
-      sheet.mediaAttachments.removeWhere((item) => item.id == mediaId);
-      _markContentMutated();
-      notifyListeners();
-      return true;
-    }
-    return false;
-  }
-
-  /// Updates the caption for an attached keepsake on [sheetIndex].
-  bool updateMediaCaption(int sheetIndex, String mediaId, String newCaption) {
-    if (sheetIndex < 0 || sheetIndex >= _sheets.length) return false;
-    final sheet = _sheets[sheetIndex];
-    if (sheet is TextStationerySheet) {
-      final index = sheet.mediaAttachments.indexWhere((item) => item.id == mediaId);
-      if (index != -1) {
-        sheet.mediaAttachments[index] = sheet.mediaAttachments[index].copyWith(caption: newCaption);
-        _markContentMutated();
-        notifyListeners();
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /// Removes an ephemera sheet at [sheetIndex], maintaining contiguous indexing.
-  void removeEphemeraSheet(int sheetIndex) {
-    if (sheetIndex < 0 || sheetIndex >= _sheets.length) return;
-    final sheet = _sheets[sheetIndex];
-    if (sheet is EphemeraSheet) {
-      _sheets.removeAt(sheetIndex);
-      sheet.dispose();
-      StationerySheetSpillMutator.reindexSheets(_sheets);
-      _activeSheetIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
-      _markContentMutated();
-      notifyListeners();
-    }
   }
 
   /// Finds or creates a text-bearing sheet immediately following [fromIndex].
