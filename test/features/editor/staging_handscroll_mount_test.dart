@@ -11,8 +11,11 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/desk_workstation.dart';
+import 'package:memodiary/features/editor/widgets/sheet_mount_strip.dart';
 import 'package:memodiary/features/editor/widgets/fullscreen_media_lightbox.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/widget_test_helpers.dart';
 
 const _entryId = 'handscroll_entry';
 const _viewport = Size(360.0, 780.0);
@@ -256,6 +259,7 @@ void main() {
       final ids = await attachmentIds();
       await mount(tester, ids[0]);
 
+      await expectAccessibleTapTargets(tester, within: find.byWidgetPredicate((widget) => widget is SheetMountStrip || widget is DeskWorkstation));
       final pinSize = tester.getSize(find.byKey(Key('handscroll_mount_${ids[1]}')));
       expect(pinSize.width, greaterThanOrEqualTo(44));
       expect(pinSize.height, greaterThanOrEqualTo(44));

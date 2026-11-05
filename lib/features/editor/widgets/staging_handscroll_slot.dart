@@ -93,61 +93,93 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
     final isVideo = item.mediaType == EphemeraMediaType.video;
     final kind = isVideo ? '短影' : '影札';
 
+    final isSettled = widget.revealStatus == BrushRevealStatus.settled;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Column(
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Expanded(
-            child: Semantics(
-              button: true,
-              label: '待贴第 $ordinal 影 · $kind，点按查看',
-              excludeSemantics: true,
-              child: GestureDetector(
-                key: Key('handscroll_item_${item.id}'),
-                onTap: () => widget.onTap?.call(item),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4.0),
-                  child: BrushReveal(
-                    revealId: item.id,
-                    status: widget.revealStatus,
-                    isVideo: isVideo,
-                    onComplete: widget.onRevealComplete,
-                    seal: isVideo
-                        ? _CinnabarPlaySeal(key: Key('handscroll_video_seal_${item.id}'), color: cinnabar)
-                        : null,
-                    child: KeepsakeThumbnail(
-                      item: item,
-                      mediaSandboxService: widget.mediaSandboxService,
-                      isPaperDark: isPaperDark,
-                      showPlayGlyph: false,
-                    ),
+          Semantics(
+            button: true,
+            label: '待贴第 $ordinal 影 · $kind，点按查看',
+            onTap: widget.onTap == null ? null : () => widget.onTap!(item),
+            excludeSemantics: true,
+            child: GestureDetector(
+              key: Key('handscroll_item_${item.id}'),
+              onTap: () => widget.onTap?.call(item),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4.0),
+                child: BrushReveal(
+                  revealId: item.id,
+                  status: widget.revealStatus,
+                  isVideo: isVideo,
+                  onComplete: widget.onRevealComplete,
+                  seal: isVideo
+                      ? _CinnabarPlaySeal(key: Key('handscroll_video_seal_${item.id}'), color: cinnabar)
+                      : null,
+                  child: KeepsakeThumbnail(
+                    item: item,
+                    mediaSandboxService: widget.mediaSandboxService,
+                    isPaperDark: isPaperDark,
+                    showPlayGlyph: false,
                   ),
                 ),
               ),
             ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              DeskMediaControl(
+          // 📌 and ✕ float on the print's upper corners (the video seal holds the
+          // lower right), so the print keeps the slot's full height. They stay
+          // hidden until the Brush Reveal settles.
+          Positioned(
+            top: 0,
+            left: 0,
+            child: _SlotCornerControl(
+              isShown: isSettled,
+              child: DeskMediaControl(
                 key: Key('handscroll_mount_${item.id}'),
                 icon: Icons.push_pin_outlined,
                 isPaperDark: isPaperDark,
+                hasBackdrop: true,
                 semanticLabel: '贴至本页：待贴第 $ordinal 影 → 第 ${widget.activeSheetNumber} 页',
                 onPressed: () => widget.onMount?.call(item),
               ),
-              DeskMediaControl(
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: _SlotCornerControl(
+              isShown: isSettled,
+              child: DeskMediaControl(
                 key: Key('handscroll_erase_${item.id}'),
                 icon: Icons.close,
                 tone: DeskMediaControlTone.cinnabar,
                 isPaperDark: isPaperDark,
+                hasBackdrop: true,
                 semanticLabel: '舍弃待贴第 $ordinal 影 · $kind',
                 onPressed: _erase,
               ),
-            ],
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Fades a corner control in once its print has been revealed.
+class _SlotCornerControl extends StatelessWidget {
+  final bool isShown;
+  final Widget child;
+
+  const _SlotCornerControl({required this.isShown, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: isShown ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 200),
+      child: child,
     );
   }
 }

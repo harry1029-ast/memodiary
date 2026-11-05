@@ -22,10 +22,7 @@ class GhostPromptView extends StatelessWidget {
     this.onShuffle,
   });
 
-  bool get _isDocumentEmpty {
-    final plainText = controller.document.toPlainText().trim();
-    return plainText.isEmpty;
-  }
+  bool get _isDocumentEmpty => controller.document.length <= 1;
 
   @override
   Widget build(BuildContext context) {

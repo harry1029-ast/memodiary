@@ -63,6 +63,7 @@ class SheetMountStrip extends StatelessWidget {
                   Semantics(
                     button: true,
                     label: '本页影札 · 第 ${itemIndex + 1} 影，点按查看',
+                    onTap: onTapItem == null ? null : () => onTapItem!(item),
                     excludeSemantics: true,
                     child: GestureDetector(
                       key: Key('mount_strip_item_${item.id}'),

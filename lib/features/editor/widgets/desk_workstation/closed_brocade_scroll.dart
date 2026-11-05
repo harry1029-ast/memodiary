@@ -24,6 +24,7 @@ class _ClosedBrocadeScrollState extends State<ClosedBrocadeScroll> {
     return Semantics(
       button: true,
       label: ClosedBrocadeScroll.kSemanticLabel,
+      onTap: widget.onTap,
       excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,

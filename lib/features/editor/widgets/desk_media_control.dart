@@ -32,6 +32,9 @@ class DeskMediaControl extends StatelessWidget {
   final String semanticLabel;
   final VoidCallback? onPressed;
 
+  /// Draws the icon on a small matte disc, for a control floating over a print.
+  final bool hasBackdrop;
+
   /// Edge of the square touch target.
   static const double kExtent = 44.0;
 
@@ -42,6 +45,7 @@ class DeskMediaControl extends StatelessWidget {
     required this.isPaperDark,
     this.tone = DeskMediaControlTone.ink,
     this.onPressed,
+    this.hasBackdrop = false,
   });
 
   @override
@@ -50,9 +54,19 @@ class DeskMediaControl extends StatelessWidget {
     return Semantics(
       button: true,
       label: semanticLabel,
+      onTap: onPressed,
       excludeSemantics: true,
       child: IconButton(
-        icon: Icon(icon, size: 20),
+        icon: hasBackdrop
+            ? DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: palette.matte.withValues(alpha: 0.88),
+                  boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 2.0)],
+                ),
+                child: Padding(padding: const EdgeInsets.all(5.0), child: Icon(icon, size: 18)),
+              )
+            : Icon(icon, size: 20),
         color: tone == DeskMediaControlTone.cinnabar ? palette.cinnabar : palette.ink,
         constraints: const BoxConstraints.tightFor(width: kExtent, height: kExtent),
         padding: EdgeInsets.zero,

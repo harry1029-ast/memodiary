@@ -12,6 +12,7 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/widget_test_helpers.dart';
 
 const _entryId = 'desk_workstation_entry';
 const _tallViewport = Size(360.0, 780.0);
@@ -79,9 +80,9 @@ void main() {
       expect(handscroll, findsNothing);
       expect(find.bySemanticsLabel(RegExp('待贴画卷已空')), findsOneWidget);
 
-      final scrollSize = tester.getSize(closedScroll);
-      expect(scrollSize.width, greaterThanOrEqualTo(44.0));
-      expect(scrollSize.height, greaterThanOrEqualTo(44.0));
+      final semantics = tester.ensureSemantics();
+      await expectAccessibleTapTargets(tester, within: workstation);
+      semantics.dispose();
 
       await tester.tap(closedScroll);
       await tester.pumpAndSettle();
