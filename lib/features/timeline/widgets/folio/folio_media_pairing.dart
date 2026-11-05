@@ -1,153 +1,179 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../editor/domain/stationery_sheet_descriptor.dart';
+import '../../../editor/models/typography_settings.dart';
+import '../../../editor/services/editor_delta_partitioner.dart';
+import '../../../editor/services/stationery_delta_synthesizer.dart';
+import '../../../templates/models/template_style.dart';
 import 'folio_leaf_model.dart';
 
-/// Pure pairing rules deciding which attachments appear on which Folio leaf.
-///
-/// Used by the Folio pagination engine. PDF export does not route through it
-/// yet; SPEC-010 (ticket 06) moves both onto this unit for marker-based pairing.
+/// One Stationery Sheet of an entry as the editor partitions it: its slice of
+/// the Delta and the attachments mounted on it (in marker order).
+class FolioSheetSection {
+  /// Whether this is a text sheet (as opposed to a legacy inline-embed ephemera sheet).
+  final bool isText;
+
+  /// The sheet's slice of the entry's Quill Delta, as JSON operations.
+  final List<dynamic> deltaOps;
+
+  /// Attachments mounted on this sheet, in marker order. Always empty for ephemera sheets.
+  final List<MediaAttachment> mounted;
+
+  const FolioSheetSection({
+    required this.isText,
+    required this.deltaOps,
+    this.mounted = const [],
+  });
+}
+
+/// The editor's sheet assignment of an entry's mounted media (ADR-0009), shared
+/// by the Thread-Bound Folio and PDF export so both pair media identically.
+class FolioMountPlan {
+  /// Every sheet in editor order.
+  final List<FolioSheetSection> sections;
+
+  const FolioMountPlan(this.sections);
+
+  /// Mounted attachments of each text sheet, in sheet order.
+  List<List<MediaAttachment>> get textSheetMounts => sections
+      .where((section) => section.isText)
+      .map((section) => section.mounted)
+      .toList();
+
+  /// Attachments mounted on the first text sheet (the Frontispiece showcase).
+  List<MediaAttachment> get firstSheetMounts {
+    final mounts = textSheetMounts;
+    return mounts.isEmpty ? const [] : mounts.first;
+  }
+
+  /// Mounted attachments for the [ordinal]-th of [leafCount] body leaves:
+  /// Sheet N rides on Leaf N, and sheets beyond the last leaf fold onto it.
+  List<MediaAttachment> mountsForLeaf(int ordinal, int leafCount) {
+    final mounts = textSheetMounts;
+    if (leafCount <= 0 || ordinal >= mounts.length) return const [];
+    if (ordinal < leafCount - 1) return mounts[ordinal];
+    return mounts.skip(ordinal).expand((sheetMounts) => sheetMounts).toList();
+  }
+}
+
+/// Pure pairing rules deciding which attachments appear on which Folio leaf or
+/// PDF section: an attachment is shown on the sheet whose text holds its mount
+/// marker; staged (unmarked) attachments are shown nowhere.
 class FolioMediaPairing {
   const FolioMediaPairing._();
 
-  /// Appends a [FolioTippedInEphemeraLeaf] for every attachment not already
-  /// placed inline by the content parser.
-  static void appendUnplacedAttachmentLeaves({
-    required List<MediaAttachment> attachments,
-    required List<FolioLeaf> contentLeaves,
-    required String title,
-    required String lunarDate,
-  }) {
-    final existingMediaPaths = contentLeaves
-        .whereType<FolioTippedInEphemeraLeaf>()
-        .map((ephemera) => ephemera.sandboxedRelativePath)
-        .toSet();
+  static const TemplateStyle _defaultTemplateStyle = TemplateStyle(
+    type: TemplateBackgroundType.lined,
+    backgroundColor: Color(0xFFFBF8F1),
+    lineSpacing: 1.5,
+    marginHorizontal: 24.0,
+  );
 
-    for (final attachment in attachments) {
-      if (existingMediaPaths.contains(attachment.relativePath)) continue;
-      contentLeaves.add(
-        FolioTippedInEphemeraLeaf(
-          leafIndex: 0,
-          totalLeaves: 0,
-          mediaType: attachment.mediaType,
-          sandboxedRelativePath: attachment.relativePath,
-          caption: attachment.caption?.trim().isNotEmpty == true
-              ? '「图注 · ${attachment.caption!.trim().split('\n').first}」'
-              : null,
-          title: title,
-          lunarDate: lunarDate,
-        ),
+  /// Partitions [entry] into sheets the way the editor does and resolves each
+  /// mount marker to its sheet. Entries still awaiting the legacy mounting pass
+  /// (`legacyMountsPending`) are mounted first-come headlessly, without persisting.
+  static FolioMountPlan resolveMounts({
+    required Entry entry,
+    required List<MediaAttachment> attachments,
+    TemplateStyle? templateStyle,
+  }) {
+    final style = templateStyle ?? _defaultTemplateStyle;
+    final typography = TypographySettings(
+      fontFamily: (style.fontFamily == null || style.fontFamily == 'System') ? null : style.fontFamily,
+      lineSpacing: style.lineSpacing,
+    );
+    final media = attachments.map(SheetMediaItem.fromMediaAttachment).toList();
+    final attachmentsById = {for (final attachment in attachments) attachment.id: attachment};
+
+    var unifiedDelta = _decodeDelta(entry.contentDelta, entry.plainText);
+    if (entry.legacyMountsPending) {
+      unifiedDelta = EditorDeltaPartitioner.mountLegacyAttachments(
+        unifiedDelta: unifiedDelta,
+        media: media,
+        typography: typography,
+        templateStyle: style,
       );
     }
+
+    final partition = EditorDeltaPartitioner.partition(
+      unifiedDelta: unifiedDelta,
+      media: media,
+      typography: typography,
+      templateStyle: style,
+    );
+    try {
+      return FolioMountPlan([
+        for (final sheet in partition.sheets)
+          FolioSheetSection(
+            isText: sheet is TextStationerySheet,
+            deltaOps: StationeryDeltaSynthesizer.synthesize([sheet]).toJson(),
+            mounted: sheet is TextStationerySheet
+                ? [
+                    for (final item in sheet.mediaAttachments)
+                      if (attachmentsById[item.id] != null) attachmentsById[item.id]!,
+                  ]
+                : const [],
+          ),
+      ]);
+    } finally {
+      for (final sheet in partition.sheets) {
+        sheet.dispose();
+      }
+    }
   }
 
-  /// Distributes curated photos across body leaves (Sheet N ↔ Photo N, up to 3 per leaf).
-  static List<FolioPhotoAttachment> photosForBodyIndex(
-    List<FolioPhotoAttachment> allPhotos,
-    int bodyIndex,
-    int totalBodyCount,
-  ) {
-    if (allPhotos.isEmpty || totalBodyCount <= 0) return const [];
-    if (totalBodyCount == 1) {
-      return allPhotos.take(3).toList();
-    }
-    if (allPhotos.length <= totalBodyCount) {
-      return bodyIndex < allPhotos.length ? [allPhotos[bodyIndex]] : const [];
-    }
-    final perLeaf = (allPhotos.length / totalBodyCount).ceil().clamp(1, 3);
-    final start = bodyIndex * perLeaf;
-    if (start >= allPhotos.length) return const [];
-    return allPhotos.skip(start).take(perLeaf).toList();
-  }
-
-  /// Builds the ordered photo list for the Frontispiece and leaves, resolving each
-  /// attachment's target leaf from body-leaf photos or tipped-in ephemera leaves.
-  static List<FolioPhotoAttachment> curatePhotos({
-    required List<MediaAttachment> attachments,
-    required List<FolioLeaf> contentLeaves,
-    String? fallbackHeroPath,
-    String? fallbackMediaType,
+  /// Converts the attachments mounted on a leaf into Folio photo cards targeting
+  /// [targetLeafIndex], preserving persisted overlay drag positions.
+  static List<FolioPhotoAttachment> photosForLeaf({
+    required List<MediaAttachment> mounted,
+    required int targetLeafIndex,
     required String entryDateStr,
   }) {
-    final results = <FolioPhotoAttachment>[];
-    final seenPaths = <String>{};
+    return [
+      for (int index = 0; index < mounted.length; index++)
+        _toPhoto(mounted[index], index, targetLeafIndex, entryDateStr),
+    ];
+  }
 
-    if (attachments.isNotEmpty) {
-      for (int index = 0; index < attachments.length; index++) {
-        final attachment = attachments[index];
-        seenPaths.add(attachment.relativePath);
-        final bodyMatch = contentLeaves
-            .whereType<FolioContentBodyLeaf>()
-            .cast<FolioContentBodyLeaf?>()
-            .firstWhere(
-              (leaf) => leaf != null && leaf.photos.any((photo) => photo.relativePath == attachment.relativePath),
-              orElse: () => null,
-            );
-        final leafMatch = contentLeaves
-            .whereType<FolioTippedInEphemeraLeaf>()
-            .cast<FolioTippedInEphemeraLeaf?>()
-            .firstWhere(
-              (leaf) => leaf?.sandboxedRelativePath == attachment.relativePath,
-              orElse: () => null,
-            );
-        final targetLeafIndex = bodyMatch?.leafIndex ?? leafMatch?.leafIndex ?? (index + 1);
-        final caption = attachment.caption?.trim() ?? '';
-        final title = caption.isNotEmpty ? caption.split('\n').first : '随文影札 ${index + 1}';
-        results.add(
-          FolioPhotoAttachment(
-            id: attachment.id,
-            relativePath: attachment.relativePath,
-            mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
-            title: title,
-            caption: caption.isNotEmpty ? caption : '随文影札 · 拾光留影',
-            date: entryDateStr,
-            pageNumber: index + 1,
-            targetLeafIndex: targetLeafIndex,
-            overlayXRatio: attachment.overlayXRatio,
-            overlayYRatio: attachment.overlayYRatio,
-          ),
-        );
+  static FolioPhotoAttachment _toPhoto(
+    MediaAttachment attachment,
+    int indexOnLeaf,
+    int targetLeafIndex,
+    String entryDateStr,
+  ) {
+    final caption = attachment.caption?.trim() ?? '';
+    return FolioPhotoAttachment(
+      id: attachment.id,
+      relativePath: attachment.relativePath,
+      mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
+      title: caption.isNotEmpty ? caption.split('\n').first : '随文影札 ${indexOnLeaf + 1}',
+      caption: caption.isNotEmpty ? caption : '随文影札 · 拾光留影',
+      date: entryDateStr,
+      pageNumber: targetLeafIndex,
+      targetLeafIndex: targetLeafIndex,
+      overlayXRatio: attachment.overlayXRatio,
+      overlayYRatio: attachment.overlayYRatio,
+    );
+  }
+
+  static Delta _decodeDelta(String contentDeltaJson, String fallbackPlainText) {
+    if (contentDeltaJson.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(contentDeltaJson);
+        final ops = decoded is List ? decoded : (decoded is Map ? decoded['ops'] : null);
+        if (ops is List && ops.isNotEmpty) return Delta.fromJson(ops);
+      } catch (_) {
+        // Malformed Delta: fall back to plain text below.
       }
     }
-
-    final ephemeraLeaves = contentLeaves.whereType<FolioTippedInEphemeraLeaf>().toList();
-    for (final leaf in ephemeraLeaves) {
-      if (!seenPaths.contains(leaf.sandboxedRelativePath)) {
-        seenPaths.add(leaf.sandboxedRelativePath);
-        final pageNum = results.length + 1;
-        final caption = leaf.caption?.trim() ?? '';
-        final title = caption.isNotEmpty
-            ? caption.replaceAll('「图注 · ', '').replaceAll('」', '')
-            : '随文影札 $pageNum';
-        results.add(
-          FolioPhotoAttachment(
-            id: 'ephemera_${leaf.leafIndex}',
-            relativePath: leaf.sandboxedRelativePath,
-            mediaType: EphemeraMediaType.fromEmbedKey(leaf.mediaType),
-            title: title,
-            caption: caption.isNotEmpty ? caption : '随文影札 · 拾光留影',
-            date: entryDateStr,
-            pageNumber: pageNum,
-            targetLeafIndex: leaf.leafIndex,
-          ),
-        );
-      }
+    final delta = Delta();
+    if (fallbackPlainText.trim().isNotEmpty) {
+      delta.insert(fallbackPlainText.endsWith('\n') ? fallbackPlainText : '$fallbackPlainText\n');
+    } else {
+      delta.insert('\n');
     }
-
-    if (results.isEmpty && fallbackHeroPath != null && fallbackHeroPath.isNotEmpty) {
-      results.add(
-        FolioPhotoAttachment(
-          id: 'hero_fallback',
-          relativePath: fallbackHeroPath,
-          mediaType: EphemeraMediaType.fromEmbedKey(fallbackMediaType ?? 'image'),
-          title: '随文影札 1',
-          caption: '随文影札 · 拾光留影',
-          date: entryDateStr,
-          pageNumber: 1,
-          targetLeafIndex: contentLeaves.isNotEmpty ? 1 : 0,
-        ),
-      );
-    }
-
-    return results;
+    return delta;
   }
 }

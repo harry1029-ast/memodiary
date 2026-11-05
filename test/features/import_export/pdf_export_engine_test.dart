@@ -326,5 +326,62 @@ void main() {
       expect(verticalBytes, isNotEmpty);
       expect(String.fromCharCodes(verticalBytes.take(5)), equals('%PDF-'));
     });
+
+    for (final layoutMode in PdfLayoutMode.values) {
+      test('generatePdfForEntry ($layoutMode) renders mounted items and leaves staged items out', () async {
+        await db.createEntry(
+          EntriesCompanion.insert(
+            id: 'entry_mounts',
+            notebookId: 'default',
+            templateId: 'template_lined_paper',
+            contentDelta: jsonEncode([
+              {'insert': '西湖夜游'},
+              {
+                'insert': {'mount': 'photo_mounted'},
+              },
+              {'insert': '\n'},
+            ]),
+            plainText: '西湖夜游',
+            entryDate: DateTime(2026, 11, 5),
+          ),
+        );
+        await db.attachMediaToEntry(
+          id: 'photo_staged',
+          entryId: 'entry_mounts',
+          relativePath: 'media/photo_staged.webp',
+        );
+        await db.attachMediaToEntry(
+          id: 'photo_mounted',
+          entryId: 'entry_mounts',
+          relativePath: 'media/photo_mounted.webp',
+        );
+        final recordingService = _RecordingMediaService(tempDir);
+
+        final bytes = await PdfExportEngine.generatePdfForEntry(
+          entry: (await db.getEntryById('entry_mounts'))!,
+          database: db,
+          mediaService: recordingService,
+          layoutMode: layoutMode,
+          sealText: '心迹安放',
+        );
+
+        expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+        expect(recordingService.requestedPaths, contains('media/photo_mounted.webp'));
+        expect(recordingService.requestedPaths, isNot(contains('media/photo_staged.webp')));
+      });
+    }
   });
+}
+
+/// Records which sandbox files an export asks for.
+class _RecordingMediaService extends MediaSandboxService {
+  final requestedPaths = <String>[];
+
+  _RecordingMediaService(Directory baseDir) : super(baseDirProvider: () async => baseDir);
+
+  @override
+  Future<File> getFileFromRelativePath(String relativePath) {
+    requestedPaths.add(relativePath);
+    return super.getFileFromRelativePath(relativePath);
+  }
 }

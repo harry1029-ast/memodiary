@@ -326,5 +326,65 @@ void main() {
       final concludingLeaf = folioLeaves[3] as FolioContentBodyLeaf;
       expect(concludingLeaf.isConcludingLeaf, isTrue);
     });
+
+    testWidgets('Folio leaves carry exactly the items each editor sheet mounts; staged items stay out', (tester) async {
+      final lines = List.generate(30, (index) => '第${index + 1}行墨迹').join('\n');
+      await database.updateEntryContent(
+        'ephemera_folio_entry',
+        jsonEncode((Delta()..insert('$lines\n')).toJson()),
+        lines,
+      );
+      final sampleImageFile = File('${tempDirectory.path}/parity_photo.png')
+        ..writeAsBytesSync(kValid1x1PngBytes);
+
+      await pumpEntryEditorScreen(
+        tester,
+        database: database,
+        mediaSandboxService: sandboxService,
+        entryId: 'ephemera_folio_entry',
+        imagePicker: StubEditorImagePicker(imageResult: XFile(sampleImageFile.path)),
+        viewportSize: const Size(360.0, 780.0),
+      );
+      expect(find.text('第 1 / 3 页'), findsOneWidget);
+
+      for (int pick = 0; pick < 3; pick++) {
+        await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('相册选撷 · Photo Gallery'));
+        await tester.pumpAndSettle();
+      }
+      final ids = (await database.getMediaForEntry('ephemera_folio_entry')).map((media) => media.id).toList();
+      expect(ids, hasLength(3));
+
+      await tester.tap(find.byKey(Key('handscroll_mount_${ids[0]}')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(Key('handscroll_mount_${ids[1]}')));
+      await tester.pumpAndSettle();
+      expect(find.text('第 2 / 3 页'), findsOneWidget);
+      expect(find.byKey(Key('mount_strip_item_${ids[1]}')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
+      await tester.pumpAndSettle();
+
+      final savedEntry = await database.getEntryById('ephemera_folio_entry');
+      final folioLeaves = FolioPaginationEngine.paginate(
+        entry: savedEntry!,
+        attachments: await database.getMediaForEntry('ephemera_folio_entry'),
+      );
+
+      final cover = folioLeaves.first as FolioFrontispieceCoverLeaf;
+      expect(cover.photos.map((photo) => photo.id), [ids[0]]);
+      expect(
+        folioLeaves.whereType<FolioContentBodyLeaf>().map((leaf) => leaf.photos.map((photo) => photo.id).toList()),
+        [
+          [ids[0]],
+          [ids[1]],
+          <String>[],
+        ],
+      );
+      expect(folioLeaves.whereType<FolioTippedInEphemeraLeaf>(), isEmpty);
+    });
   });
 }

@@ -40,13 +40,14 @@ class FolioPaginationEngine {
       entryPlainText: entry.plainText,
     );
 
-    String? heroPhotoPath;
-    String? heroMediaType;
-    if (attachments.isNotEmpty) {
-      final firstMedia = attachments.first;
-      heroPhotoPath = firstMedia.relativePath;
-      heroMediaType = firstMedia.mediaType;
-    }
+    final mountPlan = FolioMediaPairing.resolveMounts(
+      entry: entry,
+      attachments: attachments,
+      templateStyle: templateStyle,
+    );
+    final coverMounts = mountPlan.firstSheetMounts;
+    final heroPhotoPath = coverMounts.isEmpty ? null : coverMounts.first.relativePath;
+    final heroMediaType = coverMounts.isEmpty ? null : coverMounts.first.mediaType;
 
     final parsedBlocks = FolioContentParser.parseContentBlocks(
       contentDeltaJson: entry.contentDelta,
@@ -60,7 +61,8 @@ class FolioPaginationEngine {
     );
 
     final wordCount = entry.plainText.trim().runes.length;
-    final isZeroWordDraft = wordCount == 0 && parsedBlocks.isEmpty && attachments.isEmpty;
+    final hasMountedMedia = mountPlan.textSheetMounts.any((mounts) => mounts.isNotEmpty);
+    final isZeroWordDraft = wordCount == 0 && parsedBlocks.isEmpty && !hasMountedMedia;
 
     if (isZeroWordDraft) {
       return [
@@ -106,23 +108,9 @@ class FolioPaginationEngine {
       );
     }
 
-    FolioMediaPairing.appendUnplacedAttachmentLeaves(
-      attachments: attachments,
-      contentLeaves: contentLeaves,
-      title: entry.title?.trim().isNotEmpty == true ? entry.title!.trim() : '无题',
-      lunarDate: lunarDateStr,
-    );
-
     final totalLeaves = 1 + contentLeaves.length;
     final totalContentCount = contentLeaves.length;
     final totalBodyCount = contentLeaves.whereType<FolioContentBodyLeaf>().length;
-    final basePhotos = FolioMediaPairing.curatePhotos(
-      attachments: attachments,
-      contentLeaves: const [],
-      fallbackHeroPath: heroPhotoPath,
-      fallbackMediaType: heroMediaType,
-      entryDateStr: gregorianDateStr,
-    );
 
     final reindexedContentLeaves = <FolioLeaf>[];
     var contentPageCounter = 1;
@@ -134,7 +122,11 @@ class FolioPaginationEngine {
       final physicalIndex = index + 1;
 
       if (currentLeaf is FolioContentBodyLeaf) {
-        final leafPhotos = FolioMediaPairing.photosForBodyIndex(basePhotos, bodyCounter++, totalBodyCount);
+        final leafPhotos = FolioMediaPairing.photosForLeaf(
+          mounted: mountPlan.mountsForLeaf(bodyCounter++, totalBodyCount),
+          targetLeafIndex: physicalIndex,
+          entryDateStr: gregorianDateStr,
+        );
         reindexedContentLeaves.add(FolioContentBodyLeaf(
           leafIndex: physicalIndex,
           totalLeaves: totalLeaves,
@@ -167,11 +159,13 @@ class FolioPaginationEngine {
       }
     }
 
-    final curatedPhotos = FolioMediaPairing.curatePhotos(
-      attachments: attachments,
-      contentLeaves: reindexedContentLeaves,
-      fallbackHeroPath: heroPhotoPath,
-      fallbackMediaType: heroMediaType,
+    final firstBodyLeafIndex = reindexedContentLeaves
+        .whereType<FolioContentBodyLeaf>()
+        .map((leaf) => leaf.leafIndex)
+        .firstOrNull;
+    final curatedPhotos = FolioMediaPairing.photosForLeaf(
+      mounted: coverMounts,
+      targetLeafIndex: firstBodyLeafIndex ?? (totalLeaves > 1 ? 1 : 0),
       entryDateStr: gregorianDateStr,
     );
 
