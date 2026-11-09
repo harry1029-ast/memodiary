@@ -9,11 +9,18 @@ class AutoSpillResult {
   final int destinationCaretOffset;
   final bool didAllocateNewSheet;
 
+  /// Whether the caret was inside the overflow and moved with it to
+  /// [destinationSheetIndex]. When false (e.g. Enter mid-sheet pushed only
+  /// trailing blank rows over) the caret stays on [sourceSheetIndex] and the
+  /// page must not turn.
+  final bool caretFollowsOverflow;
+
   const AutoSpillResult({
     required this.sourceSheetIndex,
     required this.destinationSheetIndex,
     required this.destinationCaretOffset,
     required this.didAllocateNewSheet,
+    required this.caretFollowsOverflow,
   });
 }
 

@@ -11,6 +11,7 @@ import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../controllers/editor_media_binding.dart';
 import '../controllers/editor_pagination_handler.dart';
+import '../controllers/writing_focus_guard.dart';
 import '../domain/sheet_media_item.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../models/typography_settings.dart';
@@ -83,6 +84,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   DateTime? _unlockAt;
   Entry? _entry;
   bool _isCenterAligned = false;
+  late final WritingFocusGuard _focusGuard = WritingFocusGuard(sheets: () => _coordinator.sheets);
 
   QuillController get _activeController =>
       _paginationHandler?.activeTextController ?? QuillController.basic();
@@ -94,7 +96,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _thoughtSparkService = widget.thoughtSparkService ?? ThoughtSparkService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _imagePicker = widget.imagePicker ?? ImagePicker();
-    _workstationController.addListener(_handleWorkstationChanged);
+    _workstationController.addListener(_rebuild);
     _loadEntryData();
   }
 
@@ -112,12 +114,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     super.dispose();
   }
 
-  void _handleWorkstationChanged() {
-    if (mounted) setState(() {});
-  }
+  void _rebuild() => mounted ? setState(() {}) : null;
 
   /// Collecting always opens the workstation so the new keepsake is seen landing.
   void _collectMedia({required bool isVideo}) {
+    _focusGuard.release();
     _workstationController.expand();
     _mediaBinding!.pickMedia(context, isVideo: isVideo);
   }
@@ -168,9 +169,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         coordinator: _coordinator,
         pageController: _pageController,
         autosaveManager: autosave,
-        onStateChanged: () {
-          if (mounted) setState(() {});
-        },
+        onStateChanged: _rebuild,
       );
 
       if (mounted) {
@@ -185,9 +184,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
             imagePicker: _imagePicker,
             coordinator: _coordinator,
             autosaveManager: autosave,
-            onStateChanged: () {
-              if (mounted) setState(() {});
-            },
+            onStateChanged: _rebuild,
           );
           _entryDate = entry.entryDate;
           _mood = entry.mood;
@@ -360,6 +357,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     );
 
     _updateHeaderHeight();
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    _focusGuard.onKeyboardInset(context, keyboardInset);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isPaperDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
@@ -384,7 +383,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 mediaSandboxService: widget.mediaSandboxService,
                 onSaveDraft: () => _autosaveManager?.saveDraft(),
                 workstationController: _workstationController,
-                isKeyboardVisible: MediaQuery.viewInsetsOf(context).bottom > 0,
+                keyboardInset: keyboardInset,
                 coordinator: _coordinator,
                 pageController: _pageController,
                 currentSheetIndex: currentSheetIndex,
@@ -397,6 +396,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                   context,
                   _mediaBinding!,
                   onCollect: () => _collectMedia(isVideo: false),
+                  onDeskInteraction: _focusGuard.release,
                 ),
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,

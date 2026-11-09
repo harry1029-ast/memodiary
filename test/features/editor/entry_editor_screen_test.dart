@@ -363,6 +363,10 @@ void main() {
     });
 
     testWidgets('renders cleanly in dark mode without canvas collapse', (tester) async {
+      // A phone-shaped desk, tall enough for the seal beneath the sheet.
+      tester.view.physicalSize = const Size(360, 780);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(
         MaterialApp(
           theme: InkDiaryTheme.dark,

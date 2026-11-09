@@ -7,9 +7,9 @@ import '../staging_handscroll.dart';
 import 'closed_brocade_scroll.dart';
 import 'walnut_desk_painter.dart';
 
-/// The Desk Workstation (案头画案): the dark walnut desk and bamboo mat on which
-/// the Staging Handscroll rests. The rest of the editor keeps its light paper
-/// look. An empty handscroll lies closed as a brocade scroll that starts
+/// The Desk Workstation (案头画案): the bamboo mat on the walnut desk on which
+/// the Staging Handscroll rests. The editor canvas paints the walnut desk
+/// beneath it, so the workstation adds only its mat. An empty handscroll lies closed as a brocade scroll that starts
 /// collecting when tapped. Pure presentation: actions bubble through callbacks.
 class DeskWorkstation extends StatefulWidget {
   final List<SheetMediaItem> stagedItems;
@@ -39,7 +39,10 @@ class DeskWorkstation extends StatefulWidget {
 }
 
 class _DeskWorkstationState extends State<DeskWorkstation> {
-  final _deskPainter = WalnutDeskPainter(matInsets: DeskWorkstation.kMatInsets);
+  final _deskPainter = WalnutDeskPainter(
+    matInsets: DeskWorkstation.kMatInsets,
+    paintsDesk: false,
+  );
 
   /// Whether the open handscroll got there by opening from closed, so it
   /// unrolls. A workstation built with items that are all awaiting their

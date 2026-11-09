@@ -13,14 +13,18 @@ class EditorMediaFeedback {
     BuildContext context,
     EditorMediaBinding binding, {
     VoidCallback? onCollect,
+    VoidCallback? onDeskInteraction,
   }) {
     return DeskMediaHandlers(
       onCollect: onCollect,
+      onDeskInteraction: onDeskInteraction,
       onMount: (mediaId) async {
+        onDeskInteraction?.call();
         final didMount = await binding.mountMedia(mediaId);
         if (!didMount && context.mounted) _show(context, const SnackBar(content: Text('本页已满三影')));
       },
       onErase: (mediaId) {
+        onDeskInteraction?.call();
         if (!binding.eraseStagedMedia(mediaId) || !context.mounted) return;
         _show(
           context,
@@ -34,7 +38,10 @@ class EditorMediaFeedback {
           if (reason != SnackBarClosedReason.action) binding.purgeErased(mediaId);
         });
       },
-      onUnmount: binding.unmountMedia,
+      onUnmount: (mediaId) {
+        onDeskInteraction?.call();
+        binding.unmountMedia(mediaId);
+      },
       mountRefusals: binding.mountRefusals,
       brushReveals: binding.brushReveals,
     );

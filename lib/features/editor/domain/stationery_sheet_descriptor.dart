@@ -61,6 +61,10 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   final QuillController controller;
   final FocusNode focusNode;
 
+  /// Reaches this sheet's live editor so the canvas can find the caret and keep
+  /// it above the software keyboard.
+  final GlobalKey<EditorState> editorKey = GlobalKey<EditorState>();
+
   /// Keepsake photos or short videos attached directly to this sheet (up to 3 items).
   final List<SheetMediaItem> mediaAttachments;
 
@@ -114,11 +118,28 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
         ? selection.extentOffset.clamp(0, maxOffset)
         : clampedBase;
 
-    controller.document = newDoc;
-    controller.updateSelection(
-      TextSelection(baseOffset: clampedBase, extentOffset: clampedExtent),
-      ChangeSource.local,
-    );
+    editWithoutKeyboard(() {
+      controller.document = newDoc;
+      controller.updateSelection(
+        TextSelection(baseOffset: clampedBase, extentOffset: clampedExtent),
+        ChangeSource.local,
+      );
+    });
+  }
+
+  /// Runs a programmatic change to this sheet's controller (re-laying sheets,
+  /// restoring a selection) without Quill treating it as typing. While the
+  /// keyboard is hidden Quill requests it on every controller change, and
+  /// even focuses an unfocused editor to do so. [QuillController.replaceText]
+  /// resets the flag after itself, so pass it `ignoreFocus: true` instead.
+  void editWithoutKeyboard(VoidCallback edit) {
+    final previous = controller.ignoreFocusOnTextChange;
+    controller.ignoreFocusOnTextChange = true;
+    try {
+      edit();
+    } finally {
+      controller.ignoreFocusOnTextChange = previous;
+    }
   }
 
   @override

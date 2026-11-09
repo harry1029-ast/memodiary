@@ -1,15 +1,21 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
-/// Paints the dark walnut desk top with its woven bamboo mat runner and antique
-/// brass corner inlays. The geometry is static, so it is recorded once per size
-/// into an immutable [ui.Picture] and replayed on every frame.
+/// Paints the dark walnut desk top and, when [matInsets] is given, the woven
+/// bamboo mat runner with its antique brass corner inlays. The editor canvas
+/// paints the desk surface once beneath everything; the Desk Workstation paints
+/// only its mat on top ([paintsDesk] false) so the two read as one desk. The
+/// geometry is static, so it is recorded once per size into an immutable
+/// [ui.Picture] and replayed on every frame.
 class WalnutDeskPainter extends CustomPainter {
-  /// Inset of the bamboo mat from the desk edges; its top leaves room for the
-  /// workstation header.
-  final EdgeInsets matInsets;
+  /// Inset of the bamboo mat from the edges; its top leaves room for the
+  /// workstation header. No mat when null.
+  final EdgeInsets? matInsets;
 
-  WalnutDeskPainter({required this.matInsets});
+  /// Whether to paint the walnut surface and its grain beneath the mat.
+  final bool paintsDesk;
+
+  WalnutDeskPainter({this.matInsets, this.paintsDesk = true});
 
   static const Color kWalnut = Color(0xFF211A14);
   static const Color kMat = Color(0xFF241D16);
@@ -32,6 +38,13 @@ class WalnutDeskPainter extends CustomPainter {
 
   void _record(Canvas canvas, Size size) {
     final deskRect = Offset.zero & size;
+    if (paintsDesk) _recordDesk(canvas, deskRect);
+    final insets = matInsets;
+    if (insets != null) _recordBambooMat(canvas, insets.deflateRect(deskRect));
+  }
+
+  void _recordDesk(Canvas canvas, Rect deskRect) {
+    final size = deskRect.size;
     canvas.drawRect(deskRect, Paint()..color = kWalnut);
     canvas.drawRect(
       deskRect,
@@ -50,17 +63,6 @@ class WalnutDeskPainter extends CustomPainter {
     for (double grainY = 6.0; grainY < size.height; grainY += 13.0) {
       canvas.drawLine(Offset(0, grainY), Offset(size.width, grainY + 1.5), grainPaint);
     }
-
-    // Gilded rim where the desk meets the paper area above it.
-    canvas.drawLine(
-      Offset.zero,
-      Offset(size.width, 0),
-      Paint()
-        ..color = const Color(0x47C89D42)
-        ..strokeWidth = 1.5,
-    );
-
-    _recordBambooMat(canvas, matInsets.deflateRect(deskRect));
   }
 
   void _recordBambooMat(Canvas canvas, Rect matRect) {
@@ -122,5 +124,6 @@ class WalnutDeskPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(WalnutDeskPainter oldDelegate) => oldDelegate.matInsets != matInsets;
+  bool shouldRepaint(WalnutDeskPainter oldDelegate) =>
+      oldDelegate.matInsets != matInsets || oldDelegate.paintsDesk != paintsDesk;
 }

@@ -33,6 +33,13 @@ class EditorPaginationHandler {
   void _init() {
     coordinator.addListener(_handleCoordinatorNotification);
     coordinator.onAutoSpill = (spillResult) {
+      if (!spillResult.caretFollowsOverflow) {
+        // Only text after the caret moved on: keep writing where the caret is.
+        attachSheetListeners();
+        autosaveManager.markDirty();
+        onStateChanged();
+        return;
+      }
       currentSheetIndex = spillResult.destinationSheetIndex;
       coordinator.activeSheetIndex = spillResult.destinationSheetIndex;
       attachSheetListeners();
@@ -226,14 +233,24 @@ class EditorPaginationHandler {
     return nextTextSheet.controller;
   }
 
+  /// Whether the diarist is writing on some sheet (its editor holds focus), so
+  /// a page turn should carry the caret, and the open keyboard, along.
+  bool get _isWriting => coordinator.sheets
+      .any((sheet) => sheet is TextStationerySheet && sheet.focusNode.hasFocus);
+
+  /// Hands focus to [sheet] when the diarist was writing. The focus moves in one
+  /// step, so the keyboard stays open; browsing with it closed keeps it closed.
+  void _carryFocusTo(StationerySheetDescriptor sheet) {
+    if (sheet is TextStationerySheet && _isWriting && !sheet.focusNode.hasFocus) {
+      sheet.focusNode.requestFocus();
+    }
+  }
+
   void goToSheet(int targetIndex) {
     if (targetIndex < 0 || targetIndex >= coordinator.totalSheets) return;
     coordinator.activeSheetIndex = targetIndex;
     currentSheetIndex = targetIndex;
-    final targetSheet = coordinator.sheets[targetIndex];
-    if (targetSheet is TextStationerySheet) {
-      targetSheet.focusNode.requestFocus();
-    }
+    _carryFocusTo(coordinator.sheets[targetIndex]);
     _runGuardedMutation(() {
       final didCollapse = coordinator.collapseEmptyContinuationSheets();
       if (didCollapse) {
@@ -256,10 +273,7 @@ class EditorPaginationHandler {
     coordinator.activeSheetIndex = newPageIndex;
     if (currentSheetIndex != newPageIndex) {
       currentSheetIndex = newPageIndex;
-      final activeSheet = coordinator.sheets[newPageIndex.clamp(0, coordinator.sheets.length - 1)];
-      if (activeSheet is TextStationerySheet) {
-        activeSheet.focusNode.requestFocus();
-      }
+      _carryFocusTo(coordinator.sheets[newPageIndex.clamp(0, coordinator.sheets.length - 1)]);
       _runGuardedMutation(() {
         final didCollapse = coordinator.collapseEmptyContinuationSheets();
         if (didCollapse) {

@@ -55,10 +55,7 @@ void main() {
     // Initial empty doc has length 1 (1 line)
     // Insert 9 more enters -> total 10 lines on Sheet 1
     for (int enterIndex = 0; enterIndex < 9; enterIndex++) {
-      firstEditor.controller.document.insert(
-        firstEditor.controller.document.length - 1,
-        '\n',
-      );
+      _typeEnterAtEnd(firstEditor.controller);
       await tester.pump();
     }
     await tester.pumpAndSettle();
@@ -66,10 +63,7 @@ void main() {
     expect(find.text('第 1 / 1 页'), findsOneWidget);
 
     // Insert 11th enter -> spills cleanly to Sheet 2
-    firstEditor.controller.document.insert(
-      firstEditor.controller.document.length - 1,
-      '\n',
-    );
+    _typeEnterAtEnd(firstEditor.controller);
     await tester.pumpAndSettle();
 
     expect(find.text('第 2 / 2 页'), findsOneWidget);
@@ -77,10 +71,7 @@ void main() {
     // Typing multiple enters on Sheet 2 must not trigger premature empty-sheet collapse
     final secondEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
     for (int enterIndex = 0; enterIndex < 5; enterIndex++) {
-      secondEditor.controller.document.insert(
-        secondEditor.controller.document.length - 1,
-        '\n',
-      );
+      _typeEnterAtEnd(secondEditor.controller);
       await tester.pump();
     }
     await tester.pumpAndSettle();
@@ -113,3 +104,8 @@ void main() {
   });
 }
 
+/// Presses Enter at the end of the sheet, the caret following as it does when typing.
+void _typeEnterAtEnd(QuillController controller) {
+  final endOffset = controller.document.length - 1;
+  controller.replaceText(endOffset, 0, '\n', TextSelection.collapsed(offset: endOffset + 1));
+}

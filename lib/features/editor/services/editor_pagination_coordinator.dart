@@ -259,10 +259,12 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     final restoredSheet = _sheets[_activeSheetIndex];
     if (restoredSheet is TextStationerySheet) {
       final maxOffset = math.max(0, restoredSheet.document.length - 1);
-      restoredSheet.controller.updateSelection(
-        TextSelection.collapsed(offset: previousOffset.clamp(0, maxOffset)),
-        ChangeSource.local,
-      );
+      restoredSheet.editWithoutKeyboard(() {
+        restoredSheet.controller.updateSelection(
+          TextSelection.collapsed(offset: previousOffset.clamp(0, maxOffset)),
+          ChangeSource.local,
+        );
+      });
       if (hadFocus) {
         restoredSheet.focusNode.requestFocus();
       }

@@ -2,13 +2,20 @@ import 'dart:math' as math;
 
 import '../sheet_mount_strip.dart';
 
-/// How the scholar's desk below the app bar is shared between the active
-/// Stationery Sheet, its Sheet Mount Strip and the Desk Workstation.
+/// How the walnut scholar's desk below the app bar is shared between the
+/// desk's header band (page indicator), the active Stationery Sheet, the band
+/// beneath it (Sheet Mount Strip or cinnabar seal) and the Desk Workstation.
 ///
-/// The workstation rests at the bottom and takes whatever vertical space the
-/// sheet and strip leave, never less than [kOpenMinHeight] (open handscroll) or
-/// [kClosedMinHeight] (closed brocade scroll). While the software keyboard is
-/// open the strip and workstation step aside so the active line stays visible.
+/// While the workstation is docked the sheet sits just under the header band
+/// and the workstation takes all the space left beneath, never less than
+/// [kOpenMinHeight] (open handscroll) or [kClosedMinHeight] (closed brocade
+/// scroll). When the diarist collapses the workstation the sheet centres on
+/// the desk instead.
+///
+/// The budget is resolved against the resting desk height (keyboard closed),
+/// so opening the software keyboard never moves or resizes the sheet: the
+/// strip and workstation step aside, and the canvas lifts the sheet only as
+/// far as the caret needs.
 ///
 /// Whether the workstation fits is an entry-wide, start-up decision, so it is
 /// judged against the sheet alone: strips come and go with page turns. Where a
@@ -17,9 +24,12 @@ import '../sheet_mount_strip.dart';
 class DeskSpaceBudget {
   static const double kOpenMinHeight = 150.0;
   static const double kClosedMinHeight = 110.0;
-  static const double kTopMargin = 12.0;
+
+  /// Desk band above the sheet holding the page indicator.
+  static const double kHeaderHeight = 30.0;
   static const double kBottomMargin = 12.0;
   static const double kSheetGap = 10.0;
+
   /// The Sheet Mount Strip's band, with breathing room for its shake.
   static const double kStripHeight = SheetMountStrip.kStripHeight + 4.0;
   static const double kStripGap = 8.0;
@@ -51,11 +61,10 @@ class DeskSpaceBudget {
     required this.workstationFits,
   });
 
-  /// Bottom inset that docks the page indicator on the workstation's top edge,
-  /// clear of the strip and the slot controls.
-  double get pageIndicatorBottomInset =>
-      showWorkstation ? math.max(kBottomMargin, workstationHeight - 11.0) : kBottomMargin;
+  /// Distance from the canvas top to the header band holding the page indicator.
+  double get headerTop => sheetTop - kHeaderHeight;
 
+  /// [canvasHeight] is the resting desk height, keyboard closed.
   factory DeskSpaceBudget.resolve({
     required double canvasHeight,
     required double sheetHeight,
@@ -67,35 +76,34 @@ class DeskSpaceBudget {
     required bool isLastSheet,
   }) {
     final showStrip = hasMountedItems && !isKeyboardVisible;
-    final stripBlock = hasMountedItems ? kStripHeight + kStripGap : 0.0;
     final minHeight = isHandscrollEmpty ? kClosedMinHeight : kOpenMinHeight;
-    final roomBelowSheet = canvasHeight - kTopMargin - sheetHeight - kSheetGap;
+    final roomBelowSheet = canvasHeight - kHeaderHeight - sheetHeight - kSheetGap;
     final workstationFits = roomBelowSheet >= minHeight;
-    final floorHeight = showStrip ? kClosedMinHeight : minHeight;
+    final floorHeight = hasMountedItems ? kClosedMinHeight : minHeight;
     final showWorkstation = !isWorkstationCollapsed && !isKeyboardVisible;
 
-    // Text-only sheets keep SPEC-009's centering in the room above the workstation.
-    final reserved = showWorkstation ? minHeight : 0.0;
-    final centeredRoom = canvasHeight - reserved;
-    final centers = !hasMountedItems &&
-        !isKeyboardVisible &&
-        centeredRoom > sheetHeight + sealBlockHeight + 2 * kTopMargin;
-    final sheetTop = centers
-        ? math.max(kTopMargin, (centeredRoom - sheetHeight - sealBlockHeight) / 2.0)
-        : kTopMargin;
+    // The band beneath the sheet: its strip, or room for the seal.
+    final belowSheetBlock = hasMountedItems
+        ? kSheetGap + kStripHeight + kStripGap
+        : sealBlockHeight;
 
+    // Docked: the sheet sits under the header band. Collapsed: it centres.
+    final centredTop = (canvasHeight - sheetHeight - belowSheetBlock + kHeaderHeight) / 2.0;
+    final sheetTop = isWorkstationCollapsed
+        ? math.max(kHeaderHeight, centredTop)
+        : kHeaderHeight;
+
+    final sheetBottom = sheetTop + sheetHeight;
+    final reservedBelow = isWorkstationCollapsed ? 0.0 : floorHeight;
     final showSeal = !hasMountedItems &&
         !isKeyboardVisible &&
         isLastSheet &&
-        sheetTop + sheetHeight + sealBlockHeight <= centeredRoom;
-    final stripTop = sheetTop + sheetHeight + kSheetGap;
-    final occupied = showSeal
-        ? sheetTop + sheetHeight + sealBlockHeight
-        : stripTop + (showStrip ? stripBlock : 0.0);
+        sheetBottom + sealBlockHeight <= canvasHeight - reservedBelow;
+    final occupied = sheetBottom + belowSheetBlock;
 
     return DeskSpaceBudget._(
       sheetTop: sheetTop,
-      stripTop: stripTop,
+      stripTop: sheetBottom + kSheetGap,
       showStrip: showStrip,
       showWorkstation: showWorkstation,
       workstationHeight: math.max(floorHeight, canvasHeight - occupied),

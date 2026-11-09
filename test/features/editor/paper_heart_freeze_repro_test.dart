@@ -58,20 +58,15 @@ void main() {
 
     // Insert 9 enters to reach row 10 (Sheet 1 capacity)
     for (int i = 0; i < 9; i++) {
-      firstEditor.controller.document.insert(
-        firstEditor.controller.document.length - 1,
-        '\n',
-      );
+      _typeEnterAtEnd(firstEditor.controller);
       await tester.pump();
     }
     await tester.pumpAndSettle();
     expect(find.text('第 1 / 1 页'), findsOneWidget);
 
-    // 11th enter triggers auto-spill onto Sheet 2
-    firstEditor.controller.document.insert(
-      firstEditor.controller.document.length - 1,
-      '\n',
-    );
+    // 11th enter, typed at the end so the caret follows it, triggers auto-spill onto Sheet 2
+    final endOffset = firstEditor.controller.document.length - 1;
+    firstEditor.controller.replaceText(endOffset, 0, '\n', TextSelection.collapsed(offset: endOffset + 1));
     await tester.pumpAndSettle();
 
     // Verify page changed to Page 2
@@ -84,10 +79,7 @@ void main() {
 
     // Type 8 more enters on Sheet 2
     for (int i = 0; i < 8; i++) {
-      secondEditor.controller.document.insert(
-        secondEditor.controller.document.length - 1,
-        '\n',
-      );
+      _typeEnterAtEnd(secondEditor.controller);
       await tester.pump();
     }
     await tester.pumpAndSettle();
@@ -97,10 +89,7 @@ void main() {
 
     // Type 15 enters on Sheet 2 to trigger cascading auto-spill onto Sheet 3
     for (int i = 0; i < 15; i++) {
-      secondEditor.controller.document.insert(
-        secondEditor.controller.document.length - 1,
-        '\n',
-      );
+      _typeEnterAtEnd(secondEditor.controller);
       await tester.pump();
     }
     await tester.pumpAndSettle();
@@ -134,4 +123,10 @@ void main() {
     await tester.tap(backBtnFinder);
     await tester.pumpAndSettle();
   });
+}
+
+/// Presses Enter at the end of the sheet, the caret following as it does when typing.
+void _typeEnterAtEnd(QuillController controller) {
+  final endOffset = controller.document.length - 1;
+  controller.replaceText(endOffset, 0, '\n', TextSelection.collapsed(offset: endOffset + 1));
 }

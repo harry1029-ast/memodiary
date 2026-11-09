@@ -25,6 +25,11 @@ class DeskMediaHandlers {
   /// Items awaiting their Brush Reveal in the Staging Handscroll.
   final BrushRevealQueue? brushReveals;
 
+  /// Runs before any desk interaction (mount, erase, unmount, opening an item)
+  /// so the sheet gives up writing focus and the edit does not summon the
+  /// keyboard.
+  final VoidCallback? onDeskInteraction;
+
   const DeskMediaHandlers({
     this.onCollect,
     this.onMount,
@@ -32,5 +37,6 @@ class DeskMediaHandlers {
     this.onUnmount,
     this.mountRefusals,
     this.brushReveals,
+    this.onDeskInteraction,
   });
 }

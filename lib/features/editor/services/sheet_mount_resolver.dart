@@ -141,6 +141,7 @@ class SheetMountResolver {
               extentOffset: shifted(selection.extentOffset),
             )
           : null,
+      ignoreFocus: true,
     );
   }
 

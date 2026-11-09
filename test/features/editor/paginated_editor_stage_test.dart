@@ -16,6 +16,10 @@ import 'package:memodiary/features/editor/widgets/paper_heart_metrics.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
 
+/// A phone-shaped desk tall enough for the seal beneath the sheet and the
+/// workstation's floor below it.
+const _phoneViewport = Size(360, 780);
+
 void main() {
   late AppDatabase database;
   late Directory tempDirectory;
@@ -55,6 +59,7 @@ void main() {
         database: database,
         mediaSandboxService: sandboxService,
         entryId: 'paginated_test_entry',
+        viewportSize: _phoneViewport,
       );
 
       expect(find.byType(JournalLetterhead), findsOneWidget);
@@ -101,6 +106,7 @@ void main() {
         database: database,
         mediaSandboxService: sandboxService,
         entryId: 'paginated_test_entry',
+        viewportSize: _phoneViewport,
       );
 
       expect(find.text('第 1 / 3 页'), findsOneWidget);
@@ -182,11 +188,15 @@ void main() {
       expect(quillEditorFinder, findsOneWidget);
       final quillEditor = tester.widget<QuillEditor>(quillEditorFinder);
 
+      // Type at the end, the caret following each line as a diarist's would.
       for (int lineIndex = 1; lineIndex <= 15; lineIndex++) {
         final currentLength = quillEditor.controller.document.length;
-        quillEditor.controller.document.insert(
+        final line = '第${lineIndex.toString().padLeft(2, '0')}行测试自动溢行溢出长段落文字内容\n';
+        quillEditor.controller.replaceText(
           currentLength - 1,
-          '第${lineIndex.toString().padLeft(2, '0')}行测试自动溢行溢出长段落文字内容\n',
+          0,
+          line,
+          TextSelection.collapsed(offset: currentLength - 1 + line.length),
         );
       }
       await tester.pumpAndSettle();

@@ -115,6 +115,8 @@ class SheetMediaOperations {
       0,
       MountMarker.embeddable(item.id),
       selection.isValid ? selection : const TextSelection.collapsed(offset: 0),
+      // A desk action, not typing: Quill must not summon the keyboard for it.
+      ignoreFocus: true,
     );
     sheet.mediaAttachments.add(item);
     _onContentMutated();
@@ -141,6 +143,7 @@ class SheetMediaOperations {
           1,
           '',
           TextSelection.collapsed(offset: base > markerOffset ? base - 1 : base),
+          ignoreFocus: true,
         );
       }
       _stageInCollectOrder(sheet.mediaAttachments.removeAt(mountedIndex));

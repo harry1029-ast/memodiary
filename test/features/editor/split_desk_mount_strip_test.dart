@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/desk_space_budget.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/editor/widgets/paper_heart_metrics.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
@@ -72,11 +73,11 @@ void main() {
 
       final canvasRect = tester.getRect(find.byType(EditorPaperCanvas));
 
-      // Card must be docked near the top (<= 20.0px inside canvas) because Sheet 1 has an attached photo
+      // Card docks just beneath the desk's header band (page indicator) because Sheet 1 has an attached photo
       final cardFinder = find.byType(TemplateCanvasContainer);
       expect(cardFinder, findsOneWidget);
       final cardRect = tester.getRect(cardFinder);
-      expect(cardRect.top - canvasRect.top, lessThanOrEqualTo(20.0));
+      expect(cardRect.top - canvasRect.top, lessThanOrEqualTo(DeskSpaceBudget.kHeaderHeight + 1.0));
 
       // The Sheet Mount Strip rests beneath the card, outside the Paper Heart
       final trayFinder = find.byKey(const Key('sheet_mount_strip'));

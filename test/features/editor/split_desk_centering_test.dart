@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/desk_space_budget.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
@@ -70,7 +71,7 @@ void main() {
       expect(find.byType(QuillEditor), findsOneWidget);
     });
 
-    testWidgets('text-only entry centers 14-row card vertically with Cinnabar Signature Seal resting cleanly beneath it', (tester) async {
+    testWidgets('text-only entry docks the 14-row card under the desk header band with Cinnabar Signature Seal resting cleanly beneath it', (tester) async {
       await pumpEntryEditorScreen(
         tester,
         database: database,
@@ -83,11 +84,13 @@ void main() {
       expect(cardFinder, findsOneWidget);
       final cardRect = tester.getRect(cardFinder);
 
-      // Card must NOT be anchored to 16px top; on 780px viewport it centers with topOffset >= 40.0
+      // The card docks just beneath the header band holding the page indicator,
+      // leaving the rest of the desk to the seal and the workstation.
+      final canvasRect = tester.getRect(find.byType(EditorPaperCanvas));
       expect(
-        cardRect.top,
-        greaterThan(40.0),
-        reason: 'Text-only stationery card should vertically center on scholar desk, not clamp to 16px',
+        cardRect.top - canvasRect.top,
+        closeTo(DeskSpaceBudget.kHeaderHeight, 1.0),
+        reason: 'Text-only stationery card should rest under the desk header band, with no dead desk above it',
       );
 
       // Diarist\'s Cinnabar Signature Seal rests cleanly beneath the card
@@ -170,10 +173,14 @@ void main() {
 
       // Insert 15 lines of text onto Sheet 1 (capacity is 10)
       for (int lineIndex = 1; lineIndex <= 15; lineIndex++) {
+        // Typed at the end, so the caret follows the text as it spills.
         final currentLength = quillEditor.controller.document.length;
-        quillEditor.controller.document.insert(
+        final line = '行$lineIndex: 笔底波澜随文生\n';
+        quillEditor.controller.replaceText(
           currentLength - 1,
-          '行$lineIndex: 笔底波澜随文生\n',
+          0,
+          line,
+          TextSelection.collapsed(offset: currentLength - 1 + line.length),
         );
       }
       await tester.pumpAndSettle();

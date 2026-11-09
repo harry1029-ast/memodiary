@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/desk_space_budget.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
@@ -105,9 +106,9 @@ void main() {
       expect(workstationRect.height, greaterThanOrEqualTo(110.0));
       expect(workstationRect.width, closeTo(canvasRect.width, 0.5));
 
-      // With no Mount Strip the text-only sheet stays centred, its seal resting
-      // between the sheet and the workstation.
-      expect(sheetRect.top - canvasRect.top, greaterThan(20.0));
+      // The sheet docks beneath the desk's header band (no dead desk above it),
+      // its seal resting between the sheet and the workstation.
+      expect(sheetRect.top - canvasRect.top, closeTo(DeskSpaceBudget.kHeaderHeight, 1.0));
       final sealRect = tester.getRect(find.byKey(const Key('cinnabar_signature_seal')));
       expect(sealRect.top, greaterThanOrEqualTo(sheetRect.bottom));
       expect(sealRect.bottom, lessThanOrEqualTo(workstationRect.top));

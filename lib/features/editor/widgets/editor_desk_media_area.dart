@@ -44,6 +44,7 @@ class EditorDeskMediaArea extends StatelessWidget {
   });
 
   void _openLightbox(BuildContext context, List<SheetMediaItem> items, SheetMediaItem item) {
+    handlers.onDeskInteraction?.call();
     FullscreenMediaLightbox.show(
       context,
       items: items,

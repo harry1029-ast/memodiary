@@ -147,13 +147,20 @@ class StationeryBorderChevron extends StatelessWidget {
   }
 }
 
-/// Compact page counter badge ('第 X / N 页') docked cleanly near the bottom Earth Margin.
+/// Compact page counter badge ('第 X / N 页'). On paper it takes the paper's
+/// chrome tones; [isOnDesk] engraves it in brass on the walnut desk instead.
 class StationeryPageIndicator extends StatelessWidget {
   final int currentSheetIndex;
   final int totalSheets;
   final PaperSubstrate substrate;
   final bool isPaperDark;
   final Color? inkColor;
+  final bool isOnDesk;
+
+  /// Brass tones of the indicator engraved on the walnut desk.
+  static const Color kDeskTextColor = Color(0xE6FDE68A);
+  static const Color kDeskBgColor = Color(0x59000000);
+  static const Color kDeskBorderColor = Color(0x66C89D42);
 
   const StationeryPageIndicator({
     super.key,
@@ -162,6 +169,7 @@ class StationeryPageIndicator extends StatelessWidget {
     this.substrate = PaperSubstrate.xuan,
     this.isPaperDark = false,
     this.inkColor,
+    this.isOnDesk = false,
   });
 
   @override
@@ -185,9 +193,12 @@ class StationeryPageIndicator extends StatelessWidget {
           key: const Key('editor_sheet_indicator'),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
           decoration: BoxDecoration(
-            color: chromeTheme.indicatorBgColor,
+            color: isOnDesk ? kDeskBgColor : chromeTheme.indicatorBgColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: chromeTheme.indicatorBorderColor, width: 0.8),
+            border: Border.all(
+              color: isOnDesk ? kDeskBorderColor : chromeTheme.indicatorBorderColor,
+              width: 0.8,
+            ),
           ),
           child: Text(
             text,
@@ -195,7 +206,7 @@ class StationeryPageIndicator extends StatelessWidget {
               fontFamily: InkDiaryTheme.fontKaiti,
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: chromeTheme.indicatorTextColor,
+              color: isOnDesk ? kDeskTextColor : chromeTheme.indicatorTextColor,
               letterSpacing: 0.8,
             ),
           ),
@@ -205,7 +216,9 @@ class StationeryPageIndicator extends StatelessWidget {
   }
 }
 
-/// Reusable overlay layout placing the border navigation chevrons and bottom page counter badge.
+/// Reusable overlay layout placing the border navigation chevrons, centred on
+/// the sheet's band, and the page counter badge: in the desk's header band at
+/// [indicatorTop] when given, otherwise docked at [bottomInset].
 class StationerySheetBorderChrome extends StatelessWidget {
   final int currentSheetIndex;
   final int totalSheets;
@@ -216,6 +229,15 @@ class StationerySheetBorderChrome extends StatelessWidget {
   final Color? inkColor;
   final double horizontalInset;
   final double bottomInset;
+
+  /// Vertical band of the sheet the chevrons centre on; the whole overlay when
+  /// [sheetHeight] is null.
+  final double sheetTop;
+  final double? sheetHeight;
+
+  /// Top of the band the indicator centres in, right-aligned on the desk.
+  final double? indicatorTop;
+  final double indicatorBandHeight;
 
   const StationerySheetBorderChrome({
     super.key,
@@ -228,12 +250,27 @@ class StationerySheetBorderChrome extends StatelessWidget {
     this.inkColor,
     this.horizontalInset = 8.0,
     this.bottomInset = 12.0,
+    this.sheetTop = 0.0,
+    this.sheetHeight,
+    this.indicatorTop,
+    this.indicatorBandHeight = 30.0,
   });
 
   @override
   Widget build(BuildContext context) {
     final showPrev = currentSheetIndex > 0;
     final showNext = currentSheetIndex < totalSheets - 1;
+    final band = sheetHeight;
+    final chevronTop = band == null ? 0.0 : sheetTop;
+    final chevronBottom = band == null ? 0.0 : null;
+    final indicator = StationeryPageIndicator(
+      currentSheetIndex: currentSheetIndex,
+      totalSheets: totalSheets,
+      substrate: substrate,
+      isPaperDark: isPaperDark,
+      inkColor: inkColor,
+      isOnDesk: indicatorTop != null,
+    );
 
     return Stack(
       children: [
@@ -241,8 +278,9 @@ class StationerySheetBorderChrome extends StatelessWidget {
         if (showPrev)
           Positioned(
             left: horizontalInset,
-            top: 0,
-            bottom: 0,
+            top: chevronTop,
+            bottom: chevronBottom,
+            height: band,
             child: Center(
               child: StationeryBorderChevron(
                 isNext: false,
@@ -259,8 +297,9 @@ class StationerySheetBorderChrome extends StatelessWidget {
         if (showNext)
           Positioned(
             right: horizontalInset,
-            top: 0,
-            bottom: 0,
+            top: chevronTop,
+            bottom: chevronBottom,
+            height: band,
             child: Center(
               child: StationeryBorderChevron(
                 isNext: true,
@@ -273,23 +312,21 @@ class StationerySheetBorderChrome extends StatelessWidget {
             ),
           ),
 
-        // Bottom page indicator badge
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: bottomInset,
-          child: IgnorePointer(
-            child: Center(
-              child: StationeryPageIndicator(
-                currentSheetIndex: currentSheetIndex,
-                totalSheets: totalSheets,
-                substrate: substrate,
-                isPaperDark: isPaperDark,
-                inkColor: inkColor,
-              ),
-            ),
+        // Page indicator badge: in the desk's header band, or docked at the bottom
+        if (indicatorTop != null)
+          Positioned(
+            top: indicatorTop,
+            right: 16.0,
+            height: indicatorBandHeight,
+            child: IgnorePointer(child: Center(child: indicator)),
+          )
+        else
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: bottomInset,
+            child: IgnorePointer(child: Center(child: indicator)),
           ),
-        ),
       ],
     );
   }

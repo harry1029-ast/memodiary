@@ -187,6 +187,7 @@ class EditorTextSheetView extends StatelessWidget {
         focusNode: sheet.focusNode,
         scrollController: ScrollController(),
         config: QuillEditorConfig(
+          editorKey: sheet.editorKey,
           placeholder: placeholder,
           expands: false,
           scrollable: false,

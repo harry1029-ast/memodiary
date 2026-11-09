@@ -94,7 +94,9 @@ class StationerySheetSpillMutator {
     }
 
     final currentCaret = sheet.controller.selection.baseOffset;
-    final caretMovedToOverflow = currentCaret > overflow.splitOffset;
+    // A caret at the split sits at the start of the first overflowing row
+    // (e.g. Enter on the last row), so it follows the overflow.
+    final caretMovedToOverflow = currentCaret >= overflow.splitOffset;
 
     sheet.setDelta(overflow.remainingDelta);
     sheet.hasTrailingSoftNewline = overflow.hasTrailingSoftNewline;
@@ -161,6 +163,7 @@ class StationerySheetSpillMutator {
         destinationSheetIndex: finalDestinationIndex,
         destinationCaretOffset: finalCaretOffset,
         didAllocateNewSheet: finalDidAllocate,
+        caretFollowsOverflow: caretMovedToOverflow,
       ),
       activeSheetIndex: nextActiveIndex,
     );
