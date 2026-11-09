@@ -251,6 +251,48 @@ void main() {
             '(Displacement over Coexistence). Found:\n${violations.join('\n')}',
       );
     });
+
+    test('Rich-text emptiness is structural, never trimmed plain text', () {
+      final inlineTrimEmptyRegex = RegExp(r'toPlainText\(\)\.trim\(\)\.isEmpty');
+      final trimmedAssignmentRegex = RegExp(r'(\w+)\s*=\s*[^;]*toPlainText\(\)\.trim\(\)');
+      const lookaheadLines = 3;
+
+      final dartFiles = libDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
+
+      final violations = <String>[];
+
+      for (final file in dartFiles) {
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        final lines = file.readAsLinesSync();
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+          final line = lines[lineIndex];
+          if (inlineTrimEmptyRegex.hasMatch(line)) {
+            violations.add('$relPath:${lineIndex + 1}: ${line.trim()}');
+            continue;
+          }
+          final assignment = trimmedAssignmentRegex.firstMatch(line);
+          if (assignment == null) continue;
+          final emptinessCheck = RegExp('\\b${assignment.group(1)}\\.(isEmpty|isNotEmpty)\\b');
+          final lastLookahead = (lineIndex + lookaheadLines).clamp(0, lines.length - 1);
+          for (var nextIndex = lineIndex + 1; nextIndex <= lastLookahead; nextIndex++) {
+            if (emptinessCheck.hasMatch(lines[nextIndex])) {
+              violations.add('$relPath:${nextIndex + 1}: ${lines[nextIndex].trim()}');
+            }
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Trimmed plain text used as an emptiness test violates CODING_STANDARDS.md § 2 '
+            '(Rich-Text Document Structural Emptiness Invariant); use `document.length <= 1`. '
+            'Found:\n${violations.join('\n')}',
+      );
+    });
   });
 }
 

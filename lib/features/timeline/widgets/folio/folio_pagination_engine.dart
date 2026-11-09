@@ -1,9 +1,10 @@
 import '../../../../core/database/app_database.dart';
+import '../../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../../scenery/services/shanshui_atmosphere_resolver.dart';
 import '../../../templates/models/template_style.dart';
+import '../../services/folio_media_pairing.dart';
 import 'folio_content_parser.dart';
 import 'folio_leaf_model.dart';
-import 'folio_media_pairing.dart';
 import 'folio_reading_perspective.dart';
 import 'folio_vertical_paginator.dart';
 
@@ -40,13 +41,14 @@ class FolioPaginationEngine {
       entryPlainText: entry.plainText,
     );
 
-    String? heroPhotoPath;
-    String? heroMediaType;
-    if (attachments.isNotEmpty) {
-      final firstMedia = attachments.first;
-      heroPhotoPath = firstMedia.relativePath;
-      heroMediaType = firstMedia.mediaType;
-    }
+    final mountPlan = FolioMediaPairing.pairLeaves(
+      entry: entry,
+      attachments: attachments,
+      templateStyle: templateStyle,
+    );
+    final coverMounts = mountPlan.firstSheetMounts;
+    final heroPhotoPath = coverMounts.isEmpty ? null : coverMounts.first.relativePath;
+    final heroMediaType = coverMounts.isEmpty ? null : coverMounts.first.mediaType;
 
     final parsedBlocks = FolioContentParser.parseContentBlocks(
       contentDeltaJson: entry.contentDelta,
@@ -60,7 +62,8 @@ class FolioPaginationEngine {
     );
 
     final wordCount = entry.plainText.trim().runes.length;
-    final isZeroWordDraft = wordCount == 0 && parsedBlocks.isEmpty && attachments.isEmpty;
+    final hasMountedMedia = mountPlan.hasMounts;
+    final isZeroWordDraft = wordCount == 0 && parsedBlocks.isEmpty && !hasMountedMedia;
 
     if (isZeroWordDraft) {
       return [
@@ -106,27 +109,14 @@ class FolioPaginationEngine {
       );
     }
 
-    FolioMediaPairing.appendUnplacedAttachmentLeaves(
-      attachments: attachments,
-      contentLeaves: contentLeaves,
-      title: entry.title?.trim().isNotEmpty == true ? entry.title!.trim() : '无题',
-      lunarDate: lunarDateStr,
-    );
-
     final totalLeaves = 1 + contentLeaves.length;
     final totalContentCount = contentLeaves.length;
     final totalBodyCount = contentLeaves.whereType<FolioContentBodyLeaf>().length;
-    final basePhotos = FolioMediaPairing.curatePhotos(
-      attachments: attachments,
-      contentLeaves: const [],
-      fallbackHeroPath: heroPhotoPath,
-      fallbackMediaType: heroMediaType,
-      entryDateStr: gregorianDateStr,
-    );
 
     final reindexedContentLeaves = <FolioLeaf>[];
     var contentPageCounter = 1;
     var bodyCounter = 0;
+    final mountsByLeaf = mountPlan.mountsByLeaf(totalBodyCount);
 
     for (int index = 0; index < totalContentCount; index++) {
       final currentLeaf = contentLeaves[index];
@@ -134,7 +124,11 @@ class FolioPaginationEngine {
       final physicalIndex = index + 1;
 
       if (currentLeaf is FolioContentBodyLeaf) {
-        final leafPhotos = FolioMediaPairing.photosForBodyIndex(basePhotos, bodyCounter++, totalBodyCount);
+        final leafPhotos = _photosForLeaf(
+          mounted: mountsByLeaf[bodyCounter++],
+          targetLeafIndex: physicalIndex,
+          entryDateStr: gregorianDateStr,
+        );
         reindexedContentLeaves.add(FolioContentBodyLeaf(
           leafIndex: physicalIndex,
           totalLeaves: totalLeaves,
@@ -167,11 +161,13 @@ class FolioPaginationEngine {
       }
     }
 
-    final curatedPhotos = FolioMediaPairing.curatePhotos(
-      attachments: attachments,
-      contentLeaves: reindexedContentLeaves,
-      fallbackHeroPath: heroPhotoPath,
-      fallbackMediaType: heroMediaType,
+    final firstBodyLeafIndex = reindexedContentLeaves
+        .whereType<FolioContentBodyLeaf>()
+        .map((leaf) => leaf.leafIndex)
+        .firstOrNull;
+    final curatedPhotos = _photosForLeaf(
+      mounted: coverMounts,
+      targetLeafIndex: firstBodyLeafIndex ?? (totalLeaves > 1 ? 1 : 0),
       entryDateStr: gregorianDateStr,
     );
 
@@ -197,6 +193,40 @@ class FolioPaginationEngine {
     );
 
     return [coverLeaf, ...reindexedContentLeaves];
+  }
+
+  /// Converts the attachments mounted on a leaf into Folio photo cards targeting
+  /// [targetLeafIndex], preserving persisted overlay drag positions.
+  static List<FolioPhotoAttachment> _photosForLeaf({
+    required List<MediaAttachment> mounted,
+    required int targetLeafIndex,
+    required String entryDateStr,
+  }) {
+    return [
+      for (int index = 0; index < mounted.length; index++)
+        _toPhoto(mounted[index], index, targetLeafIndex, entryDateStr),
+    ];
+  }
+
+  static FolioPhotoAttachment _toPhoto(
+    MediaAttachment attachment,
+    int indexOnLeaf,
+    int targetLeafIndex,
+    String entryDateStr,
+  ) {
+    final caption = attachment.caption?.trim() ?? '';
+    return FolioPhotoAttachment(
+      id: attachment.id,
+      relativePath: attachment.relativePath,
+      mediaType: EphemeraMediaType.fromEmbedKey(attachment.mediaType),
+      title: caption.isNotEmpty ? caption.split('\n').first : '随文影札 ${indexOnLeaf + 1}',
+      caption: caption.isNotEmpty ? caption : '随文影札 · 拾光留影',
+      date: entryDateStr,
+      pageNumber: targetLeafIndex,
+      targetLeafIndex: targetLeafIndex,
+      overlayXRatio: attachment.overlayXRatio,
+      overlayYRatio: attachment.overlayYRatio,
+    );
   }
 
   // --- Horizontal Pagination ---

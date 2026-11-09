@@ -16,11 +16,6 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 **Implementer subagents** should be run in the background where possible for maximum concurrency.
 
-### Concurrency & Context Window Protection
-When executing tickets, distinguish between execution modes:
-- **Mode A (Worktree Subagents — Default for $\ge 3$ tickets)**: Each ticket runs in an isolated subagent worktree on its own branch. Keeps compiler churn, file diffs, and test output out of the primary session, protecting against context window bloat.
-- **Mode B (In-Session Direct)**: Sequential in-session execution. Recommended only for small 1–2 ticket tasks; using Mode B on larger epics triggers rapid context compaction.
-
 ## Steps
 
 1. Read the spec and tickets to understand the task graph.
@@ -31,7 +26,6 @@ When executing tickets, distinguish between execution modes:
 
 4. Use **implementer subagents** to implement each ticket, each in its own worktree on its own branch. Each implementer subagent:
    - confirms its worktree is based on the integration branch before starting, and resets onto it if not;
-   - enforces **Displacement over Coexistence** (`CODING_STANDARDS.md` § 3): delete replaced interfaces and migrate their test assertions in the same ticket; never preserve dead wrappers for backward compatibility;
    - calls the Skill tool with `tdd` to build the ticket;
    - merges the integration branch tip into its own branch before reporting done
 
@@ -43,8 +37,4 @@ When executing tickets, distinguish between execution modes:
 
 8. If a draft PR exists, mark it ready for review. Otherwise, resolve each ticket the way the issue tracker closes work, and report the integration branch.
 
-9. Clean up all **implementer subagent** worktrees and prune lingering auto-generated branches:
-   ```bash
-   git worktree list --porcelain | grep "^worktree " | grep "subagent-" | cut -d' ' -f2 | xargs -r -n1 git worktree remove
-   git branch | grep "subagent-" | xargs -r git branch -D
-   ```
+9. Clean up all **implementer subagent** worktrees.

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
+import 'package:memodiary/features/editor/models/desk_media_handlers.dart';
 import 'package:memodiary/features/editor/widgets/sheet_mount_strip.dart';
 import 'package:memodiary/features/editor/widgets/staging_handscroll.dart';
 import '../../../helpers/editor_test_harness.dart';
@@ -91,14 +92,16 @@ void main() {
         mediaSandboxService: sandboxService,
         activeSheetNumber: 2,
         onTapItem: (item) => tapped.add(item.id),
-        onMountItem: (item) => mounted.add(item.id),
-        onEraseItem: (item) => erased.add(item.id),
+        handlers: DeskMediaHandlers(onMount: mounted.add, onErase: erased.add),
       )));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('handscroll_item_item_2')));
       await tester.tap(find.byKey(const Key('handscroll_mount_item_1')));
       await tester.tap(find.byKey(const Key('handscroll_erase_item_2')));
+      // ✕ reports the erase once the ink-wash dissolve has played.
+      expect(erased, isEmpty);
+      await tester.pumpAndSettle();
 
       expect(tapped, ['item_2']);
       expect(mounted, ['item_1']);

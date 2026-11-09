@@ -3,6 +3,7 @@ import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
+import 'package:memodiary/features/editor/models/mount_marker.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/services/editor_delta_partitioner.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
@@ -33,6 +34,14 @@ EditorPartition _partition(Delta delta, List<SheetMediaItem> media) {
 /// Builds a long multi-paragraph prose run that overflows the opening sheet.
 String _lines(String prefix, int count) =>
     List.generate(count, (index) => '$prefix$index').join('\n');
+
+extension on Delta {
+  void insertMarkers(Iterable<String> mediaIds) {
+    for (final mediaId in mediaIds) {
+      insert({'mount': mediaId});
+    }
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -121,6 +130,185 @@ void main() {
         isEmpty,
       );
       expect(result.stagedItems.map((item) => item.id), ['photo_a']);
+    });
+  });
+
+  group('EditorDeltaPartitioner mount overflow and reflow', () {
+
+    List<List<String>> mountedIdsPerSheet(List<StationerySheetDescriptor> sheets) => [
+          for (final sheet in sheets.whereType<TextStationerySheet>())
+            sheet.mediaAttachments.map((item) => item.id).toList(),
+        ];
+
+    test('more than three markers on a sheet cascade the extras onto the following text sheet', () {
+      final media = [for (final id in ['a', 'b', 'c', 'd', 'e', 'f']) _photo(id)];
+      final delta = Delta()
+        ..insert(_lines('首页', 10))
+        ..insertMarkers(['a', 'b', 'c', 'd', 'e'])
+        ..insert('\n')
+        ..insert('次页')
+        ..insert({'mount': 'f'})
+        ..insert('\n')
+        ..insert('${_lines('三页', 14)}\n');
+
+      final result = _partition(delta, media);
+
+      expect(result.sheets.whereType<TextStationerySheet>(), hasLength(3));
+      expect(mountedIdsPerSheet(result.sheets), [
+        ['a', 'b', 'c'],
+        ['d', 'e', 'f'],
+        [],
+      ]);
+      expect(result.stagedItems, isEmpty);
+    });
+
+    test('opening an entry never unmounts: extras beyond the last sheet stay there, tolerated', () {
+      final media = [for (final id in ['a', 'b', 'c', 'd', 'e']) _photo(id)];
+      final delta = Delta()
+        ..insert('一页')
+        ..insertMarkers(['a', 'b', 'c', 'd', 'e'])
+        ..insert('\n');
+
+      final result = _partition(delta, media);
+
+      expect(mountedIdsPerSheet(result.sheets), [
+        ['a', 'b', 'c', 'd', 'e'],
+      ]);
+      expect(result.stagedItems, isEmpty);
+      expect(result.toleratedOverflowIds, {'d', 'e'});
+    });
+
+    test('reflow overflow at the last sheet unmounts the extras and removes their markers', () {
+      final media = [for (final id in ['a', 'b', 'c', 'd', 'e']) _photo(id)];
+      final sheets = _partition(
+        Delta()
+          ..insert('一页')
+          ..insertMarkers(['a', 'b', 'c', 'd', 'e'])
+          ..insert('\n'),
+        media,
+      ).sheets;
+
+      final resolution = SheetMountResolver.resolveMounts(
+        sheets: sheets,
+        media: media,
+        unmountLastSheetOverflow: true,
+      );
+
+      expect(mountedIdsPerSheet(sheets), [
+        ['a', 'b', 'c'],
+      ]);
+      expect(resolution.unmountedByOverflow.map((item) => item.id), ['d', 'e']);
+      expect(resolution.stagedItems.map((item) => item.id), ['d', 'e']);
+      expect(
+        (sheets.single as TextStationerySheet).delta.toJson(),
+        (Delta()
+              ..insert('一页')
+              ..insertMarkers(['a', 'b', 'c'])
+              ..insert('\n'))
+            .toJson(),
+      );
+      expect(sheets, hasLength(1), reason: 'no media-only sheet is allocated');
+    });
+
+    test('tolerated legacy overflow stays on the last sheet while reflow unmounts only new extras', () {
+      final media = [for (final id in ['a', 'b', 'c', 'd', 'e']) _photo(id)];
+      final sheets = _partition(
+        Delta()
+          ..insert('一页')
+          ..insertMarkers(['a', 'b', 'c', 'd', 'e'])
+          ..insert('\n'),
+        media,
+      ).sheets;
+
+      final resolution = SheetMountResolver.resolveMounts(
+        sheets: sheets,
+        media: media,
+        unmountLastSheetOverflow: true,
+        toleratedOverflowIds: const {'e'},
+      );
+
+      expect(mountedIdsPerSheet(sheets), [
+        ['a', 'b', 'c', 'e'],
+      ]);
+      expect(resolution.unmountedByOverflow.map((item) => item.id), ['d']);
+      expect(resolution.toleratedOverflowIds, {'e'});
+    });
+
+    test('a deleted marker leaves its item staged; undo restores the marker and remounts it', () {
+      final media = [_photo('a'), _photo('b')];
+      final sheets = _partition(
+        Delta()
+          ..insert('春')
+          ..insert({'mount': 'a'})
+          ..insert('夏')
+          ..insert({'mount': 'b'})
+          ..insert('\n'),
+        media,
+      ).sheets;
+      final sheet = sheets.single as TextStationerySheet;
+
+      sheet.controller.replaceText(0, 2, '', const TextSelection.collapsed(offset: 0));
+      final afterDelete = SheetMountResolver.resolveMounts(sheets: sheets, media: media);
+      expect(mountedIdsPerSheet(sheets), [
+        ['b'],
+      ]);
+      expect(afterDelete.stagedItems.map((item) => item.id), ['a']);
+
+      sheet.controller.undo();
+      final afterUndo = SheetMountResolver.resolveMounts(sheets: sheets, media: media);
+      expect(mountedIdsPerSheet(sheets), [
+        ['a', 'b'],
+      ]);
+      expect(afterUndo.stagedItems, isEmpty);
+    });
+
+    test('a duplicated marker is removed, keeping the occurrence on the sheet that already held it', () {
+      final media = [_photo('a')];
+      final sheets = _partition(
+        Delta()
+          ..insert('${_lines('首页', 10)}\n')
+          ..insert('次页')
+          ..insert({'mount': 'a'})
+          ..insert('\n'),
+        media,
+      ).sheets;
+      final opening = sheets[0] as TextStationerySheet;
+      final continuation = sheets[1] as TextStationerySheet;
+
+      opening.controller.replaceText(0, 0, Delta()..insert({'mount': 'a'}), null);
+      SheetMountResolver.resolveMounts(
+        sheets: sheets,
+        media: media,
+        previousMarkerHomes: {'a': continuation.controller},
+      );
+
+      expect(mountedIdsPerSheet(sheets), [
+        [],
+        ['a'],
+      ]);
+      expect(MountMarker.mediaIdsIn(opening.delta), isEmpty);
+      expect(MountMarker.mediaIdsIn(continuation.delta), ['a']);
+    });
+
+    test('stripOrphanMarkers removes markers referencing a missing attachment, and duplicates', () {
+      final delta = Delta()
+        ..insert('秋')
+        ..insert({'mount': 'a'})
+        ..insert({'mount': 'ghost'})
+        ..insert('冬')
+        ..insert({'mount': 'a'})
+        ..insert('\n');
+
+      final stripped = SheetMountResolver.stripOrphanMarkers(delta, knownMediaIds: {'a'});
+
+      expect(
+        stripped.toJson(),
+        (Delta()
+              ..insert('秋')
+              ..insert({'mount': 'a'})
+              ..insert('冬\n'))
+            .toJson(),
+      );
     });
   });
 }

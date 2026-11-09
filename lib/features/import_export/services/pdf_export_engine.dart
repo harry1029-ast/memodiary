@@ -7,6 +7,7 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../editor/services/vertical_typography_mapper.dart';
 import '../../settings/services/signature_seal_service.dart';
 import '../../templates/models/template_style.dart';
+import '../../timeline/services/folio_media_pairing.dart';
 import '../models/pdf_layout_mode.dart';
 import 'pdf_entry_serializer.dart';
 import 'pdf_font_resolver.dart';
@@ -43,8 +44,13 @@ class PdfExportEngine {
     final sealManager = sealService ?? SignatureSealService();
     final effectiveSealText = sealText ?? await sealManager.getSealText();
 
-    // 2b. Retrieve paired entry media attachments with persistent overlay ratios
-    final attachments = await database.getMediaForEntry(entry.id);
+    // 2b. Pair mounted media with sheets exactly as the Thread-Bound Folio does;
+    // staged (unmounted) attachments are left out.
+    final mountPlan = FolioMediaPairing.pairLeaves(
+      entry: entry,
+      attachments: await database.getMediaForEntry(entry.id),
+      templateStyle: style,
+    );
 
     final doc = pw.Document();
 
@@ -56,7 +62,7 @@ class PdfExportEngine {
         mediaService: mediaService,
         fontResolver: resolver,
         sealText: effectiveSealText,
-        attachments: attachments,
+        mountPlan: mountPlan,
         pageFormat: pageFormat,
       );
       for (final page in pages) {
@@ -65,25 +71,51 @@ class PdfExportEngine {
       return doc.save();
     }
 
-    // 4. Standard Horizontal Stationery mode (default)
-    final contentWidgets = await PdfEntrySerializer.convertDeltaToWidgets(
-      contentDeltaJson: entry.contentDelta,
-      fallbackPlainText: entry.plainText,
-      mediaService: mediaService,
-      style: style,
-      fontResolver: resolver,
-    );
-
-    final overlayCards = attachments.isNotEmpty
-        ? await PdfPolaroidOverlayBuilder.buildOverlayCards(
-            attachments: attachments,
-            mediaService: mediaService,
-            resolver: resolver,
-            availableWidth: pageFormat.width - (style.marginHorizontal.clamp(20.0, 60.0) * 2),
-            availableHeight: pageFormat.height - 72.0,
-            isVertical: false,
-          )
-        : const <pw.Widget>[];
+    // 4. Standard Horizontal Stationery mode (default): one section per sheet,
+    // each carrying the overlay cards of the items mounted on it (at most three,
+    // paired exactly as the Folio pairs leaves). An entry with nothing mounted
+    // renders as one continuous flow.
+    final sectionWidgets = <pw.Widget>[];
+    if (!mountPlan.hasMounts) {
+      sectionWidgets.addAll(await PdfEntrySerializer.convertDeltaToWidgets(
+        contentDeltaJson: entry.contentDelta,
+        fallbackPlainText: entry.plainText,
+        mediaService: mediaService,
+        style: style,
+        fontResolver: resolver,
+      ));
+    }
+    final sections = mountPlan.hasMounts ? mountPlan.sections : const <FolioSheetSection>[];
+    final mountsBySheet = mountPlan.mountsByLeaf(mountPlan.textSheetMounts.length);
+    var textSheetOrdinal = 0;
+    for (final section in sections) {
+      final widgets = await PdfEntrySerializer.convertOpsToWidgets(
+        ops: section.deltaOps,
+        fallbackPlainText: entry.plainText,
+        mediaService: mediaService,
+        style: style,
+        fontResolver: resolver,
+      );
+      final mounted = section.isText ? mountsBySheet[textSheetOrdinal++] : const <MediaAttachment>[];
+      if (mounted.isEmpty) {
+        sectionWidgets.addAll(widgets);
+        continue;
+      }
+      final overlayCards = await PdfPolaroidOverlayBuilder.buildOverlayCards(
+        attachments: mounted,
+        mediaService: mediaService,
+        resolver: resolver,
+        availableWidth: pageFormat.width - (style.marginHorizontal.clamp(20.0, 60.0) * 2),
+        availableHeight: pageFormat.height - 72.0,
+        isVertical: false,
+      );
+      sectionWidgets.add(pw.Stack(
+        children: [
+          pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: widgets),
+          ...overlayCards,
+        ],
+      ));
+    }
 
     doc.addPage(
       pw.MultiPage(
@@ -101,23 +133,13 @@ class PdfExportEngine {
         footer: (context) =>
             PdfTemplateRenderer.buildFooter(context, entry, style, resolver),
         build: (context) => [
-          pw.Stack(
-            children: [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                children: [
-                  _buildEntryHeader(entry, resolver),
-                  pw.SizedBox(height: 10),
-                  ...contentWidgets,
-                  _buildSealColophon(
-                    style: style,
-                    resolver: resolver,
-                    sealText: effectiveSealText,
-                  ),
-                ],
-              ),
-              ...overlayCards,
-            ],
+          _buildEntryHeader(entry, resolver),
+          pw.SizedBox(height: 10),
+          ...sectionWidgets,
+          _buildSealColophon(
+            style: style,
+            resolver: resolver,
+            sealText: effectiveSealText,
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import '../models/media_embed_data.dart';
+import '../models/mount_marker_clipboard.dart';
 import 'sheet_media_item.dart';
 
 export 'sheet_media_item.dart';
@@ -81,8 +82,11 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   /// Whether this sheet has at least one paired photo or video keepsake.
   bool get hasMediaAttachments => mediaAttachments.isNotEmpty;
 
-  /// Whether this sheet has reached the maximum allowed attachment capacity (3 items).
-  bool get isAtMediaCapacity => mediaAttachments.length >= 3;
+  /// Most items a sheet's Mount Strip (and a Folio leaf or PDF page) shows.
+  static const int kMountCapacity = 3;
+
+  /// Whether this sheet has reached the maximum allowed attachment capacity.
+  bool get isAtMediaCapacity => mediaAttachments.length >= kMountCapacity;
 
   /// Maximum integer visual row capacity on this stationery sheet.
   int get rowCapacity;
@@ -145,7 +149,7 @@ class OpeningSheet extends TextStationerySheet {
   }) {
     return OpeningSheet(
       sheetIndex: sheetIndex,
-      controller: QuillController.basic(),
+      controller: MountMarkerClipboard.controller(),
       mediaAttachments: mediaAttachments,
     );
   }
@@ -157,10 +161,7 @@ class OpeningSheet extends TextStationerySheet {
     List<SheetMediaItem>? mediaAttachments,
     bool hasTrailingSoftNewline = false,
   }) {
-    final controller = QuillController(
-      document: Document.fromDelta(delta),
-      selection: const TextSelection.collapsed(offset: 0),
-    );
+    final controller = MountMarkerClipboard.controller(document: Document.fromDelta(delta));
     return OpeningSheet(
       sheetIndex: sheetIndex,
       controller: controller,
@@ -204,7 +205,7 @@ class ContinuationSheet extends TextStationerySheet {
   }) {
     return ContinuationSheet(
       sheetIndex: sheetIndex,
-      controller: QuillController.basic(),
+      controller: MountMarkerClipboard.controller(),
       mediaAttachments: mediaAttachments,
     );
   }
@@ -216,10 +217,7 @@ class ContinuationSheet extends TextStationerySheet {
     List<SheetMediaItem>? mediaAttachments,
     bool hasTrailingSoftNewline = false,
   }) {
-    final controller = QuillController(
-      document: Document.fromDelta(delta),
-      selection: const TextSelection.collapsed(offset: 0),
-    );
+    final controller = MountMarkerClipboard.controller(document: Document.fromDelta(delta));
     return ContinuationSheet(
       sheetIndex: sheetIndex,
       controller: controller,

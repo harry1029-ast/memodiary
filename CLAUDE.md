@@ -14,6 +14,7 @@ The imports above contain some Antigravity-specific instructions. For Claude Cod
 - **Scratch files**: Ignore `<appDataDir>/brain/<id>/scratch/`. Use the session scratchpad directory.
 - **Skills**: Skills live in `.agents/skills/` (shared with Antigravity) and are symlinked into `.claude/skills/`. Never rename or edit them in place; they are tracked in `skills-lock.json` for upstream updates. When a new skill is added under `.agents/skills/`, add a matching symlink in `.claude/skills/`.
 - **`code-review`**: Means the project skill (`.agents/skills/code-review`, Standards + Spec review), not the built-in `/code-review`.
+- **`implement-spec`**: Implementer briefs carry Displacement over Coexistence (`CODING_STANDARDS.md` § 3). Worktrees land in `.claude/worktrees/agent-*` on `worktree-agent-*` branches; clean up with `git worktree remove` on each, then `git branch -d` (merged branches only).
 
 ## Agent skills
 
