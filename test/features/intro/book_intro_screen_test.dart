@@ -35,6 +35,7 @@ void main() {
     required AppDatabase database,
     required MediaSandboxService mediaService,
     bool startOpened = false,
+    DateTime Function()? clock,
   }) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
@@ -49,6 +50,7 @@ void main() {
           database: database,
           mediaService: mediaService,
           startOpened: startOpened,
+          clock: clock,
         ),
       ),
     );
@@ -90,6 +92,28 @@ void main() {
       expect(find.text('旅行画册'), findsOneWidget);
       expect(find.text('山河沿路，笔底留痕'), findsOneWidget);
       expect(find.textContaining('点选书页'), findsOneWidget);
+    });
+
+    testWidgets('私人日记 card shows today\'s true lunar month and day', (tester) async {
+      await pumpBookIntroScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
+        startOpened: true,
+        // Solar 2026-11-10 is lunar 十月初二 (the old helper showed 冬月初十).
+        clock: () => DateTime(2026, 11, 10, 8, 30),
+      );
+
+      // The lunar date is set vertically, one character per line.
+      expect(find.text('初'), findsOneWidget);
+      final lunarColumn = find
+          .ancestor(of: find.text('初'), matching: find.byType(Column))
+          .first;
+      final characters = tester
+          .widgetList<Text>(find.descendant(of: lunarColumn, matching: find.byType(Text)))
+          .map((text) => text.data)
+          .toList();
+      expect(characters, equals(['十', '月', '初', '二']));
     });
 
     testWidgets('tapping 私人日记 navigates to TimelineScreen', (tester) async {

@@ -52,9 +52,20 @@ void main() {
     });
 
     test('formats classical lunar and Gregorian dates', () {
-      final lunar = FolioContentParser.formatFullLunarDate(testDate);
-      expect(lunar, contains('岁次丙午'));
-      expect(lunar, contains('冬月廿三'));
+      expect(
+        FolioContentParser.formatFullLunarDate(testDate),
+        equals('岁次丙午 · 十月十五'),
+      );
+      // Before the lunar new year (2026-02-17) the year is still 乙巳.
+      expect(
+        FolioContentParser.formatFullLunarDate(DateTime(2026, 2, 10)),
+        equals('岁次乙巳 · 腊月廿三'),
+      );
+      // Outside the lunar data range only the stem-branch year is shown.
+      expect(
+        FolioContentParser.formatFullLunarDate(DateTime(1899, 6, 1)),
+        equals('岁次己亥'),
+      );
 
       final gregorian = FolioContentParser.formatGregorianDate(testDate);
       expect(gregorian, contains('2026.11.23'));

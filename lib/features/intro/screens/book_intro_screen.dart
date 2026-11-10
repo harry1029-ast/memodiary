@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/calendar/lunar_calendar.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/services/ocr/ocr_queue_manager.dart';
@@ -7,7 +8,6 @@ import '../../albums/data/album_repository.dart';
 import '../../albums/screens/album_collections_screen.dart';
 import '../../timeline/screens/timeline_screen.dart';
 import '../models/book_intro_folio_data.dart';
-import '../utils/chinese_calendar_helper.dart';
 import '../widgets/book_3d_stage.dart';
 import '../widgets/bottom_seal_slider.dart';
 import '../widgets/living_ink_background_painter.dart';
@@ -22,6 +22,9 @@ class BookIntroScreen extends StatefulWidget {
   final bool startOpened;
   final OcrQueueManager? ocrQueueManager;
 
+  /// Supplies today's date for the 私人日记 card's lunar date (defaults to now).
+  final DateTime Function()? clock;
+
   const BookIntroScreen({
     super.key,
     required this.database,
@@ -29,6 +32,7 @@ class BookIntroScreen extends StatefulWidget {
     this.albumRepository,
     this.startOpened = false,
     this.ocrQueueManager,
+    this.clock,
   });
 
   @override
@@ -64,8 +68,9 @@ class _BookIntroScreenState extends State<BookIntroScreen>
           mediaService: widget.mediaService,
         );
 
+    final todayLunar = LunarCalendar.fromSolar((widget.clock ?? DateTime.now)());
     _folioData = _folioData.copyWith(
-      lunarDateText: ChineseCalendarHelper.formatMonthDay(DateTime.now()),
+      lunarDateText: todayLunar.monthDayName ?? todayLunar.stemBranchYear,
     );
 
     // 1. Continuous atmospheric animation loop (60s cycle)
