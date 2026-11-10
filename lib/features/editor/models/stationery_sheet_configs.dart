@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../templates/models/template_style.dart';
+import 'letterhead_data.dart';
 import 'typography_settings.dart';
 
 /// Cohesive immutable styling configuration for rendering a Stationery Sheet canvas.
@@ -42,9 +43,7 @@ class StationerySheetThemeConfig {
 class StationeryLetterheadConfig {
   final GlobalKey letterheadKey;
   final double headerHeight;
-  final DateTime entryDate;
-  final int? mood;
-  final String? weather;
+  final LetterheadData data;
   final TextEditingController titleController;
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<int?> onMoodChanged;
@@ -53,9 +52,7 @@ class StationeryLetterheadConfig {
   const StationeryLetterheadConfig({
     required this.letterheadKey,
     required this.headerHeight,
-    required this.entryDate,
-    required this.mood,
-    required this.weather,
+    required this.data,
     required this.titleController,
     required this.onDateChanged,
     required this.onMoodChanged,

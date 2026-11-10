@@ -65,7 +65,8 @@ void main() {
   final workstation = find.byKey(const Key('desk_workstation'));
   final closedScroll = find.byKey(const Key('closed_brocade_scroll'));
   final handscroll = find.byKey(const Key('staging_handscroll'));
-  final handle = find.byKey(const Key('writing_dock_workstation_grip'));
+  final pullTab = find.byKey(const Key('workstation_pull_tab'));
+  final pill = find.byKey(const Key('workstation_restore_pill'));
 
   Future<void> pickFromGallery(WidgetTester tester) async {
     await tester.tap(find.text('相册选撷 · Photo Gallery'));
@@ -114,35 +115,86 @@ void main() {
       expect(sealRect.bottom, lessThanOrEqualTo(workstationRect.top));
     });
 
-    testWidgets('on a short viewport the workstation starts collapsed and the footer handle opens and closes it', (tester) async {
+    testWidgets('on a short viewport the workstation starts collapsed and the Restore Pill opens it', (tester) async {
       await openEditor(tester, viewport: _shortViewport);
 
       expect(workstation, findsNothing);
+      expect(pullTab, findsNothing);
       expect(find.bySemanticsLabel('展开画案'), findsOneWidget);
 
-      await tester.tap(handle);
+      await tester.tap(pill);
       await tester.pumpAndSettle();
       expect(workstation, findsOneWidget);
       expect(closedScroll, findsOneWidget);
+      expect(pill, findsNothing);
       expect(tester.getSize(workstation).height, greaterThanOrEqualTo(110.0));
       expect(find.bySemanticsLabel('收起画案'), findsOneWidget);
-
-      await tester.tap(handle);
-      await tester.pumpAndSettle();
-      expect(workstation, findsNothing);
     });
 
-    testWidgets('on a tall viewport the footer handle collapses the workstation and restores it', (tester) async {
+    testWidgets('on a tall viewport the pull tab puts the workstation away and the pill restores it', (tester) async {
       await openEditor(tester);
       expect(workstation, findsOneWidget);
+      expect(pill, findsNothing);
+      expect(find.byKey(const Key('writing_dock_workstation_handle')), findsNothing);
+      final dockedSheetTop = tester.getRect(find.byType(TemplateCanvasContainer)).top;
 
-      await tester.tap(handle);
+      // The tab straddles the workstation's top edge, centred, with a 44x44 target.
+      final tabRect = tester.getRect(pullTab);
+      expect(tabRect.width, greaterThanOrEqualTo(44.0));
+      expect(tabRect.height, greaterThanOrEqualTo(44.0));
+      expect(tabRect.center.dx, closeTo(tester.getRect(find.byType(EditorPaperCanvas)).center.dx, 0.5));
+      expect(tabRect.center.dy, closeTo(tester.getRect(workstation).top, 1.0));
+
+      await tester.tap(pullTab);
+      await tester.pumpAndSettle();
+      expect(workstation, findsNothing);
+      expect(pullTab, findsNothing);
+      expect(pill, findsOneWidget);
+      expect(tester.getSize(pill).height, greaterThanOrEqualTo(44.0));
+      expect(find.text('锦袱合卷'), findsOneWidget);
+      // The sheet centres on the desk.
+      expect(tester.getRect(find.byType(TemplateCanvasContainer)).top, greaterThan(dockedSheetTop));
+
+      await tester.tap(pill);
+      await tester.pumpAndSettle();
+      expect(workstation, findsOneWidget);
+      expect(pill, findsNothing);
+      expect(tester.getRect(find.byType(TemplateCanvasContainer)).top, closeTo(dockedSheetTop, 1.0));
+    });
+
+    testWidgets('the pill counts the staged keepsakes while the workstation is away', (tester) async {
+      await openEditor(tester);
+      await tester.tap(closedScroll);
+      await tester.pumpAndSettle();
+      await pickFromGallery(tester);
+
+      await tester.tap(pullTab);
+      await tester.pumpAndSettle();
+      expect(find.text('待贴画卷已收起 · 待贴 1 影'), findsOneWidget);
+    });
+
+    testWidgets('neither control summons or drops the keyboard', (tester) async {
+      await openEditor(tester);
+      final focused = FocusManager.instance.primaryFocus;
+      await tester.tap(pullTab);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus, focused);
+      await tester.tap(pill);
+      await tester.pumpAndSettle();
+      expect(FocusManager.instance.primaryFocus, focused);
+    });
+
+    testWidgets('reopening the entry docks the workstation again', (tester) async {
+      await openEditor(tester);
+      await tester.tap(pullTab);
       await tester.pumpAndSettle();
       expect(workstation, findsNothing);
 
-      await tester.tap(handle);
+      await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
+      await openEditor(tester);
       expect(workstation, findsOneWidget);
+      expect(pill, findsNothing);
     });
 
     testWidgets('collecting while the workstation is collapsed opens it onto the new keepsake', (tester) async {

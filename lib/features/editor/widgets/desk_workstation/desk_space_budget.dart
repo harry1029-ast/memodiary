@@ -25,6 +25,9 @@ class DeskSpaceBudget {
 
   /// Desk band above the sheet holding the page indicator and Tucked Prints.
   static const double kHeaderHeight = 30.0;
+
+  /// Gap between the desk's foot and the Restore Pill.
+  static const double kBottomMargin = 12.0;
   static const double kSheetGap = 10.0;
 
   /// Distance from the canvas top to the Stationery Sheet card.

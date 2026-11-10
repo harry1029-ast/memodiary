@@ -341,6 +341,9 @@ class EditorPaperCanvas extends StatelessWidget {
                         mediaSandboxService: mediaSandboxService,
                         activeSheetNumber: currentSheetIndex + 1,
                         isPaperDark: themeConfig.isPaperDark,
+                        isWorkstationCollapsed: isWorkstationCollapsed,
+                        onCollapseWorkstation: chrome.collapseWorkstation,
+                        onRestoreWorkstation: chrome.expandWorkstation,
                         handlers: deskMedia,
                         onCaptionChanged: (mediaId, newCaption) {
                           coordinator.media.updateCaption(mediaId, newCaption);
