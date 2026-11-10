@@ -72,6 +72,7 @@ class EditorTextSheetView extends StatelessWidget {
                     right: horizontalRight,
                   ),
                   child: JournalLetterhead(
+                    rowHeight: activeRowHeight,
                     data: letterheadConfig.data,
                     titleController: letterheadConfig.titleController,
                     onDateChanged: letterheadConfig.onDateChanged,

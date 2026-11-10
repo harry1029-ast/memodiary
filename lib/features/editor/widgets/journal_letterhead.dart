@@ -8,14 +8,29 @@ import 'letterhead_pickers.dart';
 import 'lunar_date_seal.dart';
 
 /// Authentic in-paper journal letterhead rendered directly on the upper rows of
-/// the opening Journal Sheet: the Lunar Date Seal at the left, a column of date
-/// line 1, date line 2 and the borderless title, and the vertical Weather and
-/// Mood Charms at the right.
+/// the opening Journal Sheet, exactly [rowCount] ruled rows of [rowHeight] tall:
+/// the Lunar Date Seal at the left, a column holding the muted date lines above
+/// a larger title anchored to the bottom row, and the vertical Weather and Mood
+/// Charms at the right.
 class JournalLetterhead extends StatelessWidget {
+  /// Ruled rows the letterhead spans.
+  static const int rowCount = 4;
+
   /// Largest text scale the letterhead honours, keeping it inside its rows.
   static const double maxTextScale = 1.3;
 
+  /// The title honours less text scale than the date lines: at the smallest
+  /// row height it shares its rows with two scaled date lines.
+  static const double titleMaxTextScale = 1.15;
+
+  static const double titleFontSize = 20;
+  static const double _titleLineHeight = 1.2;
+
+  /// Visible gap between the carved seal's edge and the text beside it.
+  static const double sealToTextGap = 12;
+
   final LetterheadData data;
+  final double rowHeight;
   final TextEditingController? titleController;
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<int?> onMoodChanged;
@@ -24,6 +39,7 @@ class JournalLetterhead extends StatelessWidget {
   const JournalLetterhead({
     super.key,
     required this.data,
+    required this.rowHeight,
     this.titleController,
     required this.onDateChanged,
     required this.onMoodChanged,
@@ -35,14 +51,24 @@ class JournalLetterhead extends StatelessWidget {
     final tokens = InkDiaryTheme.tokensOf(context);
     final weatherOption = data.weatherOption;
     final moodOption = data.moodOption;
+    const sealInset = (LunarDateSeal.targetSize - LunarDateSeal.sealSize) / 2;
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: maxTextScale,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(0, 2, 0, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: SizedBox(
+        height: rowCount * rowHeight,
+        child: Stack(
           children: [
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              // Subtle deckle stationery divider on the last ruled line.
+              child: Container(
+                height: 0.8,
+                color: tokens.deckleBorder.withValues(alpha: 0.5),
+              ),
+            ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
@@ -54,12 +80,17 @@ class JournalLetterhead extends StatelessWidget {
                     onDateChanged: onDateChanged,
                   ),
                 ),
+                const SizedBox(width: sealToTextGap - sealInset),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      LetterheadDateBlock(data: data),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: LetterheadDateBlock(data: data),
+                        ),
+                      ),
                       if (titleController != null) _buildTitleField(tokens),
                     ],
                   ),
@@ -88,12 +119,6 @@ class JournalLetterhead extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            // Subtle deckle stationery divider
-            Container(
-              height: 0.8,
-              color: tokens.deckleBorder.withValues(alpha: 0.5),
-            ),
           ],
         ),
       ),
@@ -101,28 +126,33 @@ class JournalLetterhead extends StatelessWidget {
   }
 
   Widget _buildTitleField(InkDiaryTokens tokens) {
-    return TextField(
-      controller: titleController,
-      style: TextStyle(
-        fontFamily: InkDiaryTheme.fontNotoSerif,
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: tokens.jiaomo,
-        letterSpacing: 0.5,
-      ),
-      cursorColor: tokens.cinnabar,
-      decoration: InputDecoration(
-        hintText: '题名 · Title...',
-        hintStyle: TextStyle(
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: titleMaxTextScale,
+      child: TextField(
+        controller: titleController,
+        style: TextStyle(
           fontFamily: InkDiaryTheme.fontNotoSerif,
-          fontSize: 17,
-          fontWeight: FontWeight.w400,
-          fontStyle: FontStyle.italic,
-          color: tokens.danmo.withValues(alpha: 0.5),
+          fontSize: titleFontSize,
+          height: _titleLineHeight,
+          fontWeight: FontWeight.bold,
+          color: tokens.jiaomo,
+          letterSpacing: 0.5,
         ),
-        border: InputBorder.none,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 2),
+        cursorColor: tokens.cinnabar,
+        decoration: InputDecoration(
+          hintText: '题名 · Title...',
+          hintStyle: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: titleFontSize - 1,
+            height: _titleLineHeight,
+            fontWeight: FontWeight.w400,
+            fontStyle: FontStyle.italic,
+            color: tokens.danmo.withValues(alpha: 0.5),
+          ),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.only(bottom: 2),
+        ),
       ),
     );
   }

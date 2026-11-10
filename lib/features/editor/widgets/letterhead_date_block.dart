@@ -22,7 +22,7 @@ class LetterheadDateBlock extends StatelessWidget {
     final solarStyle = TextStyle(
       fontFamily: InkDiaryTheme.fontKaiti,
       fontSize: fontSize,
-      height: 1.25,
+      height: 1.2,
       fontWeight: FontWeight.w600,
       color: tokens.nongmo,
     );

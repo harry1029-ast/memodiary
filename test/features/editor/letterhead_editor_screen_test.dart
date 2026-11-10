@@ -8,10 +8,12 @@ import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/real_cjk_font.dart';
 
 const _entryId = 'letterhead_test_entry';
 const _phoneViewport = Size(360, 780);
@@ -108,6 +110,32 @@ void main() {
       expect(dateRight, lessThanOrEqualTo(tester.getTopLeft(find.byKey(const Key('letterhead_weather_charm_target'))).dx + 0.01));
       expect(tester.widget<Text>(solarLine).style!.fontSize, greaterThanOrEqualTo(13));
       expect(tester.widget<Text>(solarLine).overflow, isNot(TextOverflow.ellipsis));
+    });
+
+    testWidgets('shows the solar date unscaled at 360dp in a real CJK font', skip: realCjkFontPath == null,
+        (tester) async {
+      await loadRealCjkFont(tester, InkDiaryTheme.fontKaiti);
+      await pumpEditor(tester);
+
+      final solarLine = find.byKey(const Key('letterhead_solar_line'));
+      // getRect applies the FittedBox transform: a scaled-down line is narrower than its layout size.
+      expect(tester.getRect(solarLine).width, closeTo(tester.getSize(solarLine).width, 0.01),
+          reason: 'the solar date must not be scaled down');
+      expect(tester.getSize(solarLine).width, lessThan(14 * 13), reason: 'the real font is in use, not Ahem');
+      expect(find.byKey(const Key('letterhead_lunar_line')), findsOneWidget);
+    });
+
+    testWidgets('sits the larger title on the bottom row, below the muted date lines', (tester) async {
+      await pumpEditor(tester);
+
+      final letterhead = tester.getRect(find.byType(IntegerSnappedLetterhead));
+      final title = tester.getRect(find.byType(TextField).first);
+      final lunar = tester.getRect(find.byKey(const Key('letterhead_lunar_line')));
+      expect(title.bottom, closeTo(letterhead.bottom, 0.5));
+      expect(lunar.bottom, lessThanOrEqualTo(title.top + 0.01));
+      final titleFontSize = tester.widget<TextField>(find.byType(TextField).first).style!.fontSize!;
+      final solarFontSize = tester.widget<Text>(find.byKey(const Key('letterhead_solar_line'))).style!.fontSize!;
+      expect(titleFontSize, greaterThan(solarFontSize + 4));
     });
 
     testWidgets('keeps four rows and the whole solar date at large text scale', (tester) async {
