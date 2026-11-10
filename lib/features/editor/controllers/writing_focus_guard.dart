@@ -28,6 +28,13 @@ class WritingFocusGuard {
     FocusManager.instance.applyFocusChangesIfNeeded();
   }
 
+  /// 收起键盘: ends writing wherever it happens (a sheet or the title), so the
+  /// keyboard goes away with the released focus.
+  void dismissKeyboard() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    release();
+  }
+
   /// Call when the keyboard has just closed. Dismissing the keyboard while
   /// the editor is the current route ends writing, unless it reopens within
   /// the frame.

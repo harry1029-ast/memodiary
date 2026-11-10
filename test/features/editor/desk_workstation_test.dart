@@ -219,7 +219,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(tuckedPrintsFan, findsOneWidget);
       expect(workstation, findsOneWidget);
-      final sheetTop = tester.getRect(find.byType(TemplateCanvasContainer)).top;
+      // The app bar slides away with the keyboard, so the sheet is measured on the desk.
+      double sheetOffsetOnDesk() =>
+          tester.getRect(find.byType(TemplateCanvasContainer)).top - tester.getRect(find.byType(EditorPaperCanvas)).top;
+      final sheetOffset = sheetOffsetOnDesk();
 
       tester.view.viewInsets = const FakeViewPadding(bottom: 300.0);
       addTearDown(tester.view.resetViewInsets);
@@ -229,7 +232,7 @@ void main() {
       expect(tuckedPrintsFan, findsOneWidget);
       expect(workstation, findsNothing);
       // The sheet stays put, so the active line stays in view without scrolling.
-      expect(tester.getRect(find.byType(TemplateCanvasContainer)).top, closeTo(sheetTop, 1.0));
+      expect(sheetOffsetOnDesk(), closeTo(sheetOffset, 1.0));
 
       tester.view.viewInsets = FakeViewPadding.zero;
       await tester.pumpAndSettle();
