@@ -8,7 +8,8 @@ void main() {
   const sealBlockHeight = 64.0;
 
   DeskSpaceBudget resolve({
-    bool hasMountedItems = false,
+    double canvasHeight = canvasHeight,
+    bool isHandscrollEmpty = true,
     bool isWorkstationCollapsed = false,
     bool isKeyboardVisible = false,
     bool isLastSheet = false,
@@ -17,8 +18,7 @@ void main() {
         canvasHeight: canvasHeight,
         sheetHeight: sheetHeight,
         sealBlockHeight: sealBlockHeight,
-        hasMountedItems: hasMountedItems,
-        isHandscrollEmpty: true,
+        isHandscrollEmpty: isHandscrollEmpty,
         isWorkstationCollapsed: isWorkstationCollapsed,
         isKeyboardVisible: isKeyboardVisible,
         isLastSheet: isLastSheet,
@@ -31,11 +31,8 @@ void main() {
       expect(budget.sheetTop, DeskSpaceBudget.kHeaderHeight);
       expect(budget.headerTop, 0.0);
       expect(budget.showWorkstation, isTrue);
-      // No dead desk above the sheet: what is left goes to the workstation.
-      expect(
-        budget.workstationHeight,
-        canvasHeight - DeskSpaceBudget.kHeaderHeight - sheetHeight - sealBlockHeight,
-      );
+      // No band below the sheet: all that is left (bar the seal's room) goes to the workstation.
+      expect(budget.workstationHeight, 690.0 - 30.0 - 400.0 - 64.0);
     });
 
     test('the sheet sits at the same place on every page, with or without the seal', () {
@@ -45,16 +42,21 @@ void main() {
       expect(resolve(isLastSheet: true).workstationHeight, resolve().workstationHeight);
     });
 
-    test('a mounted sheet keeps the sheet in place and lays the strip between it and the workstation', () {
-      final budget = resolve(hasMountedItems: true);
+    test('on a short desk the workstation keeps its floor: 150 open, 110 for the closed scroll', () {
+      // 30 header + 400 sheet + 64 seal leaves 26: below either floor.
+      const shortDesk = 520.0;
 
-      expect(budget.sheetTop, DeskSpaceBudget.kHeaderHeight);
-      expect(budget.showStrip, isTrue);
-      expect(budget.stripTop, budget.sheetTop + sheetHeight + DeskSpaceBudget.kSheetGap);
-      expect(
-        canvasHeight - budget.workstationHeight,
-        greaterThanOrEqualTo(budget.stripTop + DeskSpaceBudget.kStripHeight),
-      );
+      expect(resolve(canvasHeight: shortDesk, isHandscrollEmpty: false).workstationHeight, 150.0);
+      expect(resolve(canvasHeight: shortDesk).workstationHeight, 110.0);
+      expect(resolve(canvasHeight: shortDesk, isLastSheet: true).showSeal, isFalse);
+    });
+
+    test('whether the workstation fits is judged against the sheet alone', () {
+      // Room below the sheet (after the 10 gap): 590 - 30 - 400 - 10 = 150.
+      expect(resolve(canvasHeight: 590.0, isHandscrollEmpty: false).workstationFits, isTrue);
+      expect(resolve(canvasHeight: 589.0, isHandscrollEmpty: false).workstationFits, isFalse);
+      expect(resolve(canvasHeight: 550.0).workstationFits, isTrue);
+      expect(resolve(canvasHeight: 549.0).workstationFits, isFalse);
     });
 
     test('collapsing the workstation centres the sheet on the desk', () {
@@ -67,18 +69,18 @@ void main() {
       expect(roomAbove, closeTo(roomBelow, 0.5));
     });
 
-    test('opening the keyboard never moves the sheet; the strip and workstation step aside', () {
+    test('opening the keyboard never moves the sheet; the workstation and seal step aside', () {
       for (final collapsed in [false, true]) {
-        for (final mounted in [false, true]) {
-          final resting = resolve(isWorkstationCollapsed: collapsed, hasMountedItems: mounted);
+        for (final lastSheet in [false, true]) {
+          final resting = resolve(isWorkstationCollapsed: collapsed, isLastSheet: lastSheet);
           final typing = resolve(
             isWorkstationCollapsed: collapsed,
-            hasMountedItems: mounted,
+            isLastSheet: lastSheet,
             isKeyboardVisible: true,
           );
           expect(typing.sheetTop, resting.sheetTop);
           expect(typing.showWorkstation, isFalse);
-          expect(typing.showStrip, isFalse);
+          expect(typing.showSeal, isFalse);
         }
       }
     });

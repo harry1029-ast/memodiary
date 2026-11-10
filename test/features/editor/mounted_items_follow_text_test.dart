@@ -15,6 +15,7 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/models/mount_marker.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 
 const _entryId = 'follow_text_entry';
 const _viewport = Size(360.0, 780.0);
@@ -111,7 +112,6 @@ void main() {
     }
   }
 
-  Finder stripItem(String mediaId) => find.byKey(Key('mount_strip_item_$mediaId'));
   Finder handscrollItem(String mediaId) => find.byKey(Key('handscroll_item_$mediaId'));
 
   Future<List<String>> savedMarkerIds() async {
@@ -130,20 +130,20 @@ void main() {
       );
       await openEditor(tester);
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(stripItem('plum'), findsOneWidget);
+      expect(tuckedPrint('plum'), findsOneWidget);
 
       openingController(tester).replaceText(0, 0, '晨起\n', const TextSelection.collapsed(offset: 3));
       await tester.pumpAndSettle();
 
       await goToSheet(tester, 1, 2);
-      expect(stripItem('plum'), findsNothing);
+      expect(tuckedPrint('plum'), findsNothing);
       await goToSheet(tester, 2, 2);
-      expect(stripItem('plum'), findsOneWidget);
+      expect(tuckedPrint('plum'), findsOneWidget);
       expect(handscrollItem('plum'), findsNothing);
 
       await reopenEditor(tester);
       await goToSheet(tester, 2, 2);
-      expect(stripItem('plum'), findsOneWidget);
+      expect(tuckedPrint('plum'), findsOneWidget);
     });
 
     testWidgets('deleting a passage unmounts its item; undo remounts it; redo unmounts again', (tester) async {
@@ -156,23 +156,23 @@ void main() {
         ['plum'],
       );
       await openEditor(tester);
-      expect(stripItem('plum'), findsOneWidget);
+      expect(tuckedPrint('plum'), findsOneWidget);
       final controller = openingController(tester);
 
       controller.replaceText(2, 3, '', const TextSelection.collapsed(offset: 2));
       await tester.pumpAndSettle();
-      expect(stripItem('plum'), findsNothing);
+      expect(tuckedPrint('plum'), findsNothing);
       expect(handscrollItem('plum'), findsOneWidget);
       expect(await database.getMediaForEntry(_entryId), hasLength(1), reason: 'never deleted');
 
       controller.undo();
       await tester.pumpAndSettle();
-      expect(stripItem('plum'), findsOneWidget);
+      expect(tuckedPrint('plum'), findsOneWidget);
       expect(handscrollItem('plum'), findsNothing);
 
       controller.redo();
       await tester.pumpAndSettle();
-      expect(stripItem('plum'), findsNothing);
+      expect(tuckedPrint('plum'), findsNothing);
       expect(handscrollItem('plum'), findsOneWidget);
     });
 
@@ -207,7 +207,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(controller.document.toPlainText(), startsWith('落花￼流水落花流水'));
-      expect(find.byKey(const Key('mount_strip_item_plum')), findsOneWidget);
+      expect(tuckedPrint('plum'), findsOneWidget);
       await reopenEditor(tester);
       expect(await savedMarkerIds(), ['plum']);
     });
@@ -238,7 +238,7 @@ void main() {
       expect(find.textContaining(' / 2 页'), findsOneWidget, reason: 'no media-only sheet');
       await goToSheet(tester, 2, 2);
       for (final mediaId in ['a', 'b', 'c']) {
-        expect(stripItem(mediaId), findsOneWidget);
+        expect(tuckedPrint(mediaId), findsOneWidget);
       }
       for (final mediaId in ['d', 'e', 'f']) {
         expect(handscrollItem(mediaId), findsOneWidget);
@@ -269,7 +269,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(continuation.document.toPlainText(), startsWith('续写'));
       await goToSheet(tester, 1, 2);
-      expect(stripItem('plum'), findsOneWidget, reason: 'the marker stays with its passage on sheet 1');
+      expect(tuckedPrint('plum'), findsOneWidget, reason: 'the marker stays with its passage on sheet 1');
     });
   });
 }

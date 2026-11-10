@@ -12,9 +12,10 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/desk_workstation/desk_workstation.dart';
-import 'package:memodiary/features/editor/widgets/sheet_mount_strip.dart';
+import 'package:memodiary/features/editor/widgets/tucked_prints/tucked_prints_fan.dart';
 import 'package:memodiary/features/editor/widgets/fullscreen_media_lightbox.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 import '../../helpers/widget_test_helpers.dart';
 
 const _entryId = 'handscroll_entry';
@@ -99,7 +100,6 @@ void main() {
   }
 
   Finder handscrollItem(String mediaId) => find.byKey(Key('handscroll_item_$mediaId'));
-  Finder stripItem(String mediaId) => find.byKey(Key('mount_strip_item_$mediaId'));
 
   group('Staging Handscroll: Collect → Mount via 📌 → Reopen', () {
     testWidgets('picked photo and video are collected into the handscroll left to right in collect order', (tester) async {
@@ -120,10 +120,10 @@ void main() {
       );
 
       // Nothing is mounted until the diarist chooses to.
-      expect(find.byKey(const Key('sheet_mount_strip')), findsNothing);
+      expect(tuckedPrintsFan, findsNothing);
     });
 
-    testWidgets('📌 mounts items onto the active sheet strip in mount order without changing line capacity', (tester) async {
+    testWidgets('📌 mounts items onto the active sheet as Tucked Prints in mount order without changing line capacity', (tester) async {
       await openEditor(tester);
       await collectPhoto(tester);
       await collectPhoto(tester);
@@ -134,15 +134,30 @@ void main() {
 
       expect(find.byKey(const Key('staging_handscroll')), findsNothing);
       expect(handscrollItem(ids[0]), findsNothing);
-      expect(stripItem(ids[0]), findsOneWidget);
-      expect(stripItem(ids[1]), findsOneWidget);
+      expect(tuckedPrint(ids[0]), findsOneWidget);
+      expect(tuckedPrint(ids[1]), findsOneWidget);
       expect(
-        tester.getTopLeft(stripItem(ids[1])).dx,
-        lessThan(tester.getTopLeft(stripItem(ids[0])).dx),
+        tester.getTopLeft(tuckedPrint(ids[1])).dx,
+        lessThan(tester.getTopLeft(tuckedPrint(ids[0])).dx),
       );
       expect(find.text('第 1 / 1 页'), findsOneWidget);
       final editor = tester.widget<QuillEditor>(find.byType(QuillEditor));
       expect(editor.controller.document.toPlainText(), startsWith('断桥残雪。'));
+    });
+
+    testWidgets('a newly mounted print slides down into the sheet edge', (tester) async {
+      await openEditor(tester);
+      await collectPhoto(tester);
+      final mediaId = (await attachmentIds()).single;
+
+      await tester.tap(find.byKey(Key('handscroll_mount_$mediaId')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      final arrivingTop = tester.getRect(tuckedPrint(mediaId)).top;
+
+      await tester.pumpAndSettle();
+      final restingTop = tester.getRect(tuckedPrint(mediaId)).top;
+      expect(arrivingTop, lessThan(restingTop - 1.0));
     });
 
     testWidgets('mounting onto a full opening sheet never spills its 10 rows onto a new sheet', (tester) async {
@@ -159,7 +174,7 @@ void main() {
       final ids = await attachmentIds();
       await mount(tester, ids.single);
 
-      expect(stripItem(ids.single), findsOneWidget);
+      expect(tuckedPrint(ids.single), findsOneWidget);
       expect(find.text('第 1 / 1 页'), findsOneWidget);
     });
 
@@ -181,17 +196,17 @@ void main() {
       await mount(tester, ids.single);
 
       expect(find.text('第 2 / 2 页'), findsOneWidget);
-      expect(stripItem(ids.single), findsOneWidget);
+      expect(tuckedPrint(ids.single), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
       await tester.pumpAndSettle();
       await reopenEditor(tester);
 
       expect(find.text('第 1 / 2 页'), findsOneWidget);
-      expect(find.byKey(const Key('sheet_mount_strip')), findsNothing);
+      expect(tuckedPrintsFan, findsNothing);
       await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
-      expect(stripItem(ids.single), findsOneWidget);
+      expect(tuckedPrint(ids.single), findsOneWidget);
       expect(find.byKey(const Key('staging_handscroll')), findsNothing);
     });
 
@@ -219,7 +234,7 @@ void main() {
 
       await reopenEditor(tester);
 
-      expect(stripItem(ids[0]), findsOneWidget);
+      expect(tuckedPrint(ids[0]), findsOneWidget);
       expect(handscrollItem(ids[0]), findsNothing);
       expect(handscrollItem(ids[1]), findsOneWidget);
 
@@ -232,7 +247,7 @@ void main() {
       expect(await database.getMediaForEntry(_entryId), savedAttachments);
     });
 
-    testWidgets('tapping a handscroll item or a strip item opens the fullscreen lightbox', (tester) async {
+    testWidgets('tapping a handscroll item or the Tucked Prints opens the fullscreen lightbox', (tester) async {
       await openEditor(tester);
       await collectPhoto(tester);
       await collectPhoto(tester);
@@ -246,12 +261,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(FullscreenMediaLightbox), findsNothing);
 
-      await tester.tap(stripItem(ids[0]));
+      await tester.tap(tuckedPrintsFan);
       await tester.pumpAndSettle();
       expect(find.byType(FullscreenMediaLightbox), findsOneWidget);
     });
 
-    testWidgets('📌 and strip items are at least 44×44 with scoped semantic labels', (tester) async {
+    testWidgets('📌 and the Tucked Prints are at least 44×44 with scoped semantic labels', (tester) async {
       final semantics = tester.ensureSemantics();
       await openEditor(tester);
       await collectPhoto(tester);
@@ -259,16 +274,16 @@ void main() {
       final ids = await attachmentIds();
       await mount(tester, ids[0]);
 
-      await expectAccessibleTapTargets(tester, within: find.byWidgetPredicate((widget) => widget is SheetMountStrip || widget is DeskWorkstation));
+      await expectAccessibleTapTargets(tester, within: find.byWidgetPredicate((widget) => widget is TuckedPrintsFan || widget is DeskWorkstation));
       final pinSize = tester.getSize(find.byKey(Key('handscroll_mount_${ids[1]}')));
       expect(pinSize.width, greaterThanOrEqualTo(44));
       expect(pinSize.height, greaterThanOrEqualTo(44));
-      final stripSize = tester.getSize(stripItem(ids[0]));
-      expect(stripSize.width, greaterThanOrEqualTo(44));
-      expect(stripSize.height, greaterThanOrEqualTo(44));
+      final fanSize = tester.getSize(tuckedPrintsFan);
+      expect(fanSize.width, greaterThanOrEqualTo(44));
+      expect(fanSize.height, greaterThanOrEqualTo(44));
 
       expect(find.bySemanticsLabel(RegExp(r'贴至本页.*第 1 页')), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp(r'本页影札.*第 1 影')), findsOneWidget);
+      expect(find.bySemanticsLabel('本页夹页影札 1 枚，轻触展开'), findsOneWidget);
       semantics.dispose();
     });
   });

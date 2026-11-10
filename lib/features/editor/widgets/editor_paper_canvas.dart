@@ -26,11 +26,11 @@ import 'stationery_page_indicator.dart';
 /// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
 /// resting on a walnut scholar's desk.
 ///
-/// A header band above the active sheet holds the page indicator at its left, and
-/// curled Page Corners at the sheet's foot turn the pages. Beneath the sheet
-/// rest its Sheet Mount Strip (or, on a text-only last sheet, the diarist's Cinnabar
-/// Signature Seal) and the Desk Workstation holding the Staging Handscroll, sharing
-/// the desk by a [DeskSpaceBudget]. The sheet's geometry is resolved against the
+/// A header band above the active sheet holds the page indicator at its left and
+/// the tops of the sheet's Tucked Prints at its right, and curled Page Corners at
+/// the sheet's foot turn the pages. Beneath the sheet rest, on the last sheet, the
+/// diarist's Cinnabar Signature Seal and the Desk Workstation holding the Staging
+/// Handscroll, sharing the desk by a [DeskSpaceBudget]. The sheet's geometry is resolved against the
 /// resting desk height, so the software keyboard never resizes or moves it; the
 /// [KeyboardCaretLift] only lifts the desk far enough to keep the caret in view.
 class EditorPaperCanvas extends StatelessWidget {
@@ -130,7 +130,6 @@ class EditorPaperCanvas extends StatelessWidget {
               canvasHeight: canvasHeight,
               sheetHeight: cardHeight,
               sealBlockHeight: sealBlockHeight,
-              hasMountedItems: mountedItems.isNotEmpty,
               isHandscrollEmpty: stagedItems.isEmpty,
               isWorkstationCollapsed: isWorkstationCollapsed,
               isKeyboardVisible: keyboardVisible,
@@ -333,7 +332,7 @@ class EditorPaperCanvas extends StatelessWidget {
                       },
                     ),
 
-                    // Sheet Mount Strip beneath the card and the Desk Workstation at the bottom
+                    // Tucked Prints in the header band and the Desk Workstation at the bottom
                     Positioned.fill(
                       child: EditorDeskMediaArea(
                         budget: budget,
@@ -353,7 +352,7 @@ class EditorPaperCanvas extends StatelessWidget {
                       ),
                     ),
 
-                    // Cinnabar Signature Seal resting cleanly beneath the card on text-only entries
+                    // Cinnabar Signature Seal resting beneath the last sheet
                     if (budget.showSeal)
                       BoundedCinnabarSeal(
                         innerFrameRect: metrics.innerFrameRect,

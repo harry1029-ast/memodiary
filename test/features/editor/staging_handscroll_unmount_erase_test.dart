@@ -11,6 +11,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 
 const _entryId = 'unmount_erase_entry';
 const _viewport = Size(360.0, 780.0);
@@ -104,7 +105,7 @@ void main() {
   }
 
   Future<void> unmount(WidgetTester tester, String mediaId) async {
-    await tester.tap(find.byKey(Key('mount_strip_unmount_$mediaId')));
+    unmountTuckedPrint(tester, mediaId);
     await tester.pumpAndSettle();
   }
 
@@ -120,27 +121,24 @@ void main() {
   }
 
   Finder handscrollItem(String mediaId) => find.byKey(Key('handscroll_item_$mediaId'));
-  Finder stripItem(String mediaId) => find.byKey(Key('mount_strip_item_$mediaId'));
   Finder snackBarText(Pattern pattern) => find.descendant(
         of: find.byType(SnackBar),
         matching: find.textContaining(pattern),
       );
 
   group('Unmount ↩', () {
-    testWidgets('returns a mounted item to the handscroll and removes its marker; the strip has no delete', (tester) async {
+    testWidgets('returns a mounted item to the handscroll and removes its marker; the Tucked Prints have no delete', (tester) async {
       await openEditor(tester);
       await collectPhoto(tester);
       final mediaId = (await attachmentIds()).single;
       await mount(tester, mediaId);
 
-      final strip = find.byKey(const Key('sheet_mount_strip'));
-      expect(find.descendant(of: strip, matching: find.byIcon(Icons.close)), findsNothing);
-      expect(find.byKey(Key('mount_strip_erase_$mediaId')), findsNothing);
+      expect(find.descendant(of: tuckedPrintsFan, matching: find.byIcon(Icons.close)), findsNothing);
 
       await unmount(tester, mediaId);
 
-      expect(stripItem(mediaId), findsNothing);
-      expect(find.byKey(const Key('sheet_mount_strip')), findsNothing);
+      expect(tuckedPrint(mediaId), findsNothing);
+      expect(tuckedPrintsFan, findsNothing);
       expect(handscrollItem(mediaId), findsOneWidget);
 
       await reopenEditor(tester);
@@ -282,33 +280,31 @@ void main() {
       for (var index = 0; index < 3; index++) {
         await mount(tester, 'seeded_$index');
       }
-      final restingLeft = tester.getTopLeft(stripItem('seeded_0')).dx;
+      final restingLeft = tester.getTopLeft(tuckedPrint('seeded_0')).dx;
 
       await tester.tap(find.byKey(const Key('handscroll_mount_seeded_3')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
-      expect(tester.getTopLeft(stripItem('seeded_0')).dx, isNot(restingLeft));
+      expect(tester.getTopLeft(tuckedPrint('seeded_0')).dx, isNot(restingLeft));
 
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(stripItem('seeded_0')).dx, restingLeft);
+      expect(tester.getTopLeft(tuckedPrint('seeded_0')).dx, restingLeft);
       expect(snackBarText('本页已满三影'), findsOneWidget);
       expect(handscrollItem('seeded_3'), findsOneWidget);
-      expect(stripItem('seeded_3'), findsNothing);
+      expect(tuckedPrint('seeded_3'), findsNothing);
     });
   });
 
-  testWidgets('↩ and ✕ are at least 44×44 with scoped labels naming the item', (tester) async {
+  // The ↩ 揭回 control's target and label are covered with the fanned overlay (SPEC-011 ticket 07).
+  testWidgets('✕ is at least 44×44 with a scoped label naming the item', (tester) async {
     final semantics = tester.ensureSemantics();
     await seedStagedPhotos(2);
     await openEditor(tester);
     await mount(tester, 'seeded_0');
 
-    for (final key in ['mount_strip_unmount_seeded_0', 'handscroll_erase_seeded_1']) {
-      final size = tester.getSize(find.byKey(Key(key)));
-      expect(size.width, greaterThanOrEqualTo(44), reason: key);
-      expect(size.height, greaterThanOrEqualTo(44), reason: key);
-    }
-    expect(find.bySemanticsLabel(RegExp(r'^揭回画卷：本页第 1 影 · 影札$')), findsOneWidget);
+    final size = tester.getSize(find.byKey(const Key('handscroll_erase_seeded_1')));
+    expect(size.width, greaterThanOrEqualTo(44));
+    expect(size.height, greaterThanOrEqualTo(44));
     expect(find.bySemanticsLabel(RegExp(r'^舍弃待贴第 1 影 · 影札$')), findsOneWidget);
     semantics.dispose();
   });

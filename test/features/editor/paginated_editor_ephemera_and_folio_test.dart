@@ -16,6 +16,7 @@ import 'package:memodiary/features/editor/widgets/stationery_ephemera_sheet.dart
 import 'package:memodiary/features/timeline/widgets/folio/folio_leaf_model.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_pagination_engine.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 
 void main() {
   late AppDatabase database;
@@ -363,7 +364,7 @@ void main() {
       await tester.tap(find.byKey(Key('handscroll_mount_${ids[1]}')));
       await tester.pumpAndSettle();
       expect(find.text('第 2 / 3 页'), findsOneWidget);
-      expect(find.byKey(Key('mount_strip_item_${ids[1]}')), findsOneWidget);
+      expect(tuckedPrint(ids[1]), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
       await tester.pumpAndSettle();

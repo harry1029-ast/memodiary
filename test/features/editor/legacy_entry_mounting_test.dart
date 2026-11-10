@@ -10,6 +10,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 
 const _entryId = 'legacy_entry';
 const _viewport = Size(360.0, 780.0);
@@ -78,7 +79,6 @@ void main() {
     await openEditor(tester);
   }
 
-  Finder stripItem(String mediaId) => find.byKey(Key('mount_strip_item_$mediaId'));
 
   const mountedOps = [
     {'insert': '孤山梅开。'},
@@ -97,8 +97,8 @@ void main() {
 
       await openEditor(tester);
 
-      expect(stripItem('plum'), findsOneWidget);
-      expect(stripItem('pavilion'), findsOneWidget);
+      expect(tuckedPrint('plum'), findsOneWidget);
+      expect(tuckedPrint('pavilion'), findsOneWidget);
       expect(find.byKey(const Key('staging_handscroll')), findsNothing);
 
       final entry = (await database.getEntryById(_entryId))!;
@@ -114,8 +114,8 @@ void main() {
 
       await reopenEditor(tester);
 
-      expect(stripItem('plum'), findsOneWidget);
-      expect(stripItem('pavilion'), findsOneWidget);
+      expect(tuckedPrint('plum'), findsOneWidget);
+      expect(tuckedPrint('pavilion'), findsOneWidget);
       expect(await database.getEntryById(_entryId), migrated);
     });
 
@@ -126,7 +126,7 @@ void main() {
 
       expect(find.byKey(const Key('handscroll_item_plum')), findsOneWidget);
       expect(find.byKey(const Key('handscroll_item_pavilion')), findsOneWidget);
-      expect(find.byKey(const Key('sheet_mount_strip')), findsNothing);
+      expect(tuckedPrintsFan, findsNothing);
       expect(
         jsonDecode((await database.getEntryById(_entryId))!.contentDelta),
         [

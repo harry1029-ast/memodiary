@@ -13,6 +13,7 @@ import 'package:memodiary/features/editor/widgets/desk_workstation/desk_space_bu
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 import '../../helpers/widget_test_helpers.dart';
 
 const _entryId = 'desk_workstation_entry';
@@ -64,7 +65,6 @@ void main() {
   final workstation = find.byKey(const Key('desk_workstation'));
   final closedScroll = find.byKey(const Key('closed_brocade_scroll'));
   final handscroll = find.byKey(const Key('staging_handscroll'));
-  final strip = find.byKey(const Key('sheet_mount_strip'));
   final pullTab = find.byKey(const Key('workstation_pull_tab'));
   final pill = find.byKey(const Key('workstation_restore_pill'));
 
@@ -209,7 +209,7 @@ void main() {
       expect(handscroll, findsOneWidget);
     });
 
-    testWidgets('opening the keyboard collapses the workstation and Mount Strip; closing it restores them', (tester) async {
+    testWidgets('opening the keyboard collapses the workstation, leaving the Tucked Prints; closing it restores it', (tester) async {
       await openEditor(tester);
       await tester.tap(closedScroll);
       await tester.pumpAndSettle();
@@ -217,7 +217,7 @@ void main() {
       final mediaId = (await database.getMediaForEntry(_entryId)).single.id;
       await tester.tap(find.byKey(Key('handscroll_mount_$mediaId')));
       await tester.pumpAndSettle();
-      expect(strip, findsOneWidget);
+      expect(tuckedPrintsFan, findsOneWidget);
       expect(workstation, findsOneWidget);
       final sheetTop = tester.getRect(find.byType(TemplateCanvasContainer)).top;
 
@@ -225,7 +225,8 @@ void main() {
       addTearDown(tester.view.resetViewInsets);
       await tester.pumpAndSettle();
 
-      expect(strip, findsNothing);
+      // The prints ride with the header band; only the workstation steps aside.
+      expect(tuckedPrintsFan, findsOneWidget);
       expect(workstation, findsNothing);
       // The sheet stays put, so the active line stays in view without scrolling.
       expect(tester.getRect(find.byType(TemplateCanvasContainer)).top, closeTo(sheetTop, 1.0));
@@ -233,7 +234,7 @@ void main() {
       tester.view.viewInsets = FakeViewPadding.zero;
       await tester.pumpAndSettle();
 
-      expect(strip, findsOneWidget);
+      expect(tuckedPrintsFan, findsOneWidget);
       expect(workstation, findsOneWidget);
     });
   });

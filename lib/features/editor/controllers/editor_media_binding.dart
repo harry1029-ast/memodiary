@@ -27,7 +27,7 @@ class EditorMediaBinding {
   static const Duration kEraseUndoWindow = Duration(seconds: 4);
 
   /// Ticks each time a mount is refused because the active sheet is full, so
-  /// its Sheet Mount Strip can shake.
+  /// its Tucked Prints can shake.
   final ValueNotifier<int> mountRefusals = ValueNotifier<int>(0);
 
   /// Items collected in this session awaiting their one-time Brush Reveal.
@@ -81,7 +81,7 @@ class EditorMediaBinding {
 
   /// Mounts the staged item [mediaId] onto the active Stationery Sheet and
   /// returns whether it mounted. A full sheet refuses (ticking [mountRefusals]
-  /// so its strip shakes), leaving the item staged.
+  /// so its Tucked Prints shake), leaving the item staged.
   Future<bool> mountMedia(String mediaId) async {
     final didMount = coordinator.media.mountOnActiveSheet(mediaId);
     if (didMount) brushReveals.complete(mediaId);
