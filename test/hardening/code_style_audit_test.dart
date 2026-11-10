@@ -160,7 +160,6 @@ void main() {
         'lib/features/albums/services/album_theme_catalog.dart',
         'lib/features/albums/widgets/page_background_painter.dart',
         'lib/features/analytics/screens/analytics_dashboard_screen.dart',
-        'lib/features/editor/widgets/journal_letterhead.dart',
         'lib/features/editor/widgets/soundscape_modal.dart',
         'lib/features/editor/widgets/typography_sheet.dart',
         'lib/features/import_export/services/backup_crypto.dart',

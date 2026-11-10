@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/features/editor/models/letterhead_data.dart';
 import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 
@@ -111,9 +112,11 @@ void main() {
                 child: IntegerSnappedLetterhead(
                   lineStridePx: 24.0,
                   child: JournalLetterhead(
-                    entryDate: DateTime(2026, 11, 2),
-                    mood: 3,
-                    weather: 'sunny',
+                    data: LetterheadData.resolve(
+                      entryDate: DateTime(2026, 11, 2),
+                      mood: 3,
+                      weather: 'sunny',
+                    ),
                     titleController: titleController,
                     onDateChanged: (selectedDate) {},
                     onMoodChanged: (selectedMood) {},
