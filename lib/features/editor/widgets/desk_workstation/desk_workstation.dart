@@ -23,6 +23,11 @@ class DeskWorkstation extends StatefulWidget {
   /// Collect, mount, erase and Brush Reveal plumbing.
   final DeskMediaHandlers handlers;
 
+  /// Room kept clear inside the mat for overlays floating above the workstation
+  /// (the Writing Dock's restore tab, the system bar), so they never cover the
+  /// handscroll's controls. The workstation's own height is unaffected.
+  final EdgeInsets reservedInsets;
+
   static const double kHeaderHeight = 26.0;
   static const EdgeInsets kMatInsets = EdgeInsets.fromLTRB(10.0, kHeaderHeight, 10.0, 8.0);
 
@@ -33,6 +38,7 @@ class DeskWorkstation extends StatefulWidget {
     required this.activeSheetNumber,
     this.onTapItem,
     this.handlers = const DeskMediaHandlers(),
+    this.reservedInsets = EdgeInsets.zero,
   });
 
   @override
@@ -123,7 +129,7 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
               ),
               Positioned.fill(
                 child: Padding(
-                  padding: DeskWorkstation.kMatInsets.add(const EdgeInsets.all(2.0)),
+                  padding: DeskWorkstation.kMatInsets.add(const EdgeInsets.all(2.0)).add(widget.reservedInsets),
                   child: isClosed
                       ? ClosedBrocadeScroll(
                           key: const Key('closed_brocade_scroll'),

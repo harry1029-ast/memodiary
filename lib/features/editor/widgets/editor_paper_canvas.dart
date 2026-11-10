@@ -351,6 +351,8 @@ class EditorPaperCanvas extends StatelessWidget {
                         isWorkstationCollapsed: isWorkstationCollapsed,
                         onCollapseWorkstation: chrome.collapseWorkstation,
                         onRestoreWorkstation: chrome.expandWorkstation,
+                        onRestoreWritingDock:
+                            chrome.isWritingDockVisible || keyboardVisible ? null : () => chrome.setWritingDockVisible(true),
                         handlers: deskMedia,
                         onCaptionChanged: (mediaId, newCaption) {
                           coordinator.media.updateCaption(mediaId, newCaption);

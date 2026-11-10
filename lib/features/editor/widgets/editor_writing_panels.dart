@@ -6,12 +6,11 @@ import '../controllers/editor_chrome_controller.dart';
 import 'dictation_bar.dart';
 import 'keyboard_accessory_row.dart';
 import 'writing_dock.dart';
-import 'writing_dock_collapse_tabs.dart';
 
 /// The panels below the Scholar's Desk, shown and hidden by the
 /// [EditorChromeController]: the dictation bar while dictating, then the
 /// keyboard accessory row while the software keyboard is open (whether or not
-/// the dock is hidden), else the Writing Dock or the tab that restores it.
+/// the dock is hidden), else the Writing Dock (when hidden, nothing: its restore tab floats on the desk).
 class EditorWritingPanels extends StatelessWidget {
   final EditorChromeController chrome;
   final QuillController controller;
@@ -84,8 +83,6 @@ class EditorWritingPanels extends StatelessWidget {
             inkColor: inkColor,
             isPaperDark: isPaperDark,
           )
-        else
-          WritingDockRestoreTab(onRestore: () => chrome.setWritingDockVisible(true)),
       ],
     );
   }
