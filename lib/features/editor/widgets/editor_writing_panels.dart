@@ -5,6 +5,7 @@ import '../../../core/services/dictation_service.dart';
 import '../controllers/editor_chrome_controller.dart';
 import 'dictation_bar.dart';
 import 'writing_dock.dart';
+import 'writing_dock_collapse_tabs.dart';
 
 /// The panels below the Scholar's Desk: the dictation bar while dictating and
 /// the Writing Dock, shown and hidden by the [EditorChromeController].
@@ -52,6 +53,7 @@ class EditorWritingPanels extends StatelessWidget {
           ),
         if (chrome.isWritingDockVisible)
           WritingDock(
+            onHide: () => chrome.setWritingDockVisible(false),
             controller: controller,
             onEnsureTextController: onEnsureTextController,
             onPickImage: onPickImage,
@@ -62,7 +64,9 @@ class EditorWritingPanels extends StatelessWidget {
             backgroundColor: paperColor.withValues(alpha: 0.95),
             inkColor: inkColor,
             isPaperDark: isPaperDark,
-          ),
+          )
+        else
+          WritingDockRestoreTab(onRestore: () => chrome.setWritingDockVisible(true)),
       ],
     );
   }

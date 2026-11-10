@@ -1,10 +1,19 @@
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
+import '../services/editor_settings_service.dart';
+
 /// The entry editor's panel state, shared by the screen, the desk canvas and
 /// the writing panels below it: the software keyboard, the Desk
 /// Workstation's collapsed state, dictation and the Writing Dock's visibility.
 class EditorChromeController extends ChangeNotifier {
+  /// The app-wide preference store behind the Writing Dock's visibility. Null
+  /// keeps the controller memory-only.
+  final EditorSettingsService? _settings;
+
+  EditorChromeController({EditorSettingsService? settings}) : _settings = settings;
+
+  bool _hasDockVisibilityChanged = false;
   double _keyboardInset = 0.0;
 
   /// Whether the first measured layout has decided the workstation's state.
@@ -73,9 +82,24 @@ class EditorChromeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The diarist hides or shows the Writing Dock; the choice is stored as an
+  /// app-wide preference.
   void setWritingDockVisible(bool isVisible) {
+    _hasDockVisibilityChanged = true;
     if (_isWritingDockVisible == isVisible) return;
     _isWritingDockVisible = isVisible;
+    notifyListeners();
+    _settings?.setIsWritingDockHidden(!isVisible);
+  }
+
+  /// Applies the stored Writing Dock preference unless the diarist has
+  /// already chosen in this session.
+  Future<void> restorePreferences() async {
+    final settings = _settings;
+    if (settings == null) return;
+    final isHidden = await settings.getIsWritingDockHidden();
+    if (_isDisposed || _hasDockVisibilityChanged || !isHidden) return;
+    _isWritingDockVisible = false;
     notifyListeners();
   }
 

@@ -10,6 +10,7 @@ import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../controllers/editor_chrome_controller.dart';
+import '../services/editor_settings_service.dart';
 import '../controllers/editor_media_binding.dart';
 import '../controllers/editor_pagination_handler.dart';
 import '../controllers/writing_focus_guard.dart';
@@ -38,6 +39,7 @@ class EntryEditorScreen extends StatefulWidget {
   final ThoughtSparkService? thoughtSparkService;
   final AudioSanctumService? audioSanctumService;
   final ImagePicker? imagePicker;
+  final EditorSettingsService? editorSettings;
 
   const EntryEditorScreen({
     super.key,
@@ -48,6 +50,7 @@ class EntryEditorScreen extends StatefulWidget {
     this.thoughtSparkService,
     this.audioSanctumService,
     this.imagePicker,
+    this.editorSettings,
   });
 
   @override
@@ -74,7 +77,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   TypographySettings _typography = const TypographySettings();
 
   bool _isLoading = true;
-  final EditorChromeController _chrome = EditorChromeController();
+  late final EditorChromeController _chrome;
 
   DateTime _entryDate = DateTime.now();
   int? _mood;
@@ -95,7 +98,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _thoughtSparkService = widget.thoughtSparkService ?? ThoughtSparkService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _imagePicker = widget.imagePicker ?? ImagePicker();
+    _chrome = EditorChromeController(settings: widget.editorSettings ?? EditorSettingsService());
     _chrome.addListener(_rebuild);
+    _chrome.restorePreferences();
     _loadEntryData();
   }
 

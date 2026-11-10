@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
 import '../../../core/theme/ink_diary_theme.dart';
+import 'writing_dock_collapse_tabs.dart';
 import 'writing_dock_formatting_ribbon.dart';
 
 /// Progressive two-tier bottom writing dock anchored above the soft keyboard.
@@ -14,6 +15,7 @@ class WritingDock extends StatefulWidget {
   final VoidCallback onPickImage;
   final VoidCallback? onPickVideo;
   final VoidCallback onToggleDictation;
+  final VoidCallback? onHide;
   final VoidCallback? onShuffleSpark;
   final bool isDictating;
   final Color? backgroundColor;
@@ -27,15 +29,13 @@ class WritingDock extends StatefulWidget {
     required this.onPickImage,
     this.onPickVideo,
     required this.onToggleDictation,
+    this.onHide,
     this.onShuffleSpark,
     this.isDictating = false,
     this.backgroundColor,
     this.inkColor,
     this.isPaperDark = false,
   });
-
-  /// Breathing room above the tools.
-  static const double _kTopPadding = 8.0;
 
   @override
   State<WritingDock> createState() => _WritingDockState();
@@ -81,21 +81,35 @@ class _WritingDockState extends State<WritingDock> {
   }
 
   Widget _buildExpandedContent(InkDiaryTokens tokens, Color effectiveInkColor) {
+    final onHide = widget.onHide;
+    return Stack(
+      children: [
+        _buildColumn(tokens, effectiveInkColor),
+        if (onHide != null) Positioned(top: 0, right: 0, child: WritingDockHideTab(onHide: onHide)),
+      ],
+    );
+  }
+
+  Widget _buildColumn(InkDiaryTokens tokens, Color effectiveInkColor) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SizedBox(height: WritingDock._kTopPadding),
+        const SizedBox(height: 8.0),
         AnimatedSize(
           duration: const Duration(milliseconds: 240),
           curve: Curves.easeInOutCubic,
           alignment: Alignment.bottomCenter,
           child: _isFormattingOpen
-              ? WritingDockFormattingRibbon(
-                  controller: widget.controller,
-                  onEnsureTextController: widget.onEnsureTextController,
-                  tokens: tokens,
-                  inkColor: effectiveInkColor,
-                  isPaperDark: widget.isPaperDark,
+              // The hide tab hangs in the top-right corner, beside the ribbon.
+              ? Padding(
+                  padding: EdgeInsets.only(right: widget.onHide != null ? WritingDockHideTab.kTargetSize : 0),
+                  child: WritingDockFormattingRibbon(
+                    controller: widget.controller,
+                    onEnsureTextController: widget.onEnsureTextController,
+                    tokens: tokens,
+                    inkColor: effectiveInkColor,
+                    isPaperDark: widget.isPaperDark,
+                  ),
                 )
               : const SizedBox.shrink(),
         ),
@@ -109,7 +123,7 @@ class _WritingDockState extends State<WritingDock> {
 
     return Container(
       height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: EdgeInsets.only(left: 14, right: widget.onHide != null ? WritingDockHideTab.kTargetSize : 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
