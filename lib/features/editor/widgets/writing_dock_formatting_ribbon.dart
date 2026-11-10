@@ -242,3 +242,50 @@ class WritingDockFormattingRibbon extends StatelessWidget {
     );
   }
 }
+
+/// Unfolds the [WritingDockFormattingRibbon] above a tool row (the Writing
+/// Dock's or the keyboard accessory row's) while [isOpen], and folds it away
+/// when closed.
+class FormattingRibbonReveal extends StatelessWidget {
+  final bool isOpen;
+  final QuillController controller;
+  final QuillController Function()? onEnsureTextController;
+  final InkDiaryTokens tokens;
+  final Color inkColor;
+  final bool isPaperDark;
+
+  /// Room kept clear at the ribbon's right, e.g. for a tab hanging there.
+  final double rightInset;
+
+  const FormattingRibbonReveal({
+    super.key,
+    required this.isOpen,
+    required this.controller,
+    this.onEnsureTextController,
+    required this.tokens,
+    required this.inkColor,
+    required this.isPaperDark,
+    this.rightInset = 0.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.bottomCenter,
+      child: isOpen
+          ? Padding(
+              padding: EdgeInsets.only(right: rightInset),
+              child: WritingDockFormattingRibbon(
+                controller: controller,
+                onEnsureTextController: onEnsureTextController,
+                tokens: tokens,
+                inkColor: inkColor,
+                isPaperDark: isPaperDark,
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+}

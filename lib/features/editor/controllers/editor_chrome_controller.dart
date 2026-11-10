@@ -33,6 +33,11 @@ class EditorChromeController extends ChangeNotifier {
   bool get isDictating => _isDictating;
   bool get isWritingDockVisible => _isWritingDockVisible;
 
+  /// Whether the Writing Dock's 展开文房 restore tab floats on the desk: only
+  /// while the dock is hidden and the keyboard is closed (while typing, the
+  /// keyboard accessory row's toggle stands in for it).
+  bool get showsWritingDockRestoreTab => !_isWritingDockVisible && !isKeyboardVisible;
+
   /// Records the keyboard inset, read on every build of the editor screen
   /// above its [Scaffold] (which strips the inset from its body). Never
   /// notifies: the inset change already rebuilds every consumer. Returns

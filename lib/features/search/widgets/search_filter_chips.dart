@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/widgets/ink_metadata_pill.dart';
-import '../../editor/widgets/entry_metadata_bar.dart';
+import '../../editor/widgets/journal_letterhead_models.dart';
 import '../../timeline/widgets/entry_summary_card.dart';
 import '../models/search_filters.dart';
 
@@ -149,14 +149,14 @@ class SearchFilterChips extends StatelessWidget {
                   Navigator.pop(ctx);
                 },
               ),
-              ...EntryMetadataBar.moodOptions.map((opt) {
-                final isSelected = filters.mood == opt['value'];
+              ...JournalLetterheadUtils.moodOptions.map((moodOption) {
+                final isSelected = filters.mood == moodOption.value;
                 return ListTile(
-                  leading: Text(opt['emoji'] as String, style: const TextStyle(fontSize: 22)),
-                  title: Text(opt['label'] as String),
+                  leading: Text(moodOption.emoji, style: const TextStyle(fontSize: 22)),
+                  title: Text(moodOption.label),
                   selected: isSelected,
                   onTap: () {
-                    onFiltersChanged(filters.copyWith(mood: opt['value'] as int));
+                    onFiltersChanged(filters.copyWith(mood: moodOption.value));
                     Navigator.pop(ctx);
                   },
                 );
@@ -203,14 +203,14 @@ class SearchFilterChips extends StatelessWidget {
                   Navigator.pop(ctx);
                 },
               ),
-              ...EntryMetadataBar.weatherOptions.map((opt) {
-                final isSelected = filters.weather == opt['value'];
+              ...JournalLetterheadUtils.weatherOptions.map((weatherOption) {
+                final isSelected = filters.weather == weatherOption.value;
                 return ListTile(
-                  leading: Icon(opt['icon'] as IconData, color: tokens.danmo),
-                  title: Text(opt['label'] as String),
+                  leading: Icon(weatherOption.icon, color: tokens.danmo),
+                  title: Text(weatherOption.label),
                   selected: isSelected,
                   onTap: () {
-                    onFiltersChanged(filters.copyWith(weather: opt['value'] as String));
+                    onFiltersChanged(filters.copyWith(weather: weatherOption.value));
                     Navigator.pop(ctx);
                   },
                 );

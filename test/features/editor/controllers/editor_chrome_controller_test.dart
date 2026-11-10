@@ -167,6 +167,14 @@ void main() {
       expect(chrome.isWritingDockVisible, isTrue);
       expect(notifications, 2);
     });
+
+    test('its restore tab floats on the desk only while the dock is hidden and the keyboard closed', () {
+      expect(chrome.showsWritingDockRestoreTab, isFalse, reason: 'the dock is shown');
+      chrome.setWritingDockVisible(false);
+      expect(chrome.showsWritingDockRestoreTab, isTrue);
+      chrome.syncKeyboardInset(300.0);
+      expect(chrome.showsWritingDockRestoreTab, isFalse, reason: 'the accessory row toggles the dock while typing');
+    });
   });
 
   testWidgets('a deferred collapse after disposal does not notify', (tester) async {

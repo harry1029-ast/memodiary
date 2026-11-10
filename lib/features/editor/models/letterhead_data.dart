@@ -73,9 +73,9 @@ class LetterheadData {
     final monthText = sealMonthText;
     final dayText = lunarDayName;
     if (monthText == null || dayText == null) {
-      return '岁次$sealYearText，轻触修改日期';
+      return '${lunarDate.yearName}，轻触修改日期';
     }
-    return '岁次$sealYearText $monthText$dayText，轻触修改日期';
+    return '${lunarDate.yearName} $monthText$dayText，轻触修改日期';
   }
 
   /// Label for the date block, e.g. `2026年11月10日 周二，农历十月初二，立冬`.

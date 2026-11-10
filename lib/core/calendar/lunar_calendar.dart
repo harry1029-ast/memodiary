@@ -52,6 +52,10 @@ class LunarDate {
     return '${_seasonRanks[rankIndex]}${_seasons[seasonIndex]}';
   }
 
+  /// The year with its classical prefix, e.g. `岁次丙午`; known in and out of
+  /// range, so it stands in wherever the month and day are missing.
+  String get yearName => '岁次$stemBranchYear';
+
   /// The month and day together, e.g. `十月十五`, or null out of range.
   String? get monthDayName {
     final monthText = monthName;

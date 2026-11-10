@@ -18,7 +18,7 @@ class LetterheadCharm extends StatelessWidget {
     required this.onTap,
   });
 
-  static const double targetSize = 44;
+  static const double kTargetSize = 44;
 
   final String keyPrefix;
   final String emoji;
@@ -38,7 +38,7 @@ class LetterheadCharm extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: targetSize, minHeight: targetSize),
+          constraints: const BoxConstraints(minWidth: kTargetSize, minHeight: kTargetSize),
           child: Center(
             child: Container(
               key: Key(keyPrefix),

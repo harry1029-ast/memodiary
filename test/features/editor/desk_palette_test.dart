@@ -10,7 +10,7 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/widgets/desk_workstation/desk_palette.dart';
-import 'package:memodiary/features/editor/widgets/desk_workstation/walnut_desk_painter.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/scholar_desk_painter.dart';
 import '../../helpers/editor_test_harness.dart';
 
 const _templates = ['template_minimalist_white', 'template_lined_paper'];
@@ -46,8 +46,8 @@ void main() {
     if (tempDirectory.existsSync()) tempDirectory.deleteSync(recursive: true);
   });
 
-  WalnutDeskPainter painterOf(WidgetTester tester, Key key) =>
-      tester.widget<CustomPaint>(find.byKey(key)).painter! as WalnutDeskPainter;
+  ScholarDeskPainter painterOf(WidgetTester tester, Key key) =>
+      tester.widget<CustomPaint>(find.byKey(key)).painter! as ScholarDeskPainter;
 
   for (final templateId in _templates) {
     for (final (theme, expected) in [
@@ -66,7 +66,7 @@ void main() {
             theme: theme,
           );
 
-          expect(painterOf(tester, const Key('editor_walnut_desk')).palette, same(expected));
+          expect(painterOf(tester, const Key('editor_scholar_desk')).palette, same(expected));
           expect(painterOf(tester, const Key('desk_workstation')).palette, same(expected));
         },
       );

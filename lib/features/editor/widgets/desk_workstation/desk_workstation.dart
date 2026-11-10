@@ -6,10 +6,10 @@ import '../../models/desk_media_handlers.dart';
 import '../staging_handscroll.dart';
 import 'closed_brocade_scroll.dart';
 import 'desk_palette.dart';
-import 'walnut_desk_painter.dart';
+import 'scholar_desk_painter.dart';
 
-/// The Desk Workstation (案头画案): the bamboo mat on the walnut desk on which
-/// the Staging Handscroll rests. The editor canvas paints the walnut desk
+/// The Desk Workstation (案头画案): the bamboo mat on the Scholar's Desk on which
+/// the Staging Handscroll rests. The editor canvas paints the desk
 /// beneath it, so the workstation adds only its mat. An empty handscroll lies closed as a brocade scroll that starts
 /// collecting when tapped. Pure presentation: actions bubble through callbacks.
 class DeskWorkstation extends StatefulWidget {
@@ -48,7 +48,7 @@ class DeskWorkstation extends StatefulWidget {
 class _DeskWorkstationState extends State<DeskWorkstation> {
   /// The mat's painter, rebuilt only when the app's brightness changes so its
   /// recorded picture survives ordinary rebuilds.
-  late WalnutDeskPainter _deskPainter;
+  late ScholarDeskPainter _deskPainter;
   DeskPalette? _palette;
 
   @override
@@ -57,7 +57,7 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
     final palette = DeskPalette.of(context);
     if (_palette != palette) {
       _palette = palette;
-      _deskPainter = WalnutDeskPainter(
+      _deskPainter = ScholarDeskPainter(
         palette: palette,
         matInsets: DeskWorkstation.kMatInsets,
         paintsDesk: false,

@@ -9,18 +9,18 @@ import 'desk_palette.dart';
 /// only its mat on top ([paintsDesk] false) so the two read as one desk. The
 /// geometry is static, so it is recorded once per size into an immutable
 /// [ui.Picture] and replayed on every frame.
-class WalnutDeskPainter extends CustomPainter {
+class ScholarDeskPainter extends CustomPainter {
   /// Inset of the bamboo mat from the edges; its top leaves room for the
   /// workstation header. No mat when null.
   final EdgeInsets? matInsets;
 
-  /// Whether to paint the walnut surface and its grain beneath the mat.
+  /// Whether to paint the desk surface and its grain beneath the mat.
   final bool paintsDesk;
 
   /// Fixed colours chosen by the app's brightness, never by the template.
   final DeskPalette palette;
 
-  WalnutDeskPainter({required this.palette, this.matInsets, this.paintsDesk = true});
+  ScholarDeskPainter({required this.palette, this.matInsets, this.paintsDesk = true});
 
 
   ui.Picture? _picture;
@@ -58,7 +58,7 @@ class WalnutDeskPainter extends CustomPainter {
         ).createShader(deskRect),
     );
 
-    // Long walnut grain running the width of the desk.
+    // Long wood grain running the width of the desk.
     final grainPaint = Paint()
       ..color = palette.grain
       ..strokeWidth = 1.0;
@@ -126,6 +126,6 @@ class WalnutDeskPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(WalnutDeskPainter oldDelegate) =>
+  bool shouldRepaint(ScholarDeskPainter oldDelegate) =>
       oldDelegate.palette != palette || oldDelegate.matInsets != matInsets || oldDelegate.paintsDesk != paintsDesk;
 }

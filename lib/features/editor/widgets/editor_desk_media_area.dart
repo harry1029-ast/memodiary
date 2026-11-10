@@ -36,8 +36,8 @@ class EditorDeskMediaArea extends StatelessWidget {
 
   /// Whether the diarist (or a short desk) has put the workstation away.
   final bool isWorkstationCollapsed;
-  final VoidCallback? onCollapseWorkstation;
-  final VoidCallback? onRestoreWorkstation;
+  final VoidCallback onCollapseWorkstation;
+  final VoidCallback onRestoreWorkstation;
 
   /// Brings the hidden Writing Dock back; non-null only while its 展开文房 tab
   /// floats at the desk's bottom-right.
@@ -61,8 +61,8 @@ class EditorDeskMediaArea extends StatelessWidget {
     required this.activeSheetNumber,
     this.isPaperDark = false,
     this.isWorkstationCollapsed = false,
-    this.onCollapseWorkstation,
-    this.onRestoreWorkstation,
+    required this.onCollapseWorkstation,
+    required this.onRestoreWorkstation,
     this.onRestoreWritingDock,
     this.handlers = const DeskMediaHandlers(),
     this.onCaptionChanged,
@@ -139,8 +139,8 @@ class EditorDeskMediaArea extends StatelessWidget {
           bottom: budget.workstationHeight - WorkstationPullTab.kTargetSize / 2.0,
           height: WorkstationPullTab.kTargetSize,
           child: _StepAside(
-            isShown: budget.showWorkstation && onCollapseWorkstation != null,
-            child: WorkstationPullTab(onCollapse: onCollapseWorkstation!),
+            isShown: budget.showWorkstation,
+            child: WorkstationPullTab(onCollapse: onCollapseWorkstation),
           ),
         ),
         Positioned(
@@ -148,11 +148,11 @@ class EditorDeskMediaArea extends StatelessWidget {
           right: 16.0 + tabInset,
           bottom: DeskSpaceBudget.kBottomMargin + systemBarInset,
           child: _StepAside(
-            isShown: isWorkstationCollapsed && onRestoreWorkstation != null,
+            isShown: isWorkstationCollapsed,
             child: Center(
               child: WorkstationRestorePill(
                 stagedCount: stagedItems.length,
-                onRestore: onRestoreWorkstation!,
+                onRestore: onRestoreWorkstation,
               ),
             ),
           ),

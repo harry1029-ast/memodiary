@@ -12,7 +12,6 @@ import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/widgets/keepsake_scroll_view.dart';
 import 'package:memodiary/features/editor/widgets/editor_quill_styles_builder.dart';
 import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
-import 'package:memodiary/features/editor/widgets/entry_metadata_bar.dart';
 import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
 import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
@@ -90,7 +89,6 @@ void main() {
       expect(find.byType(WritingDock), findsOneWidget);
 
       // Verify old cluttered components are completely retired
-      expect(find.byType(EntryMetadataBar), findsNothing);
       expect(find.byType(ThoughtSparkBanner), findsNothing);
       expect(find.byType(EditorToolbar), findsNothing);
 

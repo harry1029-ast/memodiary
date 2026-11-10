@@ -70,7 +70,8 @@ class _BookIntroScreenState extends State<BookIntroScreen>
 
     final todayLunar = LunarCalendar.fromSolar((widget.clock ?? DateTime.now)());
     _folioData = _folioData.copyWith(
-      lunarDateText: todayLunar.monthDayName ?? todayLunar.stemBranchYear,
+      // Out of range, the year stands in as the Folio shows it (岁次丙午).
+      lunarDateText: todayLunar.monthDayName ?? todayLunar.yearName,
     );
 
     // 1. Continuous atmospheric animation loop (60s cycle)

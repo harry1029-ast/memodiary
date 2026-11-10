@@ -14,7 +14,7 @@ import '../models/stationery_sheet_configs.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'desk_workstation/desk_space_budget.dart';
 import 'desk_workstation/desk_palette.dart';
-import 'desk_workstation/walnut_desk_painter.dart';
+import 'desk_workstation/scholar_desk_painter.dart';
 import 'desk_header_band_lead.dart';
 import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
@@ -27,7 +27,7 @@ import 'sheet_drop_target.dart';
 import 'stationery_ephemera_sheet.dart';
 
 /// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
-/// resting on a walnut scholar's desk.
+/// resting on the Scholar's Desk.
 ///
 /// A header band above the active sheet holds the page indicator at its left and
 /// the tops of the sheet's Tucked Prints at its right, and curled Page Corners at
@@ -38,8 +38,8 @@ import 'stationery_ephemera_sheet.dart';
 /// [KeyboardDeskLift] only lifts the desk to show the whole sheet, or the caret
 /// when the sheet cannot fit. Tapping the bare desk off the sheet ends writing.
 class EditorPaperCanvas extends StatelessWidget {
-  static final _walnutDesk = WalnutDeskPainter(palette: DeskPalette.walnut);
-  static final _ebonyDesk = WalnutDeskPainter(palette: DeskPalette.ebony);
+  static final _walnutDeskPainter = ScholarDeskPainter(palette: DeskPalette.walnut);
+  static final _ebonyDeskPainter = ScholarDeskPainter(palette: DeskPalette.ebony);
 
   /// The sheet's hairline border, which insets the paper inside the card.
   static const double _kSheetBorderWidth = 0.8;
@@ -196,8 +196,8 @@ class EditorPaperCanvas extends StatelessWidget {
         final deskTopSeal = topOffset + cardHeight + sealGap;
 
         return CustomPaint(
-          key: const Key('editor_walnut_desk'),
-          painter: DeskPalette.of(context) == DeskPalette.ebony ? _ebonyDesk : _walnutDesk,
+          key: const Key('editor_scholar_desk'),
+          painter: DeskPalette.of(context) == DeskPalette.ebony ? _ebonyDeskPainter : _walnutDeskPainter,
           child: ClipRect(
             // The desk keeps its resting height while the keyboard covers it,
             // so the lifted sheet is never clipped by its own page view.
@@ -259,7 +259,7 @@ class EditorPaperCanvas extends StatelessWidget {
                                 width: _kSheetBorderWidth,
                               ),
                               boxShadow: [
-                                // A sheet of paper resting on the walnut desk.
+                                // A sheet of paper resting on the desk.
                                 BoxShadow(
                                   color: Colors.black.withValues(alpha: 0.5),
                                   blurRadius: 18.0,
@@ -357,7 +357,7 @@ class EditorPaperCanvas extends StatelessWidget {
                           onCollapseWorkstation: chrome.collapseWorkstation,
                           onRestoreWorkstation: chrome.expandWorkstation,
                           onRestoreWritingDock:
-                              chrome.isWritingDockVisible || keyboardVisible ? null : () => chrome.setWritingDockVisible(true),
+                              chrome.showsWritingDockRestoreTab ? () => chrome.setWritingDockVisible(true) : null,
                           handlers: deskMedia,
                           onCaptionChanged: (mediaId, newCaption) {
                             coordinator.media.updateCaption(mediaId, newCaption);

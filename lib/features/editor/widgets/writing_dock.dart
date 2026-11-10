@@ -7,7 +7,9 @@ import 'writing_dock_collapse_tabs.dart';
 import 'writing_dock_formatting_ribbon.dart';
 import 'writing_dock_tool_button.dart';
 
-/// Progressive two-tier bottom writing dock anchored above the soft keyboard.
+/// Progressive two-tier bottom writing dock at the foot of the editor while
+/// the software keyboard is closed; the KeyboardAccessoryRow stands in for it
+/// while the diarist types.
 /// Tier 1 presents 5 high-frequency tools: Aa Formatting, Photo, Video, Dictation, Spark.
 /// Tier 2 smoothly unfolds on-demand as an inline formatting ribbon.
 class WritingDock extends StatefulWidget {
@@ -96,23 +98,15 @@ class _WritingDockState extends State<WritingDock> {
       mainAxisSize: MainAxisSize.min,
       children: [
         const SizedBox(height: 8.0),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeInOutCubic,
-          alignment: Alignment.bottomCenter,
-          child: _isFormattingOpen
-              // The hide tab hangs in the top-right corner, beside the ribbon.
-              ? Padding(
-                  padding: EdgeInsets.only(right: widget.onHide != null ? WritingDockHideTab.kTargetSize : 0),
-                  child: WritingDockFormattingRibbon(
-                    controller: widget.controller,
-                    onEnsureTextController: widget.onEnsureTextController,
-                    tokens: tokens,
-                    inkColor: effectiveInkColor,
-                    isPaperDark: widget.isPaperDark,
-                  ),
-                )
-              : const SizedBox.shrink(),
+        FormattingRibbonReveal(
+          isOpen: _isFormattingOpen,
+          controller: widget.controller,
+          onEnsureTextController: widget.onEnsureTextController,
+          tokens: tokens,
+          inkColor: effectiveInkColor,
+          isPaperDark: widget.isPaperDark,
+          // The hide tab hangs in the top-right corner, beside the ribbon.
+          rightInset: widget.onHide != null ? WritingDockHideTab.kTargetSize : 0.0,
         ),
         _buildPrimaryToolbar(tokens, effectiveInkColor),
       ],
@@ -160,13 +154,9 @@ class _WritingDockState extends State<WritingDock> {
               color: effectiveInkColor,
               onTap: widget.onPickVideo!,
             ),
-          _buildPrimaryToolBtn(
-            key: const Key('writing_dock_dictation_btn'),
-            icon: widget.isDictating ? Icons.mic : Icons.mic_none,
-            tooltip: '原声听写 · Voice Dictation',
-            isActive: widget.isDictating,
-            color: widget.isDictating ? Colors.white : const Color(0xFFB83B2E),
-            activeBackground: const Color(0xFFB83B2E),
+          DictationToolButton(
+            buttonKey: const Key('writing_dock_dictation_btn'),
+            isDictating: widget.isDictating,
             onTap: widget.onToggleDictation,
           ),
           if (widget.onShuffleSpark != null)
