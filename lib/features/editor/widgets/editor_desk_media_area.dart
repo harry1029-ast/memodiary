@@ -121,15 +121,16 @@ class EditorDeskMediaArea extends StatelessWidget {
             ),
           ),
         ),
-        // The pull tab straddles the workstation's top edge.
+        // The pull tab straddles the workstation's top edge at its right end,
+        // clear of the centred Cinnabar Signature Seal.
         Positioned(
-          left: 0.0,
           right: 0.0,
+          width: WorkstationPullTab.kTargetSize,
           bottom: budget.workstationHeight - WorkstationPullTab.kTargetSize / 2.0,
           height: WorkstationPullTab.kTargetSize,
           child: _StepAside(
             isShown: budget.showWorkstation && onCollapseWorkstation != null,
-            child: Center(child: WorkstationPullTab(onCollapse: onCollapseWorkstation!)),
+            child: WorkstationPullTab(onCollapse: onCollapseWorkstation!),
           ),
         ),
         Positioned(
