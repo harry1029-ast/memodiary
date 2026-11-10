@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../controllers/editor_media_binding.dart';
+import '../domain/sheet_media_item.dart';
 import '../models/desk_media_handlers.dart';
 
-/// Presents the desk's media feedback (refused mounts, erase undo) for an
-/// [EditorMediaBinding], which owns the state and the purge but no UI.
+/// Presents the desk's media feedback (refused mounts, erase undo, overflow
+/// unmounts) for an [EditorMediaBinding], which owns the state and the purge
+/// but no UI.
 class EditorMediaFeedback {
   const EditorMediaFeedback._();
 
@@ -44,6 +46,19 @@ class EditorMediaFeedback {
       },
       mountRefusals: binding.mountRefusals,
       brushReveals: binding.brushReveals,
+    );
+  }
+
+  /// Tells the diarist which items reflow pushed past the last sheet and
+  /// returned to the Staging Handscroll.
+  static void showOverflowUnmountNotice(BuildContext context, List<SheetMediaItem> unmountedItems) {
+    if (!context.mounted) return;
+    _show(
+      context,
+      SnackBar(
+        key: const Key('overflow_unmount_snackbar'),
+        content: Text('末页已满三影 · ${unmountedItems.length} 影已揭回画卷'),
+      ),
     );
   }
 

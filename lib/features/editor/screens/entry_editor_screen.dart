@@ -9,25 +9,23 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
+import '../controllers/editor_chrome_controller.dart';
 import '../controllers/editor_media_binding.dart';
 import '../controllers/editor_pagination_handler.dart';
 import '../controllers/writing_focus_guard.dart';
-import '../domain/sheet_media_item.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
-import '../widgets/desk_workstation/desk_workstation_controller.dart';
-import '../widgets/dictation_bar.dart';
 import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_media_actions.dart';
 import '../widgets/editor_media_feedback.dart';
 import '../widgets/editor_overlay_actions.dart';
 import '../widgets/editor_top_app_bar.dart';
+import '../widgets/editor_writing_panels.dart';
 import '../widgets/scholar_chest/scholar_chest_drawer.dart';
 import '../widgets/staged_exit_reminder_dialog.dart';
-import '../widgets/writing_dock.dart';
 
 /// Full-Bleed rich-text multimodal diary editor in classical Ink & Paper stationery aesthetic.
 /// Decouples content (Quill Delta JSON) from presentation (Procedural Templates & Discrete Sheets).
@@ -75,8 +73,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   TypographySettings _typography = const TypographySettings();
 
   bool _isLoading = true;
-  bool _isDictating = false;
-  final DeskWorkstationController _workstationController = DeskWorkstationController();
+  final EditorChromeController _chrome = EditorChromeController();
 
   DateTime _entryDate = DateTime.now();
   int? _mood;
@@ -84,7 +81,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   DateTime? _unlockAt;
   Entry? _entry;
   bool _isCenterAligned = false;
-  late final WritingFocusGuard _focusGuard = WritingFocusGuard(sheets: () => _coordinator.sheets);
+  late final WritingFocusGuard _focusGuard = WritingFocusGuard(
+      sheets: () => _coordinator.sheets, isKeyboardVisible: () => _chrome.isKeyboardVisible);
 
   QuillController get _activeController =>
       _paginationHandler?.activeTextController ?? QuillController.basic();
@@ -96,13 +94,13 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _thoughtSparkService = widget.thoughtSparkService ?? ThoughtSparkService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _imagePicker = widget.imagePicker ?? ImagePicker();
-    _workstationController.addListener(_rebuild);
+    _chrome.addListener(_rebuild);
     _loadEntryData();
   }
 
   @override
   void dispose() {
-    _workstationController.dispose();
+    _chrome.dispose();
     _paginationHandler?.dispose();
     _mediaBinding?.dispose();
     _pageController.dispose();
@@ -119,7 +117,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   /// Collecting always opens the workstation so the new keepsake is seen landing.
   void _collectMedia({required bool isVideo}) {
     _focusGuard.release();
-    _workstationController.expand();
+    _chrome.expandWorkstation();
     _mediaBinding!.pickMedia(context, isVideo: isVideo);
   }
 
@@ -149,7 +147,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           fallbackPlainText: entry.plainText,
           attachments: attachments,
         );
-      _coordinator.onOverflowUnmount = _showOverflowUnmountNotice;
+      _coordinator.onOverflowUnmount =
+          (unmountedItems) => EditorMediaFeedback.showOverflowUnmountNotice(context, unmountedItems);
       if (entry.legacyMountsPending) {
         _coordinator.runLegacyMountPassOnFirstLayout(
           (didMount) => _persistLegacyMountPass(entry, didMount: didMount),
@@ -201,18 +200,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         Navigator.pop(context);
       }
     }
-  }
-
-  /// Tells the diarist which items reflow pushed past the last sheet and
-  /// returned to the Staging Handscroll.
-  void _showOverflowUnmountNotice(List<SheetMediaItem> unmountedItems) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        key: const Key('overflow_unmount_snackbar'),
-        content: Text('末页已满三影 · ${unmountedItems.length} 影已揭回画卷'),
-      ));
   }
 
   /// Mounts a pre-SPEC-010 entry's unanchored attachments first-come and
@@ -357,8 +344,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     );
 
     _updateHeaderHeight();
-    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
-    _focusGuard.onKeyboardInset(context, keyboardInset);
+    if (_chrome.syncKeyboardInset(MediaQuery.viewInsetsOf(context).bottom)) {
+      _focusGuard.onKeyboardClosed(context);
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isPaperDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
@@ -382,8 +370,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 letterheadConfig: letterheadConfig,
                 mediaSandboxService: widget.mediaSandboxService,
                 onSaveDraft: () => _autosaveManager?.saveDraft(),
-                workstationController: _workstationController,
-                keyboardInset: keyboardInset,
+                chrome: _chrome,
                 coordinator: _coordinator,
                 pageController: _pageController,
                 currentSheetIndex: currentSheetIndex,
@@ -402,30 +389,17 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onSpillBack: _paginationHandler!.handleSpillBack,
               ),
             ),
-            if (_isDictating)
-              DictationBar(
-                controller: _activeController,
-                dictationService: _dictationService,
-                onClose: () => setState(() => _isDictating = false),
-              ),
-            WritingDock(
+            EditorWritingPanels(
+              chrome: _chrome,
               controller: _activeController,
               onEnsureTextController: () => _paginationHandler!.ensureActiveTextSheet(),
+              dictationService: _dictationService,
               onPickImage: () => _collectMedia(isVideo: false),
               onPickVideo: () => _collectMedia(isVideo: true),
-              onToggleDictation: () {
-                if (!_isDictating) {
-                  _paginationHandler?.ensureActiveTextSheet();
-                }
-                setState(() => _isDictating = !_isDictating);
-              },
               onShuffleSpark: _handleShuffleSpark,
-              isDictating: _isDictating,
-              backgroundColor: paperColor.withValues(alpha: 0.95),
+              paperColor: paperColor,
               inkColor: inkColor,
               isPaperDark: isPaperDark,
-              isWorkstationCollapsed: _workstationController.isCollapsed,
-              onToggleWorkstation: _workstationController.toggle,
             ),
           ],
         ),

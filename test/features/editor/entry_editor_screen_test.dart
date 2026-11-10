@@ -21,7 +21,7 @@ import 'package:memodiary/features/editor/widgets/writing_dock.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
-import '../../core/services/dictation_service_test.dart';
+import '../../helpers/fake_speech_to_text.dart';
 
 void main() {
   late AppDatabase db;
