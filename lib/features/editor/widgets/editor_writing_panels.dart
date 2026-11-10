@@ -62,8 +62,6 @@ class EditorWritingPanels extends StatelessWidget {
             backgroundColor: paperColor.withValues(alpha: 0.95),
             inkColor: inkColor,
             isPaperDark: isPaperDark,
-            isWorkstationCollapsed: chrome.isWorkstationCollapsed,
-            onToggleWorkstation: chrome.toggleWorkstation,
           ),
       ],
     );
