@@ -5,14 +5,38 @@ import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dar
 import 'package:memodiary/features/editor/models/media_embed_data.dart';
 
 void main() {
+  group('SheetRowCapacity follows the rows ruled in the Paper Heart', () {
+    test('14 ruled rows give the opening sheet 10 body rows and continuation sheets 14', () {
+      const capacity = SheetRowCapacity(visibleRows: 14);
+      final opening = OpeningSheet.empty();
+      final continuation = ContinuationSheet.empty(sheetIndex: 1);
+
+      expect(capacity.of(opening), 10);
+      expect(capacity.of(continuation), 14);
+      expect(SheetRowCapacity.folioLeaf, capacity);
+
+      opening.dispose();
+      continuation.dispose();
+    });
+
+    test('fewer ruled rows shrink both sheets, the opening one beneath the 4-row letterhead', () {
+      expect(const SheetRowCapacity(visibleRows: 13).openingRows, 9);
+      expect(const SheetRowCapacity(visibleRows: 13).continuationRows, 13);
+      expect(const SheetRowCapacity(visibleRows: 5).openingRows, 1);
+      expect(const SheetRowCapacity(visibleRows: 5).continuationRows, 5);
+    });
+
+    test('the opening sheet always keeps one body row', () {
+      expect(const SheetRowCapacity(visibleRows: 4).openingRows, 1);
+      expect(const SheetRowCapacity(visibleRows: 1).openingRows, 1);
+    });
+  });
+
   group('StationerySheetDescriptor Domain Tests', () {
-    test('OpeningSheet initializes with 10-row capacity beneath 4-row letterhead', () {
+    test('OpeningSheet initializes as an empty opening text sheet', () {
       final sheet = OpeningSheet.empty(sheetIndex: 0);
 
       expect(sheet.sheetIndex, equals(0));
-      expect(sheet.rowCapacity, equals(10));
-      expect(OpeningSheet.kRowCapacity, equals(10));
-      expect(OpeningSheet.kLetterheadRows, equals(4));
       expect(sheet.isOpeningSheet, isTrue);
       expect(sheet.isContinuationSheet, isFalse);
       expect(sheet.isEphemeraSheet, isFalse);
@@ -22,12 +46,10 @@ void main() {
       sheet.dispose();
     });
 
-    test('ContinuationSheet initializes with 14-row capacity', () {
+    test('ContinuationSheet initializes as an empty continuation text sheet', () {
       final sheet = ContinuationSheet.empty(sheetIndex: 1);
 
       expect(sheet.sheetIndex, equals(1));
-      expect(sheet.rowCapacity, equals(14));
-      expect(ContinuationSheet.kRowCapacity, equals(14));
       expect(sheet.isOpeningSheet, isFalse);
       expect(sheet.isContinuationSheet, isTrue);
       expect(sheet.isEphemeraSheet, isFalse);

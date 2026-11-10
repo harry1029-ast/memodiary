@@ -15,8 +15,9 @@ import 'sandboxed_image_embed_builder.dart';
 import 'sandboxed_video_embed_builder.dart';
 import 'mount_marker_embed_builder.dart';
 
-/// Renders an OpeningSheet (4-row JournalLetterhead + 10-row editor) or ContinuationSheet
-/// (running colophon + 14-row editor) constrained and clipped strictly inside the Paper Heart.
+/// Renders an OpeningSheet (4-row JournalLetterhead above its body rows) or a
+/// ContinuationSheet (running colophon above its rows) clipped strictly inside
+/// the Paper Heart.
 class EditorTextSheetView extends StatelessWidget {
   final TextStationerySheet sheet;
   final int sheetIndex;
@@ -57,48 +58,38 @@ class EditorTextSheetView extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Positioned(
-          top: metrics.innerFrameRect.top,
-          left: 0,
-          right: 0,
-          height: metrics.innerFrameRect.height,
-          child: ClipRect(
-            key: const Key('editor_paper_heart_viewport_clip'),
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IntegerSnappedLetterhead(
-                    key: letterheadConfig.letterheadKey,
-                    lineStridePx: activeRowHeight,
-                    minRows: kJournalLetterheadReservedRows,
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: horizontalLeft,
-                        right: horizontalRight,
-                      ),
-                      child: JournalLetterhead(
-                        data: letterheadConfig.data,
-                        titleController: letterheadConfig.titleController,
-                        onDateChanged: letterheadConfig.onDateChanged,
-                        onMoodChanged: letterheadConfig.onMoodChanged,
-                        onWeatherChanged: letterheadConfig.onWeatherChanged,
-                      ),
-                    ),
+        _buildPaperHeart(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IntegerSnappedLetterhead(
+                key: letterheadConfig.letterheadKey,
+                lineStridePx: activeRowHeight,
+                minRows: kJournalLetterheadReservedRows,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: horizontalLeft,
+                    right: horizontalRight,
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(
-                      left: horizontalLeft,
-                      right: horizontalRight,
-                    ),
-                    child: _buildTextEditor(
-                      placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
-                    ),
+                  child: JournalLetterhead(
+                    data: letterheadConfig.data,
+                    titleController: letterheadConfig.titleController,
+                    onDateChanged: letterheadConfig.onDateChanged,
+                    onMoodChanged: letterheadConfig.onMoodChanged,
+                    onWeatherChanged: letterheadConfig.onWeatherChanged,
                   ),
-                ],
+                ),
               ),
-            ),
+              Padding(
+                padding: EdgeInsets.only(
+                  left: horizontalLeft,
+                  right: horizontalRight,
+                ),
+                child: _buildTextEditor(
+                  placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -109,8 +100,10 @@ class EditorTextSheetView extends StatelessWidget {
     final rawTitle = letterheadConfig.titleController.text.trim();
     final displayTitle = rawTitle.isNotEmpty ? rawTitle : '无题';
     final colophonText = '《$displayTitle》 · 第 ${sheetIndex + 1} 页';
-    final hasMarginRoom = metrics.innerFrameRect.top >= 26.0;
+    // The colophon stays in the Heaven margin, so the text rows start on the
+    // first ruled row and every row the Paper Heart shows is a row it holds.
     final colophonTop = math.max(0.0, metrics.innerFrameRect.top - 26.0);
+    final colophonHeight = math.min(24.0, metrics.innerFrameRect.top - colophonTop);
 
     return Stack(
       fit: StackFit.expand,
@@ -119,7 +112,7 @@ class EditorTextSheetView extends StatelessWidget {
           top: colophonTop,
           left: 0,
           right: 0,
-          height: 24.0,
+          height: colophonHeight,
           child: Padding(
             padding: EdgeInsets.only(left: horizontalLeft, right: horizontalRight),
             child: Align(
@@ -139,29 +132,38 @@ class EditorTextSheetView extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
-          top: metrics.innerFrameRect.top,
-          left: 0,
-          right: 0,
-          height: metrics.innerFrameRect.height,
-          child: ClipRect(
-            key: const Key('editor_paper_heart_viewport_clip'),
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              padding: EdgeInsets.only(top: hasMarginRoom ? 0.0 : 8.0),
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: horizontalLeft,
-                  right: horizontalRight,
-                ),
-                child: _buildTextEditor(
-                  placeholder: '续写素笺... Continue writing...',
-                ),
-              ),
+        _buildPaperHeart(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: horizontalLeft,
+              right: horizontalRight,
+            ),
+            child: _buildTextEditor(
+              placeholder: '续写素笺... Continue writing...',
             ),
           ),
         ),
       ],
+    );
+  }
+
+  /// The Paper Heart, clipping the sheet's rows. A sheet holds exactly the
+  /// rows ruled here ([SheetRowCapacity]), and its content never scrolls: even
+  /// while Auto-Spill waits for IME composition to finish, a drag cannot
+  /// move the letterhead or the text off the ruling.
+  Widget _buildPaperHeart({required Widget child}) {
+    return Positioned(
+      top: metrics.innerFrameRect.top,
+      left: 0,
+      right: 0,
+      height: metrics.innerFrameRect.height,
+      child: ClipRect(
+        key: const Key('editor_paper_heart_viewport_clip'),
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: child,
+        ),
+      ),
     );
   }
 
