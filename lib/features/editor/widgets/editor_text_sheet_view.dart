@@ -79,9 +79,7 @@ class EditorTextSheetView extends StatelessWidget {
                         right: horizontalRight,
                       ),
                       child: JournalLetterhead(
-                        entryDate: letterheadConfig.entryDate,
-                        mood: letterheadConfig.mood,
-                        weather: letterheadConfig.weather,
+                        data: letterheadConfig.data,
                         titleController: letterheadConfig.titleController,
                         onDateChanged: letterheadConfig.onDateChanged,
                         onMoodChanged: letterheadConfig.onMoodChanged,

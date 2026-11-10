@@ -14,6 +14,7 @@ import '../services/editor_settings_service.dart';
 import '../controllers/editor_media_binding.dart';
 import '../controllers/editor_pagination_handler.dart';
 import '../controllers/writing_focus_guard.dart';
+import '../models/letterhead_data.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
@@ -330,9 +331,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     final letterheadConfig = StationeryLetterheadConfig(
       letterheadKey: _letterheadKey,
       headerHeight: _headerHeight,
-      entryDate: _entryDate,
-      mood: _mood,
-      weather: _weather,
+      data: LetterheadData.resolve(entryDate: _entryDate, weather: _weather, mood: _mood),
       titleController: _titleController,
       onDateChanged: (selectedDate) {
         setState(() => _entryDate = selectedDate);

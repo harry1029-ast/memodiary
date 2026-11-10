@@ -20,12 +20,14 @@ class MoodOption {
 @immutable
 class WeatherOption {
   final String value;
+  final String emoji;
   final IconData icon;
   final String label;
   final String subtitle;
 
   const WeatherOption({
     required this.value,
+    required this.emoji,
     required this.icon,
     required this.label,
     required this.subtitle,
@@ -34,15 +36,44 @@ class WeatherOption {
 
 /// Date formatting and solar term helpers for the journal letterhead
 abstract final class JournalLetterheadUtils {
+  /// Weekday names for date line 1 (`周一` ... `周日`), indexed by `DateTime.weekday - 1`.
   static const List<String> chineseWeekdays = [
-    '星期一',
-    '星期二',
-    '星期三',
-    '星期四',
-    '星期五',
-    '星期六',
-    '星期日',
+    '周一',
+    '周二',
+    '周三',
+    '周四',
+    '周五',
+    '周六',
+    '周日',
   ];
+
+  static const List<MoodOption> moodOptions = [
+    MoodOption(value: 1, emoji: '😢', label: '沉郁', subtitle: 'Down'),
+    MoodOption(value: 2, emoji: '🙁', label: '倦怠', subtitle: 'Tired'),
+    MoodOption(value: 3, emoji: '😐', label: '静穆', subtitle: 'Calm'),
+    MoodOption(value: 4, emoji: '🙂', label: '怡然', subtitle: 'Happy'),
+    MoodOption(value: 5, emoji: '😄', label: '欢欣', subtitle: 'Great'),
+  ];
+
+  static const List<WeatherOption> weatherOptions = [
+    WeatherOption(value: 'sunny', emoji: '☀️', icon: Icons.wb_sunny_outlined, label: '晴明', subtitle: 'Sunny'),
+    WeatherOption(value: 'cloudy', emoji: '☁️', icon: Icons.cloud_outlined, label: '阴翳', subtitle: 'Cloudy'),
+    WeatherOption(value: 'rainy', emoji: '🌧️', icon: Icons.water_drop_outlined, label: '润雨', subtitle: 'Rainy'),
+    WeatherOption(value: 'windy', emoji: '🍃', icon: Icons.air_outlined, label: '朔风', subtitle: 'Windy'),
+    WeatherOption(value: 'snowy', emoji: '❄️', icon: Icons.ac_unit_outlined, label: '凝雪', subtitle: 'Snowy'),
+  ];
+
+  /// The mood for [moodValue], defaulting to 怡然 when unset or unknown.
+  static MoodOption resolveMood(int? moodValue) => moodOptions.firstWhere(
+        (option) => option.value == moodValue,
+        orElse: () => moodOptions[3],
+      );
+
+  /// The weather for [weatherValue], defaulting to 晴明 when unset or unknown.
+  static WeatherOption resolveWeather(String? weatherValue) => weatherOptions.firstWhere(
+        (option) => option.value == weatherValue,
+        orElse: () => weatherOptions.first,
+      );
 
   /// Deterministic approximation of 24 Chinese solar terms (节气)
   static String calculateSolarTerm(DateTime date) {
