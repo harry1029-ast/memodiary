@@ -7,11 +7,12 @@ import '../models/mount_marker_clipboard.dart';
 import 'sheet_media_item.dart';
 
 export 'sheet_media_item.dart';
+export 'sheet_row_capacity.dart';
 
-/// Row capacity limits for stationery sheet viewports.
-const int kOpeningSheetRowCapacity = 10;
-const int kContinuationSheetRowCapacity = 14;
+/// Rows the Journal Letterhead occupies at the top of the opening sheet.
 const int kJournalLetterheadReservedRows = 4;
+
+/// Rows of a Thread-Bound Folio leaf, and the most a sheet's card shows.
 const int kStandardFolioRowsPerLeaf = 14;
 
 /// Supported media types for full-sheet ephemera mounts.
@@ -92,9 +93,6 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   /// Whether this sheet has reached the maximum allowed attachment capacity.
   bool get isAtMediaCapacity => mediaAttachments.length >= kMountCapacity;
 
-  /// Maximum integer visual row capacity on this stationery sheet.
-  int get rowCapacity;
-
   /// The active Quill document for this sheet.
   Document get document => controller.document;
 
@@ -149,12 +147,9 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   }
 }
 
-/// Sheet 1: The opening stationery sheet capped at 10 integer body rows
-/// beneath the 4-row interactive Journal Letterhead.
+/// Sheet 1: The opening stationery sheet, holding the rows that fit beneath
+/// the 4-row interactive Journal Letterhead ([SheetRowCapacity.openingRows]).
 class OpeningSheet extends TextStationerySheet {
-  static const int kRowCapacity = kOpeningSheetRowCapacity;
-  static const int kLetterheadRows = kJournalLetterheadReservedRows;
-
   OpeningSheet({
     required super.sheetIndex,
     required super.controller,
@@ -192,9 +187,6 @@ class OpeningSheet extends TextStationerySheet {
   }
 
   @override
-  int get rowCapacity => kRowCapacity;
-
-  @override
   OpeningSheet copyWithIndex(int newIndex) {
     return OpeningSheet(
       sheetIndex: newIndex,
@@ -206,11 +198,9 @@ class OpeningSheet extends TextStationerySheet {
   }
 }
 
-/// Sheet 2+: Continuation stationery sheets capped at 14 integer body rows
-/// beneath a compact running colophon header.
+/// Sheet 2+: Continuation stationery sheets beneath a compact running colophon
+/// header, holding every row that fits ([SheetRowCapacity.continuationRows]).
 class ContinuationSheet extends TextStationerySheet {
-  static const int kRowCapacity = kContinuationSheetRowCapacity;
-
   ContinuationSheet({
     required super.sheetIndex,
     required super.controller,
@@ -246,9 +236,6 @@ class ContinuationSheet extends TextStationerySheet {
       hasTrailingSoftNewline: hasTrailingSoftNewline,
     );
   }
-
-  @override
-  int get rowCapacity => kRowCapacity;
 
   @override
   ContinuationSheet copyWithIndex(int newIndex) {

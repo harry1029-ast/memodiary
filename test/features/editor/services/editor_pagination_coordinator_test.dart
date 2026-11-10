@@ -20,7 +20,8 @@ void main() {
 
       final opening = coordinator.sheets.first as OpeningSheet;
       expect(opening.isEmpty, isTrue);
-      expect(opening.rowCapacity, equals(10));
+      // Before its first layout the editor assumes a full 14-row card.
+      expect(coordinator.rowCapacity.of(opening), equals(10));
 
       final (deltaJson, plainText) = coordinator.reSynthesize();
       expect(plainText, isEmpty);
@@ -92,13 +93,30 @@ void main() {
       );
 
       // Sync to a wide desktop/tablet width where far fewer wrapped lines are needed
-      coordinator.syncLayoutMetrics(contentWidth: 720.0, lineStridePx: 24.0);
+      coordinator.syncLayoutMetrics(contentWidth: 720.0, lineStridePx: 24.0, visibleRows: 14);
       expect(coordinator.totalSheets, lessThan(fallbackSheetCount));
       final updatedOpening = coordinator.sheets.first as OpeningSheet;
       expect(updatedOpening.controller.selection.baseOffset, equals(12));
 
       final (_, plainText) = coordinator.reSynthesize();
       expect(plainText, equals(longParagraph));
+      coordinator.dispose();
+    });
+
+    test('syncLayoutMetrics re-balances sheets when the ruled rows change at the same width and stride', () {
+      final coordinator = EditorPaginationCoordinator();
+      final delta = Delta()..insert([for (var line = 1; line <= 10; line++) '第$line行\n'].join());
+      coordinator.initializeFromDelta(jsonEncode(delta.toJson()));
+      coordinator.syncLayoutMetrics(contentWidth: 280.0, lineStridePx: 29.0, visibleRows: 14);
+      expect(coordinator.totalSheets, equals(1));
+
+      // A shorter desk rules 13 rows: the opening sheet keeps 9 body rows.
+      coordinator.syncLayoutMetrics(contentWidth: 280.0, lineStridePx: 29.0, visibleRows: 13);
+      expect(coordinator.totalSheets, equals(2));
+      expect((coordinator.sheets[1] as TextStationerySheet).plainText, equals('第10行\n'));
+
+      coordinator.syncLayoutMetrics(contentWidth: 280.0, lineStridePx: 29.0, visibleRows: 14);
+      expect(coordinator.totalSheets, equals(1));
       coordinator.dispose();
     });
 
@@ -243,7 +261,7 @@ void main() {
       expect(didMount, isNull);
       expect(coordinator.stagedItems, hasLength(4));
 
-      coordinator.syncLayoutMetrics(contentWidth: 120, lineStridePx: 28);
+      coordinator.syncLayoutMetrics(contentWidth: 120, lineStridePx: 28, visibleRows: 14);
 
       expect(didMount, isTrue);
       expect(coordinator.stagedItems, isEmpty);

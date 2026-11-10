@@ -63,6 +63,7 @@ class StationerySheetSpillMutator {
     required TemplateBackgroundType backgroundType,
     required double? contentWidth,
     required double? lineStridePx,
+    required SheetRowCapacity rowCapacity,
     required bool Function(int index) isSheetComposing,
   }) {
     if (sheetIndex < 0 || sheetIndex >= sheets.length) return null;
@@ -78,11 +79,12 @@ class StationerySheetSpillMutator {
       backgroundType: backgroundType,
       lineStridePx: lineStridePx,
     );
-    if (currentRows <= sheet.rowCapacity) return null;
+    final sheetCapacity = rowCapacity.of(sheet);
+    if (currentRows <= sheetCapacity) return null;
 
     final overflow = StationeryDeltaSplitter.extractOverflow(
       sheetDelta: sheet.delta,
-      rowCapacity: sheet.rowCapacity,
+      rowCapacity: sheetCapacity,
       typography: typography,
       contentWidth: contentWidth,
       backgroundType: backgroundType,
@@ -140,6 +142,7 @@ class StationerySheetSpillMutator {
       backgroundType: backgroundType,
       contentWidth: contentWidth,
       lineStridePx: lineStridePx,
+      rowCapacity: rowCapacity,
       isSheetComposing: isSheetComposing,
     );
 
@@ -170,7 +173,7 @@ class StationerySheetSpillMutator {
   }
 
   /// Performs Spill-Back from [sheetIndex] onto its nearest preceding text sheet,
-  /// re-spilling excess lines so `precedingSheet.rowCapacity` is never exceeded.
+  /// re-spilling excess lines so the preceding sheet's [rowCapacity] is never exceeded.
   static ({
     SpillBackResult result,
     int activeSheetIndex,
@@ -182,6 +185,7 @@ class StationerySheetSpillMutator {
     required TemplateBackgroundType backgroundType,
     required double? contentWidth,
     required double? lineStridePx,
+    required SheetRowCapacity rowCapacity,
     required bool Function(int index) isSheetComposing,
   }) {
     if (sheetIndex <= 0 || sheetIndex >= sheets.length) return null;
@@ -227,7 +231,7 @@ class StationerySheetSpillMutator {
       backgroundType: backgroundType,
       lineStridePx: lineStridePx,
     );
-    final availableRows = math.max(0, precedingSheet.rowCapacity - precedingRows);
+    final availableRows = math.max(0, rowCapacity.of(precedingSheet) - precedingRows);
 
     if (availableRows > 0) {
       final merged = StationeryDeltaSplitter.mergeDeltaSlices(
@@ -252,6 +256,7 @@ class StationerySheetSpillMutator {
         backgroundType: backgroundType,
         contentWidth: contentWidth,
         lineStridePx: lineStridePx,
+        rowCapacity: rowCapacity,
         isSheetComposing: isSheetComposing,
       );
 

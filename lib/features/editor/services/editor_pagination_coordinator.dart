@@ -33,6 +33,8 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   TemplateStyle templateStyle;
   double? contentWidth;
   double? lineStridePx;
+  /// The rows each sheet holds, following the rows ruled in its Paper Heart.
+  SheetRowCapacity rowCapacity;
   bool isImeComposing = false;
   ValueChanged<AutoSpillResult>? onAutoSpill;
 
@@ -52,6 +54,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     ),
     this.contentWidth,
     this.lineStridePx,
+    this.rowCapacity = SheetRowCapacity.folioLeaf,
   });
 
   /// Media mutations (collect, mount, legacy ephemera sheet removal).
@@ -144,6 +147,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       contentWidth: contentWidth,
       templateStyle: templateStyle,
       lineStridePx: lineStridePx,
+      rowCapacity: rowCapacity,
     );
 
     _sheets.addAll(partition.sheets);
@@ -182,11 +186,13 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
   List<SheetMediaItem> _knownItems() => _mounts.knownItems(_sheets, _stagedItems);
 
-  /// Synchronizes measured Paper Heart text width and stride outside `build()`,
-  /// re-balancing sheets cleanly if dimensions changed significantly while not composing.
+  /// Synchronizes measured Paper Heart text width, stride and [visibleRows]
+  /// (the rows ruled inside it) outside `build()`, re-balancing sheets cleanly
+  /// if they changed while not composing.
   void syncLayoutMetrics({
     required double contentWidth,
     required double lineStridePx,
+    required int visibleRows,
   }) {
     if (_isDisposed) return;
 
@@ -194,9 +200,11 @@ class EditorPaginationCoordinator extends ChangeNotifier {
         (this.contentWidth! - contentWidth).abs() > 1.0;
     final strideChanged = this.lineStridePx == null ||
         (this.lineStridePx! - lineStridePx).abs() > 0.5;
+    final capacityChanged = rowCapacity.visibleRows != visibleRows;
 
     this.contentWidth = contentWidth;
     this.lineStridePx = lineStridePx;
+    rowCapacity = SheetRowCapacity(visibleRows: visibleRows);
 
     final onLegacyMountPass = _onLegacyMountPass;
     if (onLegacyMountPass != null) {
@@ -207,13 +215,8 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       return;
     }
 
-    if (!widthChanged && !strideChanged) return;
-    if (_sheets.isEmpty) return;
-    if (_sheets.length == 1 &&
-        _sheets.first is OpeningSheet &&
-        (_sheets.first as OpeningSheet).isEmpty) {
-      return;
-    }
+    if (!widthChanged && !strideChanged && !capacityChanged) return;
+    if (_sheets case [] || [OpeningSheet(isEmpty: true)]) return;
     if (_sheets.any((sheet) =>
         isSheetComposing(sheet.sheetIndex) ||
         (sheet is TextStationerySheet && sheet.focusNode.hasFocus))) {
@@ -228,6 +231,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       contentWidth: contentWidth,
       templateStyle: templateStyle,
       lineStridePx: lineStridePx,
+      rowCapacity: rowCapacity,
     );
     final partitioned = partition.sheets;
 
@@ -303,6 +307,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       backgroundType: templateStyle.type,
       contentWidth: contentWidth,
       lineStridePx: lineStridePx,
+      rowCapacity: rowCapacity,
       isSheetComposing: isSheetComposing,
     );
     if (outcome == null) return null;
@@ -324,6 +329,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       backgroundType: templateStyle.type,
       contentWidth: contentWidth,
       lineStridePx: lineStridePx,
+      rowCapacity: rowCapacity,
       isSheetComposing: isSheetComposing,
     );
     if (outcome == null) return null;
@@ -407,6 +413,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       contentWidth: contentWidth,
       templateStyle: templateStyle,
       lineStridePx: lineStridePx,
+      rowCapacity: rowCapacity,
     );
     _initialize(jsonEncode(mountedDelta.toJson()), media: allMedia);
     return true;

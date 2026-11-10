@@ -103,7 +103,8 @@ class EditorPaperCanvas extends StatelessWidget {
         final bool keyboardVisible = chrome.isKeyboardVisible;
         final canvasHeight = chrome.resolveRestingDeskHeight(visibleHeight);
 
-        // Bounded card canvas dimensions for integer-locked 14-row calculation
+        // Bounded card canvas, ruled with at most 14 rows; each sheet holds
+        // exactly the rows ruled here (SheetRowCapacity).
         final cardCanvasSize =
             Size(canvasWidth, math.max(380.0, math.min(canvasHeight, 420.0)));
         final metrics = StationeryLayoutCalculator.calculate(
@@ -176,6 +177,7 @@ class EditorPaperCanvas extends StatelessWidget {
           coordinator.syncLayoutMetrics(
             contentWidth: usableTextWidth,
             lineStridePx: activeRowHeight,
+            visibleRows: metrics.rowCount,
           );
         });
 

@@ -18,9 +18,10 @@ export 'sheet_mount_resolver.dart' show SheetMountResolver;
 class EditorDeltaPartitioner {
   const EditorDeltaPartitioner._();
 
-  /// Partitions [unifiedDelta] into a sequence of stationery sheets, mounting each
-  /// item of [media] on the sheet holding its mount marker and reporting the
-  /// unreferenced items (in [media] order) as staged.
+  /// Partitions [unifiedDelta] into a sequence of stationery sheets, each
+  /// holding the rows [rowCapacity] gives it, mounting each item of [media] on
+  /// the sheet holding its mount marker and reporting the unreferenced items
+  /// (in [media] order) as staged.
   static EditorPartition partition({
     required Delta unifiedDelta,
     List<SheetMediaItem> media = const [],
@@ -28,6 +29,7 @@ class EditorDeltaPartitioner {
     double? contentWidth,
     required TemplateStyle templateStyle,
     double? lineStridePx,
+    SheetRowCapacity rowCapacity = SheetRowCapacity.folioLeaf,
   }) {
     final sheets = <StationerySheetDescriptor>[];
     final blocks = extractContentBlocks(unifiedDelta);
@@ -40,7 +42,7 @@ class EditorDeltaPartitioner {
     }
 
     Delta currentTextDelta = Delta();
-    int currentBudget = kOpeningSheetRowCapacity;
+    int currentBudget = rowCapacity.openingRows;
     int currentUsedRows = 0;
     bool currentSoftNewline = false;
 
@@ -61,7 +63,7 @@ class EditorDeltaPartitioner {
         ));
       }
       currentTextDelta = Delta();
-      currentBudget = kContinuationSheetRowCapacity;
+      currentBudget = rowCapacity.continuationRows;
       currentUsedRows = 0;
       currentSoftNewline = false;
     }
@@ -206,6 +208,7 @@ class EditorDeltaPartitioner {
     double? contentWidth,
     required TemplateStyle templateStyle,
     double? lineStridePx,
+    SheetRowCapacity rowCapacity = SheetRowCapacity.folioLeaf,
   }) {
     final partitioned = partition(
       unifiedDelta: unifiedDelta,
@@ -214,6 +217,7 @@ class EditorDeltaPartitioner {
       contentWidth: contentWidth,
       templateStyle: templateStyle,
       lineStridePx: lineStridePx,
+      rowCapacity: rowCapacity,
     );
     try {
       final textSheets = partitioned.sheets.whereType<TextStationerySheet>().toList();
