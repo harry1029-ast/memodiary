@@ -52,8 +52,7 @@ void main() {
     expect(sheet.focusNode.hasFocus, isFalse);
     expect(inputCalls(tester), isNot(contains('TextInput.show')));
 
-    unmountTuckedPrint(tester, 'seeded_0');
-    await tester.pumpAndSettle();
+    await unmountTuckedPrint(tester, 'seeded_0');
 
     expect(tuckedPrintsFan, findsNothing);
     expect(sheet.focusNode.hasFocus, isFalse);

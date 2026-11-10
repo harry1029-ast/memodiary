@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -12,7 +10,6 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
 import 'package:memodiary/features/editor/widgets/desk_workstation/desk_space_budget.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
-import 'package:memodiary/features/editor/widgets/fullscreen_media_lightbox.dart';
 import 'package:memodiary/features/editor/widgets/paper_heart_metrics.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
@@ -42,44 +39,8 @@ void main() {
     if (tempDirectory.existsSync()) tempDirectory.deleteSync(recursive: true);
   });
 
-  /// Seeds an entry whose first passage carries [mounted] markers (`print_0` ...)
-  /// and [staged] attachments without markers (`staged_0` ...). [videoIds] are
-  /// attached as videos.
-  Future<void> seedEntry({int mounted = 0, int staged = 0, Set<String> videoIds = const {}}) async {
-    final mountedIds = [for (var index = 0; index < mounted; index++) 'print_$index'];
-    final stagedIds = [for (var index = 0; index < staged; index++) 'staged_$index'];
-    await database.into(database.entries).insert(
-          EntriesCompanion.insert(
-            id: _entryId,
-            notebookId: 'notebook_default',
-            templateId: 'template_minimalist_white',
-            title: const Value('江南雨景'),
-            contentDelta: jsonEncode([
-              {'insert': '雨巷。'},
-              for (final mediaId in mountedIds)
-                {
-                  'insert': {'mount': mediaId},
-                },
-              {'insert': '\n'},
-            ]),
-            plainText: '雨巷。',
-            entryDate: DateTime(2026, 11, 4, 21, 30),
-          ),
-        );
-    for (final mediaId in [...mountedIds, ...stagedIds]) {
-      final isVideo = videoIds.contains(mediaId);
-      final relativePath = isVideo ? 'media/$mediaId.mp4' : 'media/$mediaId.webp';
-      File('${tempDirectory.path}/$relativePath')
-        ..parent.createSync(recursive: true)
-        ..writeAsBytesSync(isVideo ? kValidMp4FtypBytes : kValid1x1PngBytes);
-      await database.attachMediaToEntry(
-        id: mediaId,
-        entryId: _entryId,
-        relativePath: relativePath,
-        mediaType: isVideo ? 'video' : 'image',
-      );
-    }
-  }
+  Future<void> seedEntry({int mounted = 0, int staged = 0, Set<String> videoIds = const {}}) =>
+      seedMountedEntry(database, tempDirectory, entryId: _entryId, mounted: mounted, staged: staged, videoIds: videoIds);
 
   Future<void> openEditor(WidgetTester tester) => pumpEntryEditorScreen(
         tester,
@@ -171,16 +132,6 @@ void main() {
       expect(find.bySemanticsLabel('本页夹页影札 2 枚，轻触展开'), findsOneWidget);
       await expectAccessibleTapTargets(tester, within: tuckedPrintsFan);
       semantics.dispose();
-    });
-
-    testWidgets('tapping the fan opens the mounted items in the lightbox', (tester) async {
-      await seedEntry(mounted: 2);
-      await openEditor(tester);
-
-      await tester.tap(tuckedPrintsFan);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(FullscreenMediaLightbox), findsOneWidget);
     });
 
     testWidgets('with the keyboard open the prints stay with the header band and the sheet', (tester) async {

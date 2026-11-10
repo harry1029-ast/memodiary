@@ -16,6 +16,10 @@ class TuckedPrint extends StatelessWidget {
   final double tiltInDegrees;
   final bool isPaperDark;
 
+  /// Size of the print: the resting size by default, larger in the fanned overlay.
+  final double width;
+  final double height;
+
   static const double kWidth = 40.0;
   static const double kHeight = 48.0;
 
@@ -29,6 +33,8 @@ class TuckedPrint extends StatelessWidget {
     required this.mediaSandboxService,
     required this.tiltInDegrees,
     this.isPaperDark = false,
+    this.width = kWidth,
+    this.height = kHeight,
   });
 
   @override
@@ -37,8 +43,8 @@ class TuckedPrint extends StatelessWidget {
     return Transform.rotate(
       angle: tiltInDegrees * math.pi / 180.0,
       child: SizedBox(
-        width: kWidth,
-        height: kHeight,
+        width: width,
+        height: height,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -66,13 +72,14 @@ class TuckedPrint extends StatelessWidget {
             ),
             if (item.mediaType == EphemeraMediaType.video)
               Positioned(
-                top: 7.0,
-                left: (kWidth - 13.0) / 2,
+                // Within the visible top at rest; centred on a full-face print.
+                top: height > kHeight ? (height - 13.0) / 2 : 7.0,
+                left: (width - 13.0) / 2,
                 child: _CinnabarPlayStamp(key: Key('tucked_print_play_${item.id}'), color: palette.cinnabar),
               ),
             Positioned(
               top: -4.0,
-              left: (kWidth - kWashiSize.width) / 2,
+              left: (width - kWashiSize.width) / 2,
               child: Transform.rotate(
                 angle: -2.0 * math.pi / 180.0,
                 child: Container(width: kWashiSize.width, height: kWashiSize.height, color: kWashi),
