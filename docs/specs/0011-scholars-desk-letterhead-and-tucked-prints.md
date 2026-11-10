@@ -61,7 +61,7 @@ The editor becomes a calmer, more tactile scholar's desk:
 15. As a diarist, I want the seal to update when I change the entry's date, so that it always matches the entry.
 16. As a diarist, I want tapping the seal to open the date and time picker, so that the seal also works as the date control.
 17. As a diarist, I want the first date line to read like "2026年11月6日 周五", so that the solar date is short enough to show in full.
-18. As a diarist, I want a second, muted date line with the lunar day and solar term (e.g. "九月廿六 · 立冬"), so that I see the classical calendar without crowding the solar date.
+18. As a diarist, I want a second, muted date line with the lunar day and solar term (e.g. "九月廿九 · 立冬"), so that I see the classical calendar without crowding the solar date.
 19. As a diarist, I want the date lines to be at least 13sp and never cut off with an ellipsis, so that the date is always legible.
 20. As a diarist on a narrow phone or with large text, I want the solar term dropped first when space runs out, so that the date itself is always shown.
 21. As a diarist, I want the title below the date lines to use the full width up to the charms, so that long titles wrap less.
