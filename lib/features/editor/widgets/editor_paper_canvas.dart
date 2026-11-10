@@ -11,6 +11,7 @@ import '../models/stationery_sheet_configs.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'desk_workstation/desk_space_budget.dart';
 import 'desk_workstation/desk_workstation_controller.dart';
+import 'desk_workstation/desk_palette.dart';
 import 'desk_workstation/walnut_desk_painter.dart';
 import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
@@ -31,7 +32,8 @@ import 'stationery_sheet_border_chrome.dart';
 /// resting desk height, so the software keyboard never resizes or moves it; the
 /// [KeyboardCaretLift] only lifts the desk far enough to keep the caret in view.
 class EditorPaperCanvas extends StatelessWidget {
-  static final WalnutDeskPainter _deskPainter = WalnutDeskPainter();
+  static final _walnutDesk = WalnutDeskPainter(palette: DeskPalette.walnut);
+  static final _ebonyDesk = WalnutDeskPainter(palette: DeskPalette.ebony);
 
   final StationerySheetThemeConfig themeConfig;
   final StationeryLetterheadConfig letterheadConfig;
@@ -186,7 +188,7 @@ class EditorPaperCanvas extends StatelessWidget {
 
         return CustomPaint(
           key: const Key('editor_walnut_desk'),
-          painter: _deskPainter,
+          painter: DeskPalette.of(context) == DeskPalette.ebony ? _ebonyDesk : _walnutDesk,
           child: ClipRect(
             // The desk keeps its resting height while the keyboard covers it,
             // so the lifted sheet is never clipped by its own page view.

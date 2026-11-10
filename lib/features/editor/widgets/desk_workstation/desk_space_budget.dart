@@ -19,11 +19,13 @@ import '../sheet_mount_strip.dart';
 ///
 /// Whether the workstation fits is an entry-wide, start-up decision, so it is
 /// judged against the sheet alone: strips come and go with page turns. Where a
-/// strip is shown the open handscroll may settle to [kClosedMinHeight] rather
-/// than cover the strip.
+/// strip is shown only the empty (closed) workstation settles to
+/// [kClosedMinHeight]; a handscroll with staged prints keeps [kStripOpenMinHeight]
+/// so each print stays above its caption bar.
 class DeskSpaceBudget {
   static const double kOpenMinHeight = 150.0;
   static const double kClosedMinHeight = 110.0;
+  static const double kStripOpenMinHeight = 130.0;
 
   /// Desk band above the sheet holding the page indicator.
   static const double kHeaderHeight = 30.0;
@@ -79,7 +81,11 @@ class DeskSpaceBudget {
     final minHeight = isHandscrollEmpty ? kClosedMinHeight : kOpenMinHeight;
     final roomBelowSheet = canvasHeight - kHeaderHeight - sheetHeight - kSheetGap;
     final workstationFits = roomBelowSheet >= minHeight;
-    final floorHeight = hasMountedItems ? kClosedMinHeight : minHeight;
+    // Staged prints need room above their 44pt caption bar, so a non-empty
+    // handscroll keeps [kStripOpenMinHeight] even beneath a strip.
+    final floorHeight = !hasMountedItems
+        ? minHeight
+        : (isHandscrollEmpty ? kClosedMinHeight : kStripOpenMinHeight);
     final showWorkstation = !isWorkstationCollapsed && !isKeyboardVisible;
 
     // The band beneath the sheet: its strip, or room for the seal.

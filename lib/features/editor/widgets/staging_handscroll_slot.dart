@@ -42,7 +42,8 @@ class StagingHandscrollSlot extends StatefulWidget {
   State<StagingHandscrollSlot> createState() => _StagingHandscrollSlotState();
 }
 
-class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with SingleTickerProviderStateMixin {
+class _StagingHandscrollSlotState extends State<StagingHandscrollSlot>
+    with SingleTickerProviderStateMixin {
   static const Duration kDissolveDuration = Duration(milliseconds: 450);
   static const double _kDragFeedbackSize = 72.0;
 
@@ -72,7 +73,8 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
       builder: (animatedContext, child) {
         final progress = Curves.easeIn.transform(_dissolve.value);
         return IgnorePointer(
-          ignoring: _dissolve.isAnimating || widget.revealStatus != BrushRevealStatus.settled,
+          ignoring: _dissolve.isAnimating ||
+              widget.revealStatus != BrushRevealStatus.settled,
           child: Opacity(
             key: Key('handscroll_dissolve_${widget.item.id}'),
             opacity: 1.0 - progress,
@@ -98,91 +100,91 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
     final isSettled = widget.revealStatus == BrushRevealStatus.settled;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      child: Stack(
-        fit: StackFit.expand,
+      child: Column(
         children: [
-          Semantics(
-            button: true,
-            label: '待贴第 $ordinal 影 · $kind，点按查看',
-            onTap: widget.onTap == null ? null : () => widget.onTap!(item),
-            excludeSemantics: true,
-            // Long-press lifts the print to drop it on the active sheet (same
-            // mount as 📌); a plain tap still opens the lightbox and a swipe
-            // still scrolls the handscroll.
-            child: LongPressDraggable<StagedMediaDragData>(
-              key: Key('handscroll_item_${item.id}'),
-              data: StagedMediaDragData(item.id),
-              maxSimultaneousDrags: 1,
-              feedback: SizedBox(
-                width: _kDragFeedbackSize,
-                height: _kDragFeedbackSize,
-                child: Material(
-                  elevation: 6.0,
-                  borderRadius: BorderRadius.circular(4.0),
-                  clipBehavior: Clip.antiAlias,
-                  child: KeepsakeThumbnail(
-                    item: item,
-                    mediaSandboxService: widget.mediaSandboxService,
-                    isPaperDark: isPaperDark,
-                    showPlayGlyph: false,
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: '待贴第 $ordinal 影 · $kind，点按查看',
+              onTap: widget.onTap == null ? null : () => widget.onTap!(item),
+              excludeSemantics: true,
+              // Long-press lifts the print to drop it on the active sheet (same
+              // mount as 📌); a plain tap still opens the lightbox and a swipe
+              // still scrolls the handscroll.
+              child: LongPressDraggable<StagedMediaDragData>(
+                key: Key('handscroll_item_${item.id}'),
+                data: StagedMediaDragData(item.id),
+                maxSimultaneousDrags: 1,
+                feedback: SizedBox(
+                  width: _kDragFeedbackSize,
+                  height: _kDragFeedbackSize,
+                  child: Material(
+                    elevation: 6.0,
+                    borderRadius: BorderRadius.circular(4.0),
+                    clipBehavior: Clip.antiAlias,
+                    child: KeepsakeThumbnail(
+                      item: item,
+                      mediaSandboxService: widget.mediaSandboxService,
+                      isPaperDark: isPaperDark,
+                      showPlayGlyph: false,
+                    ),
+                  ),
+                ),
+                childWhenDragging:
+                    const Opacity(opacity: 0.3, child: SizedBox.expand()),
+                child: GestureDetector(
+                  onTap: () => widget.onTap?.call(item),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4.0),
+                    child: BrushReveal(
+                      revealId: item.id,
+                      status: widget.revealStatus,
+                      isVideo: isVideo,
+                      onComplete: widget.onRevealComplete,
+                      seal: isVideo
+                          ? _CinnabarPlaySeal(
+                              key: Key('handscroll_video_seal_${item.id}'),
+                              color: cinnabar)
+                          : null,
+                      child: KeepsakeThumbnail(
+                        item: item,
+                        mediaSandboxService: widget.mediaSandboxService,
+                        isPaperDark: isPaperDark,
+                        showPlayGlyph: false,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              childWhenDragging: const Opacity(opacity: 0.3, child: SizedBox.expand()),
-              child: GestureDetector(
-              onTap: () => widget.onTap?.call(item),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(4.0),
-                child: BrushReveal(
-                  revealId: item.id,
-                  status: widget.revealStatus,
-                  isVideo: isVideo,
-                  onComplete: widget.onRevealComplete,
-                  seal: isVideo
-                      ? _CinnabarPlaySeal(key: Key('handscroll_video_seal_${item.id}'), color: cinnabar)
-                      : null,
-                  child: KeepsakeThumbnail(
-                    item: item,
-                    mediaSandboxService: widget.mediaSandboxService,
+            ),
+          ),
+          // 📌 and ✕ live in the caption bar under the print so the photo is
+          // never covered. They stay hidden until the Brush Reveal settles.
+          SizedBox(
+            key: Key('handscroll_caption_bar_${item.id}'),
+            height: DeskMediaControl.kExtent,
+            child: _SlotControlsFade(
+              isShown: isSettled,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  DeskMediaControl(
+                    key: Key('handscroll_mount_${item.id}'),
+                    icon: Icons.push_pin_outlined,
                     isPaperDark: isPaperDark,
-                    showPlayGlyph: false,
+                    semanticLabel:
+                        '贴至本页：待贴第 $ordinal 影 → 第 ${widget.activeSheetNumber} 页',
+                    onPressed: () => widget.onMount?.call(item),
                   ),
-                ),
-              ),
-              ),
-            ),
-          ),
-          // 📌 and ✕ float on the print's upper corners (the video seal holds the
-          // lower right), so the print keeps the slot's full height. They stay
-          // hidden until the Brush Reveal settles.
-          Positioned(
-            top: 0,
-            left: 0,
-            child: _SlotCornerControl(
-              isShown: isSettled,
-              child: DeskMediaControl(
-                key: Key('handscroll_mount_${item.id}'),
-                icon: Icons.push_pin_outlined,
-                isPaperDark: isPaperDark,
-                hasBackdrop: true,
-                semanticLabel: '贴至本页：待贴第 $ordinal 影 → 第 ${widget.activeSheetNumber} 页',
-                onPressed: () => widget.onMount?.call(item),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 0,
-            right: 0,
-            child: _SlotCornerControl(
-              isShown: isSettled,
-              child: DeskMediaControl(
-                key: Key('handscroll_erase_${item.id}'),
-                icon: Icons.close,
-                tone: DeskMediaControlTone.cinnabar,
-                isPaperDark: isPaperDark,
-                hasBackdrop: true,
-                semanticLabel: '舍弃待贴第 $ordinal 影 · $kind',
-                onPressed: _erase,
+                  DeskMediaControl(
+                    key: Key('handscroll_erase_${item.id}'),
+                    icon: Icons.close,
+                    tone: DeskMediaControlTone.cinnabar,
+                    isPaperDark: isPaperDark,
+                    semanticLabel: '舍弃待贴第 $ordinal 影 · $kind',
+                    onPressed: _erase,
+                  ),
+                ],
               ),
             ),
           ),
@@ -192,12 +194,12 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot> with Sing
   }
 }
 
-/// Fades a corner control in once its print has been revealed.
-class _SlotCornerControl extends StatelessWidget {
+/// Fades the caption-bar controls in once its print has been revealed.
+class _SlotControlsFade extends StatelessWidget {
   final bool isShown;
   final Widget child;
 
-  const _SlotCornerControl({required this.isShown, required this.child});
+  const _SlotControlsFade({required this.isShown, required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +228,8 @@ class _CinnabarPlaySeal extends StatelessWidget {
         borderRadius: BorderRadius.circular(3.0),
         boxShadow: const [BoxShadow(color: Color(0x33000000), blurRadius: 2.0)],
       ),
-      child: const Icon(Icons.play_arrow_rounded, size: 18, color: Color(0xFFFBF7EE)),
+      child: const Icon(Icons.play_arrow_rounded,
+          size: 18, color: Color(0xFFFBF7EE)),
     );
   }
 }

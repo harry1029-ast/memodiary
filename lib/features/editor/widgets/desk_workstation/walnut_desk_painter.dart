@@ -1,7 +1,9 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
-/// Paints the dark walnut desk top and, when [matInsets] is given, the woven
+import 'desk_palette.dart';
+
+/// Paints the scholar's desk top (walnut or ebony per [palette]) and, when [matInsets] is given, the woven
 /// bamboo mat runner with its antique brass corner inlays. The editor canvas
 /// paints the desk surface once beneath everything; the Desk Workstation paints
 /// only its mat on top ([paintsDesk] false) so the two read as one desk. The
@@ -15,11 +17,11 @@ class WalnutDeskPainter extends CustomPainter {
   /// Whether to paint the walnut surface and its grain beneath the mat.
   final bool paintsDesk;
 
-  WalnutDeskPainter({this.matInsets, this.paintsDesk = true});
+  /// Fixed colours chosen by the app's brightness, never by the template.
+  final DeskPalette palette;
 
-  static const Color kWalnut = Color(0xFF211A14);
-  static const Color kMat = Color(0xFF241D16);
-  static const Color kBrass = Color(0x8CD4AF37);
+  WalnutDeskPainter({required this.palette, this.matInsets, this.paintsDesk = true});
+
 
   ui.Picture? _picture;
   Size? _recordedSize;
@@ -45,20 +47,20 @@ class WalnutDeskPainter extends CustomPainter {
 
   void _recordDesk(Canvas canvas, Rect deskRect) {
     final size = deskRect.size;
-    canvas.drawRect(deskRect, Paint()..color = kWalnut);
+    canvas.drawRect(deskRect, Paint()..color = palette.base);
     canvas.drawRect(
       deskRect,
       Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(0.0, -0.3),
+        ..shader = RadialGradient(
+          center: const Alignment(0.0, -0.3),
           radius: 1.1,
-          colors: [Color(0x17FFE8B9), Color(0xB80F0B08)],
+          colors: [palette.highlight, palette.vignette],
         ).createShader(deskRect),
     );
 
     // Long walnut grain running the width of the desk.
     final grainPaint = Paint()
-      ..color = const Color(0x29000000)
+      ..color = palette.grain
       ..strokeWidth = 1.0;
     for (double grainY = 6.0; grainY < size.height; grainY += 13.0) {
       canvas.drawLine(Offset(0, grainY), Offset(size.width, grainY + 1.5), grainPaint);
@@ -74,19 +76,19 @@ class WalnutDeskPainter extends CustomPainter {
         ..color = const Color(0x80000000)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0),
     );
-    canvas.drawRRect(matShape, Paint()..color = kMat);
+    canvas.drawRRect(matShape, Paint()..color = palette.mat);
 
     canvas.save();
     canvas.clipRRect(matShape);
     // Horizontal bamboo slats.
-    final slatLight = Paint()..color = const Color(0x0DD4AF37);
-    final slatShadow = Paint()..color = const Color(0x38000000);
+    final slatLight = Paint()..color = palette.slatLight;
+    final slatShadow = Paint()..color = palette.slatShadow;
     for (double slatY = matRect.top; slatY < matRect.bottom; slatY += 6.0) {
       canvas.drawRect(Rect.fromLTWH(matRect.left, slatY, matRect.width, 3.0), slatLight);
       canvas.drawRect(Rect.fromLTWH(matRect.left, slatY + 3.0, matRect.width, 3.0), slatShadow);
     }
     // Vertical binding threads.
-    final threadPaint = Paint()..color = const Color(0x40000000);
+    final threadPaint = Paint()..color = palette.thread;
     for (double threadX = matRect.left + 18.0; threadX < matRect.right; threadX += 20.0) {
       canvas.drawRect(Rect.fromLTWH(threadX, matRect.top, 2.0, matRect.height), threadPaint);
     }
@@ -96,7 +98,7 @@ class WalnutDeskPainter extends CustomPainter {
       matShape,
       Paint()
         ..style = PaintingStyle.stroke
-        ..color = const Color(0x598C6D46)
+        ..color = palette.matRim
         ..strokeWidth = 1.0,
     );
     _recordBrassCorners(canvas, matRect.deflate(4.0));
@@ -105,7 +107,7 @@ class WalnutDeskPainter extends CustomPainter {
   void _recordBrassCorners(Canvas canvas, Rect cornerRect) {
     const arm = 10.0;
     final brassPaint = Paint()
-      ..color = kBrass
+      ..color = palette.brass
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     final corners = [
@@ -125,5 +127,5 @@ class WalnutDeskPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(WalnutDeskPainter oldDelegate) =>
-      oldDelegate.matInsets != matInsets || oldDelegate.paintsDesk != paintsDesk;
+      oldDelegate.palette != palette || oldDelegate.matInsets != matInsets || oldDelegate.paintsDesk != paintsDesk;
 }
