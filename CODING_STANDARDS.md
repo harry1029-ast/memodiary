@@ -106,6 +106,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
   - Pure-Dart cryptographic loops (PBKDF2) must support configurable low iteration counts in unit test configurations (e.g. `iterations: 1000` or `2000`) while defaulting to $200,000$ in production.
 - **Scrollable Sheet Tap Assurance**: When writing widget tests that interact with elements inside scrollable modal bottom sheets, bottom drawers, or scroll views (`SingleChildScrollView`, `ListView`), precede interactive taps with `await tester.ensureVisible(finder);` (or `WidgetTesterScrollHelpers.tapVisible`) to prevent offscreen coordinate warnings and hit-test misses on standard headless viewports ($800 \times 600$).
 - **Interactive UI Mutation over Bare Callback Dispatch**: Widget tests for interactive modal sheets, sliders, dropdowns, and selection chips must assert on the **resulting visual UI state** (e.g. active highlight border, checkmark icon, updated slider value label) while the component remains open, not merely verify that an event callback was invoked. Testing only callback dispatch masks modal route state-isolation bugs.
+- **Layout Tests Beyond the Reference Phone**: Layout and keyboard-chrome tests cover a short viewport (desk height under 420dp, e.g. landscape) and the largest clamped text scale, not only the 360×780 reference phone. A single viewport hides clamp-dependent reflow (e.g. hiding the Writing Dock resizing the Stationery Sheet) and fixed-row overflows (e.g. the Journal Letterhead snapping to five rows).
 
 ---
 

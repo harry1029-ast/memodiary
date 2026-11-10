@@ -292,6 +292,49 @@ void main() {
             'Found:\n${violations.join('\n')}',
       );
     });
+
+    test('lib/ does not force-unwrap optional widget callbacks outside grandfathered files', () {
+      // A `!` on an optional `onX` callback crashes whenever a caller omits it
+      // (SPEC-011: EditorDeskMediaArea). Make the callback required, or guard
+      // it with a null check and a typed local. Files below predate this audit.
+      const grandfatheredCallbackUnwraps = <String>{
+        'lib/features/timeline/widgets/time_capsule_card.dart',
+        'lib/features/timeline/widgets/folio/folio_photo_sleeve_modal.dart',
+        'lib/features/import_export/widgets/backup_dialogs.dart',
+        'lib/features/albums/widgets/album_collection_card.dart',
+        'lib/features/albums/widgets/interactive_canvas/draggable_overlay_item.dart',
+        'lib/features/albums/widgets/interactive_canvas/album_page_canvas.dart',
+        'lib/features/albums/widgets/studio_drawers/add_elements_drawer.dart',
+        'lib/features/albums/screens/album_book_overview_screen.dart',
+        'lib/features/albums/widgets/interactive_canvas/interactive_photo_slot.dart',
+        'lib/features/editor/widgets/editor_paper_canvas.dart',
+        'lib/features/editor/widgets/staging_handscroll_slot.dart',
+        'lib/features/editor/widgets/editor_desk_media_area.dart',
+        'lib/features/search/screens/search_screen.dart',
+        'lib/features/editor/widgets/editor_toolbar.dart',
+        'lib/features/editor/widgets/writing_dock.dart',
+      };
+      final callbackUnwrapRegex = RegExp(r'\bon[A-Z][A-Za-z]*!');
+
+      final violations = <String>[];
+      for (final file in libDir.listSync(recursive: true).whereType<File>()) {
+        if (!file.path.endsWith('.dart') || file.path.endsWith('.g.dart')) continue;
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        if (grandfatheredCallbackUnwraps.contains(relPath)) continue;
+        final lines = file.readAsLinesSync();
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+          if (callbackUnwrapRegex.hasMatch(lines[lineIndex])) {
+            violations.add('$relPath:${lineIndex + 1}: ${lines[lineIndex].trim()}');
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Force-unwrapping an optional `onX` callback crashes when it is omitted. '
+            'Make it required, or null-check it. Found:\n${violations.join('\n')}',
+      );
+    });
   });
 }
-

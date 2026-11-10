@@ -7,6 +7,20 @@ set -e
 # Clean up Git worktree environment variables that break Flutter SDK's internal version resolution
 unset GIT_DIR GIT_WORK_TREE
 
+# Implementer worktrees must sit on the integration branch (latest spec-* branch), not on main.
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+case "$BRANCH" in
+  worktree-agent-*)
+    SPEC_BRANCH="$(git for-each-ref --sort=-committerdate --count=1 --format='%(refname:short)' 'refs/heads/spec-*')"
+    if [ -n "$SPEC_BRANCH" ] && [ -n "$(git rev-list main.."$SPEC_BRANCH" 2>/dev/null | head -1)" ]; then
+      if [ "$(git merge-base HEAD "$SPEC_BRANCH")" = "$(git merge-base HEAD main)" ]; then
+        echo "[Pre-commit Guardrail] Error: $BRANCH is based on main, not on $SPEC_BRANCH. Run: git reset --hard $SPEC_BRANCH (before editing)." >&2
+        exit 1
+      fi
+    fi
+    ;;
+esac
+
 # Resolve flutter binary
 if command -v flutter >/dev/null 2>&1; then
   FLUTTER_BIN="flutter"
