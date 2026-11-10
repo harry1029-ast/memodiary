@@ -42,7 +42,7 @@ class LetterheadCharm extends StatelessWidget {
           child: Center(
             child: Container(
               key: Key(keyPrefix),
-              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
               decoration: BoxDecoration(
                 color: tokens.ricePaper.withValues(alpha: 0.9),
                 border: Border.all(color: tokens.cinnabar.withValues(alpha: 0.3)),

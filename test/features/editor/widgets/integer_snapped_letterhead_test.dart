@@ -100,7 +100,7 @@ void main() {
       expect(actualPaddingBottom, closeTo(5.1, 0.001));
     });
 
-    testWidgets('handles title expansion and multi-line wrapping with integer row growth', (widgetTester) async {
+    testWidgets('a letterhead is exactly four rows and a long title never grows it', (widgetTester) async {
       final titleController = TextEditingController(text: 'Short Title');
 
       await widgetTester.pumpWidget(
@@ -111,7 +111,9 @@ void main() {
                 width: 480.0,
                 child: IntegerSnappedLetterhead(
                   lineStridePx: 24.0,
+                  minRows: 4,
                   child: JournalLetterhead(
+                    rowHeight: 24.0,
                     data: LetterheadData.resolve(
                       entryDate: DateTime(2026, 11, 2),
                       mood: 3,
@@ -130,22 +132,16 @@ void main() {
       );
 
       await widgetTester.pumpAndSettle();
+      expect(widgetTester.getSize(find.byType(IntegerSnappedLetterhead)).height, equals(96.0));
 
-      final initialSize = widgetTester.getSize(find.byType(IntegerSnappedLetterhead));
-      // Outer layout height must be an exact integer multiple of 24.0
-      expect(initialSize.height % 24.0, equals(0.0));
-
-      // Enter a very long multi-line title causing wrapping
       await widgetTester.enterText(
         find.byType(TextField),
         '九秋风露越窑开，夺得千峰翠色来。好向书窗闲展玩，试将心事付素笺。极目平芜远树齐，暮云收尽暮天低。',
       );
       await widgetTester.pumpAndSettle();
 
-      final expandedSize = widgetTester.getSize(find.byType(IntegerSnappedLetterhead));
-      // Outer layout height must expand while strictly maintaining integer stride
-      expect(expandedSize.height, greaterThanOrEqualTo(initialSize.height));
-      expect(expandedSize.height % 24.0, equals(0.0));
+      expect(widgetTester.takeException(), isNull);
+      expect(widgetTester.getSize(find.byType(IntegerSnappedLetterhead)).height, equals(96.0));
     });
 
     testWidgets('updates snapped layout height dynamically when lineStridePx changes', (widgetTester) async {

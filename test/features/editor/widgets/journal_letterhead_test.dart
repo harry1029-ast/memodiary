@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/models/letterhead_data.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
+import 'package:memodiary/features/editor/widgets/lunar_date_seal.dart';
+
+import '../../../helpers/real_cjk_font.dart';
 
 void main() {
   group('JournalLetterhead Widget Tests', () {
@@ -25,6 +28,7 @@ void main() {
     Widget buildTestWidget({
       double width = 360,
       double textScale = 1.0,
+      double rowHeight = 24,
       DateTime? entryDate,
       ValueChanged<DateTime>? onDateChanged,
       ValueChanged<int?>? onMoodChanged,
@@ -40,6 +44,7 @@ void main() {
               child: SizedBox(
                 width: width,
                 child: JournalLetterhead(
+                  rowHeight: rowHeight,
                   data: LetterheadData.resolve(
                     entryDate: entryDate ?? testDate,
                     mood: selectedMood,
@@ -130,6 +135,85 @@ void main() {
       final renderedHeight = tester.getSize(find.text('2026年11月10日 周二')).height;
       // 13sp * 1.3 clamp * ~1.4 line height; an unclamped 3.0 scale would exceed 54.
       expect(renderedHeight, lessThan(34));
+    });
+
+    group('four-row spacing', () {
+      // Row heights the app allows: 12sp + 6 up to the largest template font.
+      const rowHeights = [18.0, 24.0, 27.0, 48.0];
+
+      for (final rowHeight in rowHeights) {
+        for (final textScale in [1.0, 1.3, 3.0]) {
+          testWidgets('is exactly 4 rows with nothing overlapping at row $rowHeight, scale $textScale',
+              (tester) async {
+            await tester.pumpWidget(buildTestWidget(rowHeight: rowHeight, textScale: textScale));
+            await tester.pumpAndSettle();
+
+            expect(tester.takeException(), isNull);
+            final box = tester.getRect(find.byType(JournalLetterhead));
+            expect(box.height, equals(4 * rowHeight));
+
+            final title = tester.getRect(find.byType(TextField));
+            final solar = tester.getRect(find.byKey(const Key('letterhead_solar_line')));
+            final lunar = tester.getRect(find.byKey(const Key('letterhead_lunar_line')));
+            // The title sits on the bottom row; the date lines stay above it.
+            expect(title.bottom, closeTo(box.bottom, 0.5));
+            expect(title.bottom, lessThanOrEqualTo(box.bottom + 0.01));
+            expect(solar.top, greaterThanOrEqualTo(box.top - 0.01));
+            expect(solar.bottom, lessThanOrEqualTo(lunar.top + 0.01));
+            expect(lunar.bottom, lessThanOrEqualTo(title.top + 0.01));
+            if (title.height <= rowHeight) {
+              expect(title.top, greaterThanOrEqualTo(box.bottom - rowHeight - 0.01));
+            }
+            for (final charm in const ['letterhead_weather_charm', 'letterhead_mood_charm']) {
+              final charmRect = tester.getRect(find.byKey(Key(charm)));
+              expect(charmRect.top, greaterThanOrEqualTo(box.top - 0.01), reason: charm);
+              expect(charmRect.bottom, lessThanOrEqualTo(box.bottom + 0.01), reason: charm);
+            }
+          });
+        }
+      }
+
+      testWidgets('the title is larger and bolder than both muted date lines', (tester) async {
+        await tester.pumpWidget(buildTestWidget());
+        await tester.pumpAndSettle();
+
+        final titleStyle = tester.widget<TextField>(find.byType(TextField)).style!;
+        final solarStyle = tester.widget<Text>(find.byKey(const Key('letterhead_solar_line'))).style!;
+        final lunarStyle = tester.widget<Text>(find.byKey(const Key('letterhead_lunar_line'))).style!;
+        expect(titleStyle.fontSize!, greaterThanOrEqualTo(solarStyle.fontSize! + 5));
+        expect(titleStyle.fontSize!, greaterThanOrEqualTo(lunarStyle.fontSize! + 5));
+        expect(titleStyle.fontWeight, FontWeight.bold);
+        expect(solarStyle.fontSize, lessThanOrEqualTo(14));
+        expect(lunarStyle.fontSize, lessThanOrEqualTo(14));
+      });
+
+      testWidgets('about 12px separates the seal from the text', (tester) async {
+        await tester.pumpWidget(buildTestWidget());
+        await tester.pumpAndSettle();
+
+        final sealRight = tester.getCenter(find.byKey(const Key('letterhead_date_seal'))).dx +
+            LunarDateSeal.sealSize / 2;
+        final textLeft = tester.getTopLeft(find.byKey(const Key('letterhead_solar_line'))).dx;
+        expect(textLeft - sealRight, closeTo(12, 1.0));
+        expect(tester.getTopLeft(find.byType(TextField)).dx, closeTo(textLeft, 0.5));
+      });
+
+      // At 360dp the editor leaves the letterhead about 278px between its paper margins.
+      testWidgets('shows the solar date whole and unscaled in 278px in a real CJK font',
+          skip: realCjkFontPath == null, (tester) async {
+        await loadRealCjkFont(tester, InkDiaryTheme.fontKaiti);
+
+        await tester.pumpWidget(buildTestWidget(width: 278));
+        await tester.pumpAndSettle();
+
+        final solar = find.byKey(const Key('letterhead_solar_line'));
+        // getRect applies the FittedBox transform, so a scaled line is narrower
+        // than its laid-out size.
+        expect(tester.getRect(solar).width, closeTo(tester.getSize(solar).width, 0.01));
+        // Proves the real font is in use: Ahem would be 14 * 13 = 182px wide.
+        expect(tester.getSize(solar).width, lessThan(14 * 13));
+        expect(find.byKey(const Key('letterhead_lunar_line')), findsOneWidget);
+      });
     });
 
     testWidgets('typing into title field updates controller', (tester) async {
