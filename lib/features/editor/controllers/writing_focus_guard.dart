@@ -12,9 +12,9 @@ import '../domain/stationery_sheet_descriptor.dart';
 /// dismissed, so only a tap on the text reopens it.
 class WritingFocusGuard {
   final Iterable<StationerySheetDescriptor> Function() sheets;
-  double _lastKeyboardInset = 0.0;
+  final bool Function() isKeyboardVisible;
 
-  WritingFocusGuard({required this.sheets});
+  WritingFocusGuard({required this.sheets, required this.isKeyboardVisible});
 
   /// Takes focus off any focused sheet and settles the change at once, so the
   /// edit that follows (and the coordinator's focus restore after a
@@ -28,14 +28,12 @@ class WritingFocusGuard {
     FocusManager.instance.applyFocusChangesIfNeeded();
   }
 
-  /// Call on every build with the current keyboard inset. Dismissing the
-  /// keyboard while the editor is the current route ends writing.
-  void onKeyboardInset(BuildContext context, double keyboardInset) {
-    final wasOpen = _lastKeyboardInset > 0;
-    _lastKeyboardInset = keyboardInset;
-    if (!wasOpen || keyboardInset > 0) return;
+  /// Call when the keyboard has just closed. Dismissing the keyboard while
+  /// the editor is the current route ends writing, unless it reopens within
+  /// the frame.
+  void onKeyboardClosed(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!context.mounted || _lastKeyboardInset > 0) return;
+      if (!context.mounted || isKeyboardVisible()) return;
       if (ModalRoute.of(context)?.isCurrent ?? true) release();
     });
   }

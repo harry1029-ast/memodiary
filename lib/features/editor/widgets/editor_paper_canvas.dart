@@ -5,12 +5,12 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
 import '../../templates/widgets/template_canvas_container.dart';
+import '../controllers/editor_chrome_controller.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/desk_media_handlers.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'desk_workstation/desk_space_budget.dart';
-import 'desk_workstation/desk_workstation_controller.dart';
 import 'desk_workstation/walnut_desk_painter.dart';
 import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
@@ -37,12 +37,10 @@ class EditorPaperCanvas extends StatelessWidget {
   final StationeryLetterheadConfig letterheadConfig;
   final MediaSandboxService mediaSandboxService;
   final VoidCallback onSaveDraft;
-  final DeskWorkstationController workstationController;
 
-  /// Height of the software keyboard covering the screen (0 when closed). Read
-  /// above the [Scaffold], which strips the keyboard inset from its body's
-  /// [MediaQuery] and shrinks the body by it.
-  final double keyboardInset;
+  /// Supplies the keyboard inset (the [Scaffold] strips it from its body's
+  /// [MediaQuery] and shrinks the body by it) and the workstation's state.
+  final EditorChromeController chrome;
 
   final EditorPaginationCoordinator coordinator;
   final PageController pageController;
@@ -62,8 +60,7 @@ class EditorPaperCanvas extends StatelessWidget {
     required this.letterheadConfig,
     required this.mediaSandboxService,
     required this.onSaveDraft,
-    required this.workstationController,
-    this.keyboardInset = 0.0,
+    required this.chrome,
     required this.coordinator,
     required this.pageController,
     this.currentSheetIndex = 0,
@@ -89,8 +86,8 @@ class EditorPaperCanvas extends StatelessWidget {
         // The visible desk shrinks while the keyboard is open; the sheet is laid
         // out against the resting height so its ruling and text never shift.
         final visibleHeight = layoutConstraints.maxHeight;
-        final bool keyboardVisible = keyboardInset > 0;
-        final canvasHeight = visibleHeight + keyboardInset;
+        final bool keyboardVisible = chrome.isKeyboardVisible;
+        final canvasHeight = visibleHeight + chrome.keyboardInset;
 
         // Bounded card canvas dimensions for integer-locked 14-row calculation
         final cardCanvasSize =
@@ -132,7 +129,7 @@ class EditorPaperCanvas extends StatelessWidget {
               isKeyboardVisible: keyboardVisible,
               isLastSheet: currentSheetIndex == totalSheets - 1,
             );
-        final isWorkstationCollapsed = workstationController.resolveInitial(
+        final isWorkstationCollapsed = chrome.resolveInitialWorkstation(
           workstationFits:
               resolveBudget(isWorkstationCollapsed: false).workstationFits,
         );
