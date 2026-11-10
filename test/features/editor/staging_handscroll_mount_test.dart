@@ -247,7 +247,7 @@ void main() {
       expect(await database.getMediaForEntry(_entryId), savedAttachments);
     });
 
-    testWidgets('tapping a handscroll item or the Tucked Prints opens the fullscreen lightbox', (tester) async {
+    testWidgets('tapping a handscroll item opens the fullscreen lightbox; tapping the Tucked Prints fans them out instead', (tester) async {
       await openEditor(tester);
       await collectPhoto(tester);
       await collectPhoto(tester);
@@ -261,9 +261,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(FullscreenMediaLightbox), findsNothing);
 
-      await tester.tap(tuckedPrintsFan);
-      await tester.pumpAndSettle();
-      expect(find.byType(FullscreenMediaLightbox), findsOneWidget);
+      await openTuckedPrintsOverlay(tester);
+      expect(tuckedPrintsOverlay, findsOneWidget);
+      expect(find.byType(FullscreenMediaLightbox), findsNothing);
     });
 
     testWidgets('📌 and the Tucked Prints are at least 44×44 with scoped semantic labels', (tester) async {

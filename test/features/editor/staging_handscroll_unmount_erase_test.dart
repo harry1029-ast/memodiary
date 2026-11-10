@@ -105,8 +105,7 @@ void main() {
   }
 
   Future<void> unmount(WidgetTester tester, String mediaId) async {
-    unmountTuckedPrint(tester, mediaId);
-    await tester.pumpAndSettle();
+    await unmountTuckedPrint(tester, mediaId);
   }
 
   Future<void> erase(WidgetTester tester, String mediaId) async {
@@ -295,17 +294,22 @@ void main() {
     });
   });
 
-  // The ↩ 揭回 control's target and label are covered with the fanned overlay (SPEC-011 ticket 07).
-  testWidgets('✕ is at least 44×44 with a scoped label naming the item', (tester) async {
+  testWidgets('↩ and ✕ are at least 44×44 with scoped labels naming the item', (tester) async {
     final semantics = tester.ensureSemantics();
     await seedStagedPhotos(2);
     await openEditor(tester);
     await mount(tester, 'seeded_0');
 
-    final size = tester.getSize(find.byKey(const Key('handscroll_erase_seeded_1')));
-    expect(size.width, greaterThanOrEqualTo(44));
-    expect(size.height, greaterThanOrEqualTo(44));
+    final eraseSize = tester.getSize(find.byKey(const Key('handscroll_erase_seeded_1')));
+    expect(eraseSize.width, greaterThanOrEqualTo(44));
+    expect(eraseSize.height, greaterThanOrEqualTo(44));
     expect(find.bySemanticsLabel(RegExp(r'^舍弃待贴第 1 影 · 影札$')), findsOneWidget);
+
+    await openTuckedPrintsOverlay(tester);
+    final unmountSize = tester.getSize(overlayUnmount('seeded_0'));
+    expect(unmountSize.width, greaterThanOrEqualTo(44));
+    expect(unmountSize.height, greaterThanOrEqualTo(44));
+    expect(find.bySemanticsLabel(RegExp(r'^揭回画卷：本页第 1 影 · 影札$')), findsOneWidget);
     semantics.dispose();
   });
 }

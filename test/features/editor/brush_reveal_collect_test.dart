@@ -157,7 +157,8 @@ void main() {
 
     await tester.tap(find.byKey(Key('handscroll_mount_$mediaId')));
     await tester.pumpAndSettle();
-    unmountTuckedPrint(tester, mediaId);
+    await openTuckedPrintsOverlay(tester);
+    await tester.tap(overlayUnmount(mediaId));
     await tester.pump();
 
     expect(find.byKey(Key('handscroll_item_$mediaId')), findsOneWidget);
@@ -175,7 +176,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('closed_brocade_scroll')), findsOneWidget);
 
-    unmountTuckedPrint(tester, mediaId);
+    await openTuckedPrintsOverlay(tester);
+    await tester.tap(overlayUnmount(mediaId));
     await tester.pump();
     await tester.pump();
 

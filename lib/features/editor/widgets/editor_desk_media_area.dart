@@ -8,13 +8,15 @@ import 'desk_workstation/desk_workstation.dart';
 import 'desk_workstation/workstation_collapse_controls.dart';
 import 'fullscreen_media_lightbox.dart';
 import 'tucked_prints/tucked_prints_fan.dart';
+import 'tucked_prints/tucked_prints_overlay.dart';
 
 /// The desk area around the active Stationery Sheet, laid out by a
 /// [DeskSpaceBudget]: that sheet's Tucked Prints peeking out of the header
 /// band above its top right edge, and the Desk Workstation holding the
 /// entry-wide Staging Handscroll at the bottom, which steps aside (slides and
-/// fades) when the budget hides it. Tapping an item opens the fullscreen
-/// lightbox; collect, mount and erase bubble up.
+/// fades) when the budget hides it. Tapping the Tucked Prints fans them out in
+/// an overlay; tapping a handscroll item opens the fullscreen lightbox;
+/// collect, mount, erase and unmount bubble up.
 ///
 /// The workstation's brass pull tab puts it away; while it is away the Restore
 /// Pill rests at the foot of the desk and brings it back.
@@ -71,6 +73,19 @@ class EditorDeskMediaArea extends StatelessWidget {
     );
   }
 
+  void _openFannedOverlay(BuildContext context) {
+    handlers.onDeskInteraction?.call();
+    TuckedPrintsOverlay.show(
+      context,
+      items: mountedItems,
+      mediaSandboxService: mediaSandboxService,
+      isPaperDark: isPaperDark,
+      onUnmount: handlers.onUnmount,
+      onCaptionChanged: onCaptionChanged,
+      onDeskInteraction: handlers.onDeskInteraction,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -86,8 +101,7 @@ class EditorDeskMediaArea extends StatelessWidget {
             mediaSandboxService: mediaSandboxService,
             sheetEdgeOffset: DeskSpaceBudget.kHeaderHeight,
             isPaperDark: isPaperDark,
-            // The fanned overlay arrives with SPEC-011 ticket 07.
-            onTap: () => _openLightbox(context, mountedItems, mountedItems.first),
+            onTap: () => _openFannedOverlay(context),
             refusalSignal: handlers.mountRefusals,
           ),
         ),
