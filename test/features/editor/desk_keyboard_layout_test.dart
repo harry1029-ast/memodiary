@@ -91,7 +91,7 @@ void main() {
   }
 
   group('Walnut desk layout', () {
-    testWidgets('the walnut desk spans the canvas and the page indicator rests in the header band above the sheet', (tester) async {
+    testWidgets('the walnut desk spans the canvas and the page indicator rests at the left of the header band above the sheet', (tester) async {
       await openEditor(tester);
 
       expect(textSheets(tester), hasLength(2));
@@ -106,9 +106,16 @@ void main() {
       expect(indicatorRect.bottom, lessThanOrEqualTo(cardRect.top));
       expect(workstationRect.top, greaterThanOrEqualTo(cardRect.bottom));
 
-      // The chevron is centred on the sheet, not on the whole desk.
-      final chevronCenter = tester.getCenter(find.byKey(const Key('editor_next_sheet_btn')));
-      expect(chevronCenter.dy, closeTo(cardRect.center.dy, 1.0));
+      // The indicator sits at the left, leaving the band's right side free.
+      expect(indicatorRect.right, lessThan(canvasRect.center.dx));
+      expect(indicatorRect.left, lessThanOrEqualTo(canvasRect.left + 24.0));
+      expect(find.text('文房书案'), findsNothing, reason: 'the desk engraving is gone');
+
+      // The next Page Corner rests at the foot of the sheet, not mid-sheet.
+      final cornerRect = tester.getRect(find.byKey(const Key('editor_page_corner_next')));
+      expect(cornerRect.right, closeTo(canvasRect.right, 1.0));
+      expect(cornerRect.top, lessThan(cardRect.bottom));
+      expect(cornerRect.bottom, greaterThan(cardRect.bottom));
     });
   });
 
@@ -166,14 +173,14 @@ void main() {
   });
 
   group('Page turns while writing', () {
-    testWidgets('tapping the next chevron carries focus to the next sheet without hiding the keyboard', (tester) async {
+    testWidgets('tapping the next Page Corner carries focus to the next sheet without hiding the keyboard', (tester) async {
       await openEditor(tester);
       final sheets = textSheets(tester);
       await startWritingAtEnd(tester, sheets.first);
       expect(tester.testTextInput.isVisible, isTrue);
       tester.testTextInput.log.clear();
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
 
       expect(find.text('第 2 / 2 页'), findsOneWidget);
@@ -189,7 +196,7 @@ void main() {
     testWidgets('turning pages with the keyboard closed does not summon it', (tester) async {
       await openEditor(tester);
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
 
       expect(find.text('第 2 / 2 页'), findsOneWidget);

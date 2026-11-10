@@ -65,7 +65,7 @@ void main() {
     final coordinator = tester.widget<EditorPaperCanvas>(find.byType(EditorPaperCanvas)).coordinator;
     expect(coordinator.totalSheets, 2);
 
-    await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+    await tester.tap(find.byKey(const Key('editor_page_corner_next')));
     await tester.pumpAndSettle();
     final secondSheet = coordinator.sheets[1] as TextStationerySheet;
     expect(secondSheet.plainText, startsWith('wnd'));

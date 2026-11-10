@@ -17,14 +17,16 @@ import 'editor_text_sheet_view.dart';
 import 'keyboard_caret_lift.dart';
 import 'paper_heart_metrics.dart';
 import 'desk_media_control.dart';
+import 'page_corner.dart';
 import 'sheet_drop_target.dart';
 import 'stationery_ephemera_sheet.dart';
-import 'stationery_sheet_border_chrome.dart';
+import 'stationery_page_indicator.dart';
 
 /// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
 /// resting on a walnut scholar's desk.
 ///
-/// A header band above the active sheet holds the page indicator. Beneath the sheet
+/// A header band above the active sheet holds the page indicator at its left, and
+/// curled Page Corners at the sheet's foot turn the pages. Beneath the sheet
 /// rest its Sheet Mount Strip (or, on a text-only last sheet, the diarist's Cinnabar
 /// Signature Seal) and the Desk Workstation holding the Staging Handscroll, sharing
 /// the desk by a [DeskSpaceBudget]. The sheet's geometry is resolved against the
@@ -32,6 +34,9 @@ import 'stationery_sheet_border_chrome.dart';
 /// [KeyboardCaretLift] only lifts the desk far enough to keep the caret in view.
 class EditorPaperCanvas extends StatelessWidget {
   static final WalnutDeskPainter _deskPainter = WalnutDeskPainter();
+
+  /// The sheet's hairline border, which insets the paper inside the card.
+  static const double _kSheetBorderWidth = 0.8;
 
   final StationerySheetThemeConfig themeConfig;
   final StationeryLetterheadConfig letterheadConfig;
@@ -202,20 +207,17 @@ class EditorPaperCanvas extends StatelessWidget {
                     activeSheet is TextStationerySheet ? activeSheet : null,
                 child: Stack(
                   children: [
-                    // Desk engraving in the header band, opposite the page indicator
+                    // Page indicator at the left of the header band; its right
+                    // side is left free for the Tucked Prints.
                     Positioned(
                       top: budget.headerTop,
                       left: 16,
                       height: DeskSpaceBudget.kHeaderHeight,
-                      child: const IgnorePointer(
+                      child: IgnorePointer(
                         child: Center(
-                          child: Text(
-                            '文房书案',
-                            style: TextStyle(
-                              fontSize: 11,
-                              letterSpacing: 2.0,
-                              color: Color(0x73FDE68A),
-                            ),
+                          child: StationeryPageIndicator(
+                            currentSheetIndex: currentSheetIndex,
+                            totalSheets: totalSheets,
                           ),
                         ),
                       ),
@@ -244,7 +246,7 @@ class EditorPaperCanvas extends StatelessWidget {
                               color: isDark
                                   ? const Color(0x33FFFFFF)
                                   : const Color(0x1F000000),
-                              width: 0.8,
+                              width: _kSheetBorderWidth,
                             ),
                             boxShadow: [
                               // A sheet of paper resting on the walnut desk.
@@ -293,6 +295,13 @@ class EditorPaperCanvas extends StatelessWidget {
                                     horizontalLeft: horizontalLeft,
                                     horizontalRight: horizontalRight,
                                   ),
+                                ),
+                                // Page Corner folds, drawn on the paper so they
+                                // move with the sheet under a swipe.
+                                PageCornerFolds(
+                                  hasPrevious: sheetIndex > 0,
+                                  hasNext: sheetIndex < coordinator.totalSheets - 1,
+                                  paperColor: templateStyle.backgroundColor,
                                 ),
                               ],
                             ),
@@ -352,19 +361,17 @@ class EditorPaperCanvas extends StatelessWidget {
                         opacity: 0.85,
                       ),
 
-                    // Border navigation chevrons on the sheet, page indicator in the header band
-                    StationerySheetBorderChrome(
-                      currentSheetIndex: currentSheetIndex,
-                      totalSheets: totalSheets,
-                      onPreviousSheet: onPreviousSheet,
-                      onNextSheet: onNextSheet,
-                      substrate: templateStyle.tokens.substrate,
-                      isPaperDark: themeConfig.isPaperDark,
-                      inkColor: themeConfig.inkColor,
-                      sheetTop: topOffset,
-                      sheetHeight: cardHeight,
-                      indicatorTop: budget.headerTop,
-                      indicatorBandHeight: DeskSpaceBudget.kHeaderHeight,
+                    // Page Corner touch targets over the active sheet's folds
+                    Positioned.fill(
+                      child: PageCornerTargets(
+                        currentSheetIndex: currentSheetIndex,
+                        totalSheets: totalSheets,
+                        top: topOffset +
+                            _kSheetBorderWidth +
+                            metrics.innerFrameRect.bottom,
+                        onPreviousSheet: onPreviousSheet,
+                        onNextSheet: onNextSheet,
+                      ),
                     ),
                   ],
                 ),
