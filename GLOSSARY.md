@@ -128,18 +128,38 @@ _Avoid_: Auto scroll, page push, overflow wrap
 The single entry-wide handscroll (待贴画卷) resting on the desk below the Stationery Sheets, holding collected photos and videos that have not yet been mounted onto any sheet. Rolled closed when empty.
 _Avoid_: Media tray, global tray, upload queue, gallery
 
-**Sheet Mount Strip**:
-The band of up to three mounted photos or videos (本页影札栏) belonging to one Stationery Sheet, shown outside its Paper Heart so the sheet's line capacity never changes. Its items follow the passage of text they were mounted beside, not a fixed page number.
-_Avoid_: Media & Keepsake Tray, sheet tray, attachment bar
+**Tucked Prints**:
+The up to three mounted photos or videos (夹页影札) belonging to one Stationery Sheet, slipped behind it so that only their tops peek out above its top edge, outside the Paper Heart, so the sheet's line capacity never changes. They follow the passage of text they were mounted beside, not a fixed page number.
+_Avoid_: Sheet Mount Strip, Media & Keepsake Tray, sheet tray, attachment bar
 
 **Collect**:
 To bring a new photo or video into the Staging Handscroll (入卷), accompanied by the Brush Reveal.
 _Avoid_: Upload, import, attach
 
 **Mount / Unmount**:
-To move an item from the Staging Handscroll onto a Stationery Sheet's Mount Strip (贴至本页), or to return it from the sheet back to the handscroll (揭回画卷). An item is mounted on at most one sheet at a time.
+To move an item from the Staging Handscroll onto a Stationery Sheet as one of its Tucked Prints (贴至本页), or to return it from the sheet back to the handscroll (揭回画卷). An item is mounted on at most one sheet at a time.
 _Avoid_: Assign, pin, link, copy
 
 **Brush Reveal**:
 The one-time splash-ink animation (泼墨显影) in which a brush paints a newly collected item into the Staging Handscroll, first as monochrome ink wash and then blooming into full colour.
 _Avoid_: Paint animation, loading effect, reveal transition
+
+**Scholar's Desk**:
+The walnut writing surface (文房书案) on which the Stationery Sheets and the Staging Handscroll rest. Its colouring follows the app's light or dark appearance, never the entry's stationery template.
+_Avoid_: Editor background, canvas backdrop, desk theme
+
+**Page Corner**:
+The curling folded corner (折角) at the foot of a Stationery Sheet that turns to the previous or next sheet when tapped.
+_Avoid_: Chevron, page arrow, next button
+
+**Restore Pill**:
+The small walnut-and-brass tab (展案签) resting at the foot of the Scholar's Desk while the Desk Workstation is put away, showing how many items wait in the Staging Handscroll and bringing the workstation back.
+_Avoid_: Expand button, show-tray chip, workstation toggle
+
+**Lunar Date Seal**:
+The carved cinnabar seal (岁时印) in the Journal Letterhead giving the entry's true lunar year (stem-branch) and seasonal month. Distinct from the Cinnabar Signature Seal, which carries the diarist's name.
+_Avoid_: Date stamp, calendar badge, lunar chip
+
+**Weather Charm / Mood Charm**:
+The vertical calligraphy tags (天时笺 / 心绪笺) hanging in the Journal Letterhead that show and set the entry's weather and mood.
+_Avoid_: Weather chip, mood chip, metadata tag
