@@ -76,26 +76,22 @@ class WritingDockHideTab extends StatelessWidget {
       );
 }
 
-/// The tab (展开文房) resting at the bottom-right of the screen while the
-/// Writing Dock is hidden; tapping it brings the dock back.
+/// The tab (展开文房) floating at the bottom-right of the Scholar's Desk while
+/// the Writing Dock is hidden; tapping it brings the dock back. The desk
+/// positions it.
 class WritingDockRestoreTab extends StatelessWidget {
   final VoidCallback onRestore;
 
   const WritingDockRestoreTab({super.key, required this.onRestore});
 
+  static const double kTargetSize = 44.0;
   static const String kSemanticLabel = '展开文房';
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-        top: false,
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: _BrassDockTab(
-            tabKey: const Key('writing_dock_restore_tab'),
-            semanticLabel: kSemanticLabel,
-            icon: Icons.keyboard_arrow_up_rounded,
-            onTap: onRestore,
-          ),
-        ),
+  Widget build(BuildContext context) => _BrassDockTab(
+        tabKey: const Key('writing_dock_restore_tab'),
+        semanticLabel: kSemanticLabel,
+        icon: Icons.keyboard_arrow_up_rounded,
+        onTap: onRestore,
       );
 }

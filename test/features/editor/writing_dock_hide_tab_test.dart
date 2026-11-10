@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/features/editor/services/editor_settings_service.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/closed_brocade_scroll.dart';
+import 'package:memodiary/features/editor/widgets/staging_handscroll.dart';
 import 'package:memodiary/features/editor/widgets/writing_dock.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
@@ -63,7 +65,8 @@ void main() {
     expect(restoreRect.width, greaterThanOrEqualTo(44.0));
     expect(restoreRect.height, greaterThanOrEqualTo(44.0));
     expect(restoreRect.right, closeTo(360.0, 20.0));
-    expect(restoreRect.bottom, closeTo(780.0, 40.0));
+    expect(restoreRect.bottom, closeTo(780.0, 1.0));
+    expect(restoreRect.overlaps(tester.getRect(find.byKey(const Key('desk_workstation')))), isTrue);
     expect(find.bySemanticsLabel('展开文房'), findsOneWidget);
 
     await tester.tap(restoreTab);
@@ -92,12 +95,34 @@ void main() {
     final sheetBefore = tester.getRect(find.byType(TemplateCanvasContainer));
     final canvasBefore = tester.getRect(find.byType(EditorPaperCanvas));
     final workstationBefore = tester.getRect(find.byKey(const Key('desk_workstation')));
+    final dockHeight = tester.getRect(dock).height;
 
     await tester.tap(hideTab);
     await tester.pumpAndSettle();
     expect(tester.getRect(find.byType(TemplateCanvasContainer)), sheetBefore);
     expect(tester.getRect(find.byType(EditorPaperCanvas)).height, greaterThan(canvasBefore.height));
-    expect(tester.getRect(find.byKey(const Key('desk_workstation'))).height, greaterThan(workstationBefore.height));
+    final workstationAfter = tester.getRect(find.byKey(const Key('desk_workstation')));
+    expect(workstationAfter.height, greaterThan(workstationBefore.height));
+    // No strip: the workstation reaches the system bar and gains the dock's full height.
+    expect(workstationAfter.bottom, 780.0);
+    expect(workstationAfter.height - workstationBefore.height, dockHeight);
+    expect(tester.getRect(find.byType(EditorPaperCanvas)).bottom, 780.0);
+  });
+
+  testWidgets('the floating tab covers neither the handscroll nor the Restore Pill', (tester) async {
+    await openEditor(tester);
+    await tester.tap(hideTab);
+    await tester.pumpAndSettle();
+    final tabRect = tester.getRect(restoreTab);
+    // The handscroll (or the closed brocade scroll when nothing is staged).
+    final scroll = find.byWidgetPredicate((widget) => widget is StagingHandscroll || widget is ClosedBrocadeScroll);
+    expect(tabRect.overlaps(tester.getRect(scroll)), isFalse);
+
+    await tester.tap(find.byKey(const Key('workstation_pull_tab')));
+    await tester.pumpAndSettle();
+    final pill = find.byKey(const Key('workstation_restore_pill'));
+    expect(pill, findsOneWidget);
+    expect(tabRect.overlaps(tester.getRect(pill)), isFalse);
   });
 
   testWidgets('neither tab summons or drops the keyboard', (tester) async {

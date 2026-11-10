@@ -9,6 +9,7 @@ import 'desk_workstation/workstation_collapse_controls.dart';
 import 'fullscreen_media_lightbox.dart';
 import 'tucked_prints/tucked_prints_fan.dart';
 import 'tucked_prints/tucked_prints_overlay.dart';
+import 'writing_dock_collapse_tabs.dart';
 
 /// The desk area around the active Stationery Sheet, laid out by a
 /// [DeskSpaceBudget]: that sheet's Tucked Prints peeking out of the header
@@ -38,6 +39,10 @@ class EditorDeskMediaArea extends StatelessWidget {
   final VoidCallback? onCollapseWorkstation;
   final VoidCallback? onRestoreWorkstation;
 
+  /// Brings the hidden Writing Dock back; non-null only while its 展开文房 tab
+  /// floats at the desk's bottom-right.
+  final VoidCallback? onRestoreWritingDock;
+
   /// Collect, mount, erase, unmount and Brush Reveal plumbing.
   final DeskMediaHandlers handlers;
   final void Function(String mediaId, String newCaption)? onCaptionChanged;
@@ -58,6 +63,7 @@ class EditorDeskMediaArea extends StatelessWidget {
     this.isWorkstationCollapsed = false,
     this.onCollapseWorkstation,
     this.onRestoreWorkstation,
+    this.onRestoreWritingDock,
     this.handlers = const DeskMediaHandlers(),
     this.onCaptionChanged,
   });
@@ -88,6 +94,9 @@ class EditorDeskMediaArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasDockTab = onRestoreWritingDock != null;
+    final tabInset = hasDockTab ? WritingDockRestoreTab.kTargetSize : 0.0;
+    final systemBarInset = hasDockTab ? MediaQuery.viewPaddingOf(context).bottom : 0.0;
     return Stack(
       children: [
         Positioned(
@@ -113,6 +122,7 @@ class EditorDeskMediaArea extends StatelessWidget {
           child: _StepAside(
             isShown: budget.showWorkstation,
             child: DeskWorkstation(
+              reservedInsets: EdgeInsets.only(right: tabInset, bottom: systemBarInset),
               stagedItems: stagedItems,
               mediaSandboxService: mediaSandboxService,
               activeSheetNumber: activeSheetNumber,
@@ -134,9 +144,9 @@ class EditorDeskMediaArea extends StatelessWidget {
           ),
         ),
         Positioned(
-          left: 16.0,
-          right: 16.0,
-          bottom: DeskSpaceBudget.kBottomMargin,
+          left: 16.0 + tabInset,
+          right: 16.0 + tabInset,
+          bottom: DeskSpaceBudget.kBottomMargin + systemBarInset,
           child: _StepAside(
             isShown: isWorkstationCollapsed && onRestoreWorkstation != null,
             child: Center(
@@ -147,6 +157,13 @@ class EditorDeskMediaArea extends StatelessWidget {
             ),
           ),
         ),
+        // The Writing Dock's restore tab floats over the desk's bottom-right.
+        if (hasDockTab)
+          Positioned(
+            right: 0.0,
+            bottom: systemBarInset,
+            child: WritingDockRestoreTab(onRestore: onRestoreWritingDock!),
+          ),
       ],
     );
   }
