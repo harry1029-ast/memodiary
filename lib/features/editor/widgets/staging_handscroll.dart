@@ -179,7 +179,7 @@ class _StagingHandscrollState extends State<StagingHandscroll> with SingleTicker
             vertical: BorderSide(color: rollerColor, width: 6.0),
           ),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+        padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 4.0),
         child: LayoutBuilder(
           builder: (layoutContext, constraints) {
             _slotWidth = constraints.maxWidth / StagingHandscroll.kVisibleSlots;
