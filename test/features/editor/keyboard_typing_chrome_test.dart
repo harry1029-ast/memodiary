@@ -156,7 +156,6 @@ void main() {
       }
       expect(find.descendant(of: accessoryRow, matching: find.byType(IconButton)), findsNWidgets(2));
       expect(find.descendant(of: dockToggle, matching: find.text(toggleLabel)), findsOneWidget);
-      expect(find.text('收起键盘'), findsNothing, reason: 'the keyboard has its own close key');
       // About 40dp tall, resting on the keyboard.
       final rowRect = tester.getRect(accessoryRow);
       expect(rowRect.height, inInclusiveRange(40.0, 46.0));

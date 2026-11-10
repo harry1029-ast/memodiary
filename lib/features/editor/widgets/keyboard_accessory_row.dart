@@ -48,7 +48,6 @@ class KeyboardAccessoryRow extends StatefulWidget {
 }
 
 class _KeyboardAccessoryRowState extends State<KeyboardAccessoryRow> {
-  static const _cinnabar = Color(0xFFB83B2E);
   bool _isFormattingOpen = false;
 
   void _toggleFormatting() {
@@ -73,19 +72,13 @@ class _KeyboardAccessoryRowState extends State<KeyboardAccessoryRow> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              AnimatedSize(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeInOutCubic,
-                alignment: Alignment.bottomCenter,
-                child: _isFormattingOpen
-                    ? WritingDockFormattingRibbon(
-                        controller: widget.controller,
-                        onEnsureTextController: widget.onEnsureTextController,
-                        tokens: tokens,
-                        inkColor: widget.inkColor,
-                        isPaperDark: widget.isPaperDark,
-                      )
-                    : const SizedBox.shrink(),
+              FormattingRibbonReveal(
+                isOpen: _isFormattingOpen,
+                controller: widget.controller,
+                onEnsureTextController: widget.onEnsureTextController,
+                tokens: tokens,
+                inkColor: widget.inkColor,
+                isPaperDark: widget.isPaperDark,
               ),
               SizedBox(height: KeyboardAccessoryRow.kRowHeight, child: _buildTools(tokens)),
             ],
@@ -110,13 +103,9 @@ class _KeyboardAccessoryRowState extends State<KeyboardAccessoryRow> {
             onTap: _toggleFormatting,
           ),
           const SizedBox(width: 6.0),
-          WritingDockToolButton(
+          DictationToolButton(
             buttonKey: const Key('keyboard_accessory_dictation_btn'),
-            icon: Icon(widget.isDictating ? Icons.mic : Icons.mic_none,
-                size: 21, color: widget.isDictating ? Colors.white : _cinnabar),
-            tooltip: '原声听写 · Voice Dictation',
-            isActive: widget.isDictating,
-            activeBackground: _cinnabar,
+            isDictating: widget.isDictating,
             minHeight: KeyboardAccessoryRow.kRowHeight,
             onTap: widget.onToggleDictation,
           ),

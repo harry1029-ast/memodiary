@@ -41,3 +41,36 @@ class WritingDockToolButton extends StatelessWidget {
     );
   }
 }
+
+/// The 🎙 dictation tool shared by the Writing Dock and the keyboard accessory
+/// row: a cinnabar microphone whose backdrop fills with cinnabar while
+/// dictating.
+class DictationToolButton extends StatelessWidget {
+  final Key buttonKey;
+  final bool isDictating;
+  final VoidCallback onTap;
+  final double minHeight;
+
+  static const Color kCinnabar = Color(0xFFB83B2E);
+
+  const DictationToolButton({
+    super.key,
+    required this.buttonKey,
+    required this.isDictating,
+    required this.onTap,
+    this.minHeight = 40.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return WritingDockToolButton(
+      buttonKey: buttonKey,
+      icon: Icon(isDictating ? Icons.mic : Icons.mic_none, size: 21, color: isDictating ? Colors.white : kCinnabar),
+      tooltip: '原声听写 · Voice Dictation',
+      isActive: isDictating,
+      activeBackground: kCinnabar,
+      minHeight: minHeight,
+      onTap: onTap,
+    );
+  }
+}

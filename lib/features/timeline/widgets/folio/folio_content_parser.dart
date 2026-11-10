@@ -223,8 +223,7 @@ class FolioContentParser {
   static String formatFullLunarDate(DateTime date) {
     final lunar = LunarCalendar.fromSolar(date);
     final monthDay = lunar.monthDayName;
-    final year = '岁次${lunar.stemBranchYear}';
-    return monthDay == null ? year : '$year · $monthDay';
+    return monthDay == null ? lunar.yearName : '${lunar.yearName} · $monthDay';
   }
 
   /// Formats Gregorian date with classical Shichen & Ke, e.g. `2026.11.23 · 亥时初刻`.

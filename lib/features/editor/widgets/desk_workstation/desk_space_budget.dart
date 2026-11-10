@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-/// How the walnut scholar's desk below the app bar is shared between the
+/// How the Scholar's Desk below the app bar is shared between the
 /// desk's header band (page indicator and the tops of the Tucked Prints), the
 /// active Stationery Sheet, the room beneath it for the Cinnabar Signature Seal
 /// and the Desk Workstation.
@@ -14,8 +14,9 @@ import 'dart:math' as math;
 ///
 /// The budget is resolved against the resting desk height (keyboard closed),
 /// so opening the software keyboard never moves or resizes the sheet: the
-/// workstation steps aside, and the canvas lifts the sheet only as far as the
-/// caret needs.
+/// workstation steps aside, and the KeyboardDeskLift lifts the whole desk so
+/// the whole sheet shows (or, when it cannot fit, just far enough for the
+/// caret).
 ///
 /// Whether the workstation fits is an entry-wide, start-up decision, judged
 /// against the sheet alone.
@@ -85,6 +86,8 @@ class DeskSpaceBudget {
     return DeskSpaceBudget._(
       sheetTop: sheetTop,
       showWorkstation: showWorkstation,
+      // The seal's room is kept on every sheet, not only the last, so the
+      // workstation keeps one height across page turns.
       workstationHeight: math.max(minHeight, canvasHeight - sheetBottom - sealBlockHeight),
       showSeal: showSeal,
       workstationFits: workstationFits,

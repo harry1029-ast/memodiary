@@ -13,8 +13,8 @@ import '../models/letterhead_data.dart';
 class LunarDateSeal extends StatelessWidget {
   const LunarDateSeal({super.key, required this.data, required this.onTap});
 
-  static const double sealSize = 38;
-  static const double targetSize = 44;
+  static const double kSealSize = 38;
+  static const double kTargetSize = 44;
 
   final LetterheadData data;
   final VoidCallback onTap;
@@ -31,8 +31,8 @@ class LunarDateSeal extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         onTap: onTap,
         child: SizedBox(
-          width: targetSize,
-          height: targetSize,
+          width: kTargetSize,
+          height: kTargetSize,
           child: Center(
             child: Transform.rotate(
               angle: -3 * math.pi / 180,
@@ -57,8 +57,8 @@ class _SealFace extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('letterhead_date_seal'),
-      width: LunarDateSeal.sealSize,
-      height: LunarDateSeal.sealSize,
+      width: LunarDateSeal.kSealSize,
+      height: LunarDateSeal.kSealSize,
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),

@@ -7,6 +7,7 @@ import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/features/intro/widgets/book_3d_stage.dart';
 import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
+import 'package:memodiary/features/timeline/widgets/folio/folio_content_parser.dart';
 
 void main() {
   late AppDatabase db;
@@ -114,6 +115,29 @@ void main() {
           .map((text) => text.data)
           .toList();
       expect(characters, equals(['十', '月', '初', '二']));
+    });
+
+    testWidgets('outside the lunar data range the 私人日记 card shows the year as the Folio does', (tester) async {
+      final outOfRange = DateTime(2200, 6, 1);
+      await pumpBookIntroScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
+        startOpened: true,
+        clock: () => outOfRange,
+      );
+
+      // The Folio's fallback for the same day: 岁次 plus the stem-branch year.
+      expect(FolioContentParser.formatFullLunarDate(outOfRange), '岁次庚子');
+      expect(find.text('次'), findsOneWidget);
+      final lunarColumn = find
+          .ancestor(of: find.text('次'), matching: find.byType(Column))
+          .first;
+      final characters = tester
+          .widgetList<Text>(find.descendant(of: lunarColumn, matching: find.byType(Text)))
+          .map((text) => text.data)
+          .toList();
+      expect(characters, equals(['岁', '次', '庚', '子']));
     });
 
     testWidgets('tapping 私人日记 navigates to TimelineScreen', (tester) async {

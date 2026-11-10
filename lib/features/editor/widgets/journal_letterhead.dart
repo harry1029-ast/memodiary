@@ -51,7 +51,7 @@ class JournalLetterhead extends StatelessWidget {
     final tokens = InkDiaryTheme.tokensOf(context);
     final weatherOption = data.weatherOption;
     final moodOption = data.moodOption;
-    const sealInset = (LunarDateSeal.targetSize - LunarDateSeal.sealSize) / 2;
+    const sealInset = (LunarDateSeal.kTargetSize - LunarDateSeal.kSealSize) / 2;
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: maxTextScale,

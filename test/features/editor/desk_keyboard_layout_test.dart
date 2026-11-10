@@ -146,7 +146,7 @@ void main() {
 
       expect(editorTextSheets(tester), hasLength(3));
       final canvasRect = tester.getRect(find.byType(EditorPaperCanvas));
-      expect(tester.getRect(find.byKey(const Key('editor_walnut_desk'))), canvasRect);
+      expect(tester.getRect(find.byKey(const Key('editor_scholar_desk'))), canvasRect);
 
       final cardRect = activeCardRect(tester);
       final indicatorRect = tester.getRect(find.byKey(const Key('editor_sheet_indicator')));

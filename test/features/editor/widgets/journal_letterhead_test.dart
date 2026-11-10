@@ -192,7 +192,7 @@ void main() {
         await tester.pumpAndSettle();
 
         final sealRight = tester.getCenter(find.byKey(const Key('letterhead_date_seal'))).dx +
-            LunarDateSeal.sealSize / 2;
+            LunarDateSeal.kSealSize / 2;
         final textLeft = tester.getTopLeft(find.byKey(const Key('letterhead_solar_line'))).dx;
         expect(textLeft - sealRight, closeTo(12, 1.0));
         expect(tester.getTopLeft(find.byType(TextField)).dx, closeTo(textLeft, 0.5));

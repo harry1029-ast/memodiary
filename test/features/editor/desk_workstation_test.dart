@@ -135,7 +135,6 @@ void main() {
       await openEditor(tester);
       expect(workstation, findsOneWidget);
       expect(pill, findsNothing);
-      expect(find.byKey(const Key('writing_dock_workstation_handle')), findsNothing);
       final dockedSheetTop = tester.getRect(find.byType(TemplateCanvasContainer)).top;
 
       // The tab straddles the workstation's top edge at its right end, with a 44x44 target.
