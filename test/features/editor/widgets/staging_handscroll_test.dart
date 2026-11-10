@@ -83,6 +83,23 @@ void main() {
       expect(isVisible('item_4'), isTrue);
     });
 
+    testWidgets('📌 and ✕ sit in the caption bar below the print, never over it', (tester) async {
+      await tester.pumpWidget(host(StagingHandscroll(
+        items: _items.take(2).toList(),
+        mediaSandboxService: sandboxService,
+        activeSheetNumber: 1,
+      )));
+      await tester.pumpAndSettle();
+
+      final printRect = tester.getRect(find.byKey(const Key('handscroll_item_item_1')));
+      for (final key in ['handscroll_mount_item_1', 'handscroll_erase_item_1']) {
+        final controlRect = tester.getRect(find.byKey(Key(key)));
+        expect(controlRect.overlaps(printRect), isFalse, reason: key);
+        expect(controlRect.size, const Size(44, 44), reason: key);
+      }
+      expect(printRect.height, greaterThanOrEqualTo(40));
+    });
+
     testWidgets('tap, 📌 and ✕ report the item they belong to', (tester) async {
       final tapped = <String>[];
       final mounted = <String>[];

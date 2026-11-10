@@ -108,7 +108,7 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
               ),
               Positioned.fill(
                 child: Padding(
-                  padding: DeskWorkstation.kMatInsets.add(const EdgeInsets.all(6.0)),
+                  padding: DeskWorkstation.kMatInsets.add(const EdgeInsets.all(2.0)),
                   child: isClosed
                       ? ClosedBrocadeScroll(
                           key: const Key('closed_brocade_scroll'),
