@@ -398,6 +398,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,
                 saveStatus: _autosaveManager!.statusNotifier,
+                onTapDeskOffSheet: _focusGuard.endWriting,
               ),
             ),
             EditorWritingPanels(
@@ -408,7 +409,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               onPickImage: () => _collectMedia(isVideo: false),
               onPickVideo: () => _collectMedia(isVideo: true),
               onShuffleSpark: _handleShuffleSpark,
-              onDismissKeyboard: _focusGuard.dismissKeyboard,
               paperColor: paperColor,
               inkColor: inkColor,
               isPaperDark: isPaperDark,

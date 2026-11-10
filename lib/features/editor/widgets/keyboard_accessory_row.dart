@@ -3,35 +3,40 @@ import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
 import '../../../core/theme/ink_diary_theme.dart';
+import 'writing_dock_collapse_tabs.dart';
 import 'writing_dock_formatting_ribbon.dart';
 import 'writing_dock_tool_button.dart';
 
 /// The slim row resting on the software keyboard in place of the Writing Dock
 /// while the diarist types: Tt formatting (unfolding the formatting ribbon
-/// above it), 🎙 dictation and 收起键盘, which ends writing and puts the
-/// keyboard away. Photo, video and ambiance tools wait in the dock: collecting
-/// closes the keyboard anyway.
+/// above it), 🎙 dictation and the 收起文房 / 展开文房 toggle, which chooses
+/// whether the Writing Dock returns when the keyboard closes (the app-wide
+/// hidden-dock preference). Photo, video and ambiance tools wait in the dock:
+/// collecting closes the keyboard anyway.
 ///
-/// Tt and 🎙 never touch focus, so the keyboard stays open.
+/// None of the three touch focus, so the keyboard stays open.
 class KeyboardAccessoryRow extends StatefulWidget {
   final QuillController controller;
   final QuillController Function()? onEnsureTextController;
   final VoidCallback onToggleDictation;
-  final VoidCallback onDismissKeyboard;
+
+  /// Whether the Writing Dock returns when the keyboard closes.
+  final bool isWritingDockVisible;
+  final VoidCallback onToggleWritingDock;
   final bool isDictating;
   final Color backgroundColor;
   final Color inkColor;
   final bool isPaperDark;
 
   static const double kRowHeight = 44.0;
-  static const String kDismissLabel = '收起键盘';
 
   const KeyboardAccessoryRow({
     super.key,
     required this.controller,
     this.onEnsureTextController,
     required this.onToggleDictation,
-    required this.onDismissKeyboard,
+    required this.isWritingDockVisible,
+    required this.onToggleWritingDock,
     this.isDictating = false,
     required this.backgroundColor,
     required this.inkColor,
@@ -116,7 +121,11 @@ class _KeyboardAccessoryRowState extends State<KeyboardAccessoryRow> {
             onTap: widget.onToggleDictation,
           ),
           const Spacer(),
-          _DismissKeyboardButton(inkColor: widget.inkColor, onTap: widget.onDismissKeyboard),
+          _WritingDockToggle(
+            isWritingDockVisible: widget.isWritingDockVisible,
+            inkColor: widget.inkColor,
+            onTap: widget.onToggleWritingDock,
+          ),
         ],
       ),
     );
@@ -141,23 +150,26 @@ class _TtGlyph extends StatelessWidget {
   }
 }
 
-/// 收起键盘: a labelled 44dp target that ends writing. It holds no focus of
-/// its own, so the keyboard closes only because writing focus is released.
-class _DismissKeyboardButton extends StatelessWidget {
+/// 收起文房 / 展开文房: a labelled 44dp target naming what it will do to the
+/// Writing Dock once the keyboard closes. It holds no focus of its own, so
+/// the keyboard and writing focus stay as they are.
+class _WritingDockToggle extends StatelessWidget {
+  final bool isWritingDockVisible;
   final Color inkColor;
   final VoidCallback onTap;
 
-  const _DismissKeyboardButton({required this.inkColor, required this.onTap});
+  const _WritingDockToggle({required this.isWritingDockVisible, required this.inkColor, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
+    final label = isWritingDockVisible ? WritingDockHideTab.kSemanticLabel : WritingDockRestoreTab.kSemanticLabel;
     return Semantics(
       button: true,
-      label: KeyboardAccessoryRow.kDismissLabel,
+      label: label,
       onTap: onTap,
       excludeSemantics: true,
       child: GestureDetector(
-        key: const Key('keyboard_accessory_dismiss_btn'),
+        key: const Key('keyboard_accessory_dock_toggle_btn'),
         behavior: HitTestBehavior.opaque,
         onTap: () {
           HapticFeedback.lightImpact();
@@ -170,10 +182,14 @@ class _DismissKeyboardButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.keyboard_hide_outlined, size: 18, color: inkColor),
+                Icon(
+                  isWritingDockVisible ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
+                  size: 18,
+                  color: inkColor,
+                ),
                 const SizedBox(width: 4.0),
                 Text(
-                  KeyboardAccessoryRow.kDismissLabel,
+                  label,
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontKaiti,
                     fontSize: 13,

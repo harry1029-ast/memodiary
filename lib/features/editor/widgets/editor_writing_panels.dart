@@ -10,7 +10,8 @@ import 'writing_dock.dart';
 /// The panels below the Scholar's Desk, shown and hidden by the
 /// [EditorChromeController]: the dictation bar while dictating, then the
 /// keyboard accessory row while the software keyboard is open (whether or not
-/// the dock is hidden), else the Writing Dock (when hidden, nothing: its restore tab floats on the desk).
+/// the dock is hidden; its toggle sets whether the dock returns), else the
+/// Writing Dock (when hidden, nothing: its restore tab floats on the desk).
 class EditorWritingPanels extends StatelessWidget {
   final EditorChromeController chrome;
   final QuillController controller;
@@ -19,9 +20,6 @@ class EditorWritingPanels extends StatelessWidget {
   final VoidCallback onPickImage;
   final VoidCallback onPickVideo;
   final VoidCallback onShuffleSpark;
-
-  /// 收起键盘: ends writing, which puts the keyboard away.
-  final VoidCallback onDismissKeyboard;
   final Color paperColor;
   final Color inkColor;
   final bool isPaperDark;
@@ -35,7 +33,6 @@ class EditorWritingPanels extends StatelessWidget {
     required this.onPickImage,
     required this.onPickVideo,
     required this.onShuffleSpark,
-    required this.onDismissKeyboard,
     required this.paperColor,
     required this.inkColor,
     required this.isPaperDark,
@@ -63,7 +60,8 @@ class EditorWritingPanels extends StatelessWidget {
             controller: controller,
             onEnsureTextController: onEnsureTextController,
             onToggleDictation: _toggleDictation,
-            onDismissKeyboard: onDismissKeyboard,
+            isWritingDockVisible: chrome.isWritingDockVisible,
+            onToggleWritingDock: () => chrome.setWritingDockVisible(!chrome.isWritingDockVisible),
             isDictating: chrome.isDictating,
             backgroundColor: backgroundColor,
             inkColor: inkColor,

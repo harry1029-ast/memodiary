@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 
 import '../controllers/editor_autosave_manager.dart';
 import 'autosave_status_dot.dart';
-import 'keyboard_caret_lift.dart';
+import 'keyboard_desk_lift.dart';
 import 'stationery_page_indicator.dart';
 
 /// The left of the Scholar's Desk header band: the page indicator and, while
 /// the app bar is away (keyboard open), the save-state dot beside it.
 ///
-/// The band rides the [KeyboardCaretLift] with the sheet, but the dot stands
+/// The band rides the [KeyboardDeskLift] with the sheet, but the dot stands
 /// in for the app bar, so once the lift would carry the band off the top of
 /// the visible desk the dot stays at the top instead.
 class DeskHeaderBandLead extends StatelessWidget {
@@ -44,7 +44,7 @@ class DeskHeaderBandLead extends StatelessWidget {
           const SizedBox(width: 8.0),
           Builder(
             builder: (liftContext) => Transform.translate(
-              offset: Offset(0.0, math.max(0.0, KeyboardCaretLift.liftOf(liftContext) - bandTop)),
+              offset: Offset(0.0, math.max(0.0, KeyboardDeskLift.liftOf(liftContext) - bandTop)),
               child: AutosaveStatusDot(key: const Key('editor_save_state_dot'), status: status),
             ),
           ),
