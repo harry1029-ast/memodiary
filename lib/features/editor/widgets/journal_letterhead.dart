@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme/ink_diary_theme.dart';
-import 'journal_letterhead_models.dart';
+import '../models/letterhead_data.dart';
+import 'letterhead_charm.dart';
+import 'letterhead_date_block.dart';
+import 'letterhead_pickers.dart';
+import 'lunar_date_seal.dart';
 
-/// Authentic in-paper journal letterhead rendered directly on the upper lines
-/// of the Journal Sheet, combining date/time, solar terms, weather, mood, and borderless title.
+/// Authentic in-paper journal letterhead rendered directly on the upper rows of
+/// the opening Journal Sheet: the Lunar Date Seal at the left, a column of date
+/// line 1, date line 2 and the borderless title, and the vertical Weather and
+/// Mood Charms at the right.
 class JournalLetterhead extends StatelessWidget {
-  final DateTime entryDate;
-  final int? mood;
-  final String? weather;
+  /// Largest text scale the letterhead honours, keeping it inside its rows.
+  static const double maxTextScale = 1.3;
+
+  final LetterheadData data;
   final TextEditingController? titleController;
   final ValueChanged<DateTime> onDateChanged;
   final ValueChanged<int?> onMoodChanged;
@@ -18,407 +23,106 @@ class JournalLetterhead extends StatelessWidget {
 
   const JournalLetterhead({
     super.key,
-    required this.entryDate,
-    required this.mood,
-    required this.weather,
+    required this.data,
     this.titleController,
     required this.onDateChanged,
     required this.onMoodChanged,
     required this.onWeatherChanged,
   });
 
-  static const List<MoodOption> moodOptions = [
-    MoodOption(value: 1, emoji: '😢', label: '沉郁', subtitle: 'Down'),
-    MoodOption(value: 2, emoji: '🙁', label: '倦怠', subtitle: 'Tired'),
-    MoodOption(value: 3, emoji: '😐', label: '静穆', subtitle: 'Calm'),
-    MoodOption(value: 4, emoji: '🙂', label: '怡然', subtitle: 'Happy'),
-    MoodOption(value: 5, emoji: '😄', label: '欢欣', subtitle: 'Great'),
-  ];
-
-  static const List<WeatherOption> weatherOptions = [
-    WeatherOption(value: 'sunny', icon: Icons.wb_sunny_outlined, label: '晴明', subtitle: 'Sunny'),
-    WeatherOption(value: 'cloudy', icon: Icons.cloud_outlined, label: '阴翳', subtitle: 'Cloudy'),
-    WeatherOption(value: 'rainy', icon: Icons.water_drop_outlined, label: '润雨', subtitle: 'Rainy'),
-    WeatherOption(value: 'windy', icon: Icons.air_outlined, label: '朔风', subtitle: 'Windy'),
-    WeatherOption(value: 'snowy', icon: Icons.ac_unit_outlined, label: '凝雪', subtitle: 'Snowy'),
-  ];
-
-  static List<String> get chineseWeekdays => JournalLetterheadUtils.chineseWeekdays;
-
-  /// Deterministic approximation of 24 Chinese solar terms (节气)
-  static String calculateSolarTerm(DateTime date) => JournalLetterheadUtils.calculateSolarTerm(date);
-
-  String _formatDateString(DateTime date) {
-    final yearMonthDay = DateFormat('yyyy年M月d日').format(date);
-    final weekdayName = chineseWeekdays[(date.weekday - 1).clamp(0, 6)];
-    final solarTerm = calculateSolarTerm(date);
-    return '$yearMonthDay $weekdayName · $solarTerm';
-  }
-
-  MoodOption _resolveMood(int? moodValue) {
-    return moodOptions.firstWhere(
-      (option) => option.value == moodValue,
-      orElse: () => moodOptions[3], // Default 怡然
-    );
-  }
-
-  WeatherOption _resolveWeather(String? weatherValue) {
-    return weatherOptions.firstWhere(
-      (option) => option.value == weatherValue,
-      orElse: () => weatherOptions.first, // Default 晴明
-    );
-  }
-
-  Future<void> _pickDate(BuildContext context) async {
-    HapticFeedback.selectionClick();
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: entryDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (pickedDate == null || !context.mounted) return;
-
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(entryDate),
-    );
-
-    if (pickedTime != null) {
-      onDateChanged(DateTime(
-        pickedDate.year,
-        pickedDate.month,
-        pickedDate.day,
-        pickedTime.hour,
-        pickedTime.minute,
-      ));
-    } else {
-      onDateChanged(DateTime(
-        pickedDate.year,
-        pickedDate.month,
-        pickedDate.day,
-        entryDate.hour,
-        entryDate.minute,
-      ));
-    }
-  }
-
-  void _showSelectionModal({
-    required BuildContext context,
-    required String title,
-    required List<Widget> children,
-  }) {
-    HapticFeedback.selectionClick();
+  @override
+  Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
+    final weatherOption = data.weatherOption;
+    final moodOption = data.moodOption;
 
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: tokens.xuanGround,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (bottomSheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: tokens.danmo.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: maxTextScale,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 2, 0, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                LunarDateSeal(
+                  data: data,
+                  onTap: () => LetterheadPickers.pickDate(
+                    context: context,
+                    entryDate: data.entryDate,
+                    onDateChanged: onDateChanged,
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Container(
-                    width: 3,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: tokens.cinnabar,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LetterheadDateBlock(data: data),
+                      if (titleController != null) _buildTitleField(tokens),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.jiaomo,
-                    ),
+                ),
+                LetterheadCharm(
+                  keyPrefix: 'letterhead_weather_charm',
+                  emoji: weatherOption.emoji,
+                  label: weatherOption.label,
+                  semanticsLabel: data.weatherSemanticsLabel,
+                  onTap: () => LetterheadPickers.showWeatherPicker(
+                    context: context,
+                    weather: data.weather,
+                    onWeatherChanged: onWeatherChanged,
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: children,
-              ),
-              const SizedBox(height: 10),
-            ],
-          ),
+                ),
+                LetterheadCharm(
+                  keyPrefix: 'letterhead_mood_charm',
+                  emoji: moodOption.emoji,
+                  label: moodOption.label,
+                  semanticsLabel: data.moodSemanticsLabel,
+                  onTap: () => LetterheadPickers.showMoodPicker(
+                    context: context,
+                    mood: data.mood,
+                    onMoodChanged: onMoodChanged,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            // Subtle deckle stationery divider
+            Container(
+              height: 0.8,
+              color: tokens.deckleBorder.withValues(alpha: 0.5),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void _showMoodPicker(BuildContext context) {
-    final tokens = InkDiaryTheme.tokensOf(context);
-
-    _showSelectionModal(
-      context: context,
-      title: '心境感怀 · Select Mood',
-      children: moodOptions.map((moodOption) {
-        final isSelected = mood == moodOption.value;
-        return GestureDetector(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            onMoodChanged(moodOption.value);
-            Navigator.pop(context);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? tokens.cinnabarWash : tokens.ricePaper,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? tokens.cinnabar : tokens.agedFiber,
-                width: isSelected ? 1.5 : 1.0,
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  moodOption.emoji,
-                  style: const TextStyle(fontSize: 26),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  moodOption.label,
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? tokens.cinnabar : tokens.nongmo,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  void _showWeatherPicker(BuildContext context) {
-    final tokens = InkDiaryTheme.tokensOf(context);
-
-    _showSelectionModal(
-      context: context,
-      title: '天候气象 · Select Weather',
-      children: weatherOptions.map((weatherOption) {
-        final isSelected = weather == weatherOption.value;
-        return GestureDetector(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            onWeatherChanged(weatherOption.value);
-            Navigator.pop(context);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? tokens.cinnabarWash : tokens.ricePaper,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? tokens.cinnabar : tokens.agedFiber,
-                width: isSelected ? 1.5 : 1.0,
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  weatherOption.icon,
-                  size: 26,
-                  color: isSelected ? tokens.cinnabar : tokens.nongmo,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  weatherOption.label,
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? tokens.cinnabar : tokens.nongmo,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final tokens = InkDiaryTheme.tokensOf(context);
-    final activeMood = _resolveMood(mood);
-    final activeWeather = _resolveWeather(weather);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 2, 4, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Line 1: Date & Day of Week & Solar Term, flanked by Weather & Mood
-          Row(
-            children: [
-              // Date, Weekday & Solar Term tag
-              Flexible(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(6),
-                  onTap: () => _pickDate(context),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 13,
-                          color: tokens.danmo,
-                        ),
-                        const SizedBox(width: 5),
-                        Flexible(
-                          child: Text(
-                            _formatDateString(entryDate),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(
-                              fontFamily: InkDiaryTheme.fontKaiti,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: tokens.nongmo,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 6),
-
-              // Weather Emblem
-              InkWell(
-                borderRadius: BorderRadius.circular(6),
-                onTap: () => _showWeatherPicker(context),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        activeWeather.icon,
-                        size: 14,
-                        color: tokens.danmo,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        activeWeather.label,
-                        style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontKaiti,
-                          fontSize: 12,
-                          color: tokens.danmo,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 4),
-
-              // Mood Emblem
-              InkWell(
-                borderRadius: BorderRadius.circular(6),
-                onTap: () => _showMoodPicker(context),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        activeMood.emoji,
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        activeMood.label,
-                        style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontKaiti,
-                          fontSize: 12,
-                          color: tokens.danmo,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 4),
-
-          // Line 2: Borderless Stationery Title Field
-          if (titleController != null)
-            TextField(
-              controller: titleController,
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: tokens.jiaomo,
-                letterSpacing: 0.5,
-              ),
-              cursorColor: tokens.cinnabar,
-              decoration: InputDecoration(
-                hintText: '题名 · Title...',
-                hintStyle: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w400,
-                  fontStyle: FontStyle.italic,
-                  color: tokens.danmo.withValues(alpha: 0.5),
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              ),
-            ),
-
-          const SizedBox(height: 4),
-
-          // Subtle Deckle Stationery Divider
-          Container(
-            height: 0.8,
-            color: tokens.deckleBorder.withValues(alpha: 0.5),
-          ),
-        ],
+  Widget _buildTitleField(InkDiaryTokens tokens) {
+    return TextField(
+      controller: titleController,
+      style: TextStyle(
+        fontFamily: InkDiaryTheme.fontNotoSerif,
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: tokens.jiaomo,
+        letterSpacing: 0.5,
+      ),
+      cursorColor: tokens.cinnabar,
+      decoration: InputDecoration(
+        hintText: '题名 · Title...',
+        hintStyle: TextStyle(
+          fontFamily: InkDiaryTheme.fontNotoSerif,
+          fontSize: 17,
+          fontWeight: FontWeight.w400,
+          fontStyle: FontStyle.italic,
+          color: tokens.danmo.withValues(alpha: 0.5),
+        ),
+        border: InputBorder.none,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 2),
       ),
     );
   }
