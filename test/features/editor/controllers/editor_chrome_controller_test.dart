@@ -70,23 +70,24 @@ void main() {
       expect(chrome.isWorkstationCollapsed, isFalse);
     });
 
-    test('toggling collapses and toggling again restores', () {
-      chrome.toggleWorkstation();
+    test('collapsing and expanding round-trip, and repeats are no-ops', () {
+      chrome.collapseWorkstation();
+      chrome.collapseWorkstation();
       expect(chrome.isWorkstationCollapsed, isTrue);
-      chrome.toggleWorkstation();
+      chrome.expandWorkstation();
       expect(chrome.isWorkstationCollapsed, isFalse);
       expect(notifications, 2);
     });
 
-    test('a toggle before the first layout wins over it', () {
-      chrome.toggleWorkstation();
+    test('a collapse before the first layout wins over it', () {
+      chrome.collapseWorkstation();
       expect(chrome.resolveInitialWorkstation(workstationFits: true), isTrue);
     });
 
     test('expanding restores a collapsed workstation and is a no-op when docked', () {
       chrome.expandWorkstation();
       expect(notifications, 0);
-      chrome.toggleWorkstation();
+      chrome.collapseWorkstation();
       chrome.expandWorkstation();
       expect(chrome.isWorkstationCollapsed, isFalse);
       expect(notifications, 2);

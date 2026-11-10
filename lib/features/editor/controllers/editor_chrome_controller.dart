@@ -48,9 +48,10 @@ class EditorChromeController extends ChangeNotifier {
     return _isWorkstationCollapsed;
   }
 
-  void toggleWorkstation() {
+  void collapseWorkstation() {
+    if (_isWorkstationCollapsed) return;
     _isWorkstationResolved = true;
-    _isWorkstationCollapsed = !_isWorkstationCollapsed;
+    _isWorkstationCollapsed = true;
     notifyListeners();
   }
 

@@ -5,6 +5,7 @@ import '../domain/stationery_sheet_descriptor.dart';
 import '../models/desk_media_handlers.dart';
 import 'desk_workstation/desk_space_budget.dart';
 import 'desk_workstation/desk_workstation.dart';
+import 'desk_workstation/workstation_collapse_controls.dart';
 import 'fullscreen_media_lightbox.dart';
 import 'sheet_mount_strip.dart';
 
@@ -14,7 +15,11 @@ import 'sheet_mount_strip.dart';
 /// Both step aside (slide and fade) when the budget hides them. Tapping any
 /// item opens the fullscreen lightbox; collect, mount and erase bubble up.
 ///
-/// Fills the canvas [Stack]; only the strip and workstation take hits.
+/// The workstation's brass pull tab puts it away; while it is away the Restore
+/// Pill rests at the foot of the desk and brings it back.
+///
+/// Fills the canvas [Stack]; only the strip, workstation and these controls
+/// take hits.
 class EditorDeskMediaArea extends StatelessWidget {
   final DeskSpaceBudget budget;
   final List<SheetMediaItem> mountedItems;
@@ -24,6 +29,11 @@ class EditorDeskMediaArea extends StatelessWidget {
   /// 1-based number of the active Stationery Sheet.
   final int activeSheetNumber;
   final bool isPaperDark;
+
+  /// Whether the diarist (or a short desk) has put the workstation away.
+  final bool isWorkstationCollapsed;
+  final VoidCallback? onCollapseWorkstation;
+  final VoidCallback? onRestoreWorkstation;
 
   /// Collect, mount, erase, unmount and Brush Reveal plumbing.
   final DeskMediaHandlers handlers;
@@ -39,6 +49,9 @@ class EditorDeskMediaArea extends StatelessWidget {
     required this.mediaSandboxService,
     required this.activeSheetNumber,
     this.isPaperDark = false,
+    this.isWorkstationCollapsed = false,
+    this.onCollapseWorkstation,
+    this.onRestoreWorkstation,
     this.handlers = const DeskMediaHandlers(),
     this.onCaptionChanged,
   });
@@ -90,6 +103,31 @@ class EditorDeskMediaArea extends StatelessWidget {
               activeSheetNumber: activeSheetNumber,
               handlers: handlers,
               onTapItem: (item) => _openLightbox(context, stagedItems, item),
+            ),
+          ),
+        ),
+        // The pull tab straddles the workstation's top edge.
+        Positioned(
+          left: 0.0,
+          right: 0.0,
+          bottom: budget.workstationHeight - WorkstationPullTab.kTargetSize / 2.0,
+          height: WorkstationPullTab.kTargetSize,
+          child: _StepAside(
+            isShown: budget.showWorkstation && onCollapseWorkstation != null,
+            child: Center(child: WorkstationPullTab(onCollapse: onCollapseWorkstation!)),
+          ),
+        ),
+        Positioned(
+          left: 16.0,
+          right: 16.0,
+          bottom: DeskSpaceBudget.kBottomMargin,
+          child: _StepAside(
+            isShown: isWorkstationCollapsed && onRestoreWorkstation != null,
+            child: Center(
+              child: WorkstationRestorePill(
+                stagedCount: stagedItems.length,
+                onRestore: onRestoreWorkstation!,
+              ),
             ),
           ),
         ),
