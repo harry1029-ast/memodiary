@@ -252,8 +252,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('scholar_chest_drawer')), findsNothing);
 
-      // 2. Verify the dock's workstation handle is present
-      expect(find.byKey(const Key('writing_dock_workstation_handle')), findsOneWidget);
+      // 2. Verify the workstation Restore Pill rests on the short test viewport
+      expect(find.byKey(const Key('workstation_restore_pill')), findsOneWidget);
     });
 
     testWidgets('displays soundscape pill when music is playing and opens Guqin zither', (tester) async {
