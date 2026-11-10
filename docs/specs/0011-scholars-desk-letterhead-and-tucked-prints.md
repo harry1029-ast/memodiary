@@ -321,7 +321,7 @@ The editor becomes a calmer, more tactile scholar's desk:
 
 ## Further Notes
 
-- **Design reference:** the prototypes `memodiary_canvas_layout_benchmark_3.html` (and `_2.html`, which shares the same markup for these features). Exact values above are quoted from them. Their 10px and smaller text, hover-only sizes, fixed 30px stride, per-page front-matter and in-frame media strip are intentionally not carried over.
+- **Design reference:** the prototypes `memodiary_canvas_layout_benchmark_3.html` (and `_2.html`, which shares the same markup for these features). They are not tracked in git. They live on the developer's machine at `/mnt/c/Users/ASUS/Desktop/私人日记/prototypes/`. Read them as HTML/CSS visual references, not code to port. Exact values above are quoted from them. Their 10px and smaller text, hover-only sizes, fixed 30px stride, per-page front-matter and in-frame media strip are intentionally not carried over.
 - **Vocabulary** follows GLOSSARY.md: Scholar's Desk, Page Corner, Lunar Date Seal, Weather Charm / Mood Charm, Tucked Prints, Restore Pill, Staging Handscroll, Collect, Mount / Unmount, Writing Dock. Avoid "Sheet Mount Strip" (SPEC-010's name, now replaced by Tucked Prints), "chevron" and "page counter".
 - **ADR-0009** governs mounting and was amended only in wording. No new ADR was needed: none of these decisions is both hard to reverse and the result of a contested trade-off.
 - The `$0` FOSS invariant holds: Flutter painters, gestures, existing packages and hand-written lunar data only.
