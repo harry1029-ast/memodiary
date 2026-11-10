@@ -105,7 +105,7 @@ void main() {
         )!.group(1)!,
       );
       await tester.tap(find.byKey(Key(
-        current < sheetNumber ? 'editor_next_sheet_btn' : 'editor_prev_sheet_btn',
+        current < sheetNumber ? 'editor_page_corner_next' : 'editor_page_corner_prev',
       )));
       await tester.pumpAndSettle();
     }

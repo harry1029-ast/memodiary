@@ -137,7 +137,7 @@ void main() {
       expect(find.byKey(const Key('cinnabar_signature_seal')), findsNothing);
 
       // Navigate to Sheet 2 of 2 (final sheet)
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
 
       expect(find.text('第 2 / 2 页'), findsOneWidget);

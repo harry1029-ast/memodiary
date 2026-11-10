@@ -79,15 +79,15 @@ void main() {
     expect(find.text('第 2 / 2 页'), findsOneWidget);
     expect(secondEditor.controller.document.length, greaterThan(5));
 
-    // Navigate back to Sheet 1 via chevron
-    final prevBtnFinder = find.byKey(const Key('editor_prev_sheet_btn'));
+    // Navigate back to Sheet 1 via Page Corner
+    final prevBtnFinder = find.byKey(const Key('editor_page_corner_prev'));
     expect(prevBtnFinder, findsOneWidget);
     await tester.tap(prevBtnFinder);
     await tester.pumpAndSettle();
     expect(find.text('第 1 / 2 页'), findsOneWidget);
 
-    // Navigate forward to Sheet 2 via chevron
-    final nextBtnFinder = find.byKey(const Key('editor_next_sheet_btn'));
+    // Navigate forward to Sheet 2 via Page Corner
+    final nextBtnFinder = find.byKey(const Key('editor_page_corner_next'));
     expect(nextBtnFinder, findsOneWidget);
     await tester.tap(nextBtnFinder);
     await tester.pumpAndSettle();

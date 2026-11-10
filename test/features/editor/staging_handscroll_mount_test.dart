@@ -174,7 +174,7 @@ void main() {
       await openEditor(tester);
       expect(find.text('第 1 / 2 页'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
       await collectPhoto(tester);
       final ids = await attachmentIds();
@@ -189,7 +189,7 @@ void main() {
 
       expect(find.text('第 1 / 2 页'), findsOneWidget);
       expect(find.byKey(const Key('sheet_mount_strip')), findsNothing);
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
       expect(stripItem(ids.single), findsOneWidget);
       expect(find.byKey(const Key('staging_handscroll')), findsNothing);

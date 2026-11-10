@@ -53,7 +53,7 @@ void main() {
   });
 
   group('Paginated Editor Stage - Navigation, Spill & Seal Tests', () {
-    testWidgets('empty entry renders 14-row clipped Paper Heart, 4-row letterhead, 1/1 badge, and hidden chevrons', (tester) async {
+    testWidgets('empty entry renders 14-row clipped Paper Heart, 4-row letterhead, 1/1 badge, and hidden Page Corners', (tester) async {
       await pumpEntryEditorScreen(
         tester,
         database: database,
@@ -81,15 +81,15 @@ void main() {
       final clipSize = tester.getSize(clipRectFinder);
       expect(clipSize.height, equals(canvasContainer.layoutMetrics!.innerFrameRect.height));
 
-      // Page indicator displays 第 1 / 1 页 and boundary chevrons are hidden
+      // Page indicator displays 第 1 / 1 页 and the boundary Page Corners are hidden
       expect(find.byKey(const Key('editor_sheet_indicator')), findsOneWidget);
       expect(find.text('第 1 / 1 页'), findsOneWidget);
-      expect(find.byKey(const Key('editor_prev_sheet_btn')), findsNothing);
-      expect(find.byKey(const Key('editor_next_sheet_btn')), findsNothing);
+      expect(find.byKey(const Key('editor_page_corner_prev')), findsNothing);
+      expect(find.byKey(const Key('editor_page_corner_next')), findsNothing);
       expect(find.byType(BoundedCinnabarSeal), findsOneWidget);
     });
 
-    testWidgets('multi-sheet entry navigates via center-border chevrons and updates page indicator', (tester) async {
+    testWidgets('multi-sheet entry navigates via Page Corners and updates page indicator', (tester) async {
       final multiSheetDelta = Delta();
       for (int lineIndex = 1; lineIndex <= 29; lineIndex++) {
         multiSheetDelta.insert('第${lineIndex.toString().padLeft(2, '0')}行信笺书法墨迹书写记录\n');
@@ -110,30 +110,30 @@ void main() {
       );
 
       expect(find.text('第 1 / 3 页'), findsOneWidget);
-      expect(find.byKey(const Key('editor_prev_sheet_btn')), findsNothing);
-      expect(find.byKey(const Key('editor_next_sheet_btn')), findsOneWidget);
+      expect(find.byKey(const Key('editor_page_corner_prev')), findsNothing);
+      expect(find.byKey(const Key('editor_page_corner_next')), findsOneWidget);
       expect(find.byType(BoundedCinnabarSeal), findsNothing, reason: 'Seal is final-sheet only');
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
 
       expect(find.text('第 2 / 3 页'), findsOneWidget);
-      expect(find.byKey(const Key('editor_prev_sheet_btn')), findsOneWidget);
-      expect(find.byKey(const Key('editor_next_sheet_btn')), findsOneWidget);
+      expect(find.byKey(const Key('editor_page_corner_prev')), findsOneWidget);
+      expect(find.byKey(const Key('editor_page_corner_next')), findsOneWidget);
       expect(find.byKey(const Key('editor_continuation_colophon_header')), findsOneWidget);
       expect(find.text('《兰亭偶得》 · 第 2 页'), findsOneWidget);
       expect(find.byType(BoundedCinnabarSeal), findsNothing);
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
 
       expect(find.text('第 3 / 3 页'), findsOneWidget);
-      expect(find.byKey(const Key('editor_prev_sheet_btn')), findsOneWidget);
-      expect(find.byKey(const Key('editor_next_sheet_btn')), findsNothing);
+      expect(find.byKey(const Key('editor_page_corner_prev')), findsOneWidget);
+      expect(find.byKey(const Key('editor_page_corner_next')), findsNothing);
       expect(find.text('《兰亭偶得》 · 第 3 页'), findsOneWidget);
       expect(find.byType(BoundedCinnabarSeal), findsOneWidget, reason: 'Seal is present on final sheet');
 
-      await tester.tap(find.byKey(const Key('editor_prev_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_prev')));
       await tester.pumpAndSettle();
       expect(find.text('第 2 / 3 页'), findsOneWidget);
     });
@@ -234,7 +234,7 @@ void main() {
       );
 
       expect(find.text('第 1 / 2 页'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
       expect(find.text('第 2 / 2 页'), findsOneWidget);
 

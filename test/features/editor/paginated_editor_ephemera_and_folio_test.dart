@@ -201,7 +201,7 @@ void main() {
       await tester.tap(find.byKey(const Key('writing_dock_format_btn')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
       expect(find.text('第 2 / 2 页'), findsOneWidget);
       expect(find.byType(StationeryEphemeraSheet), findsOneWidget);
@@ -295,12 +295,12 @@ void main() {
       expect(find.text('第 1 / 3 页'), findsOneWidget);
       expect(find.byType(JournalLetterhead), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
       expect(find.text('第 2 / 3 页'), findsOneWidget);
       expect(find.byType(StationeryEphemeraSheet), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
       expect(find.text('第 3 / 3 页'), findsOneWidget);
       expect(find.byKey(const Key('editor_continuation_colophon_header')), findsOneWidget);
@@ -358,7 +358,7 @@ void main() {
 
       await tester.tap(find.byKey(Key('handscroll_mount_${ids[0]}')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('editor_next_sheet_btn')));
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(Key('handscroll_mount_${ids[1]}')));
       await tester.pumpAndSettle();
