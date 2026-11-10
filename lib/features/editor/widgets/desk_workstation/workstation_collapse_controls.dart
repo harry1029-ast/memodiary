@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// The brass pull tab (拉手) centred on the Desk Workstation's top edge that
+/// The brass pull tab (拉手) at the right end of the Desk Workstation's top edge that
 /// puts the workstation away. A 44x44 target around a slim brass plate.
 ///
 /// Taps never touch focus, so the software keyboard stays as it is.

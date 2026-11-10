@@ -138,11 +138,13 @@ void main() {
       expect(find.byKey(const Key('writing_dock_workstation_handle')), findsNothing);
       final dockedSheetTop = tester.getRect(find.byType(TemplateCanvasContainer)).top;
 
-      // The tab straddles the workstation's top edge, centred, with a 44x44 target.
+      // The tab straddles the workstation's top edge at its right end, with a 44x44 target.
       final tabRect = tester.getRect(pullTab);
       expect(tabRect.width, greaterThanOrEqualTo(44.0));
       expect(tabRect.height, greaterThanOrEqualTo(44.0));
-      expect(tabRect.center.dx, closeTo(tester.getRect(find.byType(EditorPaperCanvas)).center.dx, 0.5));
+      expect(tabRect.right, closeTo(tester.getRect(find.byType(EditorPaperCanvas)).right, 0.5));
+      final sealRect = tester.getRect(find.byKey(const Key('cinnabar_signature_seal')));
+      expect(sealRect.overlaps(tabRect), isFalse);
       expect(tabRect.center.dy, closeTo(tester.getRect(workstation).top, 1.0));
 
       await tester.tap(pullTab);
@@ -161,6 +163,31 @@ void main() {
       expect(pill, findsNothing);
       expect(tester.getRect(find.byType(TemplateCanvasContainer)).top, closeTo(dockedSheetTop, 1.0));
     });
+
+    for (final viewport in const [_tallViewport, Size(800.0, 600.0)]) {
+      testWidgets('the seal clears the pull tab, and the Restore Pill once collapsed, on ${viewport.width.toInt()}x${viewport.height.toInt()}', (tester) async {
+        await openEditor(tester, viewport: viewport);
+        final seal = find.byKey(const Key('cinnabar_signature_seal'));
+        void expectClear(Finder control) {
+          expect(control, findsOneWidget);
+          // The budget drops the seal when it cannot rest above the workstation.
+          if (seal.evaluate().isNotEmpty) {
+            expect(tester.getRect(seal).overlaps(tester.getRect(control)), isFalse);
+          }
+        }
+
+        if (workstation.evaluate().isEmpty) {
+          expectClear(pill);
+          await tester.tap(pill);
+          await tester.pumpAndSettle();
+        }
+        expectClear(pullTab);
+
+        await tester.tap(pullTab);
+        await tester.pumpAndSettle();
+        expectClear(pill);
+      });
+    }
 
     testWidgets('the pill counts the staged keepsakes while the workstation is away', (tester) async {
       await openEditor(tester);
