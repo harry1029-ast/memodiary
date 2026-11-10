@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../../../../core/calendar/lunar_calendar.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../intro/utils/chinese_calendar_helper.dart';
 import '../../../templates/models/template_style.dart';
 import 'folio_leaf_model.dart';
 
@@ -218,15 +218,13 @@ class FolioContentParser {
     return null;
   }
 
-  /// Formats classical lunar date with Ganzhi cyclical year, e.g. `岁次丙午 · 十月廿三`.
+  /// Formats the classical lunar date with its stem-branch year, e.g.
+  /// `岁次丙午 · 十月十五`. Outside the lunar data range only the year is shown.
   static String formatFullLunarDate(DateTime date) {
-    const stems = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
-    const branches = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
-    final stemIndex = (date.year - 4) % 10;
-    final branchIndex = (date.year - 4) % 12;
-    final ganzhi = '${stems[stemIndex]}${branches[branchIndex]}';
-    final monthDay = ChineseCalendarHelper.formatMonthDay(date);
-    return '岁次$ganzhi · $monthDay';
+    final lunar = LunarCalendar.fromSolar(date);
+    final monthDay = lunar.monthDayName;
+    final year = '岁次${lunar.stemBranchYear}';
+    return monthDay == null ? year : '$year · $monthDay';
   }
 
   /// Formats Gregorian date with classical Shichen & Ke, e.g. `2026.11.23 · 亥时初刻`.
