@@ -5,6 +5,7 @@ import '../../domain/stationery_sheet_descriptor.dart';
 import '../../models/desk_media_handlers.dart';
 import '../staging_handscroll.dart';
 import 'closed_brocade_scroll.dart';
+import 'desk_palette.dart';
 import 'walnut_desk_painter.dart';
 
 /// The Desk Workstation (案头画案): the bamboo mat on the walnut desk on which
@@ -39,10 +40,24 @@ class DeskWorkstation extends StatefulWidget {
 }
 
 class _DeskWorkstationState extends State<DeskWorkstation> {
-  final _deskPainter = WalnutDeskPainter(
-    matInsets: DeskWorkstation.kMatInsets,
-    paintsDesk: false,
-  );
+  /// The mat's painter, rebuilt only when the app's brightness changes so its
+  /// recorded picture survives ordinary rebuilds.
+  late WalnutDeskPainter _deskPainter;
+  DeskPalette? _palette;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final palette = DeskPalette.of(context);
+    if (_palette != palette) {
+      _palette = palette;
+      _deskPainter = WalnutDeskPainter(
+        palette: palette,
+        matInsets: DeskWorkstation.kMatInsets,
+        paintsDesk: false,
+      );
+    }
+  }
 
   /// Whether the open handscroll got there by opening from closed, so it
   /// unrolls. A workstation built with items that are all awaiting their
@@ -108,7 +123,7 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
               ),
               Positioned.fill(
                 child: Padding(
-                  padding: DeskWorkstation.kMatInsets.add(const EdgeInsets.all(6.0)),
+                  padding: DeskWorkstation.kMatInsets.add(const EdgeInsets.all(2.0)),
                   child: isClosed
                       ? ClosedBrocadeScroll(
                           key: const Key('closed_brocade_scroll'),
