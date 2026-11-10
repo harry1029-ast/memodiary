@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
 import 'package:memodiary/features/editor/models/desk_media_handlers.dart';
-import 'package:memodiary/features/editor/widgets/sheet_mount_strip.dart';
 import 'package:memodiary/features/editor/widgets/staging_handscroll.dart';
 import '../../../helpers/editor_test_harness.dart';
 
@@ -136,38 +135,6 @@ void main() {
 
       expect(find.bySemanticsLabel('贴至本页：待贴第 2 影 → 第 3 页'), findsOneWidget);
       semantics.dispose();
-    });
-  });
-
-  group('SheetMountStrip', () {
-    testWidgets('renders nothing when the sheet has no mounted items', (tester) async {
-      await tester.pumpWidget(host(SheetMountStrip(
-        items: const [],
-        mediaSandboxService: sandboxService,
-      )));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('sheet_mount_strip')), findsNothing);
-    });
-
-    testWidgets('shows mounted items in order and has no delete control', (tester) async {
-      final tapped = <String>[];
-      await tester.pumpWidget(host(SheetMountStrip(
-        items: _items.take(3).toList(),
-        mediaSandboxService: sandboxService,
-        onTapItem: (item) => tapped.add(item.id),
-      )));
-      await tester.pumpAndSettle();
-
-      final lefts = ['item_1', 'item_2', 'item_3']
-          .map((id) => tester.getTopLeft(find.byKey(Key('mount_strip_item_$id'))).dx)
-          .toList();
-      expect(lefts, orderedEquals([...lefts]..sort()));
-      expect(find.byIcon(Icons.close), findsNothing);
-      expect(find.byIcon(Icons.delete_outline), findsNothing);
-
-      await tester.tap(find.byKey(const Key('mount_strip_item_item_3')));
-      expect(tapped, ['item_3']);
     });
   });
 }

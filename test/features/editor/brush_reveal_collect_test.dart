@@ -14,6 +14,7 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/brush_reveal/brush_reveal_choreography.dart';
 import 'package:memodiary/features/editor/widgets/staging_handscroll.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 
 const _entryId = 'brush_reveal_entry';
 const _viewport = Size(360.0, 780.0);
@@ -156,7 +157,7 @@ void main() {
 
     await tester.tap(find.byKey(Key('handscroll_mount_$mediaId')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(Key('mount_strip_unmount_$mediaId')));
+    unmountTuckedPrint(tester, mediaId);
     await tester.pump();
 
     expect(find.byKey(Key('handscroll_item_$mediaId')), findsOneWidget);
@@ -174,7 +175,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('closed_brocade_scroll')), findsOneWidget);
 
-    await tester.tap(find.byKey(Key('mount_strip_unmount_$mediaId')));
+    unmountTuckedPrint(tester, mediaId);
     await tester.pump();
     await tester.pump();
 
@@ -198,7 +199,7 @@ void main() {
           ),
         );
     await openEditor(tester);
-    expect(find.byKey(const Key('mount_strip_item_plum')), findsOneWidget);
+    expect(tuckedPrint('plum'), findsOneWidget);
 
     tester
         .widget<QuillEditor>(find.byType(QuillEditor).first)

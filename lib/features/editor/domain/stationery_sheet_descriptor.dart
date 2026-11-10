@@ -86,7 +86,7 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
   /// Whether this sheet has at least one paired photo or video keepsake.
   bool get hasMediaAttachments => mediaAttachments.isNotEmpty;
 
-  /// Most items a sheet's Mount Strip (and a Folio leaf or PDF page) shows.
+  /// Most items a sheet's Tucked Prints (and a Folio leaf or PDF page) hold.
   static const int kMountCapacity = 3;
 
   /// Whether this sheet has reached the maximum allowed attachment capacity.

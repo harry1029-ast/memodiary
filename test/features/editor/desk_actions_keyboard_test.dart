@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 import '../../helpers/staged_editor_fixture.dart';
 
 const _entryId = 'desk_actions_keyboard_entry';
@@ -47,11 +48,32 @@ void main() {
 
     await tester.tap(find.byKey(const Key('handscroll_mount_seeded_0')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('sheet_mount_strip')), findsOneWidget);
+    expect(tuckedPrint('seeded_0'), findsOneWidget);
+    expect(sheet.focusNode.hasFocus, isFalse);
+    expect(inputCalls(tester), isNot(contains('TextInput.show')));
 
-    await tester.tap(find.byKey(const Key('mount_strip_unmount_seeded_0')));
+    unmountTuckedPrint(tester, 'seeded_0');
     await tester.pumpAndSettle();
 
+    expect(tuckedPrintsFan, findsNothing);
+    expect(sheet.focusNode.hasFocus, isFalse);
+    expect(inputCalls(tester), isNot(contains('TextInput.show')));
+  });
+
+  testWidgets('a refused mount shakes the Tucked Prints without showing the keyboard', (tester) async {
+    await fixture.seedStagedPhotos(4);
+    final sheet = await openEditorWriting(tester);
+    for (var index = 0; index < 3; index++) {
+      await tester.tap(find.byKey(Key('handscroll_mount_seeded_$index')));
+      await tester.pumpAndSettle();
+    }
+    tester.testTextInput.log.clear();
+
+    await tester.tap(find.byKey(const Key('handscroll_mount_seeded_3')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('本页已满三影'), findsOneWidget);
+    expect(tuckedPrint('seeded_3'), findsNothing);
     expect(sheet.focusNode.hasFocus, isFalse);
     expect(inputCalls(tester), isNot(contains('TextInput.show')));
   });

@@ -7,6 +7,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 
 import 'package:memodiary/features/editor/widgets/fullscreen_media_lightbox.dart';
 import '../../helpers/editor_test_harness.dart';
+import '../../helpers/tucked_prints_test_helpers.dart';
 import '../../helpers/staged_editor_fixture.dart';
 import '../../helpers/widget_test_helpers.dart';
 
@@ -58,7 +59,6 @@ void main() {
   }
 
   Finder handscrollItem(String mediaId) => find.byKey(Key('handscroll_item_$mediaId'));
-  Finder stripItem(String mediaId) => find.byKey(Key('mount_strip_item_$mediaId'));
   Finder snackBarText(Pattern pattern) => find.descendant(
         of: find.byType(SnackBar),
         matching: find.textContaining(pattern),
@@ -89,12 +89,12 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('sheet_drop_highlight')), findsNothing);
-      expect(stripItem('seeded_0'), findsOneWidget);
+      expect(tuckedPrint('seeded_0'), findsOneWidget);
       expect(handscrollItem('seeded_0'), findsNothing);
       expect(handscrollItem('seeded_1'), findsOneWidget);
 
       await reopenEditor(tester);
-      expect(stripItem('seeded_0'), findsOneWidget);
+      expect(tuckedPrint('seeded_0'), findsOneWidget);
     });
 
     testWidgets('dropping onto a full sheet is refused with a shake and SnackBar; the item stays staged',
@@ -104,18 +104,18 @@ void main() {
       for (var index = 0; index < 3; index++) {
         await mount(tester, 'seeded_$index');
       }
-      final restingLeft = tester.getTopLeft(stripItem('seeded_0')).dx;
+      final restingLeft = tester.getTopLeft(tuckedPrint('seeded_0')).dx;
 
       final gesture = await dragItemTo(tester, 'seeded_3', sheetCenter(tester));
       await gesture.up();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
-      expect(tester.getTopLeft(stripItem('seeded_0')).dx, isNot(restingLeft));
+      expect(tester.getTopLeft(tuckedPrint('seeded_0')).dx, isNot(restingLeft));
 
       await tester.pumpAndSettle();
       expect(snackBarText('本页已满三影'), findsOneWidget);
       expect(handscrollItem('seeded_3'), findsOneWidget);
-      expect(stripItem('seeded_3'), findsNothing);
+      expect(tuckedPrint('seeded_3'), findsNothing);
     });
 
     testWidgets('dropping outside the sheet cancels with no change', (tester) async {
@@ -128,7 +128,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(handscrollItem('seeded_0'), findsOneWidget);
-      expect(stripItem('seeded_0'), findsNothing);
+      expect(tuckedPrint('seeded_0'), findsNothing);
       expect(find.byType(SnackBar), findsNothing);
     });
 
@@ -152,7 +152,7 @@ void main() {
 
       expect(tester.getTopLeft(handscrollItem('seeded_1')).dx, lessThan(restingLeft));
       expect(find.byKey(const Key('sheet_drop_highlight')), findsNothing);
-      expect(stripItem('seeded_1'), findsNothing);
+      expect(tuckedPrint('seeded_1'), findsNothing);
     });
 
     testWidgets('📌 stays the accessible equivalent at 44px', (tester) async {
@@ -162,7 +162,7 @@ void main() {
 
       await expectAccessibleTapTargets(tester, within: find.byKey(const Key('handscroll_mount_seeded_0')));
       await mount(tester, 'seeded_0');
-      expect(stripItem('seeded_0'), findsOneWidget);
+      expect(tuckedPrint('seeded_0'), findsOneWidget);
       semantics.dispose();
     });
   });

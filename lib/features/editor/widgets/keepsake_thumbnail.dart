@@ -5,7 +5,7 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 
 /// Cover-fit preview of a sandboxed photo or video keepsake, shared by the
-/// Staging Handscroll and Sheet Mount Strip.
+/// Staging Handscroll and the Tucked Prints.
 class KeepsakeThumbnail extends StatefulWidget {
   final SheetMediaItem item;
   final MediaSandboxService mediaSandboxService;

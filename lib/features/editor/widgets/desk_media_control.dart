@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Light/dark paper tones shared by the Staging Handscroll and the Sheet Mount
-/// Strip, so their prints and controls read as one set of stationery.
+/// Light/dark paper tones shared by the Staging Handscroll and the Tucked
+/// Prints, so their prints and controls read as one set of stationery.
 class DeskMediaPalette {
   final bool isPaperDark;
 

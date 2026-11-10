@@ -6,15 +6,16 @@ import '../models/desk_media_handlers.dart';
 import 'desk_workstation/desk_space_budget.dart';
 import 'desk_workstation/desk_workstation.dart';
 import 'fullscreen_media_lightbox.dart';
-import 'sheet_mount_strip.dart';
+import 'tucked_prints/tucked_prints_fan.dart';
 
 /// The desk area around the active Stationery Sheet, laid out by a
-/// [DeskSpaceBudget]: that sheet's Sheet Mount Strip just beneath it, and the
-/// Desk Workstation holding the entry-wide Staging Handscroll at the bottom.
-/// Both step aside (slide and fade) when the budget hides them. Tapping any
-/// item opens the fullscreen lightbox; collect, mount and erase bubble up.
+/// [DeskSpaceBudget]: that sheet's Tucked Prints peeking out of the header
+/// band above its top right edge, and the Desk Workstation holding the
+/// entry-wide Staging Handscroll at the bottom, which steps aside (slides and
+/// fades) when the budget hides it. Tapping an item opens the fullscreen
+/// lightbox; collect, mount and erase bubble up.
 ///
-/// Fills the canvas [Stack]; only the strip and workstation take hits.
+/// Fills the canvas [Stack]; only the prints and workstation take hits.
 class EditorDeskMediaArea extends StatelessWidget {
   final DeskSpaceBudget budget;
   final List<SheetMediaItem> mountedItems;
@@ -30,6 +31,9 @@ class EditorDeskMediaArea extends StatelessWidget {
   final void Function(String mediaId, String newCaption)? onCaptionChanged;
 
   static const Duration kStepAsideDuration = Duration(milliseconds: 250);
+
+  /// Inset of the Tucked Prints from the desk's right edge.
+  static const double kPrintsRightInset = 24.0;
 
   const EditorDeskMediaArea({
     super.key,
@@ -59,22 +63,19 @@ class EditorDeskMediaArea extends StatelessWidget {
     return Stack(
       children: [
         Positioned(
-          top: budget.stripTop,
-          left: 16.0,
-          right: 16.0,
-          height: DeskSpaceBudget.kStripHeight,
-          child: _StepAside(
-            isShown: budget.showStrip && mountedItems.isNotEmpty,
-            child: Center(
-              child: SheetMountStrip(
-                items: mountedItems,
-                mediaSandboxService: mediaSandboxService,
-                isPaperDark: isPaperDark,
-                onTapItem: (item) => _openLightbox(context, mountedItems, item),
-                onUnmountItem: (item) => handlers.onUnmount?.call(item.id),
-                refusalSignal: handlers.mountRefusals,
-              ),
-            ),
+          top: budget.headerTop,
+          right: kPrintsRightInset,
+          height: TuckedPrintsFan.kTargetHeight,
+          child: TuckedPrintsFan(
+            // Keyed by sheet: a page turn shows its prints at rest.
+            key: ValueKey('tucked_prints_sheet_$activeSheetNumber'),
+            items: mountedItems,
+            mediaSandboxService: mediaSandboxService,
+            sheetEdgeOffset: DeskSpaceBudget.kHeaderHeight,
+            isPaperDark: isPaperDark,
+            // The fanned overlay arrives with SPEC-011 ticket 07.
+            onTap: () => _openLightbox(context, mountedItems, mountedItems.first),
+            refusalSignal: handlers.mountRefusals,
           ),
         ),
         Positioned(
