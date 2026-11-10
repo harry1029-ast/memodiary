@@ -1,27 +1,35 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../domain/stationery_sheet_descriptor.dart';
 
-/// Lifts the desk (sheet, header band and chrome) typewriter-style while the
-/// diarist writes with the software keyboard open: far enough that the caret
-/// of the active Stationery Sheet stays [kClearanceRows] rows above the
-/// accessory row resting on the keyboard, but never further than brings the
-/// sheet's bottom edge into view.
+/// Lifts the desk (sheet, header band and chrome) while the software keyboard
+/// is open, by one decision:
+///
+/// - **Whole sheet:** whenever the whole Stationery Sheet fits on the desk
+///   left visible above the keyboard and accessory row, the desk lifts just
+///   far enough that all of it shows, wherever the caret is.
+/// - **Caret (fallback):** otherwise it lifts typewriter-style, far enough
+///   that the caret of the active sheet stays [kClearanceRows] rows above the
+///   accessory row, but never further than brings the sheet's bottom edge
+///   into view.
 ///
 /// The sheet itself never moves or reflows when the keyboard opens: its
 /// geometry is resolved against the resting desk height, and this widget only
 /// translates the whole desk upward, so ruling and text move together and stay
-/// in line. With the keyboard closed, or the caret outside the active sheet
-/// (e.g. the title field), the lift returns to zero.
-class KeyboardCaretLift extends StatefulWidget {
+/// in line. With the keyboard closed, or (in the fallback) the caret outside
+/// the active sheet (e.g. the title field), the lift returns to zero.
+class KeyboardDeskLift extends StatefulWidget {
   /// Whether the software keyboard covers part of the desk.
   final bool isKeyboardVisible;
 
   /// Height of the desk left visible above the keyboard and accessory row.
   final double visibleHeight;
 
-  /// Furthest the desk may lift: enough to bring the sheet's bottom edge into view.
-  final double maxLift;
+  /// The active sheet's top and bottom edges on the resting desk.
+  final double sheetTop;
+  final double sheetBottom;
 
   /// The sheet's row stride, by which the caret's clearance is measured.
   final double rowHeight;
@@ -34,15 +42,16 @@ class KeyboardCaretLift extends StatefulWidget {
   static const int kClearanceRows = 2;
 
   /// Breathing room kept between the caret and the top of the visible desk,
-  /// and below the sheet's bottom edge at the furthest lift.
+  /// and below the sheet's bottom edge when it is lifted into view.
   static const double kCaretMargin = 12.0;
   static const Duration kLiftDuration = Duration(milliseconds: 180);
 
-  const KeyboardCaretLift({
+  const KeyboardDeskLift({
     super.key,
     required this.isKeyboardVisible,
     required this.visibleHeight,
-    required this.maxLift,
+    required this.sheetTop,
+    required this.sheetBottom,
     required this.rowHeight,
     required this.activeSheet,
     required this.child,
@@ -54,7 +63,7 @@ class KeyboardCaretLift extends StatefulWidget {
       context.dependOnInheritedWidgetOfExactType<_DeskLiftScope>()?.lift ?? 0.0;
 
   @override
-  State<KeyboardCaretLift> createState() => _KeyboardCaretLiftState();
+  State<KeyboardDeskLift> createState() => _KeyboardDeskLiftState();
 }
 
 class _DeskLiftScope extends InheritedWidget {
@@ -66,7 +75,7 @@ class _DeskLiftScope extends InheritedWidget {
   bool updateShouldNotify(_DeskLiftScope oldWidget) => lift != oldWidget.lift;
 }
 
-class _KeyboardCaretLiftState extends State<KeyboardCaretLift> {
+class _KeyboardDeskLiftState extends State<KeyboardDeskLift> {
   final GlobalKey _deskKey = GlobalKey();
   double _lift = 0.0;
   double _measuredVisibleHeight = 0.0;
@@ -80,7 +89,7 @@ class _KeyboardCaretLiftState extends State<KeyboardCaretLift> {
   }
 
   @override
-  void didUpdateWidget(KeyboardCaretLift oldWidget) {
+  void didUpdateWidget(KeyboardDeskLift oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.activeSheet, widget.activeSheet)) {
       _stopListening(oldWidget.activeSheet);
@@ -117,10 +126,14 @@ class _KeyboardCaretLiftState extends State<KeyboardCaretLift> {
   }
 
   double _resolveLift() {
+    if (!widget.isKeyboardVisible) return 0.0;
+    // The furthest lift brings the sheet's bottom edge into view. When that
+    // leaves its top edge on the desk too, the whole sheet fits: lift so it shows.
+    final maxLift = math.max(0.0, widget.sheetBottom + KeyboardDeskLift.kCaretMargin - widget.visibleHeight);
+    if (widget.sheetTop >= maxLift) return maxLift;
+
     final sheet = widget.activeSheet;
-    if (!widget.isKeyboardVisible || widget.maxLift <= 0 || sheet == null || !sheet.focusNode.hasFocus) {
-      return 0.0;
-    }
+    if (sheet == null || !sheet.focusNode.hasFocus) return 0.0;
     final caret = _caretRectOnDesk(sheet);
     if (caret == null) return _lift;
 
@@ -131,15 +144,15 @@ class _KeyboardCaretLiftState extends State<KeyboardCaretLift> {
     final hasVisibleDeskChanged = (widget.visibleHeight - _measuredVisibleHeight).abs() > 0.5;
     _measuredVisibleHeight = widget.visibleHeight;
     var lift = hasVisibleDeskChanged ? 0.0 : _lift;
-    final clearance = KeyboardCaretLift.kClearanceRows * widget.rowHeight;
+    final clearance = KeyboardDeskLift.kClearanceRows * widget.rowHeight;
     if (caret.bottom + clearance - lift > widget.visibleHeight) {
       lift = caret.bottom + clearance - widget.visibleHeight;
     }
-    const margin = KeyboardCaretLift.kCaretMargin;
+    const margin = KeyboardDeskLift.kCaretMargin;
     if (caret.top - margin - lift < 0) {
       lift = caret.top - margin;
     }
-    return lift.clamp(0.0, widget.maxLift).toDouble();
+    return lift.clamp(0.0, maxLift).toDouble();
   }
 
   /// The caret's rect in the unlifted desk's coordinates.
@@ -161,7 +174,7 @@ class _KeyboardCaretLiftState extends State<KeyboardCaretLift> {
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(end: _lift),
-      duration: KeyboardCaretLift.kLiftDuration,
+      duration: KeyboardDeskLift.kLiftDuration,
       curve: Curves.easeOutCubic,
       builder: (liftContext, lift, child) => _DeskLiftScope(
         lift: lift,

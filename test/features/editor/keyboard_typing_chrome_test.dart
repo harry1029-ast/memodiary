@@ -7,8 +7,8 @@ import 'package:memodiary/features/editor/services/editor_settings_service.dart'
 import 'package:memodiary/features/editor/widgets/dictation_bar.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
-import 'package:memodiary/features/editor/widgets/keyboard_accessory_row.dart';
 import 'package:memodiary/features/editor/widgets/writing_dock.dart';
+import 'package:memodiary/features/editor/widgets/writing_dock_collapse_tabs.dart';
 import 'package:memodiary/features/editor/widgets/writing_dock_formatting_ribbon.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
@@ -21,23 +21,27 @@ import '../../helpers/widget_test_helpers.dart';
 const _entryId = 'typing_chrome_entry';
 
 /// The editor's chrome while the software keyboard is open: the app bar
-/// slides away (a save-state dot stands in for it in the header band) and the
-/// Writing Dock gives way to a slim accessory row.
+/// slides away (a save-state dot stands in for it in the header band), the
+/// Writing Dock gives way to a slim accessory row, and a tap on the bare desk
+/// ends writing.
 void main() {
   final fixture = StagedEditorFixture(entryId: _entryId);
 
   setUp(fixture.setUp);
   tearDown(fixture.tearDown);
 
+  late EditorSettingsService editorSettings;
+
   Future<void> openEditor(WidgetTester tester, {DictationService? dictationService, bool launchFromRoute = false}) async {
     simulatePhoneSystemBars(tester);
+    editorSettings = EditorSettingsService(storage: MockSecureStorage());
     await pumpEntryEditorScreen(
       tester,
       database: fixture.database,
       mediaSandboxService: fixture.sandboxService,
       entryId: _entryId,
       dictationService: dictationService,
-      editorSettings: EditorSettingsService(storage: MockSecureStorage()),
+      editorSettings: editorSettings,
       viewportSize: const Size(360.0, 780.0),
       launchFromRoute: launchFromRoute,
     );
@@ -72,10 +76,11 @@ void main() {
       expect(saveDot, findsOneWidget);
       final dotRect = tester.getRect(saveDot);
       final indicatorRect = tester.getRect(find.byKey(const Key('editor_sheet_indicator')));
-      final sheetTop = tester.getRect(find.byType(TemplateCanvasContainer).first).top;
+      final firstRowTop = tester.getRect(find.byKey(const Key('editor_paper_heart_viewport_clip')).first).top;
       expect(dotRect.left, greaterThan(indicatorRect.right), reason: 'beside the page indicator');
-      expect(dotRect.center.dy, closeTo(indicatorRect.center.dy, 1.0));
-      expect(dotRect.bottom, lessThanOrEqualTo(sheetTop), reason: 'in the header band above the sheet');
+      // The lift carries the header band up off the top of the screen, but the
+      // dot stays at the top of the visible desk, above the sheet's rows.
+      expect(dotRect.bottom, lessThanOrEqualTo(firstRowTop), reason: 'above the sheet\'s rows');
       expect(dotRect.top, greaterThanOrEqualTo(kPhoneStatusBarHeight), reason: 'on screen');
 
       await closeSoftKeyboard(tester);
@@ -133,9 +138,9 @@ void main() {
     final accessoryRow = find.byKey(const Key('keyboard_accessory_row'));
     final formatButton = find.byKey(const Key('keyboard_accessory_format_btn'));
     final dictationButton = find.byKey(const Key('keyboard_accessory_dictation_btn'));
-    final dismissButton = find.byKey(const Key('keyboard_accessory_dismiss_btn'));
+    final dockToggle = find.byKey(const Key('keyboard_accessory_dock_toggle_btn'));
 
-    void expectOnlyAccessoryRow(WidgetTester tester) {
+    void expectOnlyAccessoryRow(WidgetTester tester, {required String toggleLabel}) {
       expect(accessoryRow, findsOneWidget);
       expect(find.byType(WritingDock), findsNothing);
       expect(find.byKey(const Key('writing_dock_hide_tab')), findsNothing);
@@ -143,29 +148,30 @@ void main() {
       for (final dockOnly in ['writing_dock_photo_btn', 'writing_dock_video_btn', 'writing_dock_spark_btn']) {
         expect(find.byKey(Key(dockOnly)), findsNothing, reason: '$dockOnly is not shown while typing');
       }
-      for (final control in [formatButton, dictationButton, dismissButton]) {
+      for (final control in [formatButton, dictationButton, dockToggle]) {
         expect(find.descendant(of: accessoryRow, matching: control), findsOneWidget);
         final size = tester.getSize(control);
         expect(size.width, greaterThanOrEqualTo(44.0));
         expect(size.height, greaterThanOrEqualTo(44.0));
       }
       expect(find.descendant(of: accessoryRow, matching: find.byType(IconButton)), findsNWidgets(2));
-      expect(find.text('收起键盘'), findsOneWidget);
+      expect(find.descendant(of: dockToggle, matching: find.text(toggleLabel)), findsOneWidget);
+      expect(find.text('收起键盘'), findsNothing, reason: 'the keyboard has its own close key');
       // About 40dp tall, resting on the keyboard.
       final rowRect = tester.getRect(accessoryRow);
       expect(rowRect.height, inInclusiveRange(40.0, 46.0));
       expect(rowRect.bottom, closeTo(780.0 - kPhoneKeyboardInset, 0.5));
     }
 
-    testWidgets('replaces the Writing Dock while the keyboard is open, holding only Tt, dictation and 收起键盘', (tester) async {
+    testWidgets('replaces the Writing Dock while the keyboard is open, holding only Tt, dictation and the dock toggle', (tester) async {
       await openEditor(tester);
       expect(accessoryRow, findsNothing);
 
       await startWritingOn(tester, editorTextSheets(tester).first);
       await openSoftKeyboard(tester);
-      expectOnlyAccessoryRow(tester);
+      expectOnlyAccessoryRow(tester, toggleLabel: WritingDockHideTab.kSemanticLabel);
       final semantics = tester.ensureSemantics();
-      expect(find.bySemanticsLabel(KeyboardAccessoryRow.kDismissLabel), findsOneWidget);
+      expect(find.bySemanticsLabel(WritingDockHideTab.kSemanticLabel), findsOneWidget);
       await expectAccessibleTapTargets(tester, within: accessoryRow);
       semantics.dispose();
 
@@ -174,7 +180,8 @@ void main() {
       expect(find.byType(WritingDock), findsOneWidget);
     });
 
-    testWidgets('appears even when the Writing Dock is hidden, and the restore tab returns when the keyboard closes', (tester) async {
+    testWidgets('appears even when the Writing Dock is hidden, offering 展开文房, and the restore tab returns when the keyboard closes',
+        (tester) async {
       await openEditor(tester);
       await tester.tap(find.byKey(const Key('writing_dock_hide_tab')));
       await tester.pumpAndSettle();
@@ -182,21 +189,75 @@ void main() {
 
       await startWritingOn(tester, editorTextSheets(tester).first);
       await openSoftKeyboard(tester);
-      expectOnlyAccessoryRow(tester);
+      expectOnlyAccessoryRow(tester, toggleLabel: WritingDockRestoreTab.kSemanticLabel);
 
       await closeSoftKeyboard(tester);
       expect(accessoryRow, findsNothing);
       expect(find.byKey(const Key('writing_dock_restore_tab')), findsOneWidget);
     });
 
-    testWidgets('收起键盘 ends writing and puts the keyboard away', (tester) async {
+    testWidgets('the dock toggle flips the stored preference while writing, and the dock follows it when the keyboard closes',
+        (tester) async {
       await openEditor(tester);
       final sheet = editorTextSheets(tester).first;
       await startWritingOn(tester, sheet);
       await openSoftKeyboard(tester);
       tester.testTextInput.log.clear();
 
-      await tester.tap(dismissButton);
+      await tester.tap(dockToggle);
+      await tester.pump();
+      expect(find.descendant(of: dockToggle, matching: find.text(WritingDockRestoreTab.kSemanticLabel)), findsOneWidget);
+      expect(await editorSettings.getIsWritingDockHidden(), isTrue);
+      expect(sheet.focusNode.hasFocus, isTrue, reason: 'writing goes on');
+      expect(inputCalls(tester), isNot(contains('TextInput.hide')), reason: 'the toggle never drops the keyboard');
+      expect(inputCalls(tester), isNot(contains('TextInput.show')));
+      expect(accessoryRow, findsOneWidget);
+      expect(find.byType(WritingDock), findsNothing);
+
+      await closeSoftKeyboard(tester);
+      expect(find.byType(WritingDock), findsNothing);
+      expect(find.byKey(const Key('writing_dock_restore_tab')), findsOneWidget);
+
+      await startWritingOn(tester, sheet);
+      await openSoftKeyboard(tester);
+      tester.testTextInput.log.clear();
+      await tester.tap(dockToggle);
+      await tester.pump();
+      expect(find.descendant(of: dockToggle, matching: find.text(WritingDockHideTab.kSemanticLabel)), findsOneWidget);
+      expect(await editorSettings.getIsWritingDockHidden(), isFalse);
+      expect(sheet.focusNode.hasFocus, isTrue);
+      expect(inputCalls(tester), isNot(contains('TextInput.hide')));
+      expect(inputCalls(tester), isNot(contains('TextInput.show')));
+
+      await closeSoftKeyboard(tester);
+      expect(find.byType(WritingDock), findsOneWidget);
+    });
+  });
+
+  group('Tapping the desk off the sheet', () {
+    final accessoryRow = find.byKey(const Key('keyboard_accessory_row'));
+    Rect sheetRect(WidgetTester tester) => tester.getRect(find.byType(TemplateCanvasContainer).first);
+
+    /// A point on the bare desk between the lifted sheet and the accessory row.
+    Offset bareDeskPoint(WidgetTester tester) {
+      final sheetBottom = sheetRect(tester).bottom;
+      final accessoryTop = tester.getRect(accessoryRow).top;
+      expect(accessoryTop - sheetBottom, greaterThan(4.0), reason: 'bare desk shows below the sheet');
+      return Offset(180.0, (sheetBottom + accessoryTop) / 2.0);
+    }
+
+    testWidgets('ends writing and puts the keyboard away; a tap on the sheet does not', (tester) async {
+      await openEditor(tester);
+      final sheet = editorTextSheets(tester).first;
+      await startWritingOn(tester, sheet);
+      await openSoftKeyboard(tester);
+      tester.testTextInput.log.clear();
+
+      await tester.tapAt(Offset(180.0, sheetRect(tester).bottom - 4.0));
+      await tester.pump();
+      expect(sheet.focusNode.hasFocus, isTrue, reason: 'the tap landed on the sheet');
+
+      await tester.tapAt(bareDeskPoint(tester));
       await tester.pump();
 
       expect(sheet.focusNode.hasFocus, isFalse);
@@ -204,7 +265,7 @@ void main() {
       expect(inputCalls(tester), isNot(contains('TextInput.show')));
     });
 
-    testWidgets('收起键盘 also ends writing in the title field', (tester) async {
+    testWidgets('also ends writing in the title field', (tester) async {
       await openEditor(tester);
       await tester.tap(find.descendant(of: find.byType(JournalLetterhead), matching: find.byType(TextField)));
       await tester.pump();
@@ -212,12 +273,17 @@ void main() {
       expect(tester.testTextInput.hasAnyClients, isTrue);
       tester.testTextInput.log.clear();
 
-      await tester.tap(dismissButton);
+      await tester.tapAt(bareDeskPoint(tester));
       await tester.pump();
 
       expect(tester.testTextInput.hasAnyClients, isFalse);
       expect(inputCalls(tester), contains('TextInput.hide'));
     });
+  });
+
+  group('Accessory row tools', () {
+    final formatButton = find.byKey(const Key('keyboard_accessory_format_btn'));
+    final dictationButton = find.byKey(const Key('keyboard_accessory_dictation_btn'));
 
     testWidgets('Tt and dictation keep writing focus and never show or hide the keyboard', (tester) async {
       await openEditor(tester, dictationService: DictationService(speech: FakeSpeechToText()));

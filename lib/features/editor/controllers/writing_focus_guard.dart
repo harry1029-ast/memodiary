@@ -28,9 +28,9 @@ class WritingFocusGuard {
     FocusManager.instance.applyFocusChangesIfNeeded();
   }
 
-  /// 收起键盘: ends writing wherever it happens (a sheet or the title), so the
-  /// keyboard goes away with the released focus.
-  void dismissKeyboard() {
+  /// A tap on the bare desk: ends writing wherever it happens (a sheet or the
+  /// title), so the keyboard goes away with the released focus.
+  void endWriting() {
     FocusManager.instance.primaryFocus?.unfocus();
     release();
   }

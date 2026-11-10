@@ -19,8 +19,9 @@ const _phoneViewport = Size(360.0, 780.0);
 
 /// The desk around the sheet and the software keyboard: where the page
 /// indicator sits, that opening the keyboard never reflows or moves the sheet,
-/// that the caret and the sheet's last row stay above the accessory row on the
-/// reference phone, and that page turns keep the keyboard steady.
+/// that the desk lifts the whole sheet above the accessory row on the
+/// reference phone (or, when it cannot fit, keeps the caret and the last row
+/// above it), and that page turns keep the keyboard steady.
 void main() {
   late AppDatabase database;
   late Directory tempDirectory;
@@ -92,11 +93,34 @@ void main() {
     }
   }
 
+  Future<void> collapseWorkstation(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('workstation_pull_tab')));
+    await tester.pumpAndSettle();
+  }
+
+  /// Writes near the top of [sheet] and checks the whole sheet, every row of
+  /// it, sits on the visible desk above the accessory row, unclipped.
+  Future<void> expectWholeSheetVisibleWhileWriting(WidgetTester tester, TextStationerySheet sheet) async {
+    await startWritingOn(tester, sheet, offset: 0);
+    await openSoftKeyboard(tester);
+
+    final accessoryTop = tester.getRect(accessoryRow).top;
+    final deskTop = canvasRect(tester).top;
+    final card = activeCardRect(tester);
+    final rows = activeClipRect(tester);
+    expect(rows.bottom, lessThanOrEqualTo(accessoryTop), reason: 'the last row is fully above the accessory row');
+    expect(card.bottom, lessThanOrEqualTo(accessoryTop), reason: 'and so is the sheet\'s bottom edge');
+    expect(card.top, greaterThanOrEqualTo(deskTop), reason: 'the sheet is not lifted off the top of the desk');
+    expect(caretRectOf(sheet).top, greaterThanOrEqualTo(deskTop));
+    expect(tester.getRect(find.byType(PageView)).bottom, greaterThanOrEqualTo(accessoryTop));
+  }
+
   /// Writes at the end of [sheet]'s last row and checks that row, and the
   /// caret on it, sit fully above the accessory row, unclipped.
-  Future<void> expectLastRowVisibleWhileWriting(WidgetTester tester, TextStationerySheet sheet) async {
+  Future<void> expectLastRowVisibleWhileWriting(WidgetTester tester, TextStationerySheet sheet,
+      {double keyboardInset = kPhoneKeyboardInset}) async {
     await startWritingOn(tester, sheet);
-    await openSoftKeyboard(tester);
+    await openSoftKeyboard(tester, inset: keyboardInset);
 
     final accessoryTop = tester.getRect(accessoryRow).top;
     final lastRowBottom = activeClipRect(tester).bottom;
@@ -110,7 +134,10 @@ void main() {
     // The lift may carry the header band off the top, but never the save dot standing in for the app bar.
     final saveDot = tester.getRect(find.byKey(const Key('editor_save_state_dot')));
     expect(saveDot.top, greaterThanOrEqualTo(canvasRect(tester).top), reason: 'the save dot stays on the visible desk');
-    expect(saveDot.bottom, lessThanOrEqualTo(activeClipRect(tester).top), reason: 'above the Paper Heart\'s rows');
+    // Above a keyboard too tall for the whole sheet, the top rows leave the desk and the dot rests over them.
+    if (keyboardInset == kPhoneKeyboardInset) {
+      expect(saveDot.bottom, lessThanOrEqualTo(activeClipRect(tester).top), reason: 'above the Paper Heart\'s rows');
+    }
   }
 
   group('Walnut desk layout', () {
@@ -160,29 +187,6 @@ void main() {
       expectSameSize(clip.size, restingClip.size);
     });
 
-    testWidgets('with the workstation put away, the centred sheet keeps its place on the desk while the chrome steps aside', (tester) async {
-      await openEditor(tester);
-      await tester.tap(find.byKey(const Key('workstation_pull_tab')));
-      await tester.pumpAndSettle();
-      final restingOffset = sheetOffsetOnDesk(tester);
-      final restingSize = activeCardRect(tester).size;
-
-      // A caret near the top needs no lift, so only the chrome changes.
-      await startWritingOn(tester, editorTextSheets(tester).first, offset: 0);
-      await openSoftKeyboard(tester);
-      expect(sheetOffsetOnDesk(tester), closeTo(restingOffset, 0.5));
-      expectSameSize(activeCardRect(tester).size, restingSize);
-
-      // Nor does it drift while the app bar slides back in.
-      await closeSoftKeyboard(tester, settle: false);
-      for (var frame = 0; frame < 6; frame++) {
-        await tester.pump(const Duration(milliseconds: 40));
-        expect(sheetOffsetOnDesk(tester), closeTo(restingOffset, 0.5), reason: 'frame $frame of the app bar\'s return');
-      }
-      await tester.pumpAndSettle();
-      expect(sheetOffsetOnDesk(tester), closeTo(restingOffset, 0.5));
-    });
-
     testWidgets('writing on the last row of a full opening sheet keeps that row above the accessory row', (tester) async {
       await openEditor(tester);
       await expectLastRowVisibleWhileWriting(tester, editorTextSheets(tester).first);
@@ -192,52 +196,6 @@ void main() {
       await openEditor(tester);
       await goToSheet(tester, 2);
       await expectLastRowVisibleWhileWriting(tester, editorTextSheets(tester)[1]);
-    });
-
-    testWidgets('the caret stays at least two rows above the accessory row where the lift allows', (tester) async {
-      await openEditor(tester);
-      await goToSheet(tester, 2);
-      final continuationSheet = editorTextSheets(tester)[1];
-      // The end of the continuation sheet's 13th row (the 23rd line): visible
-      // without a lift, but less than two rows above the accessory row.
-      const line = '第23行砚池墨痕';
-      final thirteenthRowEnd = continuationSheet.controller.document.toPlainText().indexOf(line) + line.length;
-      final restingOffset = sheetOffsetOnDesk(tester);
-
-      await startWritingOn(tester, continuationSheet, offset: thirteenthRowEnd);
-      await openSoftKeyboard(tester);
-
-      final clearance = tester.getRect(accessoryRow).top - caretRectOf(continuationSheet).bottom;
-      debugPrint('PROBE accessoryTop=${tester.getRect(accessoryRow).top} caret=${caretRectOf(continuationSheet)} '
-          'clip=${activeClipRect(tester)} card=${activeCardRect(tester)} canvas=${canvasRect(tester)} offset=$thirteenthRowEnd');
-      expect(clearance, greaterThanOrEqualTo(2 * rowStride(tester) - 0.5));
-      expect(sheetOffsetOnDesk(tester), lessThan(restingOffset), reason: 'the desk lifted to keep the rows clear');
-    });
-
-    testWidgets('once the chrome has stepped aside the desk lifts no higher than the caret needs', (tester) async {
-      await openEditor(tester);
-      await goToSheet(tester, 2);
-      final continuationSheet = editorTextSheets(tester)[1];
-      // The 12th row keeps two rows clear without a lift once the app bar is
-      // away, though not while it is still sliding out.
-      const line = '第22行砚池墨痕';
-      final restingOffset = sheetOffsetOnDesk(tester);
-
-      await startWritingOn(tester, continuationSheet,
-          offset: continuationSheet.controller.document.toPlainText().indexOf(line) + line.length);
-      await openSoftKeyboard(tester);
-
-      expect(sheetOffsetOnDesk(tester), closeTo(restingOffset, 0.5));
-    });
-
-    testWidgets('a caret near the top of the sheet keeps the desk where it rests', (tester) async {
-      await openEditor(tester);
-      final restingOffset = sheetOffsetOnDesk(tester);
-
-      await startWritingOn(tester, editorTextSheets(tester).first, offset: 0);
-      await openSoftKeyboard(tester);
-
-      expect(sheetOffsetOnDesk(tester), closeTo(restingOffset, 0.5));
     });
 
     testWidgets('the desk settles back where it rests when the keyboard closes', (tester) async {
@@ -250,6 +208,107 @@ void main() {
 
       await closeSoftKeyboard(tester);
       expect(activeCardRect(tester).top, closeTo(restingTop, 0.5));
+    });
+  });
+
+  // Whenever the whole sheet fits on the desk left above the keyboard and the
+  // accessory row, the desk lifts so all of it shows, wherever the caret is.
+  group('Whole-sheet lift', () {
+    testWidgets('with the workstation put away and the caret on a high row, every row of a full opening sheet shows', (tester) async {
+      await openEditor(tester);
+      await collapseWorkstation(tester);
+      await expectWholeSheetVisibleWhileWriting(tester, editorTextSheets(tester).first);
+    });
+
+    testWidgets('with the workstation put away and the caret on a high row, every row of a full continuation sheet shows', (tester) async {
+      await openEditor(tester);
+      await collapseWorkstation(tester);
+      await goToSheet(tester, 2);
+      await expectWholeSheetVisibleWhileWriting(tester, editorTextSheets(tester)[1]);
+    });
+
+    testWidgets('with the workstation docked and the caret on a high row, every row of the opening and continuation sheets shows', (tester) async {
+      await openEditor(tester);
+      await expectWholeSheetVisibleWhileWriting(tester, editorTextSheets(tester).first);
+      await closeSoftKeyboard(tester);
+      await goToSheet(tester, 2);
+      await expectWholeSheetVisibleWhileWriting(tester, editorTextSheets(tester)[1]);
+    });
+
+    testWidgets('the lifted sheet keeps its size, ruling and clip', (tester) async {
+      await openEditor(tester);
+      await collapseWorkstation(tester);
+      final restingSize = activeCardRect(tester).size;
+      final restingMetrics = tester.widget<TemplateCanvasContainer>(find.byType(TemplateCanvasContainer).first).layoutMetrics;
+      final restingClipSize = activeClipRect(tester).size;
+
+      await expectWholeSheetVisibleWhileWriting(tester, editorTextSheets(tester).first);
+
+      expectSameSize(activeCardRect(tester).size, restingSize);
+      expect(tester.widget<TemplateCanvasContainer>(find.byType(TemplateCanvasContainer).first).layoutMetrics, restingMetrics);
+      expectSameSize(activeClipRect(tester).size, restingClipSize);
+    });
+  });
+
+  // A keyboard tall enough that the whole sheet cannot fit above it: the
+  // two-rows-clear caret rule applies, clamped so the sheet's bottom edge can
+  // always be reached.
+  group('Caret lift when the sheet cannot fit', () {
+    const tallKeyboardInset = 380.0;
+
+    testWidgets('the sheet cannot fit above this keyboard', (tester) async {
+      await openEditor(tester);
+      final cardHeight = activeCardRect(tester).height;
+      await startWritingOn(tester, editorTextSheets(tester).first, offset: 0);
+      await openSoftKeyboard(tester, inset: tallKeyboardInset);
+      expect(tester.getRect(accessoryRow).top - canvasRect(tester).top, lessThan(cardHeight));
+    });
+
+    testWidgets('writing on the last row of a full opening sheet keeps that row above the accessory row', (tester) async {
+      await openEditor(tester);
+      await expectLastRowVisibleWhileWriting(tester, editorTextSheets(tester).first, keyboardInset: tallKeyboardInset);
+    });
+
+    testWidgets('writing on the last row of a full continuation sheet keeps that row above the accessory row', (tester) async {
+      await openEditor(tester);
+      await collapseWorkstation(tester);
+      await goToSheet(tester, 2);
+      await expectLastRowVisibleWhileWriting(tester, editorTextSheets(tester)[1], keyboardInset: tallKeyboardInset);
+    });
+
+    testWidgets('the caret stays two rows above the accessory row, lifting no higher than it needs', (tester) async {
+      await openEditor(tester);
+      await goToSheet(tester, 2);
+      final continuationSheet = editorTextSheets(tester)[1];
+      // The end of the continuation sheet's 12th row (the 22nd line).
+      const line = '第22行砚池墨痕';
+      final restingOffset = sheetOffsetOnDesk(tester);
+
+      await startWritingOn(tester, continuationSheet,
+          offset: continuationSheet.controller.document.toPlainText().indexOf(line) + line.length);
+      await openSoftKeyboard(tester, inset: tallKeyboardInset);
+
+      final clearance = tester.getRect(accessoryRow).top - caretRectOf(continuationSheet).bottom;
+      expect(clearance, closeTo(2 * rowStride(tester), 0.5));
+      expect(sheetOffsetOnDesk(tester), lessThan(restingOffset), reason: 'the desk lifted to keep the rows clear');
+    });
+
+    testWidgets('a caret near the top keeps the centred sheet in place, even while the app bar slides back', (tester) async {
+      await openEditor(tester);
+      await collapseWorkstation(tester);
+      final restingOffset = sheetOffsetOnDesk(tester);
+
+      await startWritingOn(tester, editorTextSheets(tester).first, offset: 0);
+      await openSoftKeyboard(tester, inset: tallKeyboardInset);
+      expect(sheetOffsetOnDesk(tester), closeTo(restingOffset, 0.5));
+
+      await closeSoftKeyboard(tester, settle: false);
+      for (var frame = 0; frame < 6; frame++) {
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(sheetOffsetOnDesk(tester), closeTo(restingOffset, 0.5), reason: 'frame $frame of the app bar\'s return');
+      }
+      await tester.pumpAndSettle();
+      expect(sheetOffsetOnDesk(tester), closeTo(restingOffset, 0.5));
     });
   });
 

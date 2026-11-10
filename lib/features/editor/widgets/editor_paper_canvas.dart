@@ -18,9 +18,10 @@ import 'desk_workstation/walnut_desk_painter.dart';
 import 'desk_header_band_lead.dart';
 import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
-import 'keyboard_caret_lift.dart';
+import 'keyboard_desk_lift.dart';
 import 'paper_heart_metrics.dart';
 import 'desk_media_control.dart';
+import 'desk_off_sheet_tap.dart';
 import 'page_corner.dart';
 import 'sheet_drop_target.dart';
 import 'stationery_ephemera_sheet.dart';
@@ -34,7 +35,8 @@ import 'stationery_ephemera_sheet.dart';
 /// diarist's Cinnabar Signature Seal and the Desk Workstation holding the Staging
 /// Handscroll, sharing the desk by a [DeskSpaceBudget]. The sheet's geometry is resolved against the
 /// resting desk height, so the software keyboard never resizes or moves it; the
-/// [KeyboardCaretLift] only lifts the desk far enough to keep the caret in view.
+/// [KeyboardDeskLift] only lifts the desk to show the whole sheet, or the caret
+/// when the sheet cannot fit. Tapping the bare desk off the sheet ends writing.
 class EditorPaperCanvas extends StatelessWidget {
   static final _walnutDesk = WalnutDeskPainter(palette: DeskPalette.walnut);
   static final _ebonyDesk = WalnutDeskPainter(palette: DeskPalette.ebony);
@@ -66,6 +68,9 @@ class EditorPaperCanvas extends StatelessWidget {
   /// The autosave status the header band mirrors while the app bar is away.
   final ValueListenable<AutosaveStatus>? saveStatus;
 
+  /// Ends writing when the diarist taps the bare desk off the sheet.
+  final VoidCallback? onTapDeskOffSheet;
+
   const EditorPaperCanvas({
     super.key,
     required this.themeConfig,
@@ -85,6 +90,7 @@ class EditorPaperCanvas extends StatelessWidget {
     this.onMediaCaptionChanged,
     this.onSpillBack,
     this.saveStatus,
+    this.onTapDeskOffSheet,
   });
 
   @override
@@ -188,13 +194,6 @@ class EditorPaperCanvas extends StatelessWidget {
                 innerContentPaddingRight;
 
         final deskTopSeal = topOffset + cardHeight + sealGap;
-        final maxLift = math.max(
-          0.0,
-          topOffset +
-              cardHeight +
-              KeyboardCaretLift.kCaretMargin -
-              visibleHeight,
-        );
 
         return CustomPaint(
           key: const Key('editor_walnut_desk'),
@@ -206,186 +205,191 @@ class EditorPaperCanvas extends StatelessWidget {
               alignment: Alignment.topCenter,
               minHeight: canvasHeight,
               maxHeight: canvasHeight,
-              child: KeyboardCaretLift(
+              child: KeyboardDeskLift(
                 isKeyboardVisible: keyboardVisible,
                 visibleHeight: visibleHeight,
-                maxLift: maxLift,
+                sheetTop: topOffset,
+                sheetBottom: topOffset + cardHeight,
                 rowHeight: activeRowHeight,
                 activeSheet:
                     activeSheet is TextStationerySheet ? activeSheet : null,
-                child: Stack(
-                  children: [
-                    // Page indicator (and, while the app bar is away, the save
-                    // dot) at the left of the header band; its right side is
-                    // left free for the Tucked Prints.
-                    Positioned(
-                      top: budget.headerTop,
-                      left: 16,
-                      height: DeskSpaceBudget.kHeaderHeight,
-                      child: DeskHeaderBandLead(
-                        currentSheetIndex: currentSheetIndex,
-                        totalSheets: totalSheets,
-                        saveStatus: keyboardVisible ? saveStatus : null,
-                        bandTop: budget.headerTop,
+                child: DeskOffSheetTap(
+                  sheetRect: Rect.fromLTWH(0.0, topOffset, canvasWidth, cardHeight),
+                  onTapOffSheet: onTapDeskOffSheet,
+                  child: Stack(
+                    children: [
+                      // Page indicator (and, while the app bar is away, the save
+                      // dot) at the left of the header band; its right side is
+                      // left free for the Tucked Prints.
+                      Positioned(
+                        top: budget.headerTop,
+                        left: 16,
+                        height: DeskSpaceBudget.kHeaderHeight,
+                        child: DeskHeaderBandLead(
+                          currentSheetIndex: currentSheetIndex,
+                          totalSheets: totalSheets,
+                          saveStatus: keyboardVisible ? saveStatus : null,
+                          bandTop: budget.headerTop,
+                        ),
                       ),
-                    ),
-
-                    // PageView of Tactile Stationery Cards
-                    PageView.builder(
-                      controller: pageController,
-                      itemCount: coordinator.totalSheets,
-                      physics: const PageScrollPhysics(),
-                      onPageChanged: onPageChanged,
-                      itemBuilder: (pageContext, sheetIndex) {
-                        if (sheetIndex < 0 ||
-                            sheetIndex >= coordinator.sheets.length) {
-                          return const SizedBox.shrink();
-                        }
-                        final sheet = coordinator.sheets[sheetIndex];
-
-                        final sheetCard = Container(
-                          width: canvasWidth,
-                          height: cardHeight,
-                          decoration: BoxDecoration(
-                            color: templateStyle.backgroundColor,
-                            borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(
-                              color: isDark
-                                  ? const Color(0x33FFFFFF)
-                                  : const Color(0x1F000000),
-                              width: _kSheetBorderWidth,
-                            ),
-                            boxShadow: [
-                              // A sheet of paper resting on the walnut desk.
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 18.0,
-                                offset: const Offset(0, 8),
+  
+                      // PageView of Tactile Stationery Cards
+                      PageView.builder(
+                        controller: pageController,
+                        itemCount: coordinator.totalSheets,
+                        physics: const PageScrollPhysics(),
+                        onPageChanged: onPageChanged,
+                        itemBuilder: (pageContext, sheetIndex) {
+                          if (sheetIndex < 0 ||
+                              sheetIndex >= coordinator.sheets.length) {
+                            return const SizedBox.shrink();
+                          }
+                          final sheet = coordinator.sheets[sheetIndex];
+  
+                          final sheetCard = Container(
+                            width: canvasWidth,
+                            height: cardHeight,
+                            decoration: BoxDecoration(
+                              color: templateStyle.backgroundColor,
+                              borderRadius: BorderRadius.circular(8.0),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0x33FFFFFF)
+                                    : const Color(0x1F000000),
+                                width: _kSheetBorderWidth,
                               ),
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.3),
-                                blurRadius: 4.0,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8.0),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                TemplateCanvasContainer(
-                                  style: templateStyle,
-                                  typography: typography,
-                                  scrollOffset: 0.0,
-                                  headerHeight: sheet is OpeningSheet
-                                      ? letterheadConfig.headerHeight
-                                      : 0.0,
-                                  layoutMetrics: metrics,
-                                  customPadding: EdgeInsets.zero,
-                                  child: const SizedBox.expand(),
+                              boxShadow: [
+                                // A sheet of paper resting on the walnut desk.
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  blurRadius: 18.0,
+                                  offset: const Offset(0, 8),
                                 ),
-                                Theme(
-                                  data: themeConfig.paperBaseTheme.copyWith(
-                                    textTheme: themeConfig
-                                        .paperBaseTheme.textTheme
-                                        .apply(
-                                      bodyColor: themeConfig.inkColor,
-                                      displayColor: themeConfig.inkColor,
-                                    ),
-                                  ),
-                                  child: _buildSheetBody(
-                                    sheet: sheet,
-                                    sheetIndex: sheetIndex,
-                                    metrics: metrics,
-                                    activeRowHeight: activeRowHeight,
-                                    horizontalLeft: horizontalLeft,
-                                    horizontalRight: horizontalRight,
-                                  ),
-                                ),
-                                // Page Corner folds, drawn on the paper so they
-                                // move with the sheet under a swipe.
-                                PageCornerFolds(
-                                  hasPrevious: sheetIndex > 0,
-                                  hasNext: sheetIndex < coordinator.totalSheets - 1,
-                                  paperColor: templateStyle.backgroundColor,
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 4.0,
+                                  offset: const Offset(0, 1),
                                 ),
                               ],
                             ),
-                          ),
-                        );
-
-                        return Align(
-                          alignment: Alignment.topCenter,
-                          child: AnimatedPadding(
-                            duration: const Duration(milliseconds: 250),
-                            curve: Curves.easeOutCubic,
-                            padding: EdgeInsets.only(top: topOffset),
-                            child: OverflowBox(
-                              alignment: Alignment.topCenter,
-                              minHeight: 0,
-                              maxHeight: double.infinity,
-                              // Every sheet keeps the same wrapper so a page turn
-                              // never remounts its editor (which would drop focus
-                              // and bounce the keyboard).
-                              child: SheetDropTarget(
-                                sheetIndex: sheetIndex,
-                                palette: DeskMediaPalette(isPaperDark: isDark),
-                                onMount: deskMedia.onMount,
-                                isEnabled: sheetIndex == currentSheetIndex,
-                                child: sheetCard,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8.0),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  TemplateCanvasContainer(
+                                    style: templateStyle,
+                                    typography: typography,
+                                    scrollOffset: 0.0,
+                                    headerHeight: sheet is OpeningSheet
+                                        ? letterheadConfig.headerHeight
+                                        : 0.0,
+                                    layoutMetrics: metrics,
+                                    customPadding: EdgeInsets.zero,
+                                    child: const SizedBox.expand(),
+                                  ),
+                                  Theme(
+                                    data: themeConfig.paperBaseTheme.copyWith(
+                                      textTheme: themeConfig
+                                          .paperBaseTheme.textTheme
+                                          .apply(
+                                        bodyColor: themeConfig.inkColor,
+                                        displayColor: themeConfig.inkColor,
+                                      ),
+                                    ),
+                                    child: _buildSheetBody(
+                                      sheet: sheet,
+                                      sheetIndex: sheetIndex,
+                                      metrics: metrics,
+                                      activeRowHeight: activeRowHeight,
+                                      horizontalLeft: horizontalLeft,
+                                      horizontalRight: horizontalRight,
+                                    ),
+                                  ),
+                                  // Page Corner folds, drawn on the paper so they
+                                  // move with the sheet under a swipe.
+                                  PageCornerFolds(
+                                    hasPrevious: sheetIndex > 0,
+                                    hasNext: sheetIndex < coordinator.totalSheets - 1,
+                                    paperColor: templateStyle.backgroundColor,
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    // Tucked Prints in the header band and the Desk Workstation at the bottom
-                    Positioned.fill(
-                      child: EditorDeskMediaArea(
-                        budget: budget,
-                        mountedItems: mountedItems,
-                        stagedItems: stagedItems,
-                        mediaSandboxService: mediaSandboxService,
-                        activeSheetNumber: currentSheetIndex + 1,
-                        isPaperDark: themeConfig.isPaperDark,
-                        isWorkstationCollapsed: isWorkstationCollapsed,
-                        onCollapseWorkstation: chrome.collapseWorkstation,
-                        onRestoreWorkstation: chrome.expandWorkstation,
-                        onRestoreWritingDock:
-                            chrome.isWritingDockVisible || keyboardVisible ? null : () => chrome.setWritingDockVisible(true),
-                        handlers: deskMedia,
-                        onCaptionChanged: (mediaId, newCaption) {
-                          coordinator.media.updateCaption(mediaId, newCaption);
-                          onMediaCaptionChanged?.call(mediaId, newCaption);
+                          );
+  
+                          return Align(
+                            alignment: Alignment.topCenter,
+                            child: AnimatedPadding(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOutCubic,
+                              padding: EdgeInsets.only(top: topOffset),
+                              child: OverflowBox(
+                                alignment: Alignment.topCenter,
+                                minHeight: 0,
+                                maxHeight: double.infinity,
+                                // Every sheet keeps the same wrapper so a page turn
+                                // never remounts its editor (which would drop focus
+                                // and bounce the keyboard).
+                                child: SheetDropTarget(
+                                  sheetIndex: sheetIndex,
+                                  palette: DeskMediaPalette(isPaperDark: isDark),
+                                  onMount: deskMedia.onMount,
+                                  isEnabled: sheetIndex == currentSheetIndex,
+                                  child: sheetCard,
+                                ),
+                              ),
+                            ),
+                          );
                         },
                       ),
-                    ),
-
-                    // Cinnabar Signature Seal resting beneath the last sheet
-                    if (budget.showSeal)
-                      BoundedCinnabarSeal(
-                        innerFrameRect: metrics.innerFrameRect,
-                        containerSize: Size(canvasWidth, canvasHeight),
-                        sealStyle: templateStyle.tokens.sealStyle,
-                        deskTop: deskTopSeal,
-                        opacity: 0.85,
+  
+                      // Tucked Prints in the header band and the Desk Workstation at the bottom
+                      Positioned.fill(
+                        child: EditorDeskMediaArea(
+                          budget: budget,
+                          mountedItems: mountedItems,
+                          stagedItems: stagedItems,
+                          mediaSandboxService: mediaSandboxService,
+                          activeSheetNumber: currentSheetIndex + 1,
+                          isPaperDark: themeConfig.isPaperDark,
+                          isWorkstationCollapsed: isWorkstationCollapsed,
+                          onCollapseWorkstation: chrome.collapseWorkstation,
+                          onRestoreWorkstation: chrome.expandWorkstation,
+                          onRestoreWritingDock:
+                              chrome.isWritingDockVisible || keyboardVisible ? null : () => chrome.setWritingDockVisible(true),
+                          handlers: deskMedia,
+                          onCaptionChanged: (mediaId, newCaption) {
+                            coordinator.media.updateCaption(mediaId, newCaption);
+                            onMediaCaptionChanged?.call(mediaId, newCaption);
+                          },
+                        ),
                       ),
-
-                    // Page Corner touch targets over the active sheet's folds
-                    Positioned.fill(
-                      child: PageCornerTargets(
-                        currentSheetIndex: currentSheetIndex,
-                        totalSheets: totalSheets,
-                        top: topOffset +
-                            _kSheetBorderWidth +
-                            metrics.innerFrameRect.bottom,
-                        onPreviousSheet: onPreviousSheet,
-                        onNextSheet: onNextSheet,
+  
+                      // Cinnabar Signature Seal resting beneath the last sheet
+                      if (budget.showSeal)
+                        BoundedCinnabarSeal(
+                          innerFrameRect: metrics.innerFrameRect,
+                          containerSize: Size(canvasWidth, canvasHeight),
+                          sealStyle: templateStyle.tokens.sealStyle,
+                          deskTop: deskTopSeal,
+                          opacity: 0.85,
+                        ),
+  
+                      // Page Corner touch targets over the active sheet's folds
+                      Positioned.fill(
+                        child: PageCornerTargets(
+                          currentSheetIndex: currentSheetIndex,
+                          totalSheets: totalSheets,
+                          top: topOffset +
+                              _kSheetBorderWidth +
+                              metrics.innerFrameRect.bottom,
+                          onPreviousSheet: onPreviousSheet,
+                          onNextSheet: onNextSheet,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
