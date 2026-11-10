@@ -326,3 +326,10 @@ The editor becomes a calmer, more tactile scholar's desk:
 - **ADR-0009** governs mounting and was amended only in wording. No new ADR was needed: none of these decisions is both hard to reverse and the result of a contested trade-off.
 - The `$0` FOSS invariant holds: Flutter painters, gestures, existing packages and hand-written lunar data only.
 - After implementation, validate the keyboard behaviour on a real phone. Widget tests cannot observe Quill's behaviour while the keyboard is hidden.
+- **Amendments after the real-device check (2026-11-11).** These supersede the decisions above where they differ:
+  - **Accessory row:** 收起键盘 is replaced by a 收起文房 / 展开文房 toggle for the app-wide hidden-dock preference. Most system keyboards already have a close key, and tapping the desk off the sheet still releases focus. User story 62 and § Keyboard chrome read with this substitution.
+  - **Keyboard lift:** while the keyboard is open, the desk lifts the whole Stationery Sheet above the accessory row whenever it fits. The two-rows-clear caret rule is the fallback when it doesn't.
+  - **Hidden dock:** hiding it leaves no strip. 展开文房 floats at the desk's bottom-right.
+  - **Pull tab:** it sits at the right end of the workstation's top edge, clear of the Cinnabar Signature Seal.
+  - **Sheet capacity:** the opening sheet holds the rows that fit minus the 4-row Journal Letterhead, and continuation sheets hold all rows that fit. The fixed 10 and 14 apply only when 14 rows fit. This fixes a pre-existing SPEC-010 bug in which a sheet could be scrolled by one row.
+  - **Letterhead:** it follows the prototype's spacing, with a larger title on the bottom row.
