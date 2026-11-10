@@ -11,6 +11,7 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/services/audio_sanctum_service.dart';
+import 'package:memodiary/features/editor/services/editor_settings_service.dart';
 import 'package:memodiary/features/editor/services/thought_spark_service.dart';
 
 /// Valid 1x1 transparent PNG payload (67 bytes) for deterministic image decoding in tests.
@@ -221,6 +222,7 @@ Future<void> pumpEntryEditorScreen(
   DictationService? dictationService,
   ThoughtSparkService? thoughtSparkService,
   AudioSanctumService? audioSanctumService,
+  EditorSettingsService? editorSettings,
   Size? viewportSize,
   ThemeData? theme,
   bool launchFromRoute = false,
@@ -242,6 +244,7 @@ Future<void> pumpEntryEditorScreen(
         dictationService: dictationService,
         thoughtSparkService: thoughtSparkService,
         audioSanctumService: audioSanctumService,
+        editorSettings: editorSettings,
       );
 
   await tester.pumpWidget(
