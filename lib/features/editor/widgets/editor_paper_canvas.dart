@@ -1,10 +1,12 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
 import '../../templates/widgets/template_canvas_container.dart';
+import '../controllers/editor_autosave_manager.dart';
 import '../controllers/editor_chrome_controller.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/desk_media_handlers.dart';
@@ -13,6 +15,7 @@ import '../services/editor_pagination_coordinator.dart';
 import 'desk_workstation/desk_space_budget.dart';
 import 'desk_workstation/desk_palette.dart';
 import 'desk_workstation/walnut_desk_painter.dart';
+import 'desk_header_band_lead.dart';
 import 'editor_desk_media_area.dart';
 import 'editor_text_sheet_view.dart';
 import 'keyboard_caret_lift.dart';
@@ -21,7 +24,6 @@ import 'desk_media_control.dart';
 import 'page_corner.dart';
 import 'sheet_drop_target.dart';
 import 'stationery_ephemera_sheet.dart';
-import 'stationery_page_indicator.dart';
 
 /// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
 /// resting on a walnut scholar's desk.
@@ -61,6 +63,9 @@ class EditorPaperCanvas extends StatelessWidget {
   final void Function(String mediaId, String newCaption)? onMediaCaptionChanged;
   final void Function(int sheetIndex)? onSpillBack;
 
+  /// The autosave status the header band mirrors while the app bar is away.
+  final ValueListenable<AutosaveStatus>? saveStatus;
+
   const EditorPaperCanvas({
     super.key,
     required this.themeConfig,
@@ -79,6 +84,7 @@ class EditorPaperCanvas extends StatelessWidget {
     this.deskMedia = const DeskMediaHandlers(),
     this.onMediaCaptionChanged,
     this.onSpillBack,
+    this.saveStatus,
   });
 
   @override
@@ -90,11 +96,12 @@ class EditorPaperCanvas extends StatelessWidget {
     return LayoutBuilder(
       builder: (layoutContext, layoutConstraints) {
         final canvasWidth = layoutConstraints.maxWidth;
-        // The visible desk shrinks while the keyboard is open; the sheet is laid
-        // out against the resting height so its ruling and text never shift.
+        // The visible desk changes while the keyboard is open (and the app bar
+        // and dock step aside); the sheet is laid out against the resting
+        // height so its ruling and text never shift.
         final visibleHeight = layoutConstraints.maxHeight;
         final bool keyboardVisible = chrome.isKeyboardVisible;
-        final canvasHeight = visibleHeight + chrome.keyboardInset;
+        final canvasHeight = chrome.resolveRestingDeskHeight(visibleHeight);
 
         // Bounded card canvas dimensions for integer-locked 14-row calculation
         final cardCanvasSize =
@@ -201,23 +208,23 @@ class EditorPaperCanvas extends StatelessWidget {
                 isKeyboardVisible: keyboardVisible,
                 visibleHeight: visibleHeight,
                 maxLift: maxLift,
+                rowHeight: activeRowHeight,
                 activeSheet:
                     activeSheet is TextStationerySheet ? activeSheet : null,
                 child: Stack(
                   children: [
-                    // Page indicator at the left of the header band; its right
-                    // side is left free for the Tucked Prints.
+                    // Page indicator (and, while the app bar is away, the save
+                    // dot) at the left of the header band; its right side is
+                    // left free for the Tucked Prints.
                     Positioned(
                       top: budget.headerTop,
                       left: 16,
                       height: DeskSpaceBudget.kHeaderHeight,
-                      child: IgnorePointer(
-                        child: Center(
-                          child: StationeryPageIndicator(
-                            currentSheetIndex: currentSheetIndex,
-                            totalSheets: totalSheets,
-                          ),
-                        ),
+                      child: DeskHeaderBandLead(
+                        currentSheetIndex: currentSheetIndex,
+                        totalSheets: totalSheets,
+                        saveStatus: keyboardVisible ? saveStatus : null,
+                        bandTop: budget.headerTop,
                       ),
                     ),
 

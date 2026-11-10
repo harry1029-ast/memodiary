@@ -46,6 +46,46 @@ void main() {
     });
   });
 
+  group('resting desk height', () {
+    test('follows the desk while the keyboard is closed', () {
+      expect(chrome.resolveRestingDeskHeight(600.0), 600.0);
+      expect(chrome.resolveRestingDeskHeight(640.0), 640.0, reason: 'e.g. the Writing Dock was hidden');
+    });
+
+    test('holds while the keyboard is open, whatever chrome steps aside', () {
+      chrome.resolveRestingDeskHeight(600.0);
+      chrome.syncKeyboardInset(300.0);
+      expect(chrome.resolveRestingDeskHeight(300.0), 600.0);
+      chrome.syncAppBarHiddenExtent(56.0);
+      expect(chrome.resolveRestingDeskHeight(368.0), 600.0);
+    });
+
+    test('discounts the part of the app bar still sliding back after the keyboard closes', () {
+      chrome.resolveRestingDeskHeight(600.0);
+      chrome.syncKeyboardInset(300.0);
+      chrome.syncAppBarHiddenExtent(56.0);
+      chrome.syncKeyboardInset(0.0);
+      expect(chrome.resolveRestingDeskHeight(656.0), 600.0);
+      chrome.syncAppBarHiddenExtent(20.0);
+      expect(chrome.resolveRestingDeskHeight(620.0), 600.0);
+      chrome.syncAppBarHiddenExtent(0.0);
+      expect(chrome.resolveRestingDeskHeight(600.0), 600.0);
+    });
+
+    test('before any resting measure, adds the keyboard back and takes the slid-away app bar off', () {
+      chrome.syncKeyboardInset(300.0);
+      expect(chrome.resolveRestingDeskHeight(320.0), 620.0);
+      chrome.syncAppBarHiddenExtent(56.0);
+      expect(chrome.resolveRestingDeskHeight(376.0), 620.0);
+    });
+
+    test('resolving and syncing never notify', () {
+      chrome.syncAppBarHiddenExtent(56.0);
+      chrome.resolveRestingDeskHeight(600.0);
+      expect(notifications, 0);
+    });
+  });
+
   group('workstation', () {
     testWidgets('the first layout docks it when it fits, without notifying', (tester) async {
       expect(chrome.resolveInitialWorkstation(workstationFits: true), isFalse);

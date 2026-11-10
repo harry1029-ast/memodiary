@@ -4,8 +4,9 @@ import 'package:flutter/widgets.dart';
 import '../services/editor_settings_service.dart';
 
 /// The entry editor's panel state, shared by the screen, the desk canvas and
-/// the writing panels below it: the software keyboard, the Desk
-/// Workstation's collapsed state, dictation and the Writing Dock's visibility.
+/// the writing panels below it: the software keyboard (and the app bar that
+/// slides away for it), the desk's resting height, the Desk Workstation's
+/// collapsed state, dictation and the Writing Dock's visibility.
 class EditorChromeController extends ChangeNotifier {
   /// The app-wide preference store behind the Writing Dock's visibility. Null
   /// keeps the controller memory-only.
@@ -15,6 +16,8 @@ class EditorChromeController extends ChangeNotifier {
 
   bool _hasDockVisibilityChanged = false;
   double _keyboardInset = 0.0;
+  double _appBarHiddenExtent = 0.0;
+  double? _restingDeskHeight;
 
   /// Whether the first measured layout has decided the workstation's state.
   bool _isWorkstationResolved = false;
@@ -38,6 +41,23 @@ class EditorChromeController extends ChangeNotifier {
     final wasVisible = isKeyboardVisible;
     _keyboardInset = keyboardInset;
     return wasVisible && !isKeyboardVisible;
+  }
+
+  /// Records how far the app bar has slid away this frame. The bar reports it
+  /// as it builds, before the desk lays out. Never notifies.
+  void syncAppBarHiddenExtent(double hiddenExtent) => _appBarHiddenExtent = hiddenExtent;
+
+  /// The desk's height at rest: keyboard closed and every bar in place. The
+  /// sheet is resolved against it, so neither the keyboard nor the chrome
+  /// stepping aside for it (app bar, Writing Dock) moves or resizes the sheet.
+  ///
+  /// While the keyboard is closed it is the [visibleHeight] less any app bar
+  /// still sliding back; while open, the last resting measure stands (before
+  /// any, it is estimated from the keyboard's inset and the app bar). Safe to
+  /// call during layout.
+  double resolveRestingDeskHeight(double visibleHeight) {
+    if (!isKeyboardVisible) _restingDeskHeight = visibleHeight - _appBarHiddenExtent;
+    return _restingDeskHeight ?? visibleHeight + _keyboardInset - _appBarHiddenExtent;
   }
 
   /// Until the diarist toggles it, the first measured layout decides: the

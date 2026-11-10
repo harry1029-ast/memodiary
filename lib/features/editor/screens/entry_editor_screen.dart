@@ -20,6 +20,7 @@ import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
+import '../widgets/editor_app_bar_slide.dart';
 import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_media_actions.dart';
 import '../widgets/editor_media_feedback.dart';
@@ -356,15 +357,20 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       value: isPaperDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: paperColor,
-        appBar: EditorTopAppBar(
-          paperColor: paperColor,
-          iconColor: iconColor,
-          autosaveStatusNotifier: _autosaveManager!.statusNotifier,
-          audioSanctumService: _audioSanctumService,
-          unlockAt: _unlockAt,
-          onSaveAndExit: _handleSaveAndExit,
-          onOpenKeepsakeScroll: _openKeepsakeScroll,
-          onOpenScholarChest: _openScholarChest,
+        appBar: EditorAppBarSlide(
+          isAway: _chrome.isKeyboardVisible,
+          stripColor: paperColor,
+          onHiddenExtent: _chrome.syncAppBarHiddenExtent,
+          appBar: EditorTopAppBar(
+            paperColor: paperColor,
+            iconColor: iconColor,
+            autosaveStatusNotifier: _autosaveManager!.statusNotifier,
+            audioSanctumService: _audioSanctumService,
+            unlockAt: _unlockAt,
+            onSaveAndExit: _handleSaveAndExit,
+            onOpenKeepsakeScroll: _openKeepsakeScroll,
+            onOpenScholarChest: _openScholarChest,
+          ),
         ),
         body: Column(
           children: [
@@ -391,6 +397,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 ),
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 onSpillBack: _paginationHandler!.handleSpillBack,
+                saveStatus: _autosaveManager!.statusNotifier,
               ),
             ),
             EditorWritingPanels(
@@ -401,6 +408,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               onPickImage: () => _collectMedia(isVideo: false),
               onPickVideo: () => _collectMedia(isVideo: true),
               onShuffleSpark: _handleShuffleSpark,
+              onDismissKeyboard: _focusGuard.dismissKeyboard,
               paperColor: paperColor,
               inkColor: inkColor,
               isPaperDark: isPaperDark,

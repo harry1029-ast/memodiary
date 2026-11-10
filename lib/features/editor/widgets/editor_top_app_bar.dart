@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../services/audio_sanctum_service.dart';
+import 'autosave_status_dot.dart';
 import 'scholar_chest/scholar_chest_drawer.dart';
 
 /// Classical Ink & Paper stationery top app bar for the diary editor.
@@ -46,45 +47,7 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
           tooltip: '返回 · Back',
           onPressed: onSaveAndExit,
         ),
-        title: ValueListenableBuilder<AutosaveStatus>(
-          valueListenable: autosaveStatusNotifier,
-          builder: (statusContext, status, unusedChild) {
-            String label = '已保存';
-            Color dotColor = const Color(0xFF059669);
-            if (status == AutosaveStatus.saving) {
-              label = '存墨中...';
-              dotColor = const Color(0xFFD97706);
-            } else if (status == AutosaveStatus.unsaved) {
-              label = '草稿未存';
-              dotColor = tokens.danmo;
-            }
-
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: dotColor,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: iconColor,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+        title: AutosaveStatusDot(status: autosaveStatusNotifier, showLabel: true, labelColor: iconColor),
         actions: [
           ListenableBuilder(
             listenable: audioSanctumService,

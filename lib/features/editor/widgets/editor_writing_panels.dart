@@ -4,11 +4,14 @@ import 'package:flutter_quill/flutter_quill.dart';
 import '../../../core/services/dictation_service.dart';
 import '../controllers/editor_chrome_controller.dart';
 import 'dictation_bar.dart';
+import 'keyboard_accessory_row.dart';
 import 'writing_dock.dart';
 import 'writing_dock_collapse_tabs.dart';
 
-/// The panels below the Scholar's Desk: the dictation bar while dictating and
-/// the Writing Dock, shown and hidden by the [EditorChromeController].
+/// The panels below the Scholar's Desk, shown and hidden by the
+/// [EditorChromeController]: the dictation bar while dictating, then the
+/// keyboard accessory row while the software keyboard is open (whether or not
+/// the dock is hidden), else the Writing Dock or the tab that restores it.
 class EditorWritingPanels extends StatelessWidget {
   final EditorChromeController chrome;
   final QuillController controller;
@@ -17,6 +20,9 @@ class EditorWritingPanels extends StatelessWidget {
   final VoidCallback onPickImage;
   final VoidCallback onPickVideo;
   final VoidCallback onShuffleSpark;
+
+  /// 收起键盘: ends writing, which puts the keyboard away.
+  final VoidCallback onDismissKeyboard;
   final Color paperColor;
   final Color inkColor;
   final bool isPaperDark;
@@ -30,6 +36,7 @@ class EditorWritingPanels extends StatelessWidget {
     required this.onPickImage,
     required this.onPickVideo,
     required this.onShuffleSpark,
+    required this.onDismissKeyboard,
     required this.paperColor,
     required this.inkColor,
     required this.isPaperDark,
@@ -42,6 +49,7 @@ class EditorWritingPanels extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final backgroundColor = paperColor.withValues(alpha: 0.95);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -51,7 +59,18 @@ class EditorWritingPanels extends StatelessWidget {
             dictationService: dictationService,
             onClose: chrome.stopDictation,
           ),
-        if (chrome.isWritingDockVisible)
+        if (chrome.isKeyboardVisible)
+          KeyboardAccessoryRow(
+            controller: controller,
+            onEnsureTextController: onEnsureTextController,
+            onToggleDictation: _toggleDictation,
+            onDismissKeyboard: onDismissKeyboard,
+            isDictating: chrome.isDictating,
+            backgroundColor: backgroundColor,
+            inkColor: inkColor,
+            isPaperDark: isPaperDark,
+          )
+        else if (chrome.isWritingDockVisible)
           WritingDock(
             onHide: () => chrome.setWritingDockVisible(false),
             controller: controller,
@@ -61,7 +80,7 @@ class EditorWritingPanels extends StatelessWidget {
             onToggleDictation: _toggleDictation,
             onShuffleSpark: onShuffleSpark,
             isDictating: chrome.isDictating,
-            backgroundColor: paperColor.withValues(alpha: 0.95),
+            backgroundColor: backgroundColor,
             inkColor: inkColor,
             isPaperDark: isPaperDark,
           )

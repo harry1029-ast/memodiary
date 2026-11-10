@@ -5,6 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import 'writing_dock_collapse_tabs.dart';
 import 'writing_dock_formatting_ribbon.dart';
+import 'writing_dock_tool_button.dart';
 
 /// Progressive two-tier bottom writing dock anchored above the soft keyboard.
 /// Tier 1 presents 5 high-frequency tools: Aa Formatting, Photo, Video, Dictation, Spark.
@@ -191,23 +192,13 @@ class _WritingDockState extends State<WritingDock> {
     required VoidCallback onTap,
     Color? activeBackground,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isActive ? (activeBackground ?? Colors.transparent) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: IconButton(
-        key: key,
-        icon: Icon(
-          icon,
-          size: 21,
-          color: color,
-        ),
-        onPressed: onTap,
-        tooltip: tooltip,
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
-        padding: EdgeInsets.zero,
-      ),
+    return WritingDockToolButton(
+      buttonKey: key,
+      icon: Icon(icon, size: 21, color: color),
+      tooltip: tooltip,
+      isActive: isActive,
+      activeBackground: activeBackground,
+      onTap: onTap,
     );
   }
 }
