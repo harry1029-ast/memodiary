@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter_quill/quill_delta.dart';
 import '../../templates/models/template_style.dart';
+import '../models/mount_marker.dart';
 import '../models/typography_settings.dart';
 import 'stationery_line_measurer.dart';
 
@@ -308,6 +309,8 @@ class StationeryDeltaSplitter {
       );
     }
 
+    _retainEmptyRowMountMarkers(headDelta: headDelta, tailDelta: tailDelta);
+
     if (headDelta.isEmpty) {
       headDelta.push(Operation.insert('\n'));
     } else {
@@ -333,5 +336,66 @@ class StationeryDeltaSplitter {
       splitOffset: splitOffset,
       hasTrailingSoftNewline: hasTrailingSoftNewline,
     );
+  }
+
+  /// Ensures mount markers pushed into [tailDelta] solely by empty newlines
+  /// without preceding spilled text are retained in [headDelta] on the source sheet.
+  static void _retainEmptyRowMountMarkers({
+    required Delta headDelta,
+    required Delta tailDelta,
+  }) {
+    if (MountMarker.mediaIdsIn(tailDelta).isEmpty) return;
+
+    final markersToRetain = <String>[];
+    final cleanTail = Delta();
+    bool hasSeenSpilledText = false;
+
+    for (final op in tailDelta.operations) {
+      if (!op.isInsert) {
+        cleanTail.push(op);
+        continue;
+      }
+
+      final mediaId = MountMarker.mediaIdOf(op);
+      if (mediaId != null) {
+        if (!hasSeenSpilledText) {
+          // No non-whitespace text preceded this marker in the overflow;
+          // it was pushed over solely by empty lines. Retain on source sheet.
+          markersToRetain.add(mediaId);
+        } else {
+          // Marker follows actual text that spilled into the overflow.
+          cleanTail.push(op);
+        }
+        continue;
+      }
+
+      if (op.data is String) {
+        final text = op.data as String;
+        if (text.trim().isNotEmpty) {
+          hasSeenSpilledText = true;
+        }
+      } else {
+        // Content embed (image, video) counts as content
+        hasSeenSpilledText = true;
+      }
+      cleanTail.push(op);
+    }
+
+    if (markersToRetain.isEmpty) return;
+
+    final insertOffset = MountMarker.endOfTextOffset(headDelta);
+    final insertDelta = Delta()..retain(insertOffset);
+    for (final id in markersToRetain) {
+      insertDelta.insert(MountMarker.embeddable(id).toJson());
+    }
+    final composedHead = headDelta.compose(insertDelta);
+
+    headDelta.operations
+      ..clear()
+      ..addAll(composedHead.operations);
+
+    tailDelta.operations
+      ..clear()
+      ..addAll(cleanTail.operations);
   }
 }

@@ -115,11 +115,13 @@ class StationerySheetSpillMutator {
     }
 
     final destinationSheet = sheets[destinationIndex] as TextStationerySheet;
-    final mergedDelta = StationeryDeltaSplitter.mergeDeltaSlices(
-      firstSlice: overflow.overflowingDelta,
-      secondSlice: destinationSheet.delta,
-      firstSliceHasSoftNewline: overflow.hasTrailingSoftNewline,
-    );
+    final mergedDelta = didAllocateNew
+        ? overflow.overflowingDelta
+        : StationeryDeltaSplitter.mergeDeltaSlices(
+            firstSlice: overflow.overflowingDelta,
+            secondSlice: destinationSheet.delta,
+            firstSliceHasSoftNewline: overflow.hasTrailingSoftNewline,
+          );
 
     int nextActiveIndex = currentActiveIndex;
     int destinationCaretOffset = 0;
@@ -204,7 +206,7 @@ class StationerySheetSpillMutator {
     final precedingSheet = sheets[precedingIndex] as TextStationerySheet;
     final precedingDocLength = math.max(0, precedingSheet.document.length - 1);
 
-    if (currentSheet.isEmpty) {
+    if (currentSheet.hasNoVisibleContent) {
       sheets.removeAt(sheetIndex);
       currentSheet.dispose();
       reindexSheets(sheets);

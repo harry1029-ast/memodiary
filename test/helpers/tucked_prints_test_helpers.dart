@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/features/editor/models/mount_marker.dart';
 import 'editor_test_harness.dart';
 
 /// The resting fan of Tucked Prints above the active Stationery Sheet (one target).
@@ -37,38 +40,64 @@ Future<void> unmountTuckedPrint(WidgetTester tester, String mediaId) async {
   await tester.pumpAndSettle();
 }
 
+/// Navigates the stationery sheet pager to [sheetNumber] of [totalSheets] using
+/// the bottom-corner page-turn folds.
+Future<void> goToSheet(WidgetTester tester, int sheetNumber, int totalSheets) async {
+  for (var attempt = 0; attempt < totalSheets; attempt++) {
+    if (find.text('第 $sheetNumber / $totalSheets 页').evaluate().isNotEmpty) return;
+    final textWidgets = tester.widgetList<Text>(find.textContaining(' / $totalSheets 页'));
+    if (textWidgets.isEmpty) return;
+    final match = RegExp(r'第 (\d+) /').firstMatch(textWidgets.first.data!);
+    if (match == null) return;
+    final current = int.parse(match.group(1)!);
+    await tester.tap(find.byKey(Key(
+      current < sheetNumber ? 'editor_page_corner_next' : 'editor_page_corner_prev',
+    )));
+    await tester.pumpAndSettle();
+  }
+}
+
 /// Seeds an entry whose first passage carries [mounted] mount markers
 /// (`print_0` ...) and [staged] attachments without markers (`staged_0` ...),
 /// with sandbox files for each. [videoIds] are attached as videos.
+/// Optionally takes an explicit [delta] or custom [stagedIds].
 Future<void> seedMountedEntry(
   AppDatabase database,
   Directory sandboxDirectory, {
   required String entryId,
+  Delta? delta,
   int mounted = 0,
   int staged = 0,
+  List<String>? stagedIds,
   Set<String> videoIds = const {},
 }) async {
-  final mountedIds = [for (var index = 0; index < mounted; index++) 'print_$index'];
-  final stagedIds = [for (var index = 0; index < staged; index++) 'staged_$index'];
+  final effectiveMountedIds = [for (var index = 0; index < mounted; index++) 'print_$index'];
+  final effectiveStagedIds = stagedIds ?? [for (var index = 0; index < staged; index++) 'staged_$index'];
+  final contentDeltaJson = delta != null
+      ? jsonEncode(delta.toJson())
+      : jsonEncode([
+          {'insert': '雨巷。'},
+          for (final mediaId in effectiveMountedIds)
+            {
+              'insert': {'mount': mediaId},
+            },
+          {'insert': '\n'},
+        ]);
+  final derivedPlainText = delta != null
+      ? Document.fromDelta(MountMarker.strip(delta)).toPlainText().trim()
+      : '雨巷。';
   await database.into(database.entries).insert(
         EntriesCompanion.insert(
           id: entryId,
           notebookId: 'notebook_default',
           templateId: 'template_minimalist_white',
           title: const Value('江南雨景'),
-          contentDelta: jsonEncode([
-            {'insert': '雨巷。'},
-            for (final mediaId in mountedIds)
-              {
-                'insert': {'mount': mediaId},
-              },
-            {'insert': '\n'},
-          ]),
-          plainText: '雨巷。',
+          contentDelta: contentDeltaJson,
+          plainText: derivedPlainText,
           entryDate: DateTime(2026, 11, 4, 21, 30),
         ),
       );
-  for (final mediaId in [...mountedIds, ...stagedIds]) {
+  for (final mediaId in [...effectiveMountedIds, ...effectiveStagedIds]) {
     final isVideo = videoIds.contains(mediaId);
     final relativePath = isVideo ? 'media/$mediaId.mp4' : 'media/$mediaId.webp';
     File('${sandboxDirectory.path}/$relativePath')

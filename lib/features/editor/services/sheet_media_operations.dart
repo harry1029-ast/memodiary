@@ -109,7 +109,7 @@ class SheetMediaOperations {
     }
     final item = _stagedItems.removeAt(stagedIndex);
     final selection = sheet.controller.selection;
-    final endOfText = math.max(0, sheet.document.length - 1);
+    final endOfText = MountMarker.endOfTextOffset(sheet.delta);
     sheet.controller.replaceText(
       endOfText,
       0,

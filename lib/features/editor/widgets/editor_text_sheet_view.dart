@@ -7,6 +7,7 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import '../models/mount_marker.dart';
 import '../models/stationery_sheet_configs.dart';
 import 'editor_quill_styles_builder.dart';
 import 'integer_snapped_letterhead.dart';
@@ -81,10 +82,11 @@ class EditorTextSheetView extends StatelessWidget {
                   ),
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.only(
-                  left: horizontalLeft,
-                  right: horizontalRight,
+              _buildTappableBodyArea(
+                minHeight: math.max(
+                  0.0,
+                  metrics.innerFrameRect.height -
+                      kJournalLetterheadReservedRows * activeRowHeight,
                 ),
                 child: _buildTextEditor(
                   placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
@@ -134,17 +136,48 @@ class EditorTextSheetView extends StatelessWidget {
           ),
         ),
         _buildPaperHeart(
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: horizontalLeft,
-              right: horizontalRight,
-            ),
+          child: _buildTappableBodyArea(
+            minHeight: metrics.innerFrameRect.height,
             child: _buildTextEditor(
               placeholder: '续写素笺... Continue writing...',
             ),
           ),
         ),
       ],
+    );
+  }
+
+  void _focusAtEndOfSheet() {
+    final endOffset = math.max(0, sheet.document.length - 1);
+    sheet.focusNode.requestFocus();
+    sheet.controller.updateSelection(
+      TextSelection.collapsed(offset: endOffset),
+      ChangeSource.local,
+    );
+  }
+
+  Widget _buildTappableBodyArea({
+    required double minHeight,
+    required Widget child,
+  }) {
+    return TextFieldTapRegion(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _focusAtEndOfSheet,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: double.infinity,
+            minHeight: minHeight,
+          ),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: horizontalLeft,
+              right: horizontalRight,
+            ),
+            child: child,
+          ),
+        ),
+      ),
     );
   }
 
@@ -174,7 +207,11 @@ class EditorTextSheetView extends StatelessWidget {
         if (keyEvent is KeyDownEvent &&
             keyEvent.logicalKey == LogicalKeyboardKey.backspace) {
           if (sheet.controller.selection.isCollapsed &&
-              sheet.controller.selection.baseOffset == 0) {
+              MountMarker.prevNonMarkerOffset(
+                    sheet.delta,
+                    sheet.controller.selection.baseOffset,
+                  ) ==
+                  null) {
             if (sheet.sheetIndex > 0) {
               onSpillBack?.call(sheet.sheetIndex);
               return KeyEventResult.handled;

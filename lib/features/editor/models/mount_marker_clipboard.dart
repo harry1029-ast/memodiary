@@ -12,25 +12,9 @@ import 'mount_marker.dart';
 class MountMarkerClipboard {
   const MountMarkerClipboard._();
 
-  /// A Stationery Sheet controller over [document] whose internal paste drops
-  /// mount markers.
-  static QuillController controller({Document? document}) {
-    late final QuillController controller;
-    controller = QuillController(
-      document: document ?? Document(),
-      selection: const TextSelection.collapsed(offset: 0),
-      config: QuillControllerConfig(
-        clipboardConfig: QuillClipboardConfig(
-          onClipboardPaste: () => _pasteWithoutMarkers(controller),
-        ),
-      ),
-    );
-    return controller;
-  }
-
   /// Handles an internal paste whose copied Delta holds markers; returns false
   /// to leave every other paste to Quill's default handling.
-  static Future<bool> _pasteWithoutMarkers(QuillController controller) async {
+  static Future<bool> pasteWithoutMarkers(QuillController controller) async {
     final copiedDelta = controller.pasteDelta;
     if (MountMarker.mediaIdsIn(copiedDelta).isEmpty) return false;
     final clipboardText = (await Clipboard.getData(Clipboard.kTextPlain))?.text;

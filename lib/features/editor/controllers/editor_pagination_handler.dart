@@ -6,6 +6,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'editor_autosave_manager.dart';
+import 'stationery_quill_controller.dart';
 
 /// Manages active page navigation, listener binding, auto-spill orchestration,
 /// and spill-back handling for the paginated Stationery Sheet stage.
@@ -114,8 +115,16 @@ class EditorPaginationHandler {
           }
         }
 
+        final sheetController = sheet.controller;
+        if (sheetController is StationeryQuillController) {
+          sheetController.onBackspaceAtStart =
+              sheet.sheetIndex > 0 ? () => handleSpillBack(sheet.sheetIndex) : null;
+        }
         sheet.controller.addListener(onControllerNotified);
         _listenerRemovers.add(() {
+          if (sheetController is StationeryQuillController) {
+            sheetController.onBackspaceAtStart = null;
+          }
           sheet.controller.removeListener(onControllerNotified);
         });
       } else if (sheet is EphemeraSheet) {

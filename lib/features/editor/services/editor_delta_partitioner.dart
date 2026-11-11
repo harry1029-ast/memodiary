@@ -234,7 +234,7 @@ class EditorDeltaPartitioner {
       }
 
       for (final MapEntry(key: sheet, value: mediaIds) in assignedIds.entries) {
-        final endOfText = math.max(0, sheet.document.length - 1);
+        final endOfText = MountMarker.endOfTextOffset(sheet.delta);
         final markers = Delta()..retain(endOfText);
         for (final mediaId in mediaIds) {
           markers.insert(MountMarker.embeddable(mediaId).toJson());

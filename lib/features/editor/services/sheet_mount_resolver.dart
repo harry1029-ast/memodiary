@@ -179,6 +179,11 @@ class MountReflowTracker {
     _lastMountedItems = _mountedItems(partition.sheets);
   }
 
+  /// Snapshots currently mounted items across [sheets] before a sheet is dropped.
+  void rememberMounted(List<StationerySheetDescriptor> sheets) {
+    _lastMountedItems = knownItems(sheets, const []);
+  }
+
   /// Every item a resolution may place: staged first (so items newly returned
   /// to the handscroll follow those already there), then mounted ones.
   List<SheetMediaItem> knownItems(

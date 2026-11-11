@@ -322,6 +322,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
   /// Handles backspace at offset 0 on a continuation sheet, triggering Spill-Back.
   SpillBackResult? handleSpillBack(int sheetIndex) {
+    _mounts.rememberMounted(_sheets);
     final outcome = StationerySheetSpillMutator.performSpillBack(
       sheets: _sheets,
       sheetIndex: sheetIndex,

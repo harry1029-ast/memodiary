@@ -97,21 +97,6 @@ void main() {
   QuillController openingController(WidgetTester tester) =>
       tester.widget<QuillEditor>(find.byType(QuillEditor).first).controller;
 
-  Future<void> goToSheet(WidgetTester tester, int sheetNumber, int totalSheets) async {
-    for (var attempt = 0; attempt < totalSheets; attempt++) {
-      if (find.text('第 $sheetNumber / $totalSheets 页').evaluate().isNotEmpty) return;
-      final current = int.parse(
-        RegExp(r'第 (\d+) /').firstMatch(
-          tester.widgetList<Text>(find.textContaining(' / $totalSheets 页')).first.data!,
-        )!.group(1)!,
-      );
-      await tester.tap(find.byKey(Key(
-        current < sheetNumber ? 'editor_page_corner_next' : 'editor_page_corner_prev',
-      )));
-      await tester.pumpAndSettle();
-    }
-  }
-
   Finder handscrollItem(String mediaId) => find.byKey(Key('handscroll_item_$mediaId'));
 
   Future<List<String>> savedMarkerIds() async {

@@ -240,5 +240,135 @@ void main() {
       ]);
       coordinator.dispose();
     });
+
+    test('typing empty rows after text with mount marker retains marker on source sheet', () {
+      final coordinator = _open(
+        Delta()
+          ..insert('我的日记')
+          ..insert({'mount': 'a'})
+          ..insert('\n'),
+        ['a'],
+      );
+      final opening = coordinator.sheets.first as OpeningSheet;
+      final controller = opening.controller;
+
+      for (int i = 0; i < 15; i++) {
+        final len = controller.document.length;
+        controller.replaceText(len - 1, 0, '\n', TextSelection.collapsed(offset: len));
+        coordinator.checkAndPerformAutoSpill(0);
+      }
+
+      expect(_mountedIdsPerSheet(coordinator)[0], ['a']);
+      coordinator.dispose();
+    });
+
+    test('mounting after typing empty rows retains marker on sheet 1 when more empty rows spill', () {
+      final coordinator = _open(
+        Delta()
+          ..insert('我的日记\n\n\n\n\n\n\n\n\n\n'),
+        ['a'],
+      );
+      coordinator.media.mountOnActiveSheet('a');
+
+      final opening = coordinator.sheets.first as OpeningSheet;
+      final controller = opening.controller;
+      for (int i = 0; i < 15; i++) {
+        final len = controller.document.length;
+        controller.replaceText(len - 1, 0, '\n', TextSelection.collapsed(offset: len));
+        coordinator.checkAndPerformAutoSpill(0);
+      }
+
+      expect(_mountedIdsPerSheet(coordinator)[0], ['a']);
+      coordinator.dispose();
+    });
+
+    test('completely empty sheet 1, mount photo, typing empty rows retains marker on sheet 1', () {
+      final coordinator = _open(
+        Delta()..insert('\n'),
+        ['a'],
+      );
+      coordinator.media.mountOnActiveSheet('a');
+
+      final opening = coordinator.sheets.first as OpeningSheet;
+      final controller = opening.controller;
+      for (int i = 0; i < 15; i++) {
+        final len = controller.document.length;
+        controller.replaceText(len - 1, 0, '\n', TextSelection.collapsed(offset: len));
+        coordinator.checkAndPerformAutoSpill(0);
+      }
+
+      expect(_mountedIdsPerSheet(coordinator)[0], ['a']);
+      coordinator.dispose();
+    });
+
+    test('mount photo on empty sheet 1, press enter at offset 0 retains marker on sheet 1', () {
+      final coordinator = _open(
+        Delta()..insert('\n'),
+        ['a'],
+      );
+      coordinator.media.mountOnActiveSheet('a');
+      final opening = coordinator.sheets.first as OpeningSheet;
+      final controller = opening.controller;
+      for (int i = 0; i < 15; i++) {
+        controller.replaceText(0, 0, '\n', const TextSelection.collapsed(offset: 1));
+        coordinator.checkAndPerformAutoSpill(0);
+      }
+
+      expect(_mountedIdsPerSheet(coordinator)[0], ['a']);
+      coordinator.dispose();
+    });
+
+    test('mount photo on empty sheet 2, typing empty rows retains marker on sheet 2', () {
+      final coordinator = _open(
+        Delta()..insert('Title\n'),
+        ['a'],
+      );
+      coordinator.getOrCreateFollowingTextSheet(0);
+      coordinator.activeSheetIndex = 1;
+      coordinator.media.mountOnActiveSheet('a');
+
+      final sheet2 = coordinator.sheets[1] as TextStationerySheet;
+      for (int i = 0; i < 20; i++) {
+        final cur = sheet2.controller.selection.baseOffset;
+        final off = cur >= 0 ? cur : sheet2.document.length - 1;
+        sheet2.controller.replaceText(off, 0, '\n', TextSelection.collapsed(offset: off + 1));
+        coordinator.checkAndPerformAutoSpill(1);
+      }
+
+      expect(_mountedIdsPerSheet(coordinator)[1], ['a']);
+      coordinator.dispose();
+    });
+
+    test('spill-back on a text-empty continuation sheet with Tucked Prints collapses the sheet and returns prints to the Staging Handscroll in collect order', () {
+      final coordinator = _open(
+        Delta()..insert('${_lines('首页', 10)}\n'),
+        ['a', 'b', 'c'],
+      );
+      coordinator.getOrCreateFollowingTextSheet(0);
+      coordinator.activeSheetIndex = 1;
+      coordinator.media.mountOnActiveSheet('b');
+      expect(coordinator.totalSheets, 2);
+      expect(_mountedIdsPerSheet(coordinator), [
+        [],
+        ['b'],
+      ]);
+      expect(coordinator.stagedItems.map((item) => item.id), ['a', 'c']);
+
+      final opening = coordinator.sheets.first as OpeningSheet;
+      final expectedCaretOffset = opening.document.length - 1;
+
+      final result = coordinator.handleSpillBack(1);
+
+      expect(result, isNotNull);
+      expect(result!.didCollapse, isTrue);
+      expect(result.destinationSheetIndex, 0);
+      expect(result.destinationCaretOffset, expectedCaretOffset);
+      expect(coordinator.totalSheets, 1);
+      expect(coordinator.activeSheetIndex, 0);
+      expect(opening.controller.selection.baseOffset, expectedCaretOffset);
+      expect(_mountedIdsPerSheet(coordinator), [[]]);
+      expect(coordinator.stagedItems.map((item) => item.id), ['a', 'b', 'c']);
+      coordinator.dispose();
+    });
   });
 }

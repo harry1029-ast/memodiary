@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/quill_delta.dart';
+import 'package:memodiary/features/editor/models/mount_marker.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/services/stationery_delta_splitter.dart';
 
@@ -116,6 +117,51 @@ void main() {
       expect(overflowingLines.length, equals(5));
       expect(overflowingLines.first, contains('第11行'));
       expect(overflowingLines.last, contains('第15行'));
+    });
+
+    test('extractOverflow retains mount marker on source sheet when overflow is purely empty newlines', () {
+      final delta = Delta();
+      for (int i = 0; i < 10; i++) {
+        delta.insert('\n');
+      }
+      // Insert marker on the 11th line (which exceeds 10 rows capacity)
+      delta.insert(MountMarker.embeddable('photo1').toJson());
+      for (int i = 0; i < 5; i++) {
+        delta.insert('\n');
+      }
+
+      final overflow = StationeryDeltaSplitter.extractOverflow(
+        sheetDelta: delta,
+        rowCapacity: 10,
+        typography: typography,
+        contentWidth: null,
+      );
+
+      // Marker must be retained in remainingDelta, not in overflowingDelta
+      expect(MountMarker.mediaIdsIn(overflow.remainingDelta), contains('photo1'));
+      expect(MountMarker.mediaIdsIn(overflow.overflowingDelta), isEmpty);
+    });
+
+    test('extractOverflow allows mount marker to spill when accompanied by spilled text', () {
+      final delta = Delta();
+      for (int i = 1; i <= 15; i++) {
+        delta.insert('Line $i');
+        if (i == 12) {
+          delta.insert(MountMarker.embeddable('photo1').toJson());
+        }
+        delta.insert('\n');
+      }
+
+      final overflow = StationeryDeltaSplitter.extractOverflow(
+        sheetDelta: delta,
+        rowCapacity: 10,
+        typography: typography,
+        contentWidth: null,
+      );
+
+      // Spilled text (Line 11-15) carries photo1 with it
+      expect(MountMarker.mediaIdsIn(overflow.remainingDelta), isEmpty);
+      expect(MountMarker.mediaIdsIn(overflow.overflowingDelta), contains('photo1'));
     });
   });
 }
