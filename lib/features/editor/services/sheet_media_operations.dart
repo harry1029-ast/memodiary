@@ -12,20 +12,38 @@ class _SheetMediaOperations {
   List<StationerySheetDescriptor> get _sheets => _coordinator._sheets;
   List<SheetMediaItem> get _stagedItems => _coordinator._stagedItems;
 
+  final List<StreamSubscription<DocChange>> _sheetDocSubscriptions =
+      <StreamSubscription<DocChange>>[];
+  final List<VoidCallback> _sheetListenerRemovers = <VoidCallback>[];
+
   int _clampedActiveIndex() =>
       _coordinator._activeSheetIndex.clamp(0, _sheets.length - 1);
 
   void _ensureOpeningSheet() {
     if (_sheets.isEmpty) {
       _sheets.add(OpeningSheet.empty(sheetIndex: 0));
-      bindLeadingBackspaceCallbacks();
+      rebindSheetSubscriptions();
     }
   }
 
-  /// Wires each text sheet's [StationeryQuillController.onBackspaceAtStart] to
-  /// [EditorPaginationCoordinator.handleSpillBack] for continuation sheets (`sheetIndex > 0`)
-  /// and clears it on the opening sheet (`sheetIndex == 0`).
-  void bindLeadingBackspaceCallbacks() {
+  /// Cancels all active per-sheet document stream and controller listeners.
+  void clearSheetSubscriptions() {
+    for (final subscription in _sheetDocSubscriptions) {
+      subscription.cancel();
+    }
+    _sheetDocSubscriptions.clear();
+
+    for (final remover in _sheetListenerRemovers) {
+      remover();
+    }
+    _sheetListenerRemovers.clear();
+  }
+
+  /// Synchronizes per-sheet [Document.changes], [QuillController],
+  /// [EphemeraSheet.captionController], and leading-Backspace callbacks across [_sheets].
+  void rebindSheetSubscriptions() {
+    clearSheetSubscriptions();
+
     for (final sheet in _sheets) {
       if (sheet is TextStationerySheet) {
         final sheetController = sheet.controller;
@@ -34,7 +52,104 @@ class _SheetMediaOperations {
           sheetController.onBackspaceAtStart =
               index > 0 ? () => _coordinator.handleSpillBack(index) : null;
         }
+
+        Document boundDocument = sheet.controller.document;
+        StreamSubscription<DocChange> activeDocSub =
+            boundDocument.changes.listen((docChange) {
+          _onSheetDocumentChanged(sheet, docChange);
+        });
+        _sheetDocSubscriptions.add(activeDocSub);
+
+        void onControllerNotified() {
+          if (!identical(sheet.controller.document, boundDocument)) {
+            _sheetDocSubscriptions.remove(activeDocSub);
+            activeDocSub.cancel();
+            boundDocument = sheet.controller.document;
+            activeDocSub = boundDocument.changes.listen((docChange) {
+              _onSheetDocumentChanged(sheet, docChange);
+            });
+            _sheetDocSubscriptions.add(activeDocSub);
+            return;
+          }
+          if (_coordinator._isMutatingSheets ||
+              sheet.controller.ignoreFocusOnTextChange) {
+            return;
+          }
+          if (!sheet.controller.plainTextEditingValue.composing.isCollapsed) {
+            return;
+          }
+          if (!_coordinator.isSheetComposing(sheet.sheetIndex)) {
+            _coordinator.checkAndPerformAutoSpill(sheet.sheetIndex);
+          }
+        }
+
+        sheet.controller.addListener(onControllerNotified);
+        _sheetListenerRemovers.add(() {
+          sheet.controller.removeListener(onControllerNotified);
+        });
+      } else if (sheet is EphemeraSheet) {
+        String lastCaption = sheet.captionController.text;
+        void onCaptionNotified() {
+          if (sheet.captionController.text != lastCaption) {
+            lastCaption = sheet.captionController.text;
+            _coordinator._markContentMutated();
+          }
+        }
+
+        sheet.captionController.addListener(onCaptionNotified);
+        _sheetListenerRemovers.add(() {
+          sheet.captionController.removeListener(onCaptionNotified);
+        });
       }
+    }
+  }
+
+  void _onSheetDocumentChanged(TextStationerySheet sheet, DocChange docChange) {
+    if (_coordinator._isMutatingSheets || _coordinator._isDisposed) return;
+    _coordinator._markContentMutated();
+    final liveIndex = _sheets.indexWhere(
+      (candidate) =>
+          candidate is TextStationerySheet &&
+          identical(candidate.controller, sheet.controller),
+    );
+    if (liveIndex < 0) return;
+    if (_coordinator.isSheetComposing(liveIndex)) return;
+
+    final liveSheet = _sheets[liveIndex] as TextStationerySheet;
+    final hasDeletions =
+        docChange.change.operations.any((operation) => operation.isDelete);
+    if (liveIndex > 0 && liveSheet.isEmpty && hasDeletions) {
+      _coordinator._isMutatingSheets = true;
+      late final bool didCollapse;
+      try {
+        didCollapse =
+            _coordinator.collapseEmptyContinuationSheets(allowActive: true);
+      } finally {
+        _coordinator._isMutatingSheets = false;
+      }
+      if (didCollapse) {
+        final targetIndex = _coordinator._activeSheetIndex
+            .clamp(0, math.max(0, _sheets.length - 1))
+            .toInt();
+        final activeSheet = _sheets[targetIndex];
+        final endOffset = activeSheet is TextStationerySheet
+            ? math.max(0, activeSheet.document.length - 1)
+            : 0;
+        _coordinator.onSpillBack?.call(
+          SpillBackResult(
+            sourceSheetIndex: liveIndex,
+            destinationSheetIndex: targetIndex,
+            destinationCaretOffset: endOffset,
+            didCollapse: true,
+          ),
+        );
+      }
+      return;
+    }
+
+    _coordinator.checkAndPerformAutoSpill(liveIndex);
+    if (!_coordinator._isMutatingSheets) {
+      _coordinator.reflowMounts();
     }
   }
 
@@ -58,7 +173,7 @@ class _SheetMediaOperations {
       ..clear()
       ..addAll(partition.stagedItems);
     _coordinator._mounts.adoptPartition(partition);
-    bindLeadingBackspaceCallbacks();
+    rebindSheetSubscriptions();
   }
 
   int _stagedIndexOf(String mediaId) =>
@@ -235,10 +350,11 @@ class _SheetMediaOperations {
     if (sheetIndex < 0 || sheetIndex >= _sheets.length) return;
     final sheet = _sheets[sheetIndex];
     if (sheet is! EphemeraSheet) return;
+    clearSheetSubscriptions();
     _sheets.removeAt(sheetIndex);
     sheet.dispose();
     StationerySheetSpillMutator.reindexSheets(_sheets);
-    bindLeadingBackspaceCallbacks();
+    rebindSheetSubscriptions();
     _coordinator._activeSheetIndex = _clampedActiveIndex();
     _coordinator._notifyContentMutated();
   }
