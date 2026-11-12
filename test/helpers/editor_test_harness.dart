@@ -226,6 +226,7 @@ Future<void> pumpEntryEditorScreen(
   Size? viewportSize,
   ThemeData? theme,
   bool launchFromRoute = false,
+  bool settle = true,
 }) async {
   if (viewportSize != null) {
     tester.view.physicalSize = viewportSize;
@@ -268,10 +269,18 @@ Future<void> pumpEntryEditorScreen(
           : buildEditor(),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
   if (launchFromRoute) {
     await tester.tap(find.byKey(const Key('launch_editor')));
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump();
+    }
   }
 }
 

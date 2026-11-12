@@ -91,29 +91,20 @@ class EditorTextSheetView extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Positioned(
-          top: geometry.continuationColophonRect.top,
-          left: 0,
-          right: 0,
-          height: geometry.continuationColophonRect.height,
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: geometry.textInsetsFromCardEdge.left,
-              right: geometry.textInsetsFromCardEdge.right,
-            ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                colophonText,
-                key: const Key('editor_continuation_colophon_header'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 11.0,
-                  letterSpacing: 1.2,
-                  color: themeConfig.inkColor.withValues(alpha: 0.7),
-                ),
+        Positioned.fromRect(
+          rect: geometry.continuationColophonRect,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              colophonText,
+              key: const Key('editor_continuation_colophon_header'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 11.0,
+                letterSpacing: 1.2,
+                color: themeConfig.inkColor.withValues(alpha: 0.7),
               ),
             ),
           ),
