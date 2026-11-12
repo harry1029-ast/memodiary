@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
@@ -147,6 +148,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     String? fallbackPlainText,
     required List<SheetMediaItem> media,
   }) {
+    _media.clearSheetSubscriptions();
     for (final sheet in _sheets) {
       sheet.dispose();
     }
@@ -243,6 +245,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
         ? previousSheet.focusNode.hasFocus
         : false;
 
+    _media.clearSheetSubscriptions();
     for (final sheet in _sheets) {
       sheet.dispose();
     }
@@ -297,7 +300,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       );
       if (outcome == null) return null;
 
-      _media.bindLeadingBackspaceCallbacks();
+      _media.rebindSheetSubscriptions();
       _activeSheetIndex = outcome.activeSheetIndex;
       reflowMounts();
       _markContentMutated();
@@ -316,6 +319,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     late final ({SpillBackResult result, int activeSheetIndex, bool didMutateContent})? outcome;
     try {
       _mounts.rememberMounted(_sheets);
+      _media.clearSheetSubscriptions();
       outcome = StationerySheetSpillMutator.performSpillBack(
         sheets: _sheets,
         sheetIndex: sheetIndex,
@@ -328,13 +332,13 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       );
       if (outcome == null) return null;
 
-      _media.bindLeadingBackspaceCallbacks();
       _activeSheetIndex = outcome.activeSheetIndex;
       if (outcome.didMutateContent) {
         reflowMounts();
         _markContentMutated();
       }
     } finally {
+      _media.rebindSheetSubscriptions();
       _isMutatingSheets = false;
     }
     notifyListeners();
@@ -350,6 +354,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       final sheet = _sheets[index];
       if (sheet is TextStationerySheet && sheet.isEmpty) {
         if (!allowActive && sheet.focusNode.hasFocus) break;
+        if (!didCollapse) _media.clearSheetSubscriptions();
         if (sheet.focusNode.hasFocus) sheet.focusNode.unfocus();
         _sheets.removeAt(index);
         sheet.dispose();
@@ -360,7 +365,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     }
     if (didCollapse) {
       StationerySheetSpillMutator.reindexSheets(_sheets);
-      _media.bindLeadingBackspaceCallbacks();
+      _media.rebindSheetSubscriptions();
       _activeSheetIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
       // A collapsed sheet may have shown items cascaded from earlier sheets.
       reflowMounts();
@@ -411,7 +416,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     final continuation = ContinuationSheet.empty(sheetIndex: newIndex);
     _sheets.add(continuation);
     StationerySheetSpillMutator.reindexSheets(_sheets);
-    _media.bindLeadingBackspaceCallbacks();
+    _media.rebindSheetSubscriptions();
     notifyListeners();
     return continuation;
   }
@@ -419,6 +424,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    _media.clearSheetSubscriptions();
     for (final sheet in _sheets) {
       sheet.dispose();
     }

@@ -167,6 +167,21 @@ void main() {
       );
       expect(updatedContainer.style.type, TemplateBackgroundType.lined);
       expect(updatedContainer.typography!.lineSpacing, updatedContainer.style.lineSpacing);
+
+      // Typing past 10 rows immediately after template switch triggers Auto-Spill onto Sheet 2:
+      final quillEditor = tester.widget<QuillEditor>(find.byType(QuillEditor));
+      for (int lineIndex = 1; lineIndex <= 12; lineIndex++) {
+        final currentLength = quillEditor.controller.document.length;
+        final line = '切换信笺后第${lineIndex.toString().padLeft(2, '0')}行文字\n';
+        quillEditor.controller.replaceText(
+          currentLength - 1,
+          0,
+          line,
+          TextSelection.collapsed(offset: currentLength - 1 + line.length),
+        );
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('第 2 / 2 页'), findsOneWidget);
     });
 
     testWidgets('synchronizes editor horizontal margins directly to innerFrameRect and clamps letterhead height', (tester) async {

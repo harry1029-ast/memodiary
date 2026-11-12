@@ -446,5 +446,79 @@ void main() {
       }
       coordinator.dispose();
     });
+
+    test('Live controller edits automatically trigger Auto-Spill, mount reflow, contentRevision increments, and empty-sheet collapse onSpillBack without external calls', () async {
+      final attachment = MediaAttachment(
+        id: 'photo_live',
+        entryId: 'entry_live',
+        mediaType: 'image',
+        relativePath: 'media/photo_live.webp',
+        createdAt: DateTime(2026, 11, 12),
+      );
+      final coordinator = EditorPaginationCoordinator(typography: typography);
+      coordinator.initializeFromDelta('', attachments: [attachment]);
+
+      final sheet1 = coordinator.sheets.first as OpeningSheet;
+      sheet1.controller.replaceText(
+        0,
+        0,
+        '尾段随笔',
+        const TextSelection.collapsed(offset: 4),
+      );
+      expect(coordinator.mountOnActiveSheet('photo_live'), isTrue);
+
+      final autoSpillEvents = <AutoSpillResult>[];
+      final spillBackEvents = <SpillBackResult>[];
+      coordinator.onAutoSpill = autoSpillEvents.add;
+      coordinator.onSpillBack = spillBackEvents.add;
+
+      final revisionBeforeTyping = coordinator.contentRevision.value;
+
+      // Live typing 10 lines before '尾段随笔' (with caret moving to the end on the 10th line)
+      // pushes '尾段随笔' and its mounted print onto Sheet 2 without calling checkAndPerformAutoSpill:
+      for (int lineNumber = 1; lineNumber <= 10; lineNumber++) {
+        final text = '第${lineNumber.toString().padLeft(2, '0')}行实时书写测试\n';
+        final targetSelection = lineNumber == 10
+            ? TextSelection.collapsed(
+                offset: sheet1.document.length - 1 + text.length,
+              )
+            : TextSelection.collapsed(offset: text.length);
+        sheet1.controller.replaceText(0, 0, text, targetSelection);
+      }
+      await Future<void>.delayed(Duration.zero);
+
+      expect(coordinator.totalSheets, equals(2));
+      expect(coordinator.activeSheetIndex, equals(1));
+      expect(autoSpillEvents, hasLength(1));
+      expect(autoSpillEvents.single.sourceSheetIndex, equals(0));
+      expect(autoSpillEvents.single.destinationSheetIndex, equals(1));
+      expect(coordinator.contentRevision.value, greaterThan(revisionBeforeTyping));
+
+      // The mount marker anchored to '尾段随笔' moved onto Sheet 2:
+      final updatedSheet1 = coordinator.sheets[0] as OpeningSheet;
+      final sheet2 = coordinator.sheets[1] as ContinuationSheet;
+      expect(updatedSheet1.mediaAttachments, isEmpty);
+      expect(sheet2.mediaAttachments.map((item) => item.id), equals(['photo_live']));
+
+      // Unmount photo_live from Sheet 2 and delete all text on Sheet 2:
+      // deleting the last text on an empty continuation sheet must auto-collapse it and emit onSpillBack.
+      expect(coordinator.unmountMedia('photo_live'), isTrue);
+      final revisionBeforeDelete = coordinator.contentRevision.value;
+      sheet2.controller.document.delete(0, sheet2.document.length - 1);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(coordinator.totalSheets, equals(1));
+      expect(coordinator.activeSheetIndex, equals(0));
+      expect(spillBackEvents, hasLength(1));
+      expect(spillBackEvents.single.destinationSheetIndex, equals(0));
+      expect(spillBackEvents.single.didCollapse, isTrue);
+      expect(
+        spillBackEvents.single.destinationCaretOffset,
+        equals((coordinator.sheets.first as TextStationerySheet).document.length - 1),
+      );
+      expect(coordinator.contentRevision.value, greaterThan(revisionBeforeDelete));
+
+      coordinator.dispose();
+    });
   });
 }
