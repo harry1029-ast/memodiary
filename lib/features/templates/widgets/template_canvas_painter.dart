@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../editor/models/typography_settings.dart';
 import '../models/template_style.dart';
+import '../models/template_text_insets.dart';
 import '../services/stationery_layout_calculator.dart';
 import 'stationery_canvas_framing.dart';
 import 'template_thumbnail_painter.dart';
@@ -280,7 +281,7 @@ class TemplateCanvasPainter extends CustomPainter {
               : const Color(0x33E57373))
       ..strokeWidth = 1.2;
 
-    final marginX = innerRect.left + 24.0;
+    final marginX = innerRect.left + kLinedMarginRuleInset;
     final topMarginY = math.max(effectiveHeaderY, innerRect.top);
     if (topMarginY < innerRect.bottom) {
       canvas.drawLine(
