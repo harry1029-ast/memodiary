@@ -157,29 +157,11 @@ class StationeryDeltaSplitter {
       }
     }
 
-    bool hasTrailingSoftNewline = false;
-
-    if (firstSlice.isEmpty) {
-      firstSlice.push(Operation.insert('\n', trailingParagraphAttributes));
-      hasTrailingSoftNewline = true;
-    } else {
-      final lastOp = firstSlice.operations.last;
-      if (lastOp.data is String && (lastOp.data as String).endsWith('\n')) {
-        hasTrailingSoftNewline = false;
-      } else {
-        firstSlice.push(Operation.insert('\n', trailingParagraphAttributes));
-        hasTrailingSoftNewline = true;
-      }
-    }
-
-    if (secondSlice.isEmpty) {
-      secondSlice.push(Operation.insert('\n'));
-    } else {
-      final lastOp = secondSlice.operations.last;
-      if (lastOp.data is! String || !(lastOp.data as String).endsWith('\n')) {
-        secondSlice.push(Operation.insert('\n'));
-      }
-    }
+    final hasTrailingSoftNewline = _ensureTrailingNewline(
+      firstSlice,
+      trailingParagraphAttributes,
+    );
+    _ensureTrailingNewline(secondSlice);
 
     return DeltaSplitResult(
       firstSlice: firstSlice,
@@ -200,9 +182,7 @@ class StationeryDeltaSplitter {
       source: firstSlice,
       stripTrailingSoftNewline: firstSliceHasSoftNewline,
     );
-    for (final operation in secondSlice.operations) {
-      combined.push(operation);
-    }
+    _pushAll(combined, secondSlice.operations);
     return combined;
   }
 
@@ -229,9 +209,7 @@ class StationeryDeltaSplitter {
 
     for (final paragraph in paragraphs) {
       if (isOverflowing) {
-        for (final operation in paragraph.operations) {
-          tailDelta.push(operation);
-        }
+        _pushAll(tailDelta, paragraph.operations);
         continue;
       }
 
@@ -244,65 +222,82 @@ class StationeryDeltaSplitter {
         backgroundType: backgroundType,
         lineStridePx: lineStridePx,
       );
+      final paragraphDocLength = paragraph.operations.fold<int>(
+        0,
+        (sum, operation) => sum + (operation.length ?? 0),
+      );
 
       if (measured.totalRows <= remainingRows) {
-        for (final operation in paragraph.operations) {
-          headDelta.push(operation);
-        }
+        _pushAll(headDelta, paragraph.operations);
         remainingRows -= measured.totalRows;
         // Document offsets, where each mount marker takes one position.
-        cumulativeDocumentOffset += paragraph.operations.fold<int>(
-          0,
-          (sum, operation) => sum + (operation.length ?? 0),
-        );
+        cumulativeDocumentOffset += paragraphDocLength;
       } else {
-        isOverflowing = true;
         final rawLinesThatFit = math.max(0, remainingRows ~/ measured.rowWeight);
         final linesThatFit =
             (rawLinesThatFit == 0 && headDelta.isEmpty) ? 1 : rawLinesThatFit;
 
         if (linesThatFit == 0) {
+          isOverflowing = true;
           splitOffset = cumulativeDocumentOffset;
           hasTrailingSoftNewline = false;
-          for (final operation in paragraph.operations) {
-            tailDelta.push(operation);
-          }
+          _pushAll(tailDelta, paragraph.operations);
         } else {
           final lineBreakIndex = math.min(
             linesThatFit - 1,
             measured.lineBreakOffsets.length - 1,
           );
           var paragraphCutOffset = measured.lineBreakOffsets[lineBreakIndex];
-          if (paragraphCutOffset <= 0 && paragraph.plainText.isNotEmpty) {
-            paragraphCutOffset = math.min(paragraph.plainText.length, 1);
+          final textBodyLength = paragraph.plainText.endsWith('\n')
+              ? paragraph.plainText.length - 1
+              : paragraph.plainText.length;
+          if (paragraphCutOffset <= 0 && textBodyLength > 0) {
+            paragraphCutOffset = 1;
           }
-          final paragraphDelta = Delta();
-          for (final operation in paragraph.operations) {
-            paragraphDelta.push(operation);
-          }
-          final paragraphDeltaCut = deltaOffsetOfTextOffset(paragraphDelta, paragraphCutOffset);
-          splitOffset = cumulativeDocumentOffset + paragraphDeltaCut;
 
+          if (paragraphCutOffset >= textBodyLength) {
+            _pushAll(headDelta, paragraph.operations);
+            remainingRows -= measured.totalRows;
+            cumulativeDocumentOffset += paragraphDocLength;
+            continue;
+          }
+
+          final paragraphDeltaCut = deltaOffsetOfTextOffset(
+            paragraph.delta,
+            paragraphCutOffset,
+          );
           final split = splitDeltaAtCharacterOffset(
-            sourceDelta: paragraphDelta,
+            sourceDelta: paragraph.delta,
             splitOffset: paragraphDeltaCut,
             trailingParagraphAttributes: paragraph.blockAttributes,
           );
 
-          for (final operation in split.firstSlice.operations) {
-            headDelta.push(operation);
+          final nextPlainText = _extractPlainText(split.secondSlice);
+          final nextBodyLength = nextPlainText.endsWith('\n')
+              ? nextPlainText.length - 1
+              : nextPlainText.length;
+
+          // Strict forward-progress guard: never allow non-shrinking remainder
+          if (nextBodyLength == 0 || nextBodyLength >= textBodyLength) {
+            _pushAll(headDelta, paragraph.operations);
+            remainingRows -= measured.totalRows;
+            cumulativeDocumentOffset += paragraphDocLength;
+            continue;
           }
-          for (final operation in split.secondSlice.operations) {
-            tailDelta.push(operation);
-          }
+
+          isOverflowing = true;
+          splitOffset = cumulativeDocumentOffset + paragraphDeltaCut;
+          _pushAll(headDelta, split.firstSlice.operations);
+          _pushAll(tailDelta, split.secondSlice.operations);
           hasTrailingSoftNewline = split.hasTrailingSoftNewline;
         }
       }
     }
 
     if (!isOverflowing) {
+      _ensureTrailingNewline(headDelta);
       return SheetOverflowResult(
-        remainingDelta: sheetDelta,
+        remainingDelta: headDelta,
         overflowingDelta: Delta(),
         splitOffset: cumulativeDocumentOffset,
         hasTrailingSoftNewline: false,
@@ -310,25 +305,10 @@ class StationeryDeltaSplitter {
     }
 
     _retainEmptyRowMountMarkers(headDelta: headDelta, tailDelta: tailDelta);
-
-    if (headDelta.isEmpty) {
-      headDelta.push(Operation.insert('\n'));
-    } else {
-      final lastOp = headDelta.operations.last;
-      if (lastOp.data is! String || !(lastOp.data as String).endsWith('\n')) {
-        headDelta.push(Operation.insert('\n'));
-        hasTrailingSoftNewline = true;
-      }
+    if (_ensureTrailingNewline(headDelta) && headDelta.operations.length > 1) {
+      hasTrailingSoftNewline = true;
     }
-
-    if (tailDelta.isEmpty) {
-      tailDelta.push(Operation.insert('\n'));
-    } else {
-      final lastOp = tailDelta.operations.last;
-      if (lastOp.data is! String || !(lastOp.data as String).endsWith('\n')) {
-        tailDelta.push(Operation.insert('\n'));
-      }
-    }
+    _ensureTrailingNewline(tailDelta);
 
     return SheetOverflowResult(
       remainingDelta: headDelta,
@@ -397,5 +377,35 @@ class StationeryDeltaSplitter {
     tailDelta.operations
       ..clear()
       ..addAll(cleanTail.operations);
+  }
+
+  static void _pushAll(Delta target, Iterable<Operation> operations) {
+    for (final operation in operations) {
+      target.push(operation);
+    }
+  }
+
+  static bool _ensureTrailingNewline(
+    Delta delta, [
+    Map<String, dynamic>? attributes,
+  ]) {
+    if (delta.isNotEmpty) {
+      final lastOp = delta.operations.last;
+      if (lastOp.data is String && (lastOp.data as String).endsWith('\n')) {
+        return false;
+      }
+    }
+    delta.push(Operation.insert('\n', attributes));
+    return true;
+  }
+
+  static String _extractPlainText(Delta delta) {
+    final buffer = StringBuffer();
+    for (final operation in delta.operations) {
+      if (operation.isInsert && operation.data is String) {
+        buffer.write(operation.data as String);
+      }
+    }
+    return buffer.toString();
   }
 }
