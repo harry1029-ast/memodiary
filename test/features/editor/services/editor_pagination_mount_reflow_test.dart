@@ -268,7 +268,7 @@ void main() {
           ..insert('我的日记\n\n\n\n\n\n\n\n\n\n'),
         ['a'],
       );
-      coordinator.media.mountOnActiveSheet('a');
+      coordinator.mountOnActiveSheet('a');
 
       final opening = coordinator.sheets.first as OpeningSheet;
       final controller = opening.controller;
@@ -287,7 +287,7 @@ void main() {
         Delta()..insert('\n'),
         ['a'],
       );
-      coordinator.media.mountOnActiveSheet('a');
+      coordinator.mountOnActiveSheet('a');
 
       final opening = coordinator.sheets.first as OpeningSheet;
       final controller = opening.controller;
@@ -306,7 +306,7 @@ void main() {
         Delta()..insert('\n'),
         ['a'],
       );
-      coordinator.media.mountOnActiveSheet('a');
+      coordinator.mountOnActiveSheet('a');
       final opening = coordinator.sheets.first as OpeningSheet;
       final controller = opening.controller;
       for (int i = 0; i < 15; i++) {
@@ -325,7 +325,7 @@ void main() {
       );
       coordinator.getOrCreateFollowingTextSheet(0);
       coordinator.activeSheetIndex = 1;
-      coordinator.media.mountOnActiveSheet('a');
+      coordinator.mountOnActiveSheet('a');
 
       final sheet2 = coordinator.sheets[1] as TextStationerySheet;
       for (int i = 0; i < 20; i++) {
@@ -346,7 +346,7 @@ void main() {
       );
       coordinator.getOrCreateFollowingTextSheet(0);
       coordinator.activeSheetIndex = 1;
-      coordinator.media.mountOnActiveSheet('b');
+      coordinator.mountOnActiveSheet('b');
       expect(coordinator.totalSheets, 2);
       expect(_mountedIdsPerSheet(coordinator), [
         [],

@@ -40,17 +40,17 @@ void main() {
   tearDown(() => coordinator.dispose());
 
   test('mounting onto a sheet never reads as typing', () {
-    expect(coordinator.media.mountOnActiveSheet('a'), isTrue);
+    expect(coordinator.mountOnActiveSheet('a'), isTrue);
 
     expect(flagsSeen, isNotEmpty);
     expect(flagsSeen, everyElement(isTrue));
   });
 
   test('unmounting from a sheet never reads as typing', () {
-    coordinator.media.mountOnActiveSheet('a');
+    coordinator.mountOnActiveSheet('a');
     flagsSeen.clear();
 
-    expect(coordinator.media.unmount('a'), isTrue);
+    expect(coordinator.unmountMedia('a'), isTrue);
 
     expect(flagsSeen, isNotEmpty);
     expect(flagsSeen, everyElement(isTrue));

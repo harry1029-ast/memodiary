@@ -13,7 +13,6 @@ import '../controllers/editor_autosave_manager.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/thought_spark.dart';
 import '../services/editor_pagination_coordinator.dart';
-import '../services/sheet_media_operations.dart';
 import '../services/thought_spark_service.dart';
 
 /// Modular helpers for sandboxed media ingestion (photos and short videos)
@@ -32,8 +31,8 @@ class EditorMediaActions {
     BuildContext context,
     EditorPaginationCoordinator coordinator,
   ) {
-    if (coordinator.media.handscrollRoom > 0) return false;
-    _showSnackBar(context, '画卷已满 ${SheetMediaOperations.kHandscrollCapacity} 影');
+    if (coordinator.handscrollRoom > 0) return false;
+    _showSnackBar(context, '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影');
     return true;
   }
 
@@ -97,7 +96,7 @@ class EditorMediaActions {
       }
       if (picks.isEmpty) return;
 
-      final room = coordinator.media.handscrollRoom;
+      final room = coordinator.handscrollRoom;
       final leftOut = math.max(0, picks.length - room);
       final collected = <SheetMediaItem>[
         for (final picked in picks.take(room))
@@ -122,13 +121,13 @@ class EditorMediaActions {
 
       // Collect in pick order so the Brush Reveals play one after another.
       for (final item in collected) {
-        if (coordinator.media.collect(item)) onCollected?.call(item.id);
+        if (coordinator.collectMedia(item)) onCollected?.call(item.id);
       }
       onStateChanged?.call();
       if (leftOut > 0 && context.mounted) {
         _showSnackBar(
           context,
-          '画卷已满 ${SheetMediaOperations.kHandscrollCapacity} 影 · $leftOut 影未入卷',
+          '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影 · $leftOut 影未入卷',
         );
       }
       await autosaveManager?.saveDraft();
@@ -211,7 +210,7 @@ class EditorMediaActions {
         thumbnailPath: result.thumbnailPath,
       );
 
-      final didCollect = coordinator.media.collect(
+      final didCollect = coordinator.collectMedia(
         SheetMediaItem(
           id: mediaId,
           mediaType: EphemeraMediaType.video,
