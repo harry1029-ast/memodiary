@@ -30,7 +30,7 @@ class EditorDeltaPartitioner {
     SheetRowCapacity rowCapacity = SheetRowCapacity.folioLeaf,
   }) {
     final sheets = <StationerySheetDescriptor>[];
-    final blocks = extractContentBlocks(unifiedDelta);
+    final blocks = StationeryLineMeasurer.extractContentBlocks(unifiedDelta);
 
     if (blocks.isEmpty) {
       return EditorPartition(
@@ -174,10 +174,5 @@ class EditorDeltaPartitioner {
         sheet.dispose();
       }
     }
-  }
-
-  /// Extracts structured text and ephemera blocks from continuous Delta.
-  static List<EditorContentBlock> extractContentBlocks(Delta delta) {
-    return StationeryLineMeasurer.extractContentBlocks(delta);
   }
 }

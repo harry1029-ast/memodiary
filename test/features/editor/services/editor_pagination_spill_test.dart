@@ -136,6 +136,34 @@ void main() {
       coordinator.dispose();
     });
 
+    test('Active mobile IME composition defers Spill-Back until commit', () {
+      final coordinator = EditorPaginationCoordinator(typography: typography);
+      final delta = Delta();
+      for (int lineNumber = 1; lineNumber <= 12; lineNumber++) {
+        delta.insert('第${lineNumber.toString().padLeft(2, '0')}行测试文字\n');
+      }
+      coordinator.initializeFromDelta(jsonEncode(delta.toJson()));
+      expect(coordinator.totalSheets, equals(2));
+
+      final sheet2 = coordinator.sheets[1] as ContinuationSheet;
+      sheet2.setDelta(Delta()..insert('\n'));
+
+      coordinator.isImeComposing = true;
+
+      final deferredResult = coordinator.handleSpillBack(1);
+      expect(deferredResult, isNull);
+      expect(coordinator.totalSheets, equals(2));
+
+      coordinator.isImeComposing = false;
+
+      final committedResult = coordinator.handleSpillBack(1);
+      expect(committedResult, isNotNull);
+      expect(committedResult!.didCollapse, isTrue);
+      expect(coordinator.totalSheets, equals(1));
+
+      coordinator.dispose();
+    });
+
     test('Spill-Back enforces precedingSheet rowCapacity without overflowing Sheet 1', () {
       final coordinator = EditorPaginationCoordinator(typography: typography);
 

@@ -32,7 +32,7 @@ class SpillBackResult {
   final bool didCollapse;
 
   const SpillBackResult({
-    this.sourceSheetIndex = 0,
+    required this.sourceSheetIndex,
     required this.destinationSheetIndex,
     required this.destinationCaretOffset,
     required this.didCollapse,

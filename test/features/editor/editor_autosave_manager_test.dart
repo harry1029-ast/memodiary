@@ -202,5 +202,74 @@ void main() {
       autosave.dispose();
       coordinator.dispose();
     });
+
+    test('coordinator media mutations mark autosave unsaved and persist via contentRevision', () async {
+      final initialDelta = Delta()
+        ..insert('西湖游记\n')
+        ..insert({'image': 'media/legacy_ephemera.webp'})
+        ..insert('\n');
+      final coordinator = EditorPaginationCoordinator()
+        ..initializeFromDelta(jsonEncode(initialDelta.toJson()));
+      final autosave = EditorAutosaveManager(
+        database: db,
+        entryId: 'entry_autosave_1',
+        coordinator: coordinator,
+        debounceDuration: const Duration(minutes: 10),
+      );
+
+      Future<void> expectDirtyThenSave(void Function() mutate) async {
+        expect(autosave.statusNotifier.value, AutosaveStatus.saved);
+        mutate();
+        expect(autosave.statusNotifier.value, AutosaveStatus.unsaved);
+        await autosave.saveDraft(force: true);
+        expect(autosave.statusNotifier.value, AutosaveStatus.saved);
+      }
+
+      const item = SheetMediaItem(
+        id: 'print_1',
+        mediaType: EphemeraMediaType.image,
+        relativePath: 'media/print_1.webp',
+        caption: '断桥残雪',
+      );
+
+      await expectDirtyThenSave(() {
+        expect(coordinator.collectMedia(item), isTrue);
+      });
+
+      await expectDirtyThenSave(() {
+        expect(coordinator.mountOnActiveSheet('print_1'), isTrue);
+      });
+      var saved = await db.getEntryById('entry_autosave_1');
+      expect(saved!.contentDelta, contains('print_1'));
+
+      await expectDirtyThenSave(() {
+        expect(coordinator.updateCaption('print_1', '平湖秋月'), isTrue);
+      });
+
+      await expectDirtyThenSave(() {
+        expect(coordinator.unmountMedia('print_1'), isTrue);
+      });
+      saved = await db.getEntryById('entry_autosave_1');
+      expect(saved!.contentDelta, isNot(contains('print_1')));
+
+      SheetMediaItem? removed;
+      await expectDirtyThenSave(() {
+        removed = coordinator.removeStaged('print_1');
+        expect(removed, isNotNull);
+      });
+
+      await expectDirtyThenSave(() {
+        coordinator.restoreStaged(removed!);
+      });
+
+      await expectDirtyThenSave(() {
+        coordinator.removeEphemeraSheet(1);
+      });
+      saved = await db.getEntryById('entry_autosave_1');
+      expect(saved!.contentDelta, isNot(contains('legacy_ephemera.webp')));
+
+      autosave.dispose();
+      coordinator.dispose();
+    });
   });
 }
