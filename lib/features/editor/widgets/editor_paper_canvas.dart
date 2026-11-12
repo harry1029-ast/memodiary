@@ -360,7 +360,7 @@ class EditorPaperCanvas extends StatelessWidget {
                               chrome.showsWritingDockRestoreTab ? () => chrome.setWritingDockVisible(true) : null,
                           handlers: deskMedia,
                           onCaptionChanged: (mediaId, newCaption) {
-                            coordinator.media.updateCaption(mediaId, newCaption);
+                            coordinator.updateCaption(mediaId, newCaption);
                             onMediaCaptionChanged?.call(mediaId, newCaption);
                           },
                         ),

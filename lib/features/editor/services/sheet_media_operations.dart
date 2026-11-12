@@ -1,38 +1,19 @@
-import 'dart:math' as math;
-import 'package:flutter/services.dart';
+part of 'editor_pagination_coordinator.dart';
 
-import '../domain/stationery_sheet_descriptor.dart';
-import '../models/mount_marker.dart';
-import 'stationery_sheet_spill_mutator.dart';
+/// Internal media-specific mutations over the coordinator's ordered Stationery
+/// Sheets and its Staging Handscroll: Collect, Mount (via Delta mount markers),
+/// Unmount, staged erasure/restoration, caption updates, and legacy ephemera
+/// sheet removal.
+class _SheetMediaOperations {
+  final EditorPaginationCoordinator _coordinator;
 
-/// Media-specific mutations over the coordinator's ordered Stationery Sheets and
-/// its Staging Handscroll: Collect, Mount (via Delta mount markers), and removal
-/// of legacy ephemera sheets. The Staging Handscroll is the only authoring path
-/// for media; legacy inline embeds are render-only.
-///
-/// Operates directly on the coordinator's mutable sheet list and reports every
-/// content mutation through [onContentMutated] so the coordinator can bump its
-/// content revision and notify listeners.
-class SheetMediaOperations {
-  final List<StationerySheetDescriptor> _sheets;
-  final List<SheetMediaItem> _stagedItems;
-  final int Function() _readActiveIndex;
-  final void Function(int index) _writeActiveIndex;
-  final void Function() _onContentMutated;
+  _SheetMediaOperations(this._coordinator);
 
-  SheetMediaOperations({
-    required List<StationerySheetDescriptor> sheets,
-    required List<SheetMediaItem> stagedItems,
-    required int Function() readActiveIndex,
-    required void Function(int index) writeActiveIndex,
-    required void Function() onContentMutated,
-  })  : _sheets = sheets,
-        _stagedItems = stagedItems,
-        _readActiveIndex = readActiveIndex,
-        _writeActiveIndex = writeActiveIndex,
-        _onContentMutated = onContentMutated;
+  List<StationerySheetDescriptor> get _sheets => _coordinator._sheets;
+  List<SheetMediaItem> get _stagedItems => _coordinator._stagedItems;
 
-  int _clampedActiveIndex() => _readActiveIndex().clamp(0, _sheets.length - 1);
+  int _clampedActiveIndex() =>
+      _coordinator._activeSheetIndex.clamp(0, _sheets.length - 1);
 
   void _ensureOpeningSheet() {
     if (_sheets.isEmpty) {
@@ -54,6 +35,14 @@ class SheetMediaOperations {
       ..addAll(mediaIds);
   }
 
+  /// Populates staged items and mount tracker state from a fresh [partition].
+  void adoptPartitionMounts(EditorPartition partition) {
+    _stagedItems
+      ..clear()
+      ..addAll(partition.stagedItems);
+    _coordinator._mounts.adoptPartition(partition);
+  }
+
   int _stagedIndexOf(String mediaId) =>
       _stagedItems.indexWhere((item) => item.id == mediaId);
 
@@ -64,7 +53,8 @@ class SheetMediaOperations {
 
   void _stageInCollectOrder(SheetMediaItem item) {
     final rank = _collectRank(item.id);
-    final insertAt = _stagedItems.indexWhere((staged) => _collectRank(staged.id) > rank);
+    final insertAt =
+        _stagedItems.indexWhere((staged) => _collectRank(staged.id) > rank);
     _stagedItems.insert(insertAt == -1 ? _stagedItems.length : insertAt, item);
   }
 
@@ -73,14 +63,36 @@ class SheetMediaOperations {
   /// they were collected, as an Unmount does.
   void orderStagedByCollect() {
     final ordered = List.of(_stagedItems)
-      ..sort((left, right) => _collectRank(left.id).compareTo(_collectRank(right.id)));
+      ..sort((left, right) =>
+          _collectRank(left.id).compareTo(_collectRank(right.id)));
     _stagedItems
       ..clear()
       ..addAll(ordered);
   }
 
+  /// Re-resolves which sheet shows each mounted item after the text changed:
+  /// items follow the sheet their marker's passage now lies on, cascade past
+  /// full sheets, and those pushed past the last sheet are unmounted (reported
+  /// through [EditorPaginationCoordinator.onOverflowUnmount]).
+  void reflowMounts() {
+    if (_coordinator._isDisposed) return;
+    if (_sheets.any((sheet) => _coordinator.isSheetComposing(sheet.sheetIndex))) {
+      return;
+    }
+
+    final outcome = _coordinator._mounts.reflow(_sheets, _stagedItems);
+    orderStagedByCollect();
+    if (outcome.didChange) {
+      _coordinator._notifyContentMutated();
+    }
+    if (outcome.unmountedByOverflow.isNotEmpty) {
+      _coordinator.onOverflowUnmount?.call(outcome.unmountedByOverflow);
+    }
+  }
+
   /// Free slots left in the Staging Handscroll.
-  int get handscrollRoom => math.max(0, kHandscrollCapacity - _stagedItems.length);
+  int get handscrollRoom =>
+      math.max(0, kHandscrollCapacity - _stagedItems.length);
 
   /// Collects [item] into the Staging Handscroll, after every earlier item.
   ///
@@ -91,7 +103,7 @@ class SheetMediaOperations {
       ..remove(item.id)
       ..add(item.id);
     _stagedItems.add(item);
-    _onContentMutated();
+    _coordinator._notifyContentMutated();
     return true;
   }
 
@@ -104,7 +116,9 @@ class SheetMediaOperations {
     _ensureOpeningSheet();
     final sheet = _sheets[_clampedActiveIndex()];
     final stagedIndex = _stagedIndexOf(mediaId);
-    if (stagedIndex == -1 || sheet is! TextStationerySheet || sheet.isAtMediaCapacity) {
+    if (stagedIndex == -1 ||
+        sheet is! TextStationerySheet ||
+        sheet.isAtMediaCapacity) {
       return false;
     }
     final item = _stagedItems.removeAt(stagedIndex);
@@ -119,7 +133,7 @@ class SheetMediaOperations {
       ignoreFocus: true,
     );
     sheet.mediaAttachments.add(item);
-    _onContentMutated();
+    _coordinator._notifyContentMutated();
     return true;
   }
 
@@ -130,7 +144,8 @@ class SheetMediaOperations {
   bool unmount(String mediaId) {
     for (final sheet in _sheets) {
       if (sheet is! TextStationerySheet) continue;
-      final mountedIndex = sheet.mediaAttachments.indexWhere((item) => item.id == mediaId);
+      final mountedIndex =
+          sheet.mediaAttachments.indexWhere((item) => item.id == mediaId);
       if (mountedIndex == -1) continue;
       // A cascaded item shows on a later sheet than the one holding its marker.
       for (final markerSheet in _sheets.whereType<TextStationerySheet>()) {
@@ -142,12 +157,13 @@ class SheetMediaOperations {
           markerOffset,
           1,
           '',
-          TextSelection.collapsed(offset: base > markerOffset ? base - 1 : base),
+          TextSelection.collapsed(
+              offset: base > markerOffset ? base - 1 : base),
           ignoreFocus: true,
         );
       }
       _stageInCollectOrder(sheet.mediaAttachments.removeAt(mountedIndex));
-      _onContentMutated();
+      _coordinator._notifyContentMutated();
       return true;
     }
     return false;
@@ -168,7 +184,7 @@ class SheetMediaOperations {
     final stagedIndex = _stagedIndexOf(mediaId);
     if (stagedIndex == -1) return null;
     final removed = _stagedItems.removeAt(stagedIndex);
-    _onContentMutated();
+    _coordinator._notifyContentMutated();
     return removed;
   }
 
@@ -176,7 +192,7 @@ class SheetMediaOperations {
   void restoreStaged(SheetMediaItem item) {
     if (_stagedIndexOf(item.id) != -1) return;
     _stageInCollectOrder(item);
-    _onContentMutated();
+    _coordinator._notifyContentMutated();
   }
 
   /// Updates the in-memory caption of [mediaId], wherever it is staged or mounted.
@@ -190,7 +206,7 @@ class SheetMediaOperations {
       final index = items.indexWhere((item) => item.id == mediaId);
       if (index == -1) continue;
       items[index] = items[index].copyWith(caption: newCaption);
-      _onContentMutated();
+      _coordinator._notifyContentMutated();
       return true;
     }
     return false;
@@ -204,7 +220,25 @@ class SheetMediaOperations {
     _sheets.removeAt(sheetIndex);
     sheet.dispose();
     StationerySheetSpillMutator.reindexSheets(_sheets);
-    _writeActiveIndex(_clampedActiveIndex());
-    _onContentMutated();
+    _coordinator._activeSheetIndex = _clampedActiveIndex();
+    _coordinator._notifyContentMutated();
+  }
+
+  /// Mounts legacy attachments first-come by writing their markers into the
+  /// unified Delta at the measured layout width.
+  bool mountLegacyAttachments() {
+    if (_stagedItems.isEmpty) return false;
+    final allMedia = _coordinator._knownItems();
+    final mountedDelta = EditorDeltaPartitioner.mountLegacyAttachments(
+      unifiedDelta: _coordinator.synthesizeUnifiedDelta(),
+      media: allMedia,
+      typography: _coordinator.typography,
+      contentWidth: _coordinator.contentWidth,
+      templateStyle: _coordinator.templateStyle,
+      lineStridePx: _coordinator.lineStridePx,
+      rowCapacity: _coordinator.rowCapacity,
+    );
+    _coordinator._initialize(jsonEncode(mountedDelta.toJson()), media: allMedia);
+    return true;
   }
 }
