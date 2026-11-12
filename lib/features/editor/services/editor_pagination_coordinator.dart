@@ -6,6 +6,7 @@ import 'package:flutter_quill/quill_delta.dart';
 
 import '../../../../core/database/app_database.dart';
 import '../../templates/models/template_style.dart';
+import '../controllers/stationery_quill_controller.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/typography_settings.dart';
 import 'editor_delta_partitioner.dart';
@@ -29,6 +30,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   final ValueNotifier<int> contentRevision = ValueNotifier<int>(0);
   int _activeSheetIndex = 0;
   bool _isDisposed = false;
+  bool _isMutatingSheets = false;
 
   TypographySettings typography;
   TemplateStyle templateStyle;
@@ -38,6 +40,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
   SheetRowCapacity rowCapacity;
   bool isImeComposing = false;
   ValueChanged<AutoSpillResult>? onAutoSpill;
+  ValueChanged<SpillBackResult>? onSpillBack;
 
   /// Receives items that reflow pushed past the last sheet's capacity and that
   /// were therefore unmounted back to the Staging Handscroll.
@@ -149,21 +152,10 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     }
     _sheets.clear();
 
-    Delta unifiedDelta;
-    if (contentDeltaJson.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(contentDeltaJson);
-        final ops = decoded is List ? decoded : (decoded is Map ? decoded['ops'] : null);
-        unifiedDelta = ops is List ? Delta.fromJson(ops) : (Delta()..insert('\n'));
-      } catch (_) {
-        unifiedDelta = Delta()..insert('\n');
-      }
-    } else if (fallbackPlainText != null && fallbackPlainText.trim().isNotEmpty) {
-      unifiedDelta = Delta()..insert(fallbackPlainText);
-      if (!fallbackPlainText.endsWith('\n')) unifiedDelta.insert('\n');
-    } else {
-      unifiedDelta = Delta()..insert('\n');
-    }
+    final unifiedDelta = StationeryDeltaSynthesizer.decode(
+      contentDeltaJson,
+      fallbackPlainText: fallbackPlainText,
+    );
 
     final partition = EditorDeltaPartitioner.partition(
       unifiedDelta: unifiedDelta,
@@ -280,41 +272,38 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
   /// Re-synthesizes the unified Delta JSON string and plain text representation,
   /// stripping mount markers that reference no known attachment (or repeat one).
-  (String deltaJson, String plainText) reSynthesize() {
-    final unified = SheetMountResolver.stripOrphanMarkers(
-      synthesizeUnifiedDelta(),
-      knownMediaIds: {for (final item in _knownItems()) item.id},
-    );
-    final hasMountMarkers = MountMarker.mediaIdsIn(unified).isNotEmpty;
-    final textDocument = Document.fromDelta(MountMarker.strip(unified));
-    final plainText = textDocument.toPlainText().trim();
-    // Structural emptiness: whitespace and blank lines are kept as content.
-    if (textDocument.length <= 1 &&
-        !hasMountMarkers &&
-        _sheets.every((sheet) => sheet is! EphemeraSheet)) {
-      return ('[]', '');
-    }
-    return (jsonEncode(unified.toJson()), plainText);
-  }
+  (String deltaJson, String plainText) reSynthesize() =>
+      StationeryDeltaSynthesizer.reSynthesize(
+        _sheets,
+        knownMediaIds: {for (final item in _knownItems()) item.id},
+      );
 
   /// Checks if [sheetIndex] exceeds row capacity, and if so, performs Auto-Spill.
   AutoSpillResult? checkAndPerformAutoSpill(int sheetIndex) {
-    final outcome = StationerySheetSpillMutator.performAutoSpill(
-      sheets: _sheets,
-      sheetIndex: sheetIndex,
-      currentActiveIndex: _activeSheetIndex,
-      typography: typography,
-      backgroundType: templateStyle.type,
-      contentWidth: contentWidth,
-      lineStridePx: lineStridePx,
-      rowCapacity: rowCapacity,
-      isSheetComposing: isSheetComposing,
-    );
-    if (outcome == null) return null;
+    if (_isMutatingSheets) return null;
+    _isMutatingSheets = true;
+    late final ({AutoSpillResult result, int activeSheetIndex})? outcome;
+    try {
+      outcome = StationerySheetSpillMutator.performAutoSpill(
+        sheets: _sheets,
+        sheetIndex: sheetIndex,
+        currentActiveIndex: _activeSheetIndex,
+        typography: typography,
+        backgroundType: templateStyle.type,
+        contentWidth: contentWidth,
+        lineStridePx: lineStridePx,
+        rowCapacity: rowCapacity,
+        isSheetComposing: isSheetComposing,
+      );
+      if (outcome == null) return null;
 
-    _activeSheetIndex = outcome.activeSheetIndex;
-    reflowMounts();
-    _markContentMutated();
+      _media.bindLeadingBackspaceCallbacks();
+      _activeSheetIndex = outcome.activeSheetIndex;
+      reflowMounts();
+      _markContentMutated();
+    } finally {
+      _isMutatingSheets = false;
+    }
     notifyListeners();
     onAutoSpill?.call(outcome.result);
     return outcome.result;
@@ -322,25 +311,34 @@ class EditorPaginationCoordinator extends ChangeNotifier {
 
   /// Handles backspace at offset 0 on a continuation sheet, triggering Spill-Back.
   SpillBackResult? handleSpillBack(int sheetIndex) {
-    _mounts.rememberMounted(_sheets);
-    final outcome = StationerySheetSpillMutator.performSpillBack(
-      sheets: _sheets,
-      sheetIndex: sheetIndex,
-      typography: typography,
-      backgroundType: templateStyle.type,
-      contentWidth: contentWidth,
-      lineStridePx: lineStridePx,
-      rowCapacity: rowCapacity,
-      isSheetComposing: isSheetComposing,
-    );
-    if (outcome == null) return null;
+    if (_isMutatingSheets) return null;
+    _isMutatingSheets = true;
+    late final ({SpillBackResult result, int activeSheetIndex, bool didMutateContent})? outcome;
+    try {
+      _mounts.rememberMounted(_sheets);
+      outcome = StationerySheetSpillMutator.performSpillBack(
+        sheets: _sheets,
+        sheetIndex: sheetIndex,
+        typography: typography,
+        backgroundType: templateStyle.type,
+        contentWidth: contentWidth,
+        lineStridePx: lineStridePx,
+        rowCapacity: rowCapacity,
+        isSheetComposing: isSheetComposing,
+      );
+      if (outcome == null) return null;
 
-    _activeSheetIndex = outcome.activeSheetIndex;
-    if (outcome.didMutateContent) {
-      reflowMounts();
-      _markContentMutated();
+      _media.bindLeadingBackspaceCallbacks();
+      _activeSheetIndex = outcome.activeSheetIndex;
+      if (outcome.didMutateContent) {
+        reflowMounts();
+        _markContentMutated();
+      }
+    } finally {
+      _isMutatingSheets = false;
     }
     notifyListeners();
+    onSpillBack?.call(outcome.result);
     return outcome.result;
   }
 
@@ -351,12 +349,8 @@ class EditorPaginationCoordinator extends ChangeNotifier {
       if (!allowActive && index == _activeSheetIndex) break;
       final sheet = _sheets[index];
       if (sheet is TextStationerySheet && sheet.isEmpty) {
-        if (!allowActive && sheet.focusNode.hasFocus) {
-          break;
-        }
-        if (sheet.focusNode.hasFocus) {
-          sheet.focusNode.unfocus();
-        }
+        if (!allowActive && sheet.focusNode.hasFocus) break;
+        if (sheet.focusNode.hasFocus) sheet.focusNode.unfocus();
         _sheets.removeAt(index);
         sheet.dispose();
         didCollapse = true;
@@ -366,6 +360,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     }
     if (didCollapse) {
       StationerySheetSpillMutator.reindexSheets(_sheets);
+      _media.bindLeadingBackspaceCallbacks();
       _activeSheetIndex = _activeSheetIndex.clamp(0, _sheets.length - 1);
       // A collapsed sheet may have shown items cascaded from earlier sheets.
       reflowMounts();
@@ -416,6 +411,7 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     final continuation = ContinuationSheet.empty(sheetIndex: newIndex);
     _sheets.add(continuation);
     StationerySheetSpillMutator.reindexSheets(_sheets);
+    _media.bindLeadingBackspaceCallbacks();
     notifyListeners();
     return continuation;
   }
