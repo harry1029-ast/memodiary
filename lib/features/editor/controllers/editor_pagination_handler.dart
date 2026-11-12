@@ -42,21 +42,27 @@ class EditorPaginationHandler {
     coordinator.activeSheetIndex = spillResult.destinationSheetIndex;
     autosaveManager.markDirty();
     onStateChanged();
+    _animateAndFocusSheet(
+      spillResult.destinationSheetIndex,
+      spillResult.destinationCaretOffset,
+    );
+  }
 
+  void _animateAndFocusSheet(int sheetIndex, int caretOffset) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (pageController.hasClients) {
         pageController.animateToPage(
-          spillResult.destinationSheetIndex,
+          sheetIndex,
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
         );
       }
-      if (spillResult.destinationSheetIndex < coordinator.sheets.length) {
-        final destSheet = coordinator.sheets[spillResult.destinationSheetIndex];
+      if (sheetIndex < coordinator.sheets.length) {
+        final destSheet = coordinator.sheets[sheetIndex];
         if (destSheet is TextStationerySheet) {
           destSheet.focusNode.requestFocus();
           destSheet.controller.updateSelection(
-            TextSelection.collapsed(offset: spillResult.destinationCaretOffset),
+            TextSelection.collapsed(offset: caretOffset),
             ChangeSource.local,
           );
         }
@@ -157,26 +163,10 @@ class EditorPaginationHandler {
     coordinator.activeSheetIndex = spillBackResult.destinationSheetIndex;
     autosaveManager.saveDraft();
     onStateChanged();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (pageController.hasClients) {
-        pageController.animateToPage(
-          spillBackResult.destinationSheetIndex,
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-        );
-      }
-      if (spillBackResult.destinationSheetIndex < coordinator.sheets.length) {
-        final destSheet = coordinator.sheets[spillBackResult.destinationSheetIndex];
-        if (destSheet is TextStationerySheet) {
-          destSheet.focusNode.requestFocus();
-          destSheet.controller.updateSelection(
-            TextSelection.collapsed(offset: spillBackResult.destinationCaretOffset),
-            ChangeSource.local,
-          );
-        }
-      }
-    });
+    _animateAndFocusSheet(
+      spillBackResult.destinationSheetIndex,
+      spillBackResult.destinationCaretOffset,
+    );
   }
 
   Future<void> handleDeleteEphemera(int sheetIndex) async {

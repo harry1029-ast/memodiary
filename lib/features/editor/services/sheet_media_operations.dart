@@ -1,30 +1,18 @@
 part of 'editor_pagination_coordinator.dart';
 
-/// Internal media-specific mutations over the coordinator's ordered Stationery
-/// Sheets and its Staging Handscroll: Collect, Mount (via Delta mount markers),
-/// Unmount, staged erasure/restoration, caption updates, and legacy ephemera
-/// sheet removal.
-class _SheetMediaOperations {
+/// Internal registry managing per-sheet [Document.changes] streams,
+/// [QuillController] listeners, [EphemeraSheet.captionController] listeners,
+/// and leading-Backspace callbacks across the coordinator's active sheets.
+class _SheetSubscriptionRegistry {
   final EditorPaginationCoordinator _coordinator;
 
-  _SheetMediaOperations(this._coordinator);
+  _SheetSubscriptionRegistry(this._coordinator);
 
   List<StationerySheetDescriptor> get _sheets => _coordinator._sheets;
-  List<SheetMediaItem> get _stagedItems => _coordinator._stagedItems;
 
   final List<StreamSubscription<DocChange>> _sheetDocSubscriptions =
       <StreamSubscription<DocChange>>[];
   final List<VoidCallback> _sheetListenerRemovers = <VoidCallback>[];
-
-  int _clampedActiveIndex() =>
-      _coordinator._activeSheetIndex.clamp(0, _sheets.length - 1);
-
-  void _ensureOpeningSheet() {
-    if (_sheets.isEmpty) {
-      _sheets.add(OpeningSheet.empty(sheetIndex: 0));
-      rebindSheetSubscriptions();
-    }
-  }
 
   /// Cancels all active per-sheet document stream and controller listeners.
   void clearSheetSubscriptions() {
@@ -80,6 +68,9 @@ class _SheetMediaOperations {
           }
           if (!_coordinator.isSheetComposing(sheet.sheetIndex)) {
             _coordinator.checkAndPerformAutoSpill(sheet.sheetIndex);
+            if (!_coordinator._isMutatingSheets) {
+              _coordinator.reflowMounts();
+            }
           }
         }
 
@@ -152,6 +143,29 @@ class _SheetMediaOperations {
       _coordinator.reflowMounts();
     }
   }
+}
+
+/// Internal media-specific mutations over the coordinator's ordered Stationery
+/// Sheets and its Staging Handscroll: Collect, Mount (via Delta mount markers),
+/// Unmount, staged erasure/restoration, caption updates, and legacy ephemera
+/// sheet removal.
+class _SheetMediaOperations {
+  final EditorPaginationCoordinator _coordinator;
+
+  _SheetMediaOperations(this._coordinator);
+
+  List<StationerySheetDescriptor> get _sheets => _coordinator._sheets;
+  List<SheetMediaItem> get _stagedItems => _coordinator._stagedItems;
+
+  int _clampedActiveIndex() =>
+      _coordinator._activeSheetIndex.clamp(0, _sheets.length - 1);
+
+  void _ensureOpeningSheet() {
+    if (_sheets.isEmpty) {
+      _sheets.add(OpeningSheet.empty(sheetIndex: 0));
+      _coordinator._subscriptions.rebindSheetSubscriptions();
+    }
+  }
 
   /// Most items the Staging Handscroll holds at once.
   static const int kHandscrollCapacity = 15;
@@ -173,7 +187,7 @@ class _SheetMediaOperations {
       ..clear()
       ..addAll(partition.stagedItems);
     _coordinator._mounts.adoptPartition(partition);
-    rebindSheetSubscriptions();
+    _coordinator._subscriptions.rebindSheetSubscriptions();
   }
 
   int _stagedIndexOf(String mediaId) =>
@@ -350,11 +364,11 @@ class _SheetMediaOperations {
     if (sheetIndex < 0 || sheetIndex >= _sheets.length) return;
     final sheet = _sheets[sheetIndex];
     if (sheet is! EphemeraSheet) return;
-    clearSheetSubscriptions();
+    _coordinator._subscriptions.clearSheetSubscriptions();
     _sheets.removeAt(sheetIndex);
     sheet.dispose();
     StationerySheetSpillMutator.reindexSheets(_sheets);
-    rebindSheetSubscriptions();
+    _coordinator._subscriptions.rebindSheetSubscriptions();
     _coordinator._activeSheetIndex = _clampedActiveIndex();
     _coordinator._notifyContentMutated();
   }

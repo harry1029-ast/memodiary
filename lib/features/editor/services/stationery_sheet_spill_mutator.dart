@@ -192,7 +192,9 @@ class StationerySheetSpillMutator {
   }) {
     if (sheetIndex <= 0 || sheetIndex >= sheets.length) return null;
     final currentSheet = sheets[sheetIndex];
-    if (currentSheet is! TextStationerySheet) return null;
+    if (currentSheet is! TextStationerySheet || isSheetComposing(sheetIndex)) {
+      return null;
+    }
 
     int precedingIndex = -1;
     for (int scanIndex = sheetIndex - 1; scanIndex >= 0; scanIndex--) {
@@ -201,7 +203,7 @@ class StationerySheetSpillMutator {
         break;
       }
     }
-    if (precedingIndex < 0) return null;
+    if (precedingIndex < 0 || isSheetComposing(precedingIndex)) return null;
 
     final precedingSheet = sheets[precedingIndex] as TextStationerySheet;
     final precedingDocLength = math.max(0, precedingSheet.document.length - 1);

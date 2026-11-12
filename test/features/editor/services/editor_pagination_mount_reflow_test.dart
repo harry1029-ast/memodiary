@@ -178,6 +178,39 @@ void main() {
       coordinator.dispose();
     });
 
+    test('IME composition defers mount reflow during edit and reflows mounts upon IME commit notification', () async {
+      final coordinator = _open(
+        Delta()
+          ..insert('留')
+          ..insert('删去此句')
+          ..insert({'mount': 'a'})
+          ..insert('\n'),
+        ['a'],
+      );
+      final opening = coordinator.sheets.first as OpeningSheet;
+
+      coordinator.isImeComposing = true;
+      opening.controller.replaceText(1, 5, '', const TextSelection.collapsed(offset: 1));
+      await Future<void>.delayed(Duration.zero);
+
+      // While IME composition is active, mount reflow is deferred.
+      expect(_mountedIdsPerSheet(coordinator), [
+        ['a'],
+      ]);
+      expect(coordinator.stagedItems, isEmpty);
+
+      // Once IME composition commits and the controller notifies, mounts reflow without needing Auto-Spill.
+      coordinator.isImeComposing = false;
+      opening.controller.updateSelection(
+        const TextSelection.collapsed(offset: 1),
+        ChangeSource.local,
+      );
+
+      expect(_mountedIdsPerSheet(coordinator), [[]]);
+      expect(coordinator.stagedItems.map((item) => item.id), ['a']);
+      coordinator.dispose();
+    });
+
     test('saving strips markers that reference a missing attachment and keeps markers out of plain text', () {
       final coordinator = _open(
         Delta()
