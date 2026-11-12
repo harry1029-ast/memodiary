@@ -1,14 +1,12 @@
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
-import '../../templates/models/template_style.dart';
-import '../../templates/services/stationery_layout_calculator.dart';
 import '../../templates/widgets/template_canvas_container.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../controllers/editor_chrome_controller.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import '../domain/stationery_sheet_geometry.dart';
 import '../models/desk_media_handlers.dart';
 import '../models/stationery_sheet_configs.dart';
 import '../services/editor_pagination_coordinator.dart';
@@ -107,21 +105,15 @@ class EditorPaperCanvas extends StatelessWidget {
         final bool keyboardVisible = chrome.isKeyboardVisible;
         final canvasHeight = chrome.resolveRestingDeskHeight(visibleHeight);
 
-        // Bounded card canvas, ruled with at most 14 rows; each sheet holds
-        // exactly the rows ruled here (SheetRowCapacity).
-        final cardCanvasSize =
-            Size(canvasWidth, math.max(380.0, math.min(canvasHeight, 420.0)));
-        final metrics = StationeryLayoutCalculator.calculate(
-          canvasSize: cardCanvasSize,
-          style: templateStyle,
+        final geometry = StationerySheetGeometry.resolve(
+          canvasWidth: canvasWidth,
+          restingDeskHeight: canvasHeight,
+          templateStyle: templateStyle,
           typography: typography,
-          compactMargins: true,
-          maxRows: kStandardFolioRowsPerLeaf,
         );
-        final activeRowHeight = metrics.lineStridePx;
-
-        // Card height wraps innerFrameRect with 16px bottom padding
-        final cardHeight = metrics.innerFrameRect.bottom + 16.0;
+        final metrics = geometry.metrics;
+        final activeRowHeight = geometry.lineStridePx;
+        final cardHeight = geometry.cardHeight;
 
         // Resolve the active sheet's mounted items and the staged handscroll items
         final activeSheet = (currentSheetIndex >= 0 &&
@@ -155,41 +147,13 @@ class EditorPaperCanvas extends StatelessWidget {
             resolveBudget(isWorkstationCollapsed: isWorkstationCollapsed);
         final topOffset = budget.sheetTop;
 
-        final double innerContentPaddingLeft;
-        if (templateStyle.type == TemplateBackgroundType.grid ||
-            templateStyle.type == TemplateBackgroundType.dotGrid) {
-          innerContentPaddingLeft = 0.0;
-        } else if (templateStyle.type == TemplateBackgroundType.lined) {
-          innerContentPaddingLeft = 32.0;
-        } else {
-          innerContentPaddingLeft = 20.0;
-        }
-        final double innerContentPaddingRight =
-            (templateStyle.type == TemplateBackgroundType.grid ||
-                    templateStyle.type == TemplateBackgroundType.dotGrid)
-                ? 0.0
-                : 20.0;
-
-        final usableTextWidth = math.max(
-          120.0,
-          metrics.innerFrameRect.width -
-              innerContentPaddingLeft -
-              innerContentPaddingRight,
-        );
-
         WidgetsBinding.instance.addPostFrameCallback((_) {
           coordinator.syncLayoutMetrics(
-            contentWidth: usableTextWidth,
-            lineStridePx: activeRowHeight,
-            visibleRows: metrics.rowCount,
+            contentWidth: geometry.usableTextWidth,
+            lineStridePx: geometry.lineStridePx,
+            visibleRows: geometry.rowCapacity.visibleRows,
           );
         });
-
-        final horizontalLeft =
-            metrics.innerFrameRect.left + innerContentPaddingLeft;
-        final horizontalRight =
-            math.max(0.0, canvasWidth - metrics.innerFrameRect.right) +
-                innerContentPaddingRight;
 
         final deskTopSeal = topOffset + cardHeight + sealGap;
 
@@ -298,10 +262,7 @@ class EditorPaperCanvas extends StatelessWidget {
                                     child: _buildSheetBody(
                                       sheet: sheet,
                                       sheetIndex: sheetIndex,
-                                      metrics: metrics,
-                                      activeRowHeight: activeRowHeight,
-                                      horizontalLeft: horizontalLeft,
-                                      horizontalRight: horizontalRight,
+                                      geometry: geometry,
                                     ),
                                   ),
                                   // Page Corner folds, drawn on the paper so they
@@ -400,19 +361,13 @@ class EditorPaperCanvas extends StatelessWidget {
   Widget _buildSheetBody({
     required StationerySheetDescriptor sheet,
     required int sheetIndex,
-    required StationeryLayoutMetrics metrics,
-    required double activeRowHeight,
-    required double horizontalLeft,
-    required double horizontalRight,
+    required StationerySheetGeometry geometry,
   }) {
     if (sheet is TextStationerySheet) {
       return EditorTextSheetView(
         sheet: sheet,
         sheetIndex: sheetIndex,
-        metrics: metrics,
-        activeRowHeight: activeRowHeight,
-        horizontalLeft: horizontalLeft,
-        horizontalRight: horizontalRight,
+        geometry: geometry,
         themeConfig: themeConfig,
         letterheadConfig: letterheadConfig,
         mediaSandboxService: mediaSandboxService,
@@ -421,7 +376,7 @@ class EditorPaperCanvas extends StatelessWidget {
     } else if (sheet is EphemeraSheet) {
       return StationeryEphemeraSheet(
         sheet: sheet,
-        innerFrameRect: metrics.innerFrameRect,
+        innerFrameRect: geometry.paperHeart,
         title: letterheadConfig.titleController.text.trim(),
         mediaSandboxService: mediaSandboxService,
         isActiveSheet: currentSheetIndex == sheet.sheetIndex,

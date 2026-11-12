@@ -5,15 +5,14 @@ import 'package:flutter_quill/flutter_quill.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
-import '../../templates/services/stationery_layout_calculator.dart';
 import '../domain/stationery_sheet_descriptor.dart';
+import '../domain/stationery_sheet_geometry.dart';
 import '../models/stationery_sheet_configs.dart';
 import 'editor_quill_styles_builder.dart';
-import 'integer_snapped_letterhead.dart';
 import 'journal_letterhead.dart';
+import 'mount_marker_embed_builder.dart';
 import 'sandboxed_image_embed_builder.dart';
 import 'sandboxed_video_embed_builder.dart';
-import 'mount_marker_embed_builder.dart';
 
 /// Renders an OpeningSheet (4-row JournalLetterhead above its body rows) or a
 /// ContinuationSheet (running colophon above its rows) clipped strictly inside
@@ -21,10 +20,7 @@ import 'mount_marker_embed_builder.dart';
 class EditorTextSheetView extends StatelessWidget {
   final TextStationerySheet sheet;
   final int sheetIndex;
-  final StationeryLayoutMetrics metrics;
-  final double activeRowHeight;
-  final double horizontalLeft;
-  final double horizontalRight;
+  final StationerySheetGeometry geometry;
   final StationerySheetThemeConfig themeConfig;
   final StationeryLetterheadConfig letterheadConfig;
   final MediaSandboxService mediaSandboxService;
@@ -34,10 +30,7 @@ class EditorTextSheetView extends StatelessWidget {
     super.key,
     required this.sheet,
     required this.sheetIndex,
-    required this.metrics,
-    required this.activeRowHeight,
-    required this.horizontalLeft,
-    required this.horizontalRight,
+    required this.geometry,
     required this.themeConfig,
     required this.letterheadConfig,
     required this.mediaSandboxService,
@@ -60,17 +53,16 @@ class EditorTextSheetView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IntegerSnappedLetterhead(
+              SizedBox(
                 key: letterheadConfig.letterheadKey,
-                lineStridePx: activeRowHeight,
-                minRows: kJournalLetterheadReservedRows,
+                height: geometry.openingHeaderHeight,
                 child: Padding(
                   padding: EdgeInsets.only(
-                    left: horizontalLeft,
-                    right: horizontalRight,
+                    left: geometry.textInsetsFromCardEdge.left,
+                    right: geometry.textInsetsFromCardEdge.right,
                   ),
                   child: JournalLetterhead(
-                    rowHeight: activeRowHeight,
+                    rowHeight: geometry.lineStridePx,
                     data: letterheadConfig.data,
                     titleController: letterheadConfig.titleController,
                     onDateChanged: letterheadConfig.onDateChanged,
@@ -80,11 +72,7 @@ class EditorTextSheetView extends StatelessWidget {
                 ),
               ),
               _buildTappableBodyArea(
-                minHeight: math.max(
-                  0.0,
-                  metrics.innerFrameRect.height -
-                      kJournalLetterheadReservedRows * activeRowHeight,
-                ),
+                minHeight: geometry.openingBodyHeight,
                 child: _buildTextEditor(
                   placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
                 ),
@@ -100,21 +88,20 @@ class EditorTextSheetView extends StatelessWidget {
     final rawTitle = letterheadConfig.titleController.text.trim();
     final displayTitle = rawTitle.isNotEmpty ? rawTitle : '无题';
     final colophonText = '《$displayTitle》 · 第 ${sheetIndex + 1} 页';
-    // The colophon stays in the Heaven margin, so the text rows start on the
-    // first ruled row and every row the Paper Heart shows is a row it holds.
-    final colophonTop = math.max(0.0, metrics.innerFrameRect.top - 26.0);
-    final colophonHeight = math.min(24.0, metrics.innerFrameRect.top - colophonTop);
 
     return Stack(
       fit: StackFit.expand,
       children: [
         Positioned(
-          top: colophonTop,
+          top: geometry.continuationColophonRect.top,
           left: 0,
           right: 0,
-          height: colophonHeight,
+          height: geometry.continuationColophonRect.height,
           child: Padding(
-            padding: EdgeInsets.only(left: horizontalLeft, right: horizontalRight),
+            padding: EdgeInsets.only(
+              left: geometry.textInsetsFromCardEdge.left,
+              right: geometry.textInsetsFromCardEdge.right,
+            ),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -134,7 +121,7 @@ class EditorTextSheetView extends StatelessWidget {
         ),
         _buildPaperHeart(
           child: _buildTappableBodyArea(
-            minHeight: metrics.innerFrameRect.height,
+            minHeight: geometry.continuationBodyHeight,
             child: _buildTextEditor(
               placeholder: '续写素笺... Continue writing...',
             ),
@@ -168,8 +155,8 @@ class EditorTextSheetView extends StatelessWidget {
           ),
           child: Padding(
             padding: EdgeInsets.only(
-              left: horizontalLeft,
-              right: horizontalRight,
+              left: geometry.textInsetsFromCardEdge.left,
+              right: geometry.textInsetsFromCardEdge.right,
             ),
             child: child,
           ),
@@ -184,10 +171,10 @@ class EditorTextSheetView extends StatelessWidget {
   /// move the letterhead or the text off the ruling.
   Widget _buildPaperHeart({required Widget child}) {
     return Positioned(
-      top: metrics.innerFrameRect.top,
+      top: geometry.paperHeart.top,
       left: 0,
       right: 0,
-      height: metrics.innerFrameRect.height,
+      height: geometry.paperHeart.height,
       child: ClipRect(
         key: const Key('editor_paper_heart_viewport_clip'),
         child: SingleChildScrollView(
@@ -224,20 +211,20 @@ class EditorTextSheetView extends StatelessWidget {
               mediaSandboxService: mediaSandboxService,
               onImageRemoved: onSaveDraft,
               onEmbedMutated: (mutatedBlock) => onSaveDraft(),
-              rowHeight: activeRowHeight,
+              rowHeight: geometry.lineStridePx,
             ),
             SandboxedVideoEmbedBuilder(
               mediaSandboxService: mediaSandboxService,
               onVideoRemoved: onSaveDraft,
               onEmbedMutated: (mutatedBlock) => onSaveDraft(),
-              rowHeight: activeRowHeight,
+              rowHeight: geometry.lineStridePx,
             ),
           ],
           customStyles: EditorQuillStylesBuilder.build(
             typography: themeConfig.typography,
             inkColor: themeConfig.inkColor,
             isPaperDark: themeConfig.isPaperDark,
-            lineStridePx: activeRowHeight,
+            lineStridePx: geometry.lineStridePx,
             backgroundType: themeConfig.templateStyle.type,
           ),
         ),

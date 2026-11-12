@@ -12,7 +12,7 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
 import 'package:memodiary/features/editor/services/editor_pagination_coordinator.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
-import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
+import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
 import '../../helpers/tucked_prints_test_helpers.dart';
@@ -161,13 +161,13 @@ void main() {
     final editor = activeEditor(tester, sheet);
     final hasLetterhead = sheet is OpeningSheet;
     final editorBefore = tester.getTopLeft(editor);
-    final letterheadBefore = hasLetterhead ? tester.getTopLeft(find.byType(IntegerSnappedLetterhead)) : null;
+    final letterheadBefore = hasLetterhead ? tester.getTopLeft(find.byType(JournalLetterhead)) : null;
     for (final drag in const [Offset(0, -150), Offset(0, 150)]) {
       await tester.drag(editor, drag, warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(editor), editorBefore, reason: 'text rows moved under a $drag drag');
       if (hasLetterhead) {
-        expect(tester.getTopLeft(find.byType(IntegerSnappedLetterhead)), letterheadBefore,
+        expect(tester.getTopLeft(find.byType(JournalLetterhead)), letterheadBefore,
             reason: 'the letterhead moved under a $drag drag');
       }
     }
@@ -343,7 +343,7 @@ void main() {
     final coordinator = tester.widget<EditorPaperCanvas>(find.byType(EditorPaperCanvas)).coordinator;
     final opening = textSheets(tester).single;
     final editor = activeEditor(tester, opening);
-    final letterheadBefore = tester.getTopLeft(find.byType(IntegerSnappedLetterhead));
+    final letterheadBefore = tester.getTopLeft(find.byType(JournalLetterhead));
     final editorBefore = tester.getTopLeft(editor);
 
     await typeAtEnd(tester, opening, '\n第十行', whileComposing: coordinator);
@@ -356,7 +356,7 @@ void main() {
       await tester.drag(editor, drag, warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(editor), editorBefore, reason: 'text rows moved under a $drag drag');
-      expect(tester.getTopLeft(find.byType(IntegerSnappedLetterhead)), letterheadBefore);
+      expect(tester.getTopLeft(find.byType(JournalLetterhead)), letterheadBefore);
     }
   });
 }
