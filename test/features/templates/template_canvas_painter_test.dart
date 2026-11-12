@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
+import 'package:memodiary/features/templates/models/template_text_insets.dart';
 import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
 import 'package:memodiary/features/templates/widgets/stationery_canvas_framing.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_painter.dart';
@@ -236,6 +237,36 @@ void main() {
       final expectedOuterRect = metrics.innerFrameRect.inflate(4.0);
       expect(outerBorder.$1, equals(expectedOuterRect));
       expect(innerBorder.$1, equals(metrics.innerFrameRect));
+    });
+
+    test('paints vertical margin rule on lined paper at kLinedMarginRuleInset', () {
+      const canvasSize = Size(360, 640);
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: Colors.white,
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+      );
+
+      final metrics = StationeryLayoutCalculator.calculate(
+        canvasSize: canvasSize,
+        style: style,
+      );
+
+      final painter = TemplateCanvasPainter(style: style);
+      final recordingCanvas = RecordingCanvas();
+      painter.paint(recordingCanvas, canvasSize);
+
+      final expectedMarginX = metrics.innerFrameRect.left + kLinedMarginRuleInset;
+      final verticalLines = recordingCanvas.drawnLines.where((line) {
+        final (p1, p2, paint) = line;
+        return (p1.dx - p2.dx).abs() < 0.001 && (paint.strokeWidth - 1.2).abs() < 0.01;
+      }).toList();
+
+      expect(verticalLines, isNotEmpty);
+      final marginLine = verticalLines.first;
+      expect(marginLine.$1.dx, equals(expectedMarginX));
+      expect(marginLine.$2.dx, equals(expectedMarginX));
     });
 
     test('renders central folding column and Fishtail Mark when columnCount >= 7', () {
