@@ -1,7 +1,7 @@
 ---
 id: SPEC-012
 title: Deepen Stationery Sheet Pagination Coordinator & Listener Seam
-status: ready-for-agent
+status: completed
 created_at: 2026-11-12T00:13:05+08:00
 adr: ADR-0008, ADR-0009
 ---
