@@ -6,7 +6,6 @@ import 'package:flutter_quill/flutter_quill.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'editor_autosave_manager.dart';
-import 'stationery_quill_controller.dart';
 
 /// Manages active page navigation, listener binding, auto-spill orchestration,
 /// and spill-back handling for the paginated Stationery Sheet stage.
@@ -65,6 +64,7 @@ class EditorPaginationHandler {
         }
       });
     };
+    coordinator.onSpillBack = _handleSpillBackResult;
 
     attachSheetListeners();
   }
@@ -115,16 +115,8 @@ class EditorPaginationHandler {
           }
         }
 
-        final sheetController = sheet.controller;
-        if (sheetController is StationeryQuillController) {
-          sheetController.onBackspaceAtStart =
-              sheet.sheetIndex > 0 ? () => handleSpillBack(sheet.sheetIndex) : null;
-        }
         sheet.controller.addListener(onControllerNotified);
         _listenerRemovers.add(() {
-          if (sheetController is StationeryQuillController) {
-            sheetController.onBackspaceAtStart = null;
-          }
           sheet.controller.removeListener(onControllerNotified);
         });
       } else if (sheet is EphemeraSheet) {
@@ -294,36 +286,35 @@ class EditorPaginationHandler {
   }
 
   void handleSpillBack(int sheetIndex) {
-    SpillBackResult? result;
     _runGuardedMutation(() {
-      result = coordinator.handleSpillBack(sheetIndex);
+      coordinator.handleSpillBack(sheetIndex);
     });
-    if (result != null) {
-      final spillBackResult = result!;
-      currentSheetIndex = spillBackResult.destinationSheetIndex;
-      coordinator.activeSheetIndex = spillBackResult.destinationSheetIndex;
-      attachSheetListeners();
-      autosaveManager.saveDraft();
-      onStateChanged();
+  }
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (pageController.hasClients) {
-          pageController.animateToPage(
-            spillBackResult.destinationSheetIndex,
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-          );
-        }
-        final destSheet = coordinator.sheets[spillBackResult.destinationSheetIndex];
-        if (destSheet is TextStationerySheet) {
-          destSheet.focusNode.requestFocus();
-          destSheet.controller.updateSelection(
-            TextSelection.collapsed(offset: spillBackResult.destinationCaretOffset),
-            ChangeSource.local,
-          );
-        }
-      });
-    }
+  void _handleSpillBackResult(SpillBackResult spillBackResult) {
+    currentSheetIndex = spillBackResult.destinationSheetIndex;
+    coordinator.activeSheetIndex = spillBackResult.destinationSheetIndex;
+    attachSheetListeners();
+    autosaveManager.saveDraft();
+    onStateChanged();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (pageController.hasClients) {
+        pageController.animateToPage(
+          spillBackResult.destinationSheetIndex,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      final destSheet = coordinator.sheets[spillBackResult.destinationSheetIndex];
+      if (destSheet is TextStationerySheet) {
+        destSheet.focusNode.requestFocus();
+        destSheet.controller.updateSelection(
+          TextSelection.collapsed(offset: spillBackResult.destinationCaretOffset),
+          ChangeSource.local,
+        );
+      }
+    });
   }
 
   Future<void> handleDeleteEphemera(int sheetIndex) async {

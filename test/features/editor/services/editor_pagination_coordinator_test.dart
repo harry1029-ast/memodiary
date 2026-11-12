@@ -374,5 +374,105 @@ void main() {
 
       coordinator.dispose();
     });
+
+    test('handleLeadingBackspace is a no-op on OpeningSheet (including behind a leading mount marker) and triggers Spill-Back with onSpillBack emission on ContinuationSheet', () {
+      final coordinator = EditorPaginationCoordinator();
+      final delta = Delta();
+      for (int lineNumber = 1; lineNumber <= 8; lineNumber++) {
+        delta.insert('第${lineNumber.toString().padLeft(2, '0')}行首页文字\n');
+      }
+      coordinator.initializeFromDelta(
+        jsonEncode(delta.toJson()),
+        attachments: [
+          MediaAttachment(
+            id: 'opening_print',
+            entryId: 'entry',
+            mediaType: 'image',
+            relativePath: 'media/opening_print.webp',
+            createdAt: DateTime(2026, 3, 1),
+          ),
+          MediaAttachment(
+            id: 'cont_print',
+            entryId: 'entry',
+            mediaType: 'image',
+            relativePath: 'media/cont_print.webp',
+            createdAt: DateTime(2026, 3, 2),
+          ),
+        ],
+      );
+
+      final spillBackEvents = <SpillBackResult>[];
+      coordinator.onSpillBack = spillBackEvents.add;
+
+      // Mount a keepsake at offset 0 of an empty opening sheet to verify leading-marker protection on Sheet 1.
+      final emptyOpeningCoordinator = EditorPaginationCoordinator()
+        ..initializeFromDelta(
+          '',
+          attachments: [
+            MediaAttachment(
+              id: 'lead_photo',
+              entryId: 'entry',
+              mediaType: 'image',
+              relativePath: 'media/lead_photo.webp',
+              createdAt: DateTime(2026, 3, 1),
+            ),
+          ],
+        );
+      expect(emptyOpeningCoordinator.mountOnActiveSheet('lead_photo'), isTrue);
+      final leadOpening = emptyOpeningCoordinator.sheets.first as OpeningSheet;
+      leadOpening.controller.updateSelection(
+        const TextSelection.collapsed(offset: 1),
+        ChangeSource.local,
+      );
+      expect(leadOpening.handleLeadingBackspace(), isFalse);
+      // Soft-keyboard Backspace targeting the leading marker at offset 0 is also a no-op on Sheet 1.
+      leadOpening.controller.replaceText(0, 1, '', const TextSelection.collapsed(offset: 0));
+      emptyOpeningCoordinator.reflowMounts();
+      expect(leadOpening.mediaAttachments.map((item) => item.id), equals(['lead_photo']));
+      expect(emptyOpeningCoordinator.stagedItems, isEmpty);
+      emptyOpeningCoordinator.dispose();
+
+      // Create continuation sheet and mount a keepsake at its leading edge.
+      final continuation = coordinator.getOrCreateFollowingTextSheet(0);
+      coordinator.activeSheetIndex = 1;
+      expect(coordinator.mountOnActiveSheet('cont_print'), isTrue);
+      continuation.controller.replaceText(
+        1,
+        0,
+        '次页首句',
+        const TextSelection.collapsed(offset: 5),
+      );
+
+      // Cursor after visible text ('次页首句') is not at leading edge.
+      expect(continuation.handleLeadingBackspace(), isFalse);
+      expect(spillBackEvents, isEmpty);
+
+      // Non-collapsed selection at start is not treated as leading Backspace.
+      continuation.controller.updateSelection(
+        const TextSelection(baseOffset: 0, extentOffset: 2),
+        ChangeSource.local,
+      );
+      expect(continuation.handleLeadingBackspace(), isFalse);
+
+      // Cursor collapsed immediately after leading mount marker (offset 1, no preceding text)
+      // triggers Spill-Back, emits onSpillBack, and preserves the mounted keepsake onto Sheet 1.
+      continuation.controller.updateSelection(
+        const TextSelection.collapsed(offset: 1),
+        ChangeSource.local,
+      );
+      expect(continuation.handleLeadingBackspace(), isTrue);
+      expect(spillBackEvents, hasLength(1));
+      expect(spillBackEvents.single.sourceSheetIndex, equals(1));
+      expect(spillBackEvents.single.destinationSheetIndex, equals(0));
+      expect(spillBackEvents.single.didCollapse, isTrue);
+      expect(coordinator.totalSheets, equals(1));
+
+      final mergedOpening = coordinator.sheets.first as OpeningSheet;
+      expect(mergedOpening.plainText, contains('次页首句'));
+      expect(mergedOpening.mediaAttachments.map((item) => item.id), equals(['cont_print']));
+      expect(mergedOpening.handleLeadingBackspace(), isFalse);
+
+      coordinator.dispose();
+    });
   });
 }

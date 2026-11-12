@@ -18,6 +18,23 @@ class _SheetMediaOperations {
   void _ensureOpeningSheet() {
     if (_sheets.isEmpty) {
       _sheets.add(OpeningSheet.empty(sheetIndex: 0));
+      bindLeadingBackspaceCallbacks();
+    }
+  }
+
+  /// Wires each text sheet's [StationeryQuillController.onBackspaceAtStart] to
+  /// [EditorPaginationCoordinator.handleSpillBack] for continuation sheets (`sheetIndex > 0`)
+  /// and clears it on the opening sheet (`sheetIndex == 0`).
+  void bindLeadingBackspaceCallbacks() {
+    for (final sheet in _sheets) {
+      if (sheet is TextStationerySheet) {
+        final sheetController = sheet.controller;
+        if (sheetController is StationeryQuillController) {
+          final index = sheet.sheetIndex;
+          sheetController.onBackspaceAtStart =
+              index > 0 ? () => _coordinator.handleSpillBack(index) : null;
+        }
+      }
     }
   }
 
@@ -41,6 +58,7 @@ class _SheetMediaOperations {
       ..clear()
       ..addAll(partition.stagedItems);
     _coordinator._mounts.adoptPartition(partition);
+    bindLeadingBackspaceCallbacks();
   }
 
   int _stagedIndexOf(String mediaId) =>
@@ -220,6 +238,7 @@ class _SheetMediaOperations {
     _sheets.removeAt(sheetIndex);
     sheet.dispose();
     StationerySheetSpillMutator.reindexSheets(_sheets);
+    bindLeadingBackspaceCallbacks();
     _coordinator._activeSheetIndex = _clampedActiveIndex();
     _coordinator._notifyContentMutated();
   }

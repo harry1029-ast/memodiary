@@ -396,7 +396,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                   onDeskInteraction: _focusGuard.release,
                 ),
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
-                onSpillBack: _paginationHandler!.handleSpillBack,
                 saveStatus: _autosaveManager!.statusNotifier,
                 onTapDeskOffSheet: _focusGuard.endWriting,
               ),

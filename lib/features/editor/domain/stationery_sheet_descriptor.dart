@@ -130,6 +130,20 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
     });
   }
 
+  /// Handles a Backspace key or IME action at the leading text edge of this
+  /// sheet (offset 0 or immediately after leading invisible mount markers).
+  ///
+  /// Returns `true` when this is a continuation sheet (`sheetIndex > 0`) and
+  /// its controller handled the leading Backspace by invoking `onBackspaceAtStart`.
+  bool handleLeadingBackspace() {
+    if (sheetIndex <= 0) return false;
+    final sheetController = controller;
+    if (sheetController is StationeryQuillController) {
+      return sheetController.handleLeadingBackspace();
+    }
+    return false;
+  }
+
   /// Runs a programmatic change to this sheet's controller (re-laying sheets,
   /// restoring a selection) without Quill treating it as typing. While the
   /// keyboard is hidden Quill requests it on every controller change, and
@@ -147,6 +161,10 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
 
   @override
   void dispose() {
+    final sheetController = controller;
+    if (sheetController is StationeryQuillController) {
+      sheetController.onBackspaceAtStart = null;
+    }
     controller.dispose();
     focusNode.dispose();
   }

@@ -63,7 +63,6 @@ class EditorPaperCanvas extends StatelessWidget {
   final void Function(int sheetIndex)? onDeleteEphemera;
   final DeskMediaHandlers deskMedia;
   final void Function(String mediaId, String newCaption)? onMediaCaptionChanged;
-  final void Function(int sheetIndex)? onSpillBack;
 
   /// The autosave status the header band mirrors while the app bar is away.
   final ValueListenable<AutosaveStatus>? saveStatus;
@@ -88,7 +87,6 @@ class EditorPaperCanvas extends StatelessWidget {
     this.onDeleteEphemera,
     this.deskMedia = const DeskMediaHandlers(),
     this.onMediaCaptionChanged,
-    this.onSpillBack,
     this.saveStatus,
     this.onTapDeskOffSheet,
   });
@@ -419,7 +417,6 @@ class EditorPaperCanvas extends StatelessWidget {
         letterheadConfig: letterheadConfig,
         mediaSandboxService: mediaSandboxService,
         onSaveDraft: onSaveDraft,
-        onSpillBack: onSpillBack,
       );
     } else if (sheet is EphemeraSheet) {
       return StationeryEphemeraSheet(
