@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
-import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
+import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 
 import '../../helpers/editor_test_harness.dart';
@@ -78,8 +78,8 @@ void main() {
       );
 
   void expectFourRowLetterhead(WidgetTester tester) {
-    final letterhead = tester.widget<IntegerSnappedLetterhead>(find.byType(IntegerSnappedLetterhead));
-    expect(tester.getSize(find.byType(IntegerSnappedLetterhead)).height, equals(4 * letterhead.lineStridePx));
+    final letterhead = tester.widget<JournalLetterhead>(find.byType(JournalLetterhead));
+    expect(tester.getSize(find.byType(JournalLetterhead)).height, equals(4 * letterhead.rowHeight));
     final canvas = tester.widget<TemplateCanvasContainer>(find.byType(TemplateCanvasContainer));
     expect(canvas.layoutMetrics!.rowCount, equals(14));
   }
@@ -128,7 +128,7 @@ void main() {
     testWidgets('sits the larger title on the bottom row, below the muted date lines', (tester) async {
       await pumpEditor(tester);
 
-      final letterhead = tester.getRect(find.byType(IntegerSnappedLetterhead));
+      final letterhead = tester.getRect(find.byType(JournalLetterhead));
       final title = tester.getRect(find.byType(TextField).first);
       final lunar = tester.getRect(find.byKey(const Key('letterhead_lunar_line')));
       expect(title.bottom, closeTo(letterhead.bottom, 0.5));

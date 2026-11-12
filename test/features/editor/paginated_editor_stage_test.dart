@@ -10,7 +10,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/paper_heart_metrics.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
@@ -65,11 +64,11 @@ void main() {
       expect(find.byType(JournalLetterhead), findsOneWidget);
       expect(find.text('兰亭偶得'), findsOneWidget);
 
-      // Verify 4-row IntegerSnappedLetterhead and 14-row clipped Paper Heart
-      final letterheadFinder = find.byType(IntegerSnappedLetterhead);
-      final letterheadWidget = tester.widget<IntegerSnappedLetterhead>(letterheadFinder);
+      // Verify 4-row JournalLetterhead and 14-row clipped Paper Heart
+      final letterheadFinder = find.byType(JournalLetterhead);
+      final letterheadWidget = tester.widget<JournalLetterhead>(letterheadFinder);
       final letterheadSize = tester.getSize(letterheadFinder);
-      expect(letterheadSize.height, equals(4 * letterheadWidget.lineStridePx));
+      expect(letterheadSize.height, equals(4 * letterheadWidget.rowHeight));
 
       final canvasContainer = tester.widget<TemplateCanvasContainer>(
         find.byType(TemplateCanvasContainer),

@@ -13,7 +13,6 @@ import 'package:memodiary/features/editor/widgets/keepsake_scroll_view.dart';
 import 'package:memodiary/features/editor/widgets/editor_quill_styles_builder.dart';
 import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
 import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
-import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/editor/widgets/thought_spark_banner.dart';
 import 'package:memodiary/features/editor/widgets/writing_dock.dart';
@@ -199,12 +198,12 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // 1. Verify IntegerSnappedLetterhead height on canvas is an integer multiple of lineStridePx
-      final letterheadFinder = find.byType(IntegerSnappedLetterhead);
+      // 1. Verify JournalLetterhead height on canvas is an integer multiple of rowHeight
+      final letterheadFinder = find.byType(JournalLetterhead);
       expect(letterheadFinder, findsOneWidget);
-      final letterheadWidget = tester.widget<IntegerSnappedLetterhead>(letterheadFinder);
+      final letterheadWidget = tester.widget<JournalLetterhead>(letterheadFinder);
       final letterheadSize = tester.getSize(letterheadFinder);
-      expect(letterheadSize.height % letterheadWidget.lineStridePx, equals(0.0));
+      expect(letterheadSize.height % letterheadWidget.rowHeight, equals(0.0));
 
       final canvasContainer = tester.widget<TemplateCanvasContainer>(
         find.byType(TemplateCanvasContainer),
