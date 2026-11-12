@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
-import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
+import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 
@@ -63,13 +63,19 @@ void main() {
     return database.updateEntryContent(_entryId, jsonEncode(multiSheetDelta.toJson()), 'Multi-sheet content');
   }
 
-  Future<void> pumpEditor(WidgetTester tester, {Size viewportSize = _phoneViewport}) {
+  Future<void> pumpEditor(
+    WidgetTester tester, {
+    String entryId = _entryId,
+    Size viewportSize = _phoneViewport,
+    bool settle = true,
+  }) {
     return pumpEntryEditorScreen(
       tester,
       database: database,
       mediaSandboxService: sandboxService,
-      entryId: _entryId,
+      entryId: entryId,
       viewportSize: viewportSize,
+      settle: settle,
     );
   }
 
@@ -244,27 +250,7 @@ void main() {
             ),
           );
 
-      tester.view.physicalSize = _phoneViewport;
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: EntryEditorScreen(
-            database: database,
-            mediaSandboxService: sandboxService,
-            entryId: linedEntryId,
-          ),
-        ),
-      );
-
-      // Async loading transitions _isLoading to false and schedules a frame.
-      // Pump exactly 1 frame without pumpAndSettle.
-      await tester.pump();
+      await pumpEditor(tester, entryId: linedEntryId, settle: false);
 
       // On frame 1, TemplateCanvasContainer must immediately have headerHeight == 116.0
       final canvasContainer = tester.widget<TemplateCanvasContainer>(
@@ -279,6 +265,66 @@ void main() {
         find.byType(TemplateCanvasContainer),
       );
       expect(canvasContainerAfter.headerHeight, equals(116.0));
+    });
+
+    testWidgets('switching template updates geometry and headerHeight synchronously on frame 1 without post-frame drift', (tester) async {
+      const switchEntryId = 'letterhead_switch_entry';
+      await database.into(database.entries).insert(
+            EntriesCompanion.insert(
+              id: switchEntryId,
+              notebookId: 'notebook_default',
+              templateId: 'template_lined_paper',
+              title: const Value('换笺沉思'),
+              contentDelta: '[]',
+              plainText: '',
+              entryDate: DateTime(2026, 11, 10, 10, 30),
+              mood: const Value(4),
+              weather: const Value('sunny'),
+            ),
+          );
+
+      await pumpEditor(
+        tester,
+        entryId: switchEntryId,
+        viewportSize: const Size(412, 800),
+      );
+
+      Finder editorCanvasContainer() => find.descendant(
+            of: find.byType(EditorPaperCanvas),
+            matching: find.byType(TemplateCanvasContainer),
+          );
+
+      // Initial lined template: 29px line stride -> headerHeight 116.0
+      expect(
+        tester.widget<TemplateCanvasContainer>(editorCanvasContainer()).headerHeight,
+        equals(116.0),
+      );
+
+      // Open the scholar chest stationery drawer
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
+      await tester.pumpAndSettle();
+
+      // Switch to grid template (Weekly Review template with 24px line stride)
+      final gridChip = find.byKey(const Key('chest_template_chip_template_weekly_review'));
+      await tester.ensureVisible(gridChip);
+      await tester.tap(gridChip);
+
+      // Tapping triggers onSelectTemplate with setState.
+      // Pump exactly 1 frame without pumpAndSettle.
+      await tester.pump();
+
+      // On this single frame, geometry must immediately update to grid: 24px stride -> 4 * 24.0 = 96.0
+      expect(
+        tester.widget<TemplateCanvasContainer>(editorCanvasContainer()).headerHeight,
+        equals(96.0),
+      );
+
+      // Pump another single frame to verify zero post-frame setState was scheduled.
+      await tester.pump();
+      expect(
+        tester.widget<TemplateCanvasContainer>(editorCanvasContainer()).headerHeight,
+        equals(96.0),
+      );
     });
   });
 }
