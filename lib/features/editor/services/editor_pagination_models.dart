@@ -52,6 +52,8 @@ class EditorTextBlock extends EditorContentBlock {
     required this.plainText,
     this.blockAttributes,
   });
+
+  List<Operation> get operations => delta.operations;
 }
 
 class EditorEphemeraBlock extends EditorContentBlock {

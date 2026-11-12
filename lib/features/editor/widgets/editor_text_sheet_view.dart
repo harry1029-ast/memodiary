@@ -7,7 +7,6 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/mount_marker.dart';
 import '../models/stationery_sheet_configs.dart';
 import 'editor_quill_styles_builder.dart';
 import 'integer_snapped_letterhead.dart';
@@ -30,7 +29,6 @@ class EditorTextSheetView extends StatelessWidget {
   final StationeryLetterheadConfig letterheadConfig;
   final MediaSandboxService mediaSandboxService;
   final VoidCallback onSaveDraft;
-  final void Function(int sheetIndex)? onSpillBack;
 
   const EditorTextSheetView({
     super.key,
@@ -44,7 +42,6 @@ class EditorTextSheetView extends StatelessWidget {
     required this.letterheadConfig,
     required this.mediaSandboxService,
     required this.onSaveDraft,
-    this.onSpillBack,
   });
 
   @override
@@ -206,16 +203,8 @@ class EditorTextSheetView extends StatelessWidget {
       onKeyEvent: (focusNode, keyEvent) {
         if (keyEvent is KeyDownEvent &&
             keyEvent.logicalKey == LogicalKeyboardKey.backspace) {
-          if (sheet.controller.selection.isCollapsed &&
-              MountMarker.prevNonMarkerOffset(
-                    sheet.delta,
-                    sheet.controller.selection.baseOffset,
-                  ) ==
-                  null) {
-            if (sheet.sheetIndex > 0) {
-              onSpillBack?.call(sheet.sheetIndex);
-              return KeyEventResult.handled;
-            }
+          if (sheet.handleLeadingBackspace()) {
+            return KeyEventResult.handled;
           }
         }
         return KeyEventResult.ignored;

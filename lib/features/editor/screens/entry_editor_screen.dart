@@ -250,13 +250,11 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           _typography,
           newTemplateStyle: TemplateStyle.fromTemplate(newTemplate),
         );
-        _paginationHandler?.attachSheetListeners();
         await widget.database.updateEntryTemplate(widget.entryId, newTemplate.id);
       },
       onTypographyChanged: (newTypography) {
         setState(() => _typography = newTypography);
         _coordinator.updateTypography(newTypography);
-        _paginationHandler?.attachSheetListeners();
       },
       onLockChanged: (newUnlockAt) async {
         await widget.database.updateEntryUnlockAt(widget.entryId, newUnlockAt);
@@ -396,7 +394,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                   onDeskInteraction: _focusGuard.release,
                 ),
                 onMediaCaptionChanged: _mediaBinding!.updateCaption,
-                onSpillBack: _paginationHandler!.handleSpillBack,
                 saveStatus: _autosaveManager!.statusNotifier,
                 onTapDeskOffSheet: _focusGuard.endWriting,
               ),

@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
 import 'package:memodiary/features/editor/models/mount_marker.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/services/editor_delta_partitioner.dart';
+import 'package:memodiary/features/editor/services/editor_pagination_coordinator.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 
 const _templateStyle = TemplateStyle(
@@ -19,6 +22,14 @@ SheetMediaItem _photo(String id) => SheetMediaItem(
       id: id,
       mediaType: EphemeraMediaType.image,
       relativePath: 'media/$id.webp',
+    );
+
+MediaAttachment _attachment(String id) => MediaAttachment(
+      id: id,
+      entryId: 'entry_test',
+      mediaType: 'image',
+      relativePath: 'media/$id.webp',
+      createdAt: DateTime(2026, 11, 12),
     );
 
 EditorPartition _partition(Delta delta, List<SheetMediaItem> media) {
@@ -179,118 +190,164 @@ void main() {
     });
 
     test('reflow overflow at the last sheet unmounts the extras and removes their markers', () {
-      final media = [for (final id in ['a', 'b', 'c', 'd', 'e']) _photo(id)];
-      final sheets = _partition(
+      final attachments = [for (final id in ['a', 'b', 'c', 'd', 'e']) _attachment(id)];
+      final coordinator = EditorPaginationCoordinator(
+        contentWidth: 300,
+        templateStyle: _templateStyle,
+      );
+      coordinator.initializeFromDelta(
+        jsonEncode(
+          (Delta()
+                ..insert('一页')
+                ..insertMarkers(['a', 'b', 'c'])
+                ..insert('\n'))
+              .toJson(),
+        ),
+        attachments: attachments,
+      );
+
+      final unmountedEvents = <List<SheetMediaItem>>[];
+      coordinator.onOverflowUnmount = unmountedEvents.add;
+
+      final sheet = coordinator.sheets.single as TextStationerySheet;
+      sheet.setDelta(
         Delta()
           ..insert('一页')
           ..insertMarkers(['a', 'b', 'c', 'd', 'e'])
           ..insert('\n'),
-        media,
-      ).sheets;
-
-      final resolution = SheetMountResolver.resolveMounts(
-        sheets: sheets,
-        media: media,
-        unmountLastSheetOverflow: true,
       );
+      coordinator.reflowMounts();
 
-      expect(mountedIdsPerSheet(sheets), [
+      expect(mountedIdsPerSheet(coordinator.sheets), [
         ['a', 'b', 'c'],
       ]);
-      expect(resolution.unmountedByOverflow.map((item) => item.id), ['d', 'e']);
-      expect(resolution.stagedItems.map((item) => item.id), ['d', 'e']);
+      expect(unmountedEvents, hasLength(1));
+      expect(unmountedEvents.single.map((item) => item.id), ['d', 'e']);
+      expect(coordinator.stagedItems.map((item) => item.id), ['d', 'e']);
       expect(
-        (sheets.single as TextStationerySheet).delta.toJson(),
+        sheet.delta.toJson(),
         (Delta()
               ..insert('一页')
               ..insertMarkers(['a', 'b', 'c'])
               ..insert('\n'))
             .toJson(),
       );
-      expect(sheets, hasLength(1), reason: 'no media-only sheet is allocated');
+      expect(coordinator.sheets, hasLength(1), reason: 'no media-only sheet is allocated');
+      coordinator.dispose();
     });
 
     test('tolerated legacy overflow stays on the last sheet while reflow unmounts only new extras', () {
-      final media = [for (final id in ['a', 'b', 'c', 'd', 'e']) _photo(id)];
-      final sheets = _partition(
+      final attachments = [for (final id in ['a', 'b', 'c', 'd', 'e']) _attachment(id)];
+      final coordinator = EditorPaginationCoordinator(
+        contentWidth: 300,
+        templateStyle: _templateStyle,
+      );
+      // Opening with ['a', 'b', 'c', 'e'] on the last sheet marks 'e' as tolerated overflow; 'd' is staged.
+      coordinator.initializeFromDelta(
+        jsonEncode(
+          (Delta()
+                ..insert('一页')
+                ..insertMarkers(['a', 'b', 'c', 'e'])
+                ..insert('\n'))
+              .toJson(),
+        ),
+        attachments: attachments,
+      );
+
+      final unmountedEvents = <List<SheetMediaItem>>[];
+      coordinator.onOverflowUnmount = unmountedEvents.add;
+
+      final sheet = coordinator.sheets.single as TextStationerySheet;
+      sheet.setDelta(
         Delta()
           ..insert('一页')
           ..insertMarkers(['a', 'b', 'c', 'd', 'e'])
           ..insert('\n'),
-        media,
-      ).sheets;
-
-      final resolution = SheetMountResolver.resolveMounts(
-        sheets: sheets,
-        media: media,
-        unmountLastSheetOverflow: true,
-        toleratedOverflowIds: const {'e'},
       );
+      coordinator.reflowMounts();
 
-      expect(mountedIdsPerSheet(sheets), [
+      expect(mountedIdsPerSheet(coordinator.sheets), [
         ['a', 'b', 'c', 'e'],
       ]);
-      expect(resolution.unmountedByOverflow.map((item) => item.id), ['d']);
-      expect(resolution.toleratedOverflowIds, {'e'});
+      expect(unmountedEvents, hasLength(1));
+      expect(unmountedEvents.single.map((item) => item.id), ['d']);
+      expect(coordinator.stagedItems.map((item) => item.id), ['d']);
+      coordinator.dispose();
     });
 
     test('a deleted marker leaves its item staged; undo restores the marker and remounts it', () {
-      final media = [_photo('a'), _photo('b')];
-      final sheets = _partition(
-        Delta()
-          ..insert('春')
-          ..insert({'mount': 'a'})
-          ..insert('夏')
-          ..insert({'mount': 'b'})
-          ..insert('\n'),
-        media,
-      ).sheets;
-      final sheet = sheets.single as TextStationerySheet;
+      final attachments = [_attachment('a'), _attachment('b')];
+      final coordinator = EditorPaginationCoordinator(
+        contentWidth: 300,
+        templateStyle: _templateStyle,
+      );
+      coordinator.initializeFromDelta(
+        jsonEncode(
+          (Delta()
+                ..insert('春')
+                ..insert({'mount': 'a'})
+                ..insert('夏')
+                ..insert({'mount': 'b'})
+                ..insert('\n'))
+              .toJson(),
+        ),
+        attachments: attachments,
+      );
+      final sheet = coordinator.sheets.single as TextStationerySheet;
 
       sheet.controller.replaceText(0, 2, '', const TextSelection.collapsed(offset: 0));
-      final afterDelete = SheetMountResolver.resolveMounts(sheets: sheets, media: media);
-      expect(mountedIdsPerSheet(sheets), [
+      coordinator.reflowMounts();
+      expect(mountedIdsPerSheet(coordinator.sheets), [
         ['b'],
       ]);
-      expect(afterDelete.stagedItems.map((item) => item.id), ['a']);
+      expect(coordinator.stagedItems.map((item) => item.id), ['a']);
 
       sheet.controller.undo();
-      final afterUndo = SheetMountResolver.resolveMounts(sheets: sheets, media: media);
-      expect(mountedIdsPerSheet(sheets), [
+      coordinator.reflowMounts();
+      expect(mountedIdsPerSheet(coordinator.sheets), [
         ['a', 'b'],
       ]);
-      expect(afterUndo.stagedItems, isEmpty);
+      expect(coordinator.stagedItems, isEmpty);
+      coordinator.dispose();
     });
 
     test('a duplicated marker is removed, keeping the occurrence on the sheet that already held it', () {
-      final media = [_photo('a')];
-      final sheets = _partition(
-        Delta()
-          ..insert('${_lines('首页', 10)}\n')
-          ..insert('次页')
-          ..insert({'mount': 'a'})
-          ..insert('\n'),
-        media,
-      ).sheets;
-      final opening = sheets[0] as TextStationerySheet;
-      final continuation = sheets[1] as TextStationerySheet;
+      final attachments = [_attachment('a')];
+      final coordinator = EditorPaginationCoordinator(
+        contentWidth: 300,
+        templateStyle: _templateStyle,
+      );
+      coordinator.initializeFromDelta(
+        jsonEncode(
+          (Delta()
+                ..insert('${_lines('首页', 10)}\n')
+                ..insert('次页')
+                ..insert({'mount': 'a'})
+                ..insert('\n'))
+              .toJson(),
+        ),
+        attachments: attachments,
+      );
+      final opening = coordinator.sheets[0] as TextStationerySheet;
+      final continuation = coordinator.sheets[1] as TextStationerySheet;
 
       opening.controller.replaceText(0, 0, Delta()..insert({'mount': 'a'}), null);
-      SheetMountResolver.resolveMounts(
-        sheets: sheets,
-        media: media,
-        previousMarkerHomes: {'a': continuation.controller},
-      );
+      coordinator.reflowMounts();
 
-      expect(mountedIdsPerSheet(sheets), [
+      expect(mountedIdsPerSheet(coordinator.sheets), [
         [],
         ['a'],
       ]);
       expect(MountMarker.mediaIdsIn(opening.delta), isEmpty);
       expect(MountMarker.mediaIdsIn(continuation.delta), ['a']);
+      coordinator.dispose();
     });
 
-    test('stripOrphanMarkers removes markers referencing a missing attachment, and duplicates', () {
+    test('reSynthesize removes markers referencing a missing attachment, and duplicates', () {
+      final coordinator = EditorPaginationCoordinator(
+        contentWidth: 300,
+        templateStyle: _templateStyle,
+      );
       final delta = Delta()
         ..insert('秋')
         ..insert({'mount': 'a'})
@@ -299,16 +356,22 @@ void main() {
         ..insert({'mount': 'a'})
         ..insert('\n');
 
-      final stripped = SheetMountResolver.stripOrphanMarkers(delta, knownMediaIds: {'a'});
+      coordinator.initializeFromDelta(
+        jsonEncode(delta.toJson()),
+        attachments: [_attachment('a')],
+      );
+
+      final (resynthesizedJson, _) = coordinator.reSynthesize();
 
       expect(
-        stripped.toJson(),
+        jsonDecode(resynthesizedJson),
         (Delta()
               ..insert('秋')
               ..insert({'mount': 'a'})
               ..insert('冬\n'))
             .toJson(),
       );
+      coordinator.dispose();
     });
   });
 }

@@ -49,6 +49,21 @@ class StationeryQuillController extends QuillController {
     return controller;
   }
 
+  /// Handles a Backspace action at the leading text edge of the sheet (offset 0
+  /// or immediately after leading invisible mount markers with no preceding text).
+  ///
+  /// Invokes [onBackspaceAtStart] when assigned and returns `true` when handled.
+  bool handleLeadingBackspace() {
+    if (!selection.isCollapsed) return false;
+    if (MountMarker.prevNonMarkerOffset(document.toDelta(), selection.baseOffset) != null) {
+      return false;
+    }
+    final callback = onBackspaceAtStart;
+    if (callback == null) return false;
+    callback();
+    return true;
+  }
+
   @override
   void replaceText(
     int index,
@@ -97,7 +112,7 @@ class StationeryQuillController extends QuillController {
     // Heuristic 2: Single-character Backspace from a collapsed cursor targeting
     // an invisible mount marker embed is redirected to the nearest preceding
     // real character. If no text precedes the marker (e.g. start of sheet),
-    // single-character deletion invokes [onBackspaceAtStart] (for continuation
+    // single-character deletion invokes [handleLeadingBackspace] (for continuation
     // sheet spill-back) without unmounting the keepsake on Sheet 1.
     // Explicit selections (len > 1 or !priorSelection.isCollapsed) delete normally.
     final priorSelection = selection;
@@ -106,7 +121,7 @@ class StationeryQuillController extends QuillController {
         data is! Delta;
     if (priorSelection.isCollapsed && isEmptyReplacement) {
       if (index == 0 && len == 0 && priorSelection.baseOffset == 0) {
-        onBackspaceAtStart?.call();
+        handleLeadingBackspace();
         return;
       }
       if (len == 1) {
@@ -124,7 +139,7 @@ class StationeryQuillController extends QuillController {
                 shouldNotifyListeners: shouldNotifyListeners,
               );
             } else {
-              onBackspaceAtStart?.call();
+              handleLeadingBackspace();
             }
           }
           return;

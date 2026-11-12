@@ -83,7 +83,7 @@ class EditorMediaBinding {
   /// returns whether it mounted. A full sheet refuses (ticking [mountRefusals]
   /// so its Tucked Prints shake), leaving the item staged.
   Future<bool> mountMedia(String mediaId) async {
-    final didMount = coordinator.media.mountOnActiveSheet(mediaId);
+    final didMount = coordinator.mountOnActiveSheet(mediaId);
     if (didMount) brushReveals.complete(mediaId);
     onStateChanged();
     if (!didMount) {
@@ -96,7 +96,7 @@ class EditorMediaBinding {
 
   /// Unmounts [mediaId] from its sheet back into the Staging Handscroll.
   Future<void> unmountMedia(String mediaId) async {
-    if (!coordinator.media.unmount(mediaId)) return;
+    if (!coordinator.unmountMedia(mediaId)) return;
     onStateChanged();
     await autosaveManager.saveDraft();
   }
@@ -106,7 +106,7 @@ class EditorMediaBinding {
   /// [kEraseUndoWindow]; [purgeErased] then deletes its `media_attachments` row
   /// and sandboxed file (Bidirectional Media Lifecycle Parity).
   bool eraseStagedMedia(String mediaId) {
-    final removed = coordinator.media.removeStaged(mediaId);
+    final removed = coordinator.removeStaged(mediaId);
     if (removed == null) return false;
     brushReveals.complete(mediaId);
     _pendingErasures[mediaId] = removed;
@@ -131,7 +131,7 @@ class EditorMediaBinding {
   void undoErase(String mediaId) {
     final item = _pendingErasures.remove(mediaId);
     if (item == null) return;
-    coordinator.media.restoreStaged(item);
+    coordinator.restoreStaged(item);
     onStateChanged();
   }
 

@@ -124,6 +124,10 @@ _Avoid_: Editor page, paper screen, scroll card
 The deterministic pagination advance mechanism (`AutoSpill` · 溢行分叶) that automatically allocates and smoothly glides to a subsequent Stationery Sheet as soon as text exceeds the integer-locked line capacity of the active sheet.
 _Avoid_: Auto scroll, page push, overflow wrap
 
+**Spill-Back**:
+The paired reverse pagination mechanism (`SpillBack` · 退行合叶) triggered by Backspace at the leading edge of a continuation Stationery Sheet, pulling content back onto the preceding sheet and collapsing an emptied trailing sheet.
+_Avoid_: Reverse spill, sheet merge, backspace collapse
+
 **Staging Handscroll**:
 The single entry-wide handscroll (待贴画卷) resting on the desk below the Stationery Sheets, holding collected photos and videos that have not yet been mounted onto any sheet. Rolled closed when empty.
 _Avoid_: Media tray, global tray, upload queue, gallery

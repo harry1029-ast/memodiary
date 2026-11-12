@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/editor/controllers/editor_autosave_manager.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
+import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/services/editor_pagination_coordinator.dart';
 
 void main() {
@@ -157,6 +159,117 @@ void main() {
       autosave.dispose();
       coordinator.dispose();
       titleController.dispose();
+    });
+
+    test('ephemera caption edits and post-typography-rebalance text edits trigger debounced save via contentRevision', () async {
+      final initialDelta = Delta()
+        ..insert('湖心亭看雪\n')
+        ..insert({'image': 'media/snow.webp'})
+        ..insert('\n');
+      final coordinator = EditorPaginationCoordinator()
+        ..initializeFromDelta(jsonEncode(initialDelta.toJson()));
+      final autosave = EditorAutosaveManager(
+        database: db,
+        entryId: 'entry_autosave_1',
+        coordinator: coordinator,
+        debounceDuration: const Duration(milliseconds: 80),
+        periodicDuration: const Duration(seconds: 1),
+      );
+
+      final ephemeraSheet = coordinator.sheets[1] as EphemeraSheet;
+      ephemeraSheet.captionController.text = '雾凇沆砀，天与云与山与水，上下一白';
+      expect(autosave.statusNotifier.value, AutosaveStatus.unsaved);
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(autosave.statusNotifier.value, AutosaveStatus.saved);
+
+      var saved = await db.getEntryById('entry_autosave_1');
+      expect(saved!.contentDelta, contains('雾凇沆砀'));
+
+      // Re-balance via updateTypography (replaces all sheet instances) and then type on Sheet 1:
+      coordinator.updateTypography(const TypographySettings(fontSize: 20.0, lineSpacing: 1.8));
+      final openingAfterRebalance = coordinator.sheets.first as TextStationerySheet;
+      openingAfterRebalance.controller.document.insert(0, '崇祯五年十二月，');
+      await Future<void>.delayed(Duration.zero);
+      expect(autosave.statusNotifier.value, AutosaveStatus.unsaved);
+
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(autosave.statusNotifier.value, AutosaveStatus.saved);
+
+      saved = await db.getEntryById('entry_autosave_1');
+      expect(saved!.plainText, contains('崇祯五年十二月，湖心亭看雪'));
+
+      autosave.dispose();
+      coordinator.dispose();
+    });
+
+    test('coordinator media mutations mark autosave unsaved and persist via contentRevision', () async {
+      final initialDelta = Delta()
+        ..insert('西湖游记\n')
+        ..insert({'image': 'media/legacy_ephemera.webp'})
+        ..insert('\n');
+      final coordinator = EditorPaginationCoordinator()
+        ..initializeFromDelta(jsonEncode(initialDelta.toJson()));
+      final autosave = EditorAutosaveManager(
+        database: db,
+        entryId: 'entry_autosave_1',
+        coordinator: coordinator,
+        debounceDuration: const Duration(minutes: 10),
+      );
+
+      Future<void> expectDirtyThenSave(void Function() mutate) async {
+        expect(autosave.statusNotifier.value, AutosaveStatus.saved);
+        mutate();
+        expect(autosave.statusNotifier.value, AutosaveStatus.unsaved);
+        await autosave.saveDraft(force: true);
+        expect(autosave.statusNotifier.value, AutosaveStatus.saved);
+      }
+
+      const item = SheetMediaItem(
+        id: 'print_1',
+        mediaType: EphemeraMediaType.image,
+        relativePath: 'media/print_1.webp',
+        caption: '断桥残雪',
+      );
+
+      await expectDirtyThenSave(() {
+        expect(coordinator.collectMedia(item), isTrue);
+      });
+
+      await expectDirtyThenSave(() {
+        expect(coordinator.mountOnActiveSheet('print_1'), isTrue);
+      });
+      var saved = await db.getEntryById('entry_autosave_1');
+      expect(saved!.contentDelta, contains('print_1'));
+
+      await expectDirtyThenSave(() {
+        expect(coordinator.updateCaption('print_1', '平湖秋月'), isTrue);
+      });
+
+      await expectDirtyThenSave(() {
+        expect(coordinator.unmountMedia('print_1'), isTrue);
+      });
+      saved = await db.getEntryById('entry_autosave_1');
+      expect(saved!.contentDelta, isNot(contains('print_1')));
+
+      SheetMediaItem? removed;
+      await expectDirtyThenSave(() {
+        removed = coordinator.removeStaged('print_1');
+        expect(removed, isNotNull);
+      });
+
+      await expectDirtyThenSave(() {
+        coordinator.restoreStaged(removed!);
+      });
+
+      await expectDirtyThenSave(() {
+        coordinator.removeEphemeraSheet(1);
+      });
+      saved = await db.getEntryById('entry_autosave_1');
+      expect(saved!.contentDelta, isNot(contains('legacy_ephemera.webp')));
+
+      autosave.dispose();
+      coordinator.dispose();
     });
   });
 }
