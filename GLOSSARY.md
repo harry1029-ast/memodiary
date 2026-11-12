@@ -33,7 +33,7 @@ The full-bleed writing canvas in the entry editor where the chosen template back
 _Avoid_: Editor box, paper card, canvas container
 
 **Journal Letterhead**:
-The typographic header rendered directly onto the top of the Journal Sheet, presenting the entry date, weather, and mood as authentic diary stationery front-matter with tap-to-modify interactions.
+The typographic header rendered directly onto the top of the Journal Sheet, presenting the entry date, weather, and mood as authentic diary stationery front-matter with tap-to-modify interactions. It always spans exactly four ruled rows at the top of the opening sheet's Paper Heart, whatever the row height, so its height is known before anything is drawn.
 _Avoid_: Metadata bar, metadata chips, entry header strip
 
 **Ghost Prompt**:
