@@ -2,8 +2,11 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/quill_delta.dart';
+import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
+import 'package:memodiary/features/editor/models/mount_marker.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
+import 'package:memodiary/features/editor/services/editor_delta_partitioner.dart';
 import 'package:memodiary/features/editor/services/editor_pagination_coordinator.dart';
 
 void main() {
@@ -221,6 +224,226 @@ void main() {
       expect(coordinator.totalSheets, equals(1));
       expect(coordinator.sheets.first.isOpeningSheet, isTrue);
 
+      coordinator.dispose();
+    });
+
+    test('Splitting and merging across sheets preserves inline and block attributes with 1:1 cold-load parity', () {
+      // 17 chars/row in unconstrained mode -> 10 rows on Sheet 1 = 170 chars.
+      // Prefix: 160 bold red chars; middle: 20 italic chars crossing offset 170; suffix: 15 plain chars + header/list block.
+      final boldPrefix = '前' * 160;
+      final italicBridge = '中' * 20;
+      final plainSuffix = '后' * 15;
+      final delta = Delta()
+        ..insert(boldPrefix, {'bold': true, 'color': '#FF0000'})
+        ..insert(italicBridge, {'italic': true})
+        ..insert('$plainSuffix\n', {'list': 'bullet'});
+
+      final coordinator = EditorPaginationCoordinator(typography: typography);
+      coordinator.initializeFromDelta('');
+      final sheet1 = coordinator.sheets.first as OpeningSheet;
+      sheet1.setDelta(delta);
+
+      final spillResult = coordinator.checkAndPerformAutoSpill(0);
+      expect(spillResult, isNotNull);
+      expect(coordinator.totalSheets, equals(2));
+
+      final sheet2 = coordinator.sheets[1] as ContinuationSheet;
+      expect(sheet1.hasTrailingSoftNewline, isTrue);
+
+      // Sheet 1 holds the 160 bold+red chars, the first 10 italic chars, and a soft newline preserving block attributes.
+      expect(sheet1.delta.operations[0].data, equals(boldPrefix));
+      expect(sheet1.delta.operations[0].attributes?['bold'], isTrue);
+      expect(sheet1.delta.operations[0].attributes?['color'], equals('#FF0000'));
+      expect(sheet1.delta.operations[1].data, equals('中' * 10));
+      expect(sheet1.delta.operations[1].attributes?['italic'], isTrue);
+      expect(sheet1.delta.operations.last.data, equals('\n'));
+      expect(sheet1.delta.operations.last.attributes?['list'], equals('bullet'));
+
+      // Sheet 2 holds the remaining 10 italic chars and the suffix with its terminating list attribute.
+      expect(sheet2.delta.operations[0].data, equals('中' * 10));
+      expect(sheet2.delta.operations[0].attributes?['italic'], isTrue);
+      expect(sheet2.delta.operations[1].data, equals('$plainSuffix\n'));
+      expect(sheet2.delta.operations[1].attributes?['list'], equals('bullet'));
+
+      // Cold-load partitioning produces 1:1 identical sheet breaks and deltas.
+      final partitioned = EditorDeltaPartitioner.partition(
+        unifiedDelta: delta,
+        typography: typography,
+        contentWidth: null,
+        templateStyle: coordinator.templateStyle,
+      );
+      expect(partitioned.sheets.length, equals(2));
+      expect(
+        (partitioned.sheets[0] as TextStationerySheet).delta.toJson(),
+        equals(sheet1.delta.toJson()),
+      );
+      expect(
+        (partitioned.sheets[1] as TextStationerySheet).delta.toJson(),
+        equals(sheet2.delta.toJson()),
+      );
+      for (final sheet in partitioned.sheets) {
+        sheet.dispose();
+      }
+
+      // Re-synthesizing strips the soft newline and losslessly reunites the original Delta.
+      final (resynthesizedJson, _) = coordinator.reSynthesize();
+      expect(jsonDecode(resynthesizedJson), equals(delta.toJson()));
+
+      coordinator.dispose();
+    });
+
+    test('Splitting across sheet boundary snaps away from UTF-16 emoji surrogate pairs without corruption', () {
+      // 169 CJK chars + '🌸' (2 UTF-16 code units at indices 169..170) + '墨韵\n'.
+      // Target cut offset 170 falls inside '🌸' and must back off to 169.
+      final prefix169 = '诗' * 169;
+      final delta = Delta()..insert('$prefix169🌸墨韵\n');
+
+      final coordinator = EditorPaginationCoordinator(typography: typography);
+      coordinator.initializeFromDelta('');
+      final sheet1 = coordinator.sheets.first as OpeningSheet;
+      sheet1.setDelta(delta);
+
+      final spillResult = coordinator.checkAndPerformAutoSpill(0);
+      expect(spillResult, isNotNull);
+      expect(coordinator.totalSheets, equals(2));
+
+      final sheet2 = coordinator.sheets[1] as ContinuationSheet;
+      expect(sheet1.plainText, equals('$prefix169\n'));
+      expect(sheet1.hasTrailingSoftNewline, isTrue);
+      expect(sheet2.plainText, equals('🌸墨韵\n'));
+
+      final partitioned = EditorDeltaPartitioner.partition(
+        unifiedDelta: delta,
+        typography: typography,
+        contentWidth: null,
+        templateStyle: coordinator.templateStyle,
+      );
+      expect(
+        (partitioned.sheets[0] as TextStationerySheet).delta.toJson(),
+        equals(sheet1.delta.toJson()),
+      );
+      expect(
+        (partitioned.sheets[1] as TextStationerySheet).delta.toJson(),
+        equals(sheet2.delta.toJson()),
+      );
+      for (final sheet in partitioned.sheets) {
+        sheet.dispose();
+      }
+
+      final (resynthesizedJson, _) = coordinator.reSynthesize();
+      expect(jsonDecode(resynthesizedJson), equals(delta.toJson()));
+
+      coordinator.dispose();
+    });
+
+    test('Empty trailing newlines overflowing a sheet retain mount markers on the source sheet across cold load and live Auto-Spill', () {
+      final attachment = MediaAttachment(
+        id: 'photo1',
+        entryId: 'entry_1',
+        mediaType: 'image',
+        relativePath: 'media/photo1.webp',
+        createdAt: DateTime(2026, 11, 12),
+      );
+      final delta = Delta();
+      for (int lineIndex = 0; lineIndex < 10; lineIndex++) {
+        delta.insert('\n');
+      }
+      delta.insert(MountMarker.embeddable('photo1').toJson());
+      for (int lineIndex = 0; lineIndex < 5; lineIndex++) {
+        delta.insert('\n');
+      }
+
+      // 1. Live Auto-Spill path
+      final coordinator = EditorPaginationCoordinator(typography: typography);
+      coordinator.initializeFromDelta(
+        jsonEncode((Delta()..insert(MountMarker.embeddable('photo1').toJson())..insert('\n')).toJson()),
+        attachments: [attachment],
+      );
+      final sheet1 = coordinator.sheets.first as OpeningSheet;
+      sheet1.setDelta(delta);
+
+      coordinator.checkAndPerformAutoSpill(0);
+      expect(coordinator.totalSheets, equals(2));
+      final sheet2 = coordinator.sheets[1] as ContinuationSheet;
+      expect(MountMarker.mediaIdsIn(sheet1.delta), contains('photo1'));
+      expect(MountMarker.mediaIdsIn(sheet2.delta), isEmpty);
+      expect(sheet1.mediaAttachments.map((item) => item.id), ['photo1']);
+      expect(sheet2.mediaAttachments, isEmpty);
+
+      // 2. Cold-load partition path must match 1:1
+      final partitioned = EditorDeltaPartitioner.partition(
+        unifiedDelta: delta,
+        media: [SheetMediaItem.fromMediaAttachment(attachment)],
+        typography: typography,
+        contentWidth: null,
+        templateStyle: coordinator.templateStyle,
+      );
+      expect(partitioned.sheets.length, equals(2));
+      final coldSheet1 = partitioned.sheets[0] as TextStationerySheet;
+      final coldSheet2 = partitioned.sheets[1] as TextStationerySheet;
+      expect(MountMarker.mediaIdsIn(coldSheet1.delta), contains('photo1'));
+      expect(MountMarker.mediaIdsIn(coldSheet2.delta), isEmpty);
+      expect(coldSheet1.mediaAttachments.map((item) => item.id), ['photo1']);
+      expect(coldSheet2.mediaAttachments, isEmpty);
+
+      for (final sheet in partitioned.sheets) {
+        sheet.dispose();
+      }
+      coordinator.dispose();
+    });
+
+    test('Overflowing text carries its anchored mount marker onto the continuation sheet across cold load and live Auto-Spill', () {
+      final attachment = MediaAttachment(
+        id: 'photo1',
+        entryId: 'entry_1',
+        mediaType: 'image',
+        relativePath: 'media/photo1.webp',
+        createdAt: DateTime(2026, 11, 12),
+      );
+      final delta = Delta();
+      for (int lineNumber = 1; lineNumber <= 15; lineNumber++) {
+        delta.insert('Line $lineNumber');
+        if (lineNumber == 12) {
+          delta.insert(MountMarker.embeddable('photo1').toJson());
+        }
+        delta.insert('\n');
+      }
+
+      final coordinator = EditorPaginationCoordinator(typography: typography);
+      coordinator.initializeFromDelta(
+        jsonEncode((Delta()..insert('Line 1')..insert(MountMarker.embeddable('photo1').toJson())..insert('\n')).toJson()),
+        attachments: [attachment],
+      );
+      final sheet1 = coordinator.sheets.first as OpeningSheet;
+      sheet1.setDelta(delta);
+
+      coordinator.checkAndPerformAutoSpill(0);
+      expect(coordinator.totalSheets, equals(2));
+      final updatedSheet1 = coordinator.sheets[0] as OpeningSheet;
+      final sheet2 = coordinator.sheets[1] as ContinuationSheet;
+      expect(MountMarker.mediaIdsIn(updatedSheet1.delta), isEmpty);
+      expect(MountMarker.mediaIdsIn(sheet2.delta), contains('photo1'));
+      expect(updatedSheet1.mediaAttachments, isEmpty);
+      expect(sheet2.mediaAttachments.map((item) => item.id), ['photo1']);
+
+      final partitioned = EditorDeltaPartitioner.partition(
+        unifiedDelta: delta,
+        media: [SheetMediaItem.fromMediaAttachment(attachment)],
+        typography: typography,
+        contentWidth: null,
+        templateStyle: coordinator.templateStyle,
+      );
+      expect(partitioned.sheets.length, equals(2));
+      final coldSheet1 = partitioned.sheets[0] as TextStationerySheet;
+      final coldSheet2 = partitioned.sheets[1] as TextStationerySheet;
+      expect(MountMarker.mediaIdsIn(coldSheet1.delta), isEmpty);
+      expect(MountMarker.mediaIdsIn(coldSheet2.delta), contains('photo1'));
+      expect(coldSheet1.mediaAttachments, isEmpty);
+      expect(coldSheet2.mediaAttachments.map((item) => item.id), ['photo1']);
+
+      for (final sheet in partitioned.sheets) {
+        sheet.dispose();
+      }
       coordinator.dispose();
     });
   });

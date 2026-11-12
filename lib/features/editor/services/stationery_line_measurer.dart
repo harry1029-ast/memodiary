@@ -2,10 +2,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import '../../templates/models/template_style.dart';
+import '../domain/stationery_sheet_descriptor.dart';
 import '../models/mount_marker.dart';
 import '../models/typography_settings.dart';
 import '../widgets/editor_quill_styles_builder.dart';
 import 'baseline_metrics_calculator.dart';
+import 'editor_pagination_models.dart';
 
 /// Represents a measured visual paragraph with its wrapped line count and total integer rows.
 class MeasuredParagraph {
@@ -340,56 +342,75 @@ class StationeryLineMeasurer {
     return math.max(1, totalRows);
   }
 
-  /// Groups operations of a [Delta] into contiguous paragraphs ending at `\n`.
-  static List<RawDeltaParagraph> extractParagraphsFromDelta(Delta delta) {
-    final result = <RawDeltaParagraph>[];
+  /// Tokenizes [delta] into newline-terminated [EditorTextBlock] paragraphs
+  /// (keeping zero-height mount markers attached to their passage) and
+  /// standalone [EditorEphemeraBlock] embeds.
+  static List<EditorContentBlock> extractContentBlocks(Delta delta) {
+    final blocks = <EditorContentBlock>[];
     var currentOps = <Operation>[];
     final textBuffer = StringBuffer();
+    bool skipNextNewline = false;
 
-    for (final op in delta.operations) {
-      if (!op.isInsert) continue;
+    for (final operation in delta.operations) {
+      if (!operation.isInsert) continue;
 
-      if (MountMarker.mediaIdOf(op) != null) {
+      if (MountMarker.mediaIdOf(operation) != null) {
         // Zero-height mount marker: travels with its paragraph (so a split or
         // spill carries it along) but occupies no row and adds no plain text.
-        currentOps.add(op);
+        currentOps.add(operation);
         continue;
       }
 
-      if (op.data is Map) {
-        // Embed node
+      if (operation.data is Map) {
+        final map = operation.data as Map;
         if (currentOps.isNotEmpty) {
-          result.add(RawDeltaParagraph(
-            operations: List.of(currentOps),
+          blocks.add(EditorTextBlock(
+            delta: Delta.fromOperations(currentOps),
             plainText: textBuffer.toString(),
-            blockAttributes: null,
           ));
           currentOps = <Operation>[];
           textBuffer.clear();
         }
+        if (map.containsKey('image') || map.containsKey('video')) {
+          final isVideo = map.containsKey('video');
+          blocks.add(EditorEphemeraBlock(
+            mediaType: isVideo ? EphemeraMediaType.video : EphemeraMediaType.image,
+            rawData: isVideo ? map['video'] : map['image'],
+          ));
+          skipNextNewline = true;
+        }
         continue;
       }
 
-      if (op.data is String) {
-        final text = op.data as String;
+      if (operation.data is String) {
+        var text = operation.data as String;
+        if (skipNextNewline && text.startsWith('\n')) {
+          text = text.substring(1);
+          skipNextNewline = false;
+          if (text.isEmpty) {
+            continue;
+          }
+        }
+        skipNextNewline = false;
+
         if (!text.contains('\n')) {
-          currentOps.add(op);
+          currentOps.add(Operation.insert(text, operation.attributes));
           textBuffer.write(text);
         } else {
           final lines = text.split('\n');
-          for (int index = 0; index < lines.length; index++) {
-            final linePart = lines[index];
+          for (int lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            final linePart = lines[lineIndex];
             if (linePart.isNotEmpty) {
-              currentOps.add(Operation.insert(linePart, op.attributes));
+              currentOps.add(Operation.insert(linePart, operation.attributes));
               textBuffer.write(linePart);
             }
-            if (index < lines.length - 1) {
+            if (lineIndex < lines.length - 1) {
               textBuffer.write('\n');
-              currentOps.add(Operation.insert('\n', op.attributes));
-              result.add(RawDeltaParagraph(
-                operations: List.of(currentOps),
+              currentOps.add(Operation.insert('\n', operation.attributes));
+              blocks.add(EditorTextBlock(
+                delta: Delta.fromOperations(currentOps),
                 plainText: textBuffer.toString(),
-                blockAttributes: op.attributes,
+                blockAttributes: operation.attributes,
               ));
               currentOps = <Operation>[];
               textBuffer.clear();
@@ -400,26 +421,17 @@ class StationeryLineMeasurer {
     }
 
     if (currentOps.isNotEmpty || textBuffer.isNotEmpty) {
-      result.add(RawDeltaParagraph(
-        operations: List.of(currentOps),
+      blocks.add(EditorTextBlock(
+        delta: Delta.fromOperations(currentOps),
         plainText: textBuffer.toString(),
-        blockAttributes: null,
       ));
     }
 
-    return result;
+    return blocks;
   }
-}
 
-/// Helper model representing raw paragraph operations and attributes.
-class RawDeltaParagraph {
-  final List<Operation> operations;
-  final String plainText;
-  final Map<String, dynamic>? blockAttributes;
-
-  const RawDeltaParagraph({
-    required this.operations,
-    required this.plainText,
-    this.blockAttributes,
-  });
+  /// Groups text operations of a [Delta] into contiguous [EditorTextBlock] paragraphs.
+  static List<EditorTextBlock> extractParagraphsFromDelta(Delta delta) {
+    return extractContentBlocks(delta).whereType<EditorTextBlock>().toList();
+  }
 }
