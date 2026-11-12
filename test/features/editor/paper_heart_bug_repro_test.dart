@@ -1,8 +1,10 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/features/editor/domain/stationery_sheet_geometry.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
+import 'package:memodiary/features/templates/models/template_text_insets.dart';
 import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
 
 void main() {
@@ -22,19 +24,15 @@ void main() {
     );
 
     test('Bug 1a & 1b Fix: characters have breathing room and do not write over red margin line', () {
-      final metrics = StationeryLayoutCalculator.calculate(
-        canvasSize: const Size(390.0, 780.0),
-        style: linedStyle,
+      final geometry = StationerySheetGeometry.resolve(
+        canvasWidth: 390.0,
+        restingDeskHeight: 780.0,
+        templateStyle: linedStyle,
         typography: typography,
-        compactMargins: true,
       );
 
-      // In entry_editor_screen.dart:
-      final double innerContentPaddingLeft = linedStyle.type == TemplateBackgroundType.lined ? 32.0 : 20.0;
-      final horizontalLeft = metrics.innerFrameRect.left + innerContentPaddingLeft;
-
-      // In TemplateCanvasPainter._paintLinedPaper:
-      final marginX = metrics.innerFrameRect.left + 24.0;
+      final horizontalLeft = geometry.paperHeart.left + geometry.textInsets.left;
+      final marginX = geometry.paperHeart.left + kLinedMarginRuleInset;
 
       // Glyph 1 starts at horizontalLeft and extends by fontSize
       final glyph1Start = horizontalLeft;
@@ -50,7 +48,7 @@ void main() {
       expect(glyph1Start, greaterThan(marginX));
 
       // Assert 1a: Breathing room inside Paper Heart
-      final innerPaddingLeft = glyph1Start - metrics.innerFrameRect.left;
+      final innerPaddingLeft = glyph1Start - geometry.paperHeart.left;
       expect(
         innerPaddingLeft,
         greaterThanOrEqualTo(20.0),
@@ -58,14 +56,16 @@ void main() {
       );
 
       // Verify on plain / color style:
-      final colorMetrics = StationeryLayoutCalculator.calculate(
-        canvasSize: const Size(390.0, 780.0),
-        style: colorStyle,
+      final colorGeometry = StationerySheetGeometry.resolve(
+        canvasWidth: 390.0,
+        restingDeskHeight: 780.0,
+        templateStyle: colorStyle,
         typography: typography,
-        compactMargins: true,
       );
-      final colorHorizontalLeft = colorMetrics.innerFrameRect.left + 20.0;
-      expect(colorHorizontalLeft - colorMetrics.innerFrameRect.left, equals(20.0));
+      final colorHorizontalLeft = colorGeometry.paperHeart.left + colorGeometry.textInsets.left;
+      expect(colorGeometry.textInsets.left, equals(20.0));
+      expect(colorHorizontalLeft - colorGeometry.paperHeart.left, equals(20.0));
+      expect(colorGeometry.textInsetsFromCardEdge.left - colorGeometry.paperHeart.left, equals(20.0));
     });
 
     test('Bug 1c Fix: compactMargins reclaims vertical space and eliminates wasted margins', () {

@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 
@@ -225,6 +226,59 @@ void main() {
       expect(find.byKey(const Key('letterhead_date_seal')), findsNothing);
       expect(find.byKey(const Key('letterhead_weather_charm')), findsNothing);
       expect(find.byKey(const Key('letterhead_solar_line')), findsNothing);
+    });
+
+    testWidgets('lined template with 29px line stride renders headerHeight 116.0 on frame 1 without post-frame drift', (tester) async {
+      const linedEntryId = 'letterhead_lined_entry';
+      await database.into(database.entries).insert(
+            EntriesCompanion.insert(
+              id: linedEntryId,
+              notebookId: 'notebook_default',
+              templateId: 'template_lined_paper',
+              title: const Value('秋水偶得'),
+              contentDelta: '[]',
+              plainText: '',
+              entryDate: DateTime(2026, 11, 10, 10, 30),
+              mood: const Value(4),
+              weather: const Value('sunny'),
+            ),
+          );
+
+      tester.view.physicalSize = _phoneViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: EntryEditorScreen(
+            database: database,
+            mediaSandboxService: sandboxService,
+            entryId: linedEntryId,
+          ),
+        ),
+      );
+
+      // Async loading transitions _isLoading to false and schedules a frame.
+      // Pump exactly 1 frame without pumpAndSettle.
+      await tester.pump();
+
+      // On frame 1, TemplateCanvasContainer must immediately have headerHeight == 116.0
+      final canvasContainer = tester.widget<TemplateCanvasContainer>(
+        find.byType(TemplateCanvasContainer),
+      );
+      expect(canvasContainer.headerHeight, equals(116.0));
+
+      // Pump another single frame to verify no post-frame callback triggers a setState layout jitter.
+      await tester.pump();
+
+      final canvasContainerAfter = tester.widget<TemplateCanvasContainer>(
+        find.byType(TemplateCanvasContainer),
+      );
+      expect(canvasContainerAfter.headerHeight, equals(116.0));
     });
   });
 }

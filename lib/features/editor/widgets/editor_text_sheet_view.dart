@@ -54,7 +54,6 @@ class EditorTextSheetView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(
-                key: letterheadConfig.letterheadKey,
                 height: geometry.openingHeaderHeight,
                 child: Padding(
                   padding: EdgeInsets.only(

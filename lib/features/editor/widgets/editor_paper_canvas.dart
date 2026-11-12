@@ -244,7 +244,7 @@ class EditorPaperCanvas extends StatelessWidget {
                                     typography: typography,
                                     scrollOffset: 0.0,
                                     headerHeight: sheet is OpeningSheet
-                                        ? letterheadConfig.headerHeight
+                                        ? geometry.openingHeaderHeight
                                         : 0.0,
                                     layoutMetrics: metrics,
                                     customPadding: EdgeInsets.zero,
