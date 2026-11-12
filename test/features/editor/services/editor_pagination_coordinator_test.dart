@@ -231,9 +231,105 @@ void main() {
       expect(coordinator.sheets[1], isA<EphemeraSheet>());
 
       coordinator.activeSheetIndex = 1;
-      coordinator.media.removeEphemeraSheet(1);
+      coordinator.removeEphemeraSheet(1);
       expect(coordinator.totalSheets, equals(1));
       expect(coordinator.activeSheetIndex, equals(0));
+
+      coordinator.dispose();
+    });
+
+    test('collectMedia tracks collect order, respects 15-item handscroll capacity, and bumps contentRevision', () {
+      final coordinator = EditorPaginationCoordinator()..initializeFromDelta('');
+      expect(coordinator.handscrollRoom, equals(15));
+      final initialRevision = coordinator.contentRevision.value;
+      var notifications = 0;
+      coordinator.addListener(() => notifications++);
+
+      for (int index = 0; index < 15; index++) {
+        final didCollect = coordinator.collectMedia(
+          SheetMediaItem(
+            id: 'photo_$index',
+            mediaType: EphemeraMediaType.image,
+            relativePath: 'media/photo_$index.webp',
+          ),
+        );
+        expect(didCollect, isTrue);
+      }
+
+      expect(coordinator.handscrollRoom, equals(0));
+      expect(coordinator.stagedItems, hasLength(15));
+      expect(coordinator.contentRevision.value, equals(initialRevision + 15));
+      expect(notifications, equals(15));
+
+      final overflowCollect = coordinator.collectMedia(
+        const SheetMediaItem(
+          id: 'photo_15',
+          mediaType: EphemeraMediaType.image,
+          relativePath: 'media/photo_15.webp',
+        ),
+      );
+      expect(overflowCollect, isFalse);
+      expect(coordinator.stagedItems, hasLength(15));
+
+      coordinator.dispose();
+    });
+
+    test('mountOnActiveSheet, unmountMedia, removeStaged, restoreStaged, and updateCaption preserve collect order and update captions in place', () {
+      final coordinator = EditorPaginationCoordinator()
+        ..initializeFromDelta(jsonEncode((Delta()..insert('春江花月夜\n')).toJson()));
+
+      for (final id in ['a', 'b', 'c', 'd']) {
+        expect(
+          coordinator.collectMedia(
+            SheetMediaItem(
+              id: id,
+              mediaType: EphemeraMediaType.image,
+              relativePath: 'media/$id.webp',
+            ),
+          ),
+          isTrue,
+        );
+      }
+      expect(coordinator.stagedItems.map((item) => item.id), equals(['a', 'b', 'c', 'd']));
+
+      // Mount 3 items onto the active sheet; 4th is refused (3-item Tucked Prints capacity).
+      expect(coordinator.mountOnActiveSheet('b'), isTrue);
+      expect(coordinator.mountOnActiveSheet('a'), isTrue);
+      expect(coordinator.mountOnActiveSheet('c'), isTrue);
+      expect(coordinator.mountOnActiveSheet('d'), isFalse);
+
+      final opening = coordinator.sheets.first as OpeningSheet;
+      expect(opening.mediaAttachments.map((item) => item.id), equals(['b', 'a', 'c']));
+      expect(coordinator.stagedItems.map((item) => item.id), equals(['d']));
+
+      // Unmounting 'a' strips its marker and returns it to the handscroll before 'd' (collect order).
+      expect(coordinator.unmountMedia('a'), isTrue);
+      expect(opening.mediaAttachments.map((item) => item.id), equals(['b', 'c']));
+      expect(coordinator.stagedItems.map((item) => item.id), equals(['a', 'd']));
+
+      // Unmounting 'b' returns it before 'a' and 'd' in collect order.
+      expect(coordinator.unmountMedia('b'), isTrue);
+      expect(coordinator.stagedItems.map((item) => item.id), equals(['a', 'b', 'd']));
+
+      // Erasing 'a' and restoring it on undo puts 'a' back at its original collect rank (before 'b').
+      final erased = coordinator.removeStaged('a');
+      expect(erased, isNotNull);
+      expect(erased!.id, equals('a'));
+      expect(coordinator.stagedItems.map((item) => item.id), equals(['b', 'd']));
+
+      coordinator.restoreStaged(erased);
+      expect(coordinator.stagedItems.map((item) => item.id), equals(['a', 'b', 'd']));
+
+      // Updating captions works for both mounted ('c') and staged ('b') items.
+      expect(coordinator.updateCaption('c', '已贴影札题跋'), isTrue);
+      expect(coordinator.updateCaption('b', '画卷待贴题跋'), isTrue);
+      expect(coordinator.updateCaption('missing', '无此影札'), isFalse);
+
+      expect(opening.mediaAttachments.single.caption, equals('已贴影札题跋'));
+      expect(
+        coordinator.stagedItems.firstWhere((item) => item.id == 'b').caption,
+        equals('画卷待贴题跋'),
+      );
 
       coordinator.dispose();
     });

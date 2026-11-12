@@ -333,7 +333,7 @@ class EditorPaginationHandler {
         targetSheet is EphemeraSheet ? targetSheet.sandboxedRelativePath : null;
 
     _runGuardedMutation(() {
-      coordinator.media.removeEphemeraSheet(sheetIndex);
+      coordinator.removeEphemeraSheet(sheetIndex);
     });
     attachSheetListeners();
 
