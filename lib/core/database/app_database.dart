@@ -8,6 +8,11 @@ import 'package:uuid/uuid.dart';
 import '../../features/import_export/models/backup_manifest.dart';
 import '../../features/weekly_review/services/calendar_week_utils.dart';
 import 'models/photo_text_match.dart';
+import 'daos/albums_dao.dart';
+import 'daos/backup_dao.dart';
+import 'daos/entries_dao.dart';
+import 'daos/media_ocr_dao.dart';
+import 'daos/templates_dao.dart';
 import 'tables/templates.dart';
 import 'tables/notebooks.dart';
 import 'tables/entries.dart';
@@ -15,6 +20,11 @@ import 'tables/media_attachments.dart';
 import 'tables/album_collections.dart';
 import 'tables/album_photos.dart';
 
+export 'daos/albums_dao.dart';
+export 'daos/backup_dao.dart';
+export 'daos/entries_dao.dart';
+export 'daos/media_ocr_dao.dart';
+export 'daos/templates_dao.dart';
 export 'models/photo_text_match.dart';
 
 part 'app_database.g.dart';
@@ -28,14 +38,23 @@ void _isolateDatabaseSetup() {
 }
 
 /// MemoDiary core encrypted database with SQLCipher and FTS5 search.
-@DriftDatabase(tables: [
-  Templates,
-  Notebooks,
-  Entries,
-  MediaAttachments,
-  AlbumCollections,
-  AlbumPhotos,
-])
+@DriftDatabase(
+  tables: [
+    Templates,
+    Notebooks,
+    Entries,
+    MediaAttachments,
+    AlbumCollections,
+    AlbumPhotos,
+  ],
+  daos: [
+    EntriesDao,
+    TemplatesDao,
+    MediaOcrDao,
+    AlbumsDao,
+    BackupDao,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
@@ -183,59 +202,15 @@ class AppDatabase extends _$AppDatabase {
             ON album_photos(collection_id, sort_order ASC);
           ''');
 
-          // 5. Seed the 4 default templates
-          await batch((b) {
-            b.insertAll(templates, [
-              TemplatesCompanion.insert(
-                id: 'template_minimalist_white',
-                name: 'Minimalist White',
-                backgroundType: 'color',
-                backgroundValue: '#FFFFFF',
-                fontFamily: const Value('System'),
-                lineSpacing: const Value(1.5),
-                marginHorizontal: const Value(20.0),
-                isCustom: const Value(false),
-              ),
-              TemplatesCompanion.insert(
-                id: 'template_lined_paper',
-                name: 'Lined Paper',
-                backgroundType: 'lined',
-                backgroundValue: '#FDFBF7',
-                fontFamily: const Value('System'),
-                lineSpacing: const Value(1.8),
-                marginHorizontal: const Value(24.0),
-                isCustom: const Value(false),
-              ),
-              TemplatesCompanion.insert(
-                id: 'template_retro_kraft',
-                name: 'Retro Kraft Scrapbook',
-                backgroundType: 'paper_texture',
-                backgroundValue: '#EFE6D5',
-                fontFamily: const Value('System'),
-                lineSpacing: const Value(1.6),
-                marginHorizontal: const Value(20.0),
-                isCustom: const Value(false),
-              ),
-              TemplatesCompanion.insert(
-                id: 'template_weekly_review',
-                name: 'Weekly Review',
-                backgroundType: 'grid',
-                backgroundValue: '#F4F5F7',
-                fontFamily: const Value('System'),
-                lineSpacing: const Value(1.5),
-                marginHorizontal: const Value(16.0),
-                isCustom: const Value(false),
-              ),
-            ]);
-
-            // 5. Seed default notebook so entries can be inserted immediately
-            b.insert(
+          // 5. Seed the 4 canonical default templates and default notebook
+          await batch((batchOp) {
+            batchOp.insertAll(
+              templates,
+              TemplatesDao.buildDefaultTemplateCompanions(),
+            );
+            batchOp.insert(
               notebooks,
-              NotebooksCompanion.insert(
-                id: 'notebook_default',
-                title: 'My Diary',
-                defaultTemplateId: 'template_minimalist_white',
-              ),
+              TemplatesDao.buildDefaultNotebookCompanion(),
             );
           });
         },
@@ -322,39 +297,8 @@ class AppDatabase extends _$AppDatabase {
 
   /// Performs full-text search across entry title and plain text using FTS5,
   /// supplemented with escaped substring matching for CJK characters.
-  Future<List<Entry>> searchEntries(String query) async {
-    final trimmed = query.trim();
-    if (trimmed.isEmpty) return [];
-
-    // Escape quotes for safe FTS5 query syntax
-    final escaped = trimmed.replaceAll('"', '""');
-    final ftsRows = await customSelect(
-      'SELECT id FROM entries_fts WHERE entries_fts MATCH ?',
-      variables: [Variable.withString('"$escaped"*')],
-      readsFrom: {entries},
-    ).get();
-
-    final ids = ftsRows.map((r) => r.read<String>('id')).toSet();
-
-    if (RegExp(r'[\u4e00-\u9fff]').hasMatch(trimmed)) {
-      final escapedLike =
-          '%${trimmed.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
-      final likeRows = await customSelect(
-        r"SELECT id FROM entries WHERE is_deleted = 0 AND (coalesce(title, '') LIKE ? ESCAPE '\' OR plain_text LIKE ? ESCAPE '\')",
-        variables: [
-          Variable.withString(escapedLike),
-          Variable.withString(escapedLike),
-        ],
-        readsFrom: {entries},
-      ).get();
-      ids.addAll(likeRows.map((r) => r.read<String>('id')));
-    }
-
-    if (ids.isEmpty) return [];
-
-    return (select(entries)
-          ..where((t) => t.id.isIn(ids) & t.isDeleted.equals(false)))
-        .get();
+  Future<List<Entry>> searchEntries(String query) {
+    return entriesDao.searchEntries(query);
   }
 
   /// Retrieves all visual templates
@@ -582,89 +526,18 @@ class AppDatabase extends _$AppDatabase {
     bool weeklyReviewOnly = false,
     int limit = 50,
     bool excludeSealedTimeCapsules = true,
-  }) async {
-    final trimmed = query.trim();
-    Set<String>? ftsMatchedIds;
-
-    // 1. Clean query branching: only execute FTS5 MATCH / CJK LIKE if query is non-empty
-    if (trimmed.isNotEmpty) {
-      final escaped = trimmed.replaceAll('"', '""');
-      final ftsRows = await customSelect(
-        'SELECT id FROM entries_fts WHERE entries_fts MATCH ?',
-        variables: [Variable.withString('"$escaped"*')],
-        readsFrom: {entries},
-      ).get();
-
-      ftsMatchedIds = ftsRows.map((r) => r.read<String>('id')).toSet();
-
-      if (RegExp(r'[\u4e00-\u9fff]').hasMatch(trimmed)) {
-        final escapedLike =
-            '%${trimmed.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
-        final likeRows = await customSelect(
-          r"SELECT id FROM entries WHERE is_deleted = 0 AND (coalesce(title, '') LIKE ? ESCAPE '\' OR plain_text LIKE ? ESCAPE '\')",
-          variables: [
-            Variable.withString(escapedLike),
-            Variable.withString(escapedLike),
-          ],
-          readsFrom: {entries},
-        ).get();
-        ftsMatchedIds.addAll(likeRows.map((r) => r.read<String>('id')));
-      }
-
-      if (ftsMatchedIds.isEmpty) return [];
-    }
-
-    // 2. Has image filter
-    Set<String>? imageEntryIds;
-    if (hasImage) {
-      final mediaRows = await (selectOnly(mediaAttachments, distinct: true)
-            ..addColumns([mediaAttachments.entryId]))
-          .get();
-      imageEntryIds =
-          mediaRows.map((r) => r.read(mediaAttachments.entryId)!).toSet();
-      if (imageEntryIds.isEmpty) return [];
-    }
-
-    final now = DateTime.now();
-
-    // 3. Combine relational filter predicates
-    final queryBuilder = select(entries)
-      ..where((t) {
-        Expression<bool> predicate = t.isDeleted.equals(false);
-
-        if (ftsMatchedIds != null) {
-          predicate = predicate & t.id.isIn(ftsMatchedIds);
-        }
-        if (imageEntryIds != null) {
-          predicate = predicate & t.id.isIn(imageEntryIds);
-        }
-        if (startDate != null) {
-          predicate = predicate & t.entryDate.isBiggerOrEqualValue(startDate);
-        }
-        if (endDate != null) {
-          predicate = predicate & t.entryDate.isSmallerOrEqualValue(endDate);
-        }
-        if (mood != null) {
-          predicate = predicate & t.mood.equals(mood);
-        }
-        if (weather != null && weather.isNotEmpty) {
-          predicate = predicate & t.weather.equals(weather);
-        }
-        if (weeklyReviewOnly) {
-          predicate = predicate & t.isWeeklyReview.equals(true);
-        }
-        // Privacy invariant: sealed capsules are concealed from text search
-        if (excludeSealedTimeCapsules) {
-          predicate = predicate &
-              (t.unlockAt.isNull() | t.unlockAt.isSmallerOrEqualValue(now));
-        }
-
-        return predicate;
-      })
-      ..orderBy([(t) => OrderingTerm.desc(t.entryDate)])
-      ..limit(limit);
-
-    return queryBuilder.get();
+  }) {
+    return entriesDao.searchEntriesWithFilters(
+      query: query,
+      startDate: startDate,
+      endDate: endDate,
+      mood: mood,
+      weather: weather,
+      hasImage: hasImage,
+      weeklyReviewOnly: weeklyReviewOnly,
+      limit: limit,
+      excludeSealedTimeCapsules: excludeSealedTimeCapsules,
+    );
   }
 
   /// Atomically inserts multiple entries within a single transaction.
@@ -973,173 +846,12 @@ class AppDatabase extends _$AppDatabase {
   /// Exports a consistent snapshot of all SQLite tables (including soft-deleted,
   /// locked, time-capsule entries, and travel memory albums) inside a read transaction.
   Future<BackupDatabaseSnapshot> exportAllTablesSnapshot() {
-    return transaction(() async {
-      final allTemplates = await select(templates).get();
-      final allNotebooks = await select(notebooks).get();
-      final allEntries = await select(entries).get();
-      final allMedia = await select(mediaAttachments).get();
-      final allAlbumCollections = await select(albumCollections).get();
-      final allAlbumPhotos = await select(albumPhotos).get();
-      return BackupDatabaseSnapshot(
-        templates: allTemplates,
-        notebooks: allNotebooks,
-        entries: allEntries,
-        mediaAttachments: allMedia,
-        albumCollections: allAlbumCollections,
-        albumPhotos: allAlbumPhotos,
-      );
-    });
+    return backupDao.exportAllTablesSnapshot();
   }
 
   /// Atomically replaces all database records with [snapshot] inside a single transaction.
-  ///
-  /// Watchpoint 1 Defense:
-  /// - Clears `entries_fts` alongside relational tables (`album_photos`, `album_collections`,
-  ///   `media_attachments`, `entries`, `notebooks`, `templates`).
-  /// - Inserts `templates` -> `notebooks` -> `entries` -> `media_attachments` ->
-  ///   `album_collections` -> `album_photos` in foreign-key dependency order.
-  /// - Because the `entries_ai` AFTER INSERT trigger automatically populates `entries_fts`
-  ///   as rows are inserted into `entries`, no duplicate manual `INSERT INTO entries_fts` is executed.
-  Future<void> replaceAllFromBackup(BackupDatabaseSnapshot snapshot) async {
-    await customStatement('PRAGMA foreign_keys = ON;');
-    await transaction(() async {
-      // 1. Delete existing rows in reverse foreign-key dependency order
-      await delete(albumPhotos).go();
-      await delete(albumCollections).go();
-      await delete(mediaAttachments).go();
-      await delete(entries).go();
-      await customStatement('DELETE FROM entries_fts;');
-      await customStatement('DELETE FROM media_fts;');
-      await delete(notebooks).go();
-      await delete(templates).go();
-
-      // 2. Ensure the 4 default system templates are present if omitted in snapshot
-      final templateIds = snapshot.templates.map((t) => t.id).toSet();
-      final defaults = <TemplatesCompanion>[
-        if (!templateIds.contains('template_minimalist_white'))
-          TemplatesCompanion.insert(
-            id: 'template_minimalist_white',
-            name: 'Minimalist White',
-            backgroundType: 'color',
-            backgroundValue: '#FFFFFF',
-            fontFamily: const Value('System'),
-            lineSpacing: const Value(1.5),
-            marginHorizontal: const Value(20.0),
-            isCustom: const Value(false),
-          ),
-        if (!templateIds.contains('template_lined_paper'))
-          TemplatesCompanion.insert(
-            id: 'template_lined_paper',
-            name: 'Lined Paper',
-            backgroundType: 'lined',
-            backgroundValue: '#FDFBF7',
-            fontFamily: const Value('System'),
-            lineSpacing: const Value(1.8),
-            marginHorizontal: const Value(24.0),
-            isCustom: const Value(false),
-          ),
-        if (!templateIds.contains('template_retro_kraft'))
-          TemplatesCompanion.insert(
-            id: 'template_retro_kraft',
-            name: 'Retro Kraft Scrapbook',
-            backgroundType: 'paper_texture',
-            backgroundValue: '#EFE6D5',
-            fontFamily: const Value('System'),
-            lineSpacing: const Value(1.6),
-            marginHorizontal: const Value(20.0),
-            isCustom: const Value(false),
-          ),
-        if (!templateIds.contains('template_weekly_review'))
-          TemplatesCompanion.insert(
-            id: 'template_weekly_review',
-            name: 'Weekly Review',
-            backgroundType: 'grid',
-            backgroundValue: '#F4F5F7',
-            fontFamily: const Value('System'),
-            lineSpacing: const Value(1.5),
-            marginHorizontal: const Value(16.0),
-            isCustom: const Value(false),
-          ),
-      ];
-
-      // 3. Insert records in foreign-key dependency order with referential integrity checks
-      for (final d in defaults) {
-        await into(templates).insert(d);
-      }
-      for (final t in snapshot.templates) {
-        await into(templates).insert(t);
-      }
-
-      final validTemplateIds = <String>{
-        'template_minimalist_white',
-        'template_lined_paper',
-        'template_retro_kraft',
-        'template_weekly_review',
-        ...snapshot.templates.map((t) => t.id),
-      };
-
-      final validNotebookIds = <String>{};
-      if (snapshot.notebooks.isNotEmpty) {
-        for (final n in snapshot.notebooks) {
-          if (!validTemplateIds.contains(n.defaultTemplateId)) {
-            throw StateError(
-              'Foreign key violation: notebook ${n.id} references missing template ${n.defaultTemplateId}.',
-            );
-          }
-          await into(notebooks).insert(n);
-          validNotebookIds.add(n.id);
-        }
-      } else {
-        await into(notebooks).insert(
-          NotebooksCompanion.insert(
-            id: 'notebook_default',
-            title: 'My Diary',
-            defaultTemplateId: 'template_minimalist_white',
-          ),
-        );
-        validNotebookIds.add('notebook_default');
-      }
-
-      final validEntryIds = <String>{};
-      for (final e in snapshot.entries) {
-        if (!validNotebookIds.contains(e.notebookId)) {
-          throw StateError(
-            'Foreign key violation: entry ${e.id} references missing notebook ${e.notebookId}.',
-          );
-        }
-        if (!validTemplateIds.contains(e.templateId)) {
-          throw StateError(
-            'Foreign key violation: entry ${e.id} references missing template ${e.templateId}.',
-          );
-        }
-        await into(entries).insert(e);
-        validEntryIds.add(e.id);
-      }
-
-      for (final m in snapshot.mediaAttachments) {
-        if (!validEntryIds.contains(m.entryId)) {
-          throw StateError(
-            'Foreign key violation: mediaAttachment ${m.id} references missing entry ${m.entryId}.',
-          );
-        }
-        await into(mediaAttachments).insert(m);
-      }
-
-      final validCollectionIds = <String>{};
-      for (final col in snapshot.albumCollections) {
-        await into(albumCollections).insert(col);
-        validCollectionIds.add(col.id);
-      }
-
-      for (final photo in snapshot.albumPhotos) {
-        if (!validCollectionIds.contains(photo.collectionId)) {
-          throw StateError(
-            'Foreign key violation: albumPhoto ${photo.id} references missing albumCollection ${photo.collectionId}.',
-          );
-        }
-        await into(albumPhotos).insert(photo);
-      }
-    });
+  Future<void> replaceAllFromBackup(BackupDatabaseSnapshot snapshot) {
+    return backupDao.replaceAllFromBackup(snapshot);
   }
 
   // ===========================================================================
