@@ -41,9 +41,9 @@ void main() {
     }
 
     final collection =
-        (await harness.repository.getCollectionById('col-editor-test'))!;
+        (await harness.database.albumsDao.getCollectionById('col-editor-test'))!;
     final photos =
-        await harness.repository.getPhotosForCollection('col-editor-test');
+        await harness.database.albumsDao.getPhotosForCollection('col-editor-test');
     final doc = AlbumLayoutEngine.compileStudioDocument(
       collection: collection,
       photos: photos,
@@ -62,9 +62,9 @@ void main() {
       (tester) async {
     final (controller, photoIds) = await createControllerWithPhotos(2);
     final collection =
-        (await harness.repository.getCollectionById('col-editor-test'))!;
+        (await harness.database.albumsDao.getCollectionById('col-editor-test'))!;
     final photos =
-        await harness.repository.getPhotosForCollection('col-editor-test');
+        await harness.database.albumsDao.getPhotosForCollection('col-editor-test');
 
     await pumpAlbumScreen(
       tester,
@@ -120,9 +120,9 @@ void main() {
       (tester) async {
     final (controller, _) = await createControllerWithPhotos(2);
     final collection =
-        (await harness.repository.getCollectionById('col-editor-test'))!;
+        (await harness.database.albumsDao.getCollectionById('col-editor-test'))!;
     final photos =
-        await harness.repository.getPhotosForCollection('col-editor-test');
+        await harness.database.albumsDao.getPhotosForCollection('col-editor-test');
 
     await pumpAlbumScreen(
       tester,
@@ -186,9 +186,9 @@ void main() {
       (tester) async {
     final (controller, _) = await createControllerWithPhotos(1);
     final collection =
-        (await harness.repository.getCollectionById('col-editor-test'))!;
+        (await harness.database.albumsDao.getCollectionById('col-editor-test'))!;
     final photos =
-        await harness.repository.getPhotosForCollection('col-editor-test');
+        await harness.database.albumsDao.getPhotosForCollection('col-editor-test');
 
     await pumpAlbumScreen(
       tester,
@@ -243,9 +243,9 @@ void main() {
       (tester) async {
     final (controller, photoIds) = await createControllerWithPhotos(2);
     final collection =
-        (await harness.repository.getCollectionById('col-editor-test'))!;
+        (await harness.database.albumsDao.getCollectionById('col-editor-test'))!;
     final photos =
-        await harness.repository.getPhotosForCollection('col-editor-test');
+        await harness.database.albumsDao.getPhotosForCollection('col-editor-test');
 
     await pumpAlbumScreen(
       tester,
@@ -302,9 +302,9 @@ void main() {
       autoPopulate: false,
     );
     final collection =
-        (await harness.repository.getCollectionById('col-editor-test'))!;
+        (await harness.database.albumsDao.getCollectionById('col-editor-test'))!;
     final photos =
-        await harness.repository.getPhotosForCollection('col-editor-test');
+        await harness.database.albumsDao.getPhotosForCollection('col-editor-test');
 
     await pumpAlbumScreen(
       tester,
@@ -389,7 +389,7 @@ void main() {
         destinationTag: '苏州',
       );
       final collection =
-          (await harness.repository.getCollectionById('col-empty-test'))!;
+          (await harness.database.albumsDao.getCollectionById('col-empty-test'))!;
 
       final controller = AlbumStudioController(
         repository: harness.repository,

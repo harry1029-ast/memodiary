@@ -56,10 +56,17 @@ void main() {
     return file;
   }
 
-  group('AlbumRepository — CRUD, Watchers, Reordering & Cascade File Cleanup', () {
+  File writeSandboxMediaFile(String relativePath, List<int> bytes) {
+    final file = File(p.join(tempDir.path, relativePath));
+    file.parent.createSync(recursive: true);
+    file.writeAsBytesSync(bytes);
+    return file;
+  }
+
+  group('AlbumRepository — CRUD, Watchers, Reordering & DB-First Deletion', () {
     test('creates, updates, reorders, and reactively watches collections', () async {
       final emittedCounts = <int>[];
-      final sub = repository.watchAllCollections().listen((list) {
+      final sub = db.albumsDao.watchAllCollections().listen((list) {
         emittedCounts.add(list.length);
       });
       addTearDown(() => sub.cancel());
@@ -87,20 +94,23 @@ void main() {
       expect(col2.sortIndex, equals(1));
 
       // Reorder col_2 before col_1
-      await repository.reorderCollections(['col_2', 'col_1']);
-      final all = await repository.getAllCollections();
-      expect(all.map((collection) => collection.id).toList(), equals(['col_2', 'col_1']));
+      await db.albumsDao.reorderCollections(['col_2', 'col_1']);
+      final all = await db.albumsDao.getAllCollections();
+      expect(
+        all.map((collection) => collection.id).toList(),
+        equals(['col_2', 'col_1']),
+      );
       expect(all[0].sortIndex, equals(0));
       expect(all[1].sortIndex, equals(1));
 
       // Update collection metadata
-      await repository.updateCollection(
+      await db.albumsDao.updateCollection(
         const AlbumCollectionsCompanion(
           id: Value('col_1'),
           title: Value('江南烟雨集'),
         ),
       );
-      final updated = await repository.getCollectionById('col_1');
+      final updated = await db.albumsDao.getCollectionById('col_1');
       expect(updated!.title, equals('江南烟雨集'));
 
       await Future<void>.delayed(const Duration(milliseconds: 30));
@@ -148,18 +158,26 @@ void main() {
         expect(photo3.id, equals('photo_3'));
 
         // Verify strictly relative WebP and _thumb.webp paths
-        expect(MediaSandboxService.isStrictlyRelative(photo1.relativeImagePath), isTrue);
-        expect(MediaSandboxService.isStrictlyRelative(photo1.relativeThumbnailPath), isTrue);
+        expect(
+          MediaSandboxService.isStrictlyRelative(photo1.relativeImagePath),
+          isTrue,
+        );
+        expect(
+          MediaSandboxService.isStrictlyRelative(photo1.relativeThumbnailPath),
+          isTrue,
+        );
         expect(photo1.relativeThumbnailPath, endsWith('_thumb.webp'));
 
         // Verify physical files exist in media/ sandbox
-        final file1Full = await mediaService.getFileFromRelativePath(photo1.relativeImagePath);
-        final file1Thumb = await mediaService.getFileFromRelativePath(photo1.relativeThumbnailPath);
+        final file1Full =
+            await mediaService.getFileFromRelativePath(photo1.relativeImagePath);
+        final file1Thumb = await mediaService
+            .getFileFromRelativePath(photo1.relativeThumbnailPath);
         expect(file1Full.existsSync(), isTrue);
         expect(file1Thumb.existsSync(), isTrue);
 
         // Verify first photo automatically became the collection's coverImagePath
-        final refreshedCol = await repository.getCollectionById('col_trip');
+        final refreshedCol = await db.albumsDao.getCollectionById('col_trip');
         expect(refreshedCol!.coverImagePath, equals(photo1.relativeImagePath));
 
         // Verify synthesizeRouteSummary aggregates distinct locationTags in sortOrder
@@ -169,13 +187,14 @@ void main() {
         );
         expect(route, equals('杭州 → 乌镇 → 苏州'));
         expect(
-          (await repository.getCollectionById('col_trip'))!.routeSummary,
+          (await db.albumsDao.getCollectionById('col_trip'))!.routeSummary,
           equals('杭州 → 乌镇 → 苏州'),
         );
 
         // Reorder photos: photo_3 -> photo_1 -> photo_2
-        await repository.reorderPhotos('col_trip', ['photo_3', 'photo_1', 'photo_2']);
-        final ordered = await repository.getPhotosForCollection('col_trip');
+        await db.albumsDao
+            .reorderPhotos('col_trip', ['photo_3', 'photo_1', 'photo_2']);
+        final ordered = await db.albumsDao.getPhotosForCollection('col_trip');
         expect(
           ordered.map((photo) => photo.id).toList(),
           equals(['photo_3', 'photo_1', 'photo_2']),
@@ -185,23 +204,24 @@ void main() {
         expect(ordered[2].sortOrder, equals(2));
 
         // Re-synthesizing route reflects the new narrative order
-        final reorderedRoute = await repository.synthesizeRouteSummary('col_trip');
+        final reorderedRoute =
+            await repository.synthesizeRouteSummary('col_trip');
         expect(reorderedRoute, equals('苏州 → 杭州 → 乌镇'));
 
         // Update annotation on photo2
-        await repository.updatePhotoAnnotation(
+        await db.albumsDao.updatePhotoAnnotation(
           photoId: photo2.id,
           caption: const Value('乌镇摇橹船灯火'),
           locationTag: const Value('嘉兴 · 乌镇'),
         );
-        final updatedPhoto2 = await repository.getPhotoById(photo2.id);
+        final updatedPhoto2 = await db.albumsDao.getPhotoById(photo2.id);
         expect(updatedPhoto2!.caption, equals('乌镇摇橹船灯火'));
         expect(updatedPhoto2.locationTag, equals('嘉兴 · 乌镇'));
       },
     );
 
     test(
-      'deletePhoto and deleteCollection reclaim physical .webp and _thumb.webp files from disk without leaving orphans',
+      'deletePhoto reassigns or clears coverImagePath and deleteCollection reclaims unreferenced physical files',
       () async {
         await repository.createCollection(
           id: 'col_cleanup',
@@ -219,32 +239,199 @@ void main() {
           sourceFile: createSourcePhotoFile('island_2.jpg'),
         );
 
-        final p1ImgFile = await mediaService.getFileFromRelativePath(p1.relativeImagePath);
-        final p1ThumbFile = await mediaService.getFileFromRelativePath(p1.relativeThumbnailPath);
-        final p2ImgFile = await mediaService.getFileFromRelativePath(p2.relativeImagePath);
-        final p2ThumbFile = await mediaService.getFileFromRelativePath(p2.relativeThumbnailPath);
+        final p1ImgFile =
+            await mediaService.getFileFromRelativePath(p1.relativeImagePath);
+        final p1ThumbFile = await mediaService
+            .getFileFromRelativePath(p1.relativeThumbnailPath);
+        final p2ImgFile =
+            await mediaService.getFileFromRelativePath(p2.relativeImagePath);
+        final p2ThumbFile = await mediaService
+            .getFileFromRelativePath(p2.relativeThumbnailPath);
 
         expect(p1ImgFile.existsSync(), isTrue);
         expect(p1ThumbFile.existsSync(), isTrue);
         expect(p2ImgFile.existsSync(), isTrue);
         expect(p2ThumbFile.existsSync(), isTrue);
 
-        // 1. Delete single photo p_1 (which was also the auto-assigned cover photo)
+        // 1. Delete cover photo p_1 -> cover advances atomically to p_2
         await repository.deletePhoto('p_1');
         expect(p1ImgFile.existsSync(), isFalse);
         expect(p1ThumbFile.existsSync(), isFalse);
-        expect(await repository.getPhotoById('p_1'), isNull);
+        expect(await db.albumsDao.getPhotoById('p_1'), isNull);
 
-        // Cover photo should automatically advance to p_2
-        final colAfterP1Delete = await repository.getCollectionById('col_cleanup');
+        final colAfterP1Delete =
+            await db.albumsDao.getCollectionById('col_cleanup');
         expect(colAfterP1Delete!.coverImagePath, equals(p2.relativeImagePath));
 
-        // 2. Delete entire collection -> p_2 physical files and DB rows must be purged
-        await repository.deleteCollection('col_cleanup');
+        // 2. Delete last remaining cover photo p_2 -> cover clears to null
+        await repository.deletePhoto('p_2');
         expect(p2ImgFile.existsSync(), isFalse);
         expect(p2ThumbFile.existsSync(), isFalse);
-        expect(await repository.getCollectionById('col_cleanup'), isNull);
-        expect(await repository.getPhotosForCollection('col_cleanup'), isEmpty);
+        expect(await db.albumsDao.getPhotoById('p_2'), isNull);
+        final colAfterP2Delete =
+            await db.albumsDao.getCollectionById('col_cleanup');
+        expect(colAfterP2Delete!.coverImagePath, isNull);
+
+        // 3. Re-add photo and delete entire collection -> physical files and DB rows purged
+        final p3 = await repository.ingestAndAddPhoto(
+          id: 'p_3',
+          collectionId: 'col_cleanup',
+          sourceFile: createSourcePhotoFile('island_3.jpg'),
+        );
+        final p3ImgFile =
+            await mediaService.getFileFromRelativePath(p3.relativeImagePath);
+        final p3ThumbFile = await mediaService
+            .getFileFromRelativePath(p3.relativeThumbnailPath);
+
+        await repository.deleteCollection('col_cleanup');
+        expect(p3ImgFile.existsSync(), isFalse);
+        expect(p3ThumbFile.existsSync(), isFalse);
+        expect(await db.albumsDao.getCollectionById('col_cleanup'), isNull);
+        expect(
+          await db.albumsDao.getPhotosForCollection('col_cleanup'),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
+      'deletePhoto and deleteCollection preserve paths shared with other collections, album photos, or diary mediaAttachments',
+      () async {
+        final sharedWithEntryFile =
+            writeSandboxMediaFile('media/shared_entry.webp', [1, 2, 3]);
+        final sharedWithOtherAlbumFile =
+            writeSandboxMediaFile('media/shared_album.webp', [4, 5, 6]);
+        final sharedWithCoverFile =
+            writeSandboxMediaFile('media/shared_cover.webp', [7, 8, 9]);
+        final uniqueThumb1 =
+            writeSandboxMediaFile('media/unique_thumb_1.webp', [10]);
+        final uniqueFull2 =
+            writeSandboxMediaFile('media/unique_full_2.webp', [11]);
+        final uniqueThumb2 =
+            writeSandboxMediaFile('media/unique_thumb_2.webp', [12]);
+
+        await db.entriesDao.createEntry(
+          EntriesCompanion.insert(
+            id: 'entry_holder',
+            notebookId: 'notebook_default',
+            templateId: 'template_minimalist_white',
+            contentDelta: '[{"insert":"Shared\\n"}]',
+            plainText: 'Shared',
+            entryDate: DateTime(2026, 6, 1),
+          ),
+        );
+        await db.mediaOcrDao.attachMediaToEntry(
+          id: 'att_shared',
+          entryId: 'entry_holder',
+          relativePath: 'media/shared_entry.webp',
+        );
+
+        await repository.createCollection(
+          id: 'col_holder',
+          title: 'Holder Collection',
+          coverImagePath: 'media/shared_cover.webp',
+        );
+        await repository.addPhoto(
+          id: 'photo_holder',
+          collectionId: 'col_holder',
+          relativeImagePath: 'media/shared_album.webp',
+          relativeThumbnailPath: 'media/holder_thumb.webp',
+        );
+
+        await repository.createCollection(
+          id: 'col_target',
+          title: 'Target Collection',
+          coverImagePath: 'media/shared_cover.webp',
+        );
+        await repository.addPhoto(
+          id: 'photo_shared_entry',
+          collectionId: 'col_target',
+          relativeImagePath: 'media/shared_entry.webp',
+          relativeThumbnailPath: 'media/unique_thumb_1.webp',
+          sortOrder: 0,
+        );
+        await repository.addPhoto(
+          id: 'photo_shared_album',
+          collectionId: 'col_target',
+          relativeImagePath: 'media/shared_album.webp',
+          relativeThumbnailPath: 'media/unique_thumb_2.webp',
+          sortOrder: 1,
+        );
+        await repository.addPhoto(
+          id: 'photo_unique',
+          collectionId: 'col_target',
+          relativeImagePath: 'media/unique_full_2.webp',
+          relativeThumbnailPath: 'media/unique_thumb_2.webp',
+          sortOrder: 2,
+        );
+
+        // Delete photo_shared_entry: unique thumb deleted, shared entry image preserved
+        await repository.deletePhoto('photo_shared_entry');
+        expect(await db.albumsDao.getPhotoById('photo_shared_entry'), isNull);
+        expect(uniqueThumb1.existsSync(), isFalse);
+        expect(sharedWithEntryFile.existsSync(), isTrue);
+
+        // Delete col_target: unique full & thumb deleted; shared album photo and shared cover preserved
+        await repository.deleteCollection('col_target');
+        expect(await db.albumsDao.getCollectionById('col_target'), isNull);
+        expect(uniqueFull2.existsSync(), isFalse);
+        expect(uniqueThumb2.existsSync(), isFalse);
+        expect(sharedWithOtherAlbumFile.existsSync(), isTrue);
+        expect(sharedWithCoverFile.existsSync(), isTrue);
+        expect(sharedWithEntryFile.existsSync(), isTrue);
+      },
+    );
+
+    test(
+      'DB-first failure safety: physical files stay untouched when SQLite delete fails',
+      () async {
+        await repository.createCollection(
+          id: 'col_fail_guard',
+          title: 'Failure Safety Album',
+        );
+        final photo = await repository.ingestAndAddPhoto(
+          id: 'photo_fail_guard',
+          collectionId: 'col_fail_guard',
+          sourceFile: createSourcePhotoFile('fail_guard.jpg'),
+        );
+
+        final fullFile =
+            await mediaService.getFileFromRelativePath(photo.relativeImagePath);
+        final thumbFile = await mediaService
+            .getFileFromRelativePath(photo.relativeThumbnailPath);
+        expect(fullFile.existsSync(), isTrue);
+        expect(thumbFile.existsSync(), isTrue);
+
+        // Block album_photos deletion inside SQLite
+        await db.customStatement(
+          "CREATE TRIGGER block_album_photo_delete BEFORE DELETE ON album_photos BEGIN SELECT RAISE(ABORT, 'simulated sqlite photo delete failure'); END;",
+        );
+
+        await expectLater(
+          () => repository.deletePhoto('photo_fail_guard'),
+          throwsA(anything),
+        );
+        expect(fullFile.existsSync(), isTrue);
+        expect(thumbFile.existsSync(), isTrue);
+        expect(await db.albumsDao.getPhotoById('photo_fail_guard'), isNotNull);
+
+        await expectLater(
+          () => repository.deleteCollection('col_fail_guard'),
+          throwsA(anything),
+        );
+        expect(fullFile.existsSync(), isTrue);
+        expect(thumbFile.existsSync(), isTrue);
+        expect(
+          await db.albumsDao.getCollectionById('col_fail_guard'),
+          isNotNull,
+        );
+
+        // Remove failure trigger and confirm normal DB-first delete succeeds cleanly
+        await db.customStatement('DROP TRIGGER block_album_photo_delete;');
+        await repository.deleteCollection('col_fail_guard');
+        expect(fullFile.existsSync(), isFalse);
+        expect(thumbFile.existsSync(), isFalse);
+        expect(await db.albumsDao.getCollectionById('col_fail_guard'), isNull);
       },
     );
 
@@ -269,7 +456,7 @@ void main() {
           locationTag: '乌镇',
         );
 
-        final countsMap = await repository.watchPhotoCounts().first;
+        final countsMap = await db.albumsDao.watchPhotoCounts().first;
         expect(countsMap['col_sync'], equals(2));
 
         // 1. Auto-route sync: collection initially has null routeSummary -> editing p2 location auto-synthesizes route
@@ -277,7 +464,7 @@ void main() {
           photoId: p2.id,
           locationTag: const Value('乌镇 · 西栅'),
         );
-        var col = await repository.getCollectionById('col_sync');
+        var col = await db.albumsDao.getCollectionById('col_sync');
         expect(col!.routeSummary, equals('杭州 → 乌镇 · 西栅'));
 
         // 2. Subsequent edit while route is still equal to synthesized route updates it again
@@ -285,11 +472,11 @@ void main() {
           photoId: p1.id,
           locationTag: const Value('杭州 · 西湖'),
         );
-        col = await repository.getCollectionById('col_sync');
+        col = await db.albumsDao.getCollectionById('col_sync');
         expect(col!.routeSummary, equals('杭州 · 西湖 → 乌镇 · 西栅'));
 
         // 3. Manual override: user sets custom routeSummary -> subsequent photo location edit preserves manual route
-        await repository.updateCollection(
+        await db.albumsDao.updateCollection(
           const AlbumCollectionsCompanion(
             id: Value('col_sync'),
             routeSummary: Value('自定义江南环线'),
@@ -299,12 +486,12 @@ void main() {
           photoId: p2.id,
           locationTag: const Value('苏州 · 拙政园'),
         );
-        col = await repository.getCollectionById('col_sync');
+        col = await db.albumsDao.getCollectionById('col_sync');
         expect(col!.routeSummary, equals('自定义江南环线'));
 
         // 4. setCollectionCover switches cover to p2
-        await repository.setCollectionCover('col_sync', p2.id);
-        col = await repository.getCollectionById('col_sync');
+        await db.albumsDao.setCollectionCover('col_sync', p2.id);
+        col = await db.albumsDao.getCollectionById('col_sync');
         expect(col!.coverImagePath, equals(p2.relativeImagePath));
       },
     );

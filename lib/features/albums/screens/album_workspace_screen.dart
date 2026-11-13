@@ -73,8 +73,8 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
           repository: _repository,
           mediaService: _media,
         );
-    _collectionStream = _repository.watchCollectionById(widget.collectionId);
-    _photosStream = _repository.watchPhotosForCollection(widget.collectionId);
+    _collectionStream = _db.albumsDao.watchCollectionById(widget.collectionId);
+    _photosStream = _db.albumsDao.watchPhotosForCollection(widget.collectionId);
   }
 
   Future<void> _handleEditMetadata(AlbumCollection collection) async {
@@ -84,7 +84,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
     );
     if (formResult == null || !mounted) return;
 
-    await _repository.updateCollection(
+    await _db.albumsDao.updateCollection(
       AlbumCollectionsCompanion(
         id: Value(collection.id),
         title: Value(formResult.title),
@@ -188,7 +188,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
         currentRoute.isEmpty ||
         currentRoute == preSynthesized;
 
-    await _repository.reorderPhotos(
+    await _db.albumsDao.reorderPhotos(
       widget.collectionId,
       reordered.map((photo) => photo.id).toList(),
     );

@@ -1,14 +1,18 @@
 import 'dart:io';
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:uuid/uuid.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../models/album_studio_models.dart';
 import '../services/album_layout_engine.dart';
 
-/// Repository encapsulating travel memory album (`AlbumCollections` & `AlbumPhotos`)
-/// relational queries, reactive Drift streams, batch reordering, route trajectory
-/// synthesis, and physical sandboxed WebP media cleanup.
+/// Repository orchestrating cross-module travel memory album workflows across
+/// [AppDatabase.albumsDao], [MediaSandboxService], and [AlbumLayoutEngine]:
+/// photo sandboxing, DB-first cascade deletion, route trajectory synthesis,
+/// and Photobook studio document persistence.
+///
+/// Pure SQLite reads, streams, and single-table updates live directly on
+/// [AlbumsDao] (`database.albumsDao`).
 class AlbumRepository {
   final AppDatabase database;
   final MediaSandboxService mediaService;
@@ -19,10 +23,6 @@ class AlbumRepository {
     required this.mediaService,
     Uuid? uuid,
   }) : _uuid = uuid ?? const Uuid();
-
-  // ===========================================================================
-  // Album Collection Operations
-  // ===========================================================================
 
   /// Creates and persists a new travel album collection.
   Future<AlbumCollection> createCollection({
@@ -41,8 +41,8 @@ class AlbumRepository {
   }) async {
     final collectionId = id ?? _uuid.v4();
     final now = DateTime.now();
-
-    final resolvedSortIndex = sortIndex ?? await _nextCollectionSortIndex();
+    final resolvedSortIndex =
+        sortIndex ?? await database.albumsDao.nextCollectionSortIndex();
 
     final companion = AlbumCollectionsCompanion.insert(
       id: collectionId,
@@ -61,153 +61,19 @@ class AlbumRepository {
       updatedAt: Value(now),
     );
 
-    await database.into(database.albumCollections).insert(companion);
-    return (await getCollectionById(collectionId))!;
+    return database.albumsDao.insertCollection(companion);
   }
 
-  Future<int> _nextCollectionSortIndex() async {
-    final existing = await (database.select(database.albumCollections)
-          ..orderBy([(tbl) => OrderingTerm.desc(tbl.sortIndex)])
-          ..limit(1))
-        .getSingleOrNull();
-    return existing != null ? existing.sortIndex + 1 : 0;
+  /// Commits SQLite deletion of [collectionId] and all its photos first, then
+  /// removes unreferenced physical `.webp` files from the `media/` sandbox.
+  Future<void> deleteCollection(String collectionId) async {
+    final orphanPaths =
+        await database.albumsDao.deleteCollectionRecords(collectionId);
+    await mediaService.deleteMediaPaths(orphanPaths);
   }
-
-  /// Updates an existing collection's metadata.
-  Future<void> updateCollection(AlbumCollectionsCompanion companion) async {
-    if (!companion.id.present) {
-      throw ArgumentError('Collection ID must be present when updating.');
-    }
-    final updatedCompanion = companion.copyWith(
-      updatedAt: Value(DateTime.now()),
-    );
-    await (database.update(database.albumCollections)
-          ..where((tbl) => tbl.id.equals(companion.id.value)))
-        .write(updatedCompanion);
-  }
-
-  /// Retrieves a single collection by its [id], or null if not found.
-  Future<AlbumCollection?> getCollectionById(String id) {
-    return (database.select(database.albumCollections)
-          ..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
-
-  /// Reactive stream of a single collection by its [id].
-  Stream<AlbumCollection?> watchCollectionById(String id) {
-    return (database.select(database.albumCollections)
-          ..where((tbl) => tbl.id.equals(id)))
-        .watchSingleOrNull();
-  }
-
-  /// Retrieves all travel album collections ordered by `sortIndex ASC, createdAt DESC`.
-  Future<List<AlbumCollection>> getAllCollections() {
-    return (database.select(database.albumCollections)
-          ..orderBy([
-            (tbl) => OrderingTerm.asc(tbl.sortIndex),
-            (tbl) => OrderingTerm.desc(tbl.createdAt),
-          ]))
-        .get();
-  }
-
-  /// Retrieves the most recently created travel album collection, or null if none exist.
-  Future<AlbumCollection?> getLatestCollection() {
-    return (database.select(database.albumCollections)
-          ..orderBy([(table) => OrderingTerm.desc(table.createdAt)])
-          ..limit(1))
-        .getSingleOrNull();
-  }
-
-  /// Reactive stream of all travel album collections ordered by `sortIndex ASC, createdAt DESC`.
-  Stream<List<AlbumCollection>> watchAllCollections() {
-    return (database.select(database.albumCollections)
-          ..orderBy([
-            (tbl) => OrderingTerm.asc(tbl.sortIndex),
-            (tbl) => OrderingTerm.desc(tbl.createdAt),
-          ]))
-        .watch();
-  }
-
-  /// Reactive stream emitting the total photo count for [collectionId].
-  Stream<int> watchPhotoCountForCollection(String collectionId) {
-    final countExp = database.albumPhotos.id.count();
-    final query = database.selectOnly(database.albumPhotos)
-      ..addColumns([countExp])
-      ..where(database.albumPhotos.collectionId.equals(collectionId));
-    return query.map((row) => row.read(countExp) ?? 0).watchSingle();
-  }
-
-  /// Reactive stream emitting a map of `collectionId -> photoCount` across all collections
-  /// using a single `GROUP BY` query.
-  Stream<Map<String, int>> watchPhotoCounts() {
-    final collectionIdCol = database.albumPhotos.collectionId;
-    final countExp = database.albumPhotos.id.count();
-    final query = database.selectOnly(database.albumPhotos)
-      ..addColumns([collectionIdCol, countExp])
-      ..groupBy([collectionIdCol]);
-
-    return query.watch().map((rows) {
-      final counts = <String, int>{};
-      for (final row in rows) {
-        final colId = row.read(collectionIdCol);
-        final count = row.read(countExp) ?? 0;
-        if (colId != null) {
-          counts[colId] = count;
-        }
-      }
-      return counts;
-    });
-  }
-
-  /// Sets [photoId]'s `relativeImagePath` as the `coverImagePath` of [collectionId].
-  Future<void> setCollectionCover(String collectionId, String photoId) async {
-    final photo = await getPhotoById(photoId);
-    if (photo == null || photo.collectionId != collectionId) {
-      throw StateError(
-        'Photo $photoId does not belong to collection $collectionId.',
-      );
-    }
-    await updateCollection(
-      AlbumCollectionsCompanion(
-        id: Value(collectionId),
-        coverImagePath: Value(photo.relativeImagePath),
-      ),
-    );
-  }
-
-  /// Batch-updates `sortIndex` across collections inside a single transaction.
-  Future<void> reorderCollections(List<String> orderedCollectionIds) async {
-    final now = DateTime.now();
-    await database.transaction(() async {
-      for (var index = 0; index < orderedCollectionIds.length; index++) {
-        final collectionId = orderedCollectionIds[index];
-        await (database.update(database.albumCollections)
-              ..where((tbl) => tbl.id.equals(collectionId)))
-            .write(
-          AlbumCollectionsCompanion(
-            sortIndex: Value(index),
-            updatedAt: Value(now),
-          ),
-        );
-      }
-    });
-  }
-
-  /// Deletes [collectionId] after purging all associated physical `.webp` full-res,
-  /// thumbnail, and cover files from the `media/` sandbox directory.
-  Future<void> deleteCollection(String collectionId) {
-    return mediaService.deleteCollectionAndMedia(
-      collectionId: collectionId,
-      database: database,
-    );
-  }
-
-  // ===========================================================================
-  // Album Photo Operations
-  // ===========================================================================
 
   /// Sandboxes [sourceFile] (generating 1600px full-res WebP + 300px thumbnail WebP)
-  /// and inserts the resulting `AlbumPhoto` into [collectionId].
+  /// and inserts the resulting [AlbumPhoto] into [collectionId].
   Future<AlbumPhoto> ingestAndAddPhoto({
     required String collectionId,
     required File sourceFile,
@@ -231,8 +97,8 @@ class AlbumRepository {
     );
   }
 
-  /// Inserts a pre-sandboxed photo record into [collectionId].
-  /// Automatically assigns `coverImagePath` on the parent collection if it has none.
+  /// Inserts a pre-sandboxed photo record into [collectionId], assigning
+  /// `coverImagePath` on the parent collection if it currently has none.
   Future<AlbumPhoto> addPhoto({
     String? id,
     required String collectionId,
@@ -247,168 +113,38 @@ class AlbumRepository {
     final photoId = id ?? _uuid.v4();
     final now = DateTime.now();
     final resolvedSortOrder =
-        sortOrder ?? await _nextPhotoSortOrder(collectionId);
+        sortOrder ?? await database.albumsDao.nextPhotoSortOrder(collectionId);
 
-    await database.transaction(() async {
-      await database.into(database.albumPhotos).insert(
-            AlbumPhotosCompanion.insert(
-              id: photoId,
-              collectionId: collectionId,
-              relativeImagePath: relativeImagePath,
-              relativeThumbnailPath: relativeThumbnailPath,
-              caption: Value(caption),
-              locationTag: Value(locationTag),
-              shotAt: Value(shotAt),
-              sortOrder: Value(resolvedSortOrder),
-              aspectRatio: Value(aspectRatio),
-              createdAt: Value(now),
-            ),
-          );
-
-      final collection = await getCollectionById(collectionId);
-      if (collection != null &&
-          (collection.coverImagePath == null ||
-              collection.coverImagePath!.isEmpty)) {
-        await (database.update(database.albumCollections)
-              ..where((tbl) => tbl.id.equals(collectionId)))
-            .write(
-          AlbumCollectionsCompanion(
-            coverImagePath: Value(relativeImagePath),
-            updatedAt: Value(now),
-          ),
-        );
-      } else {
-        await (database.update(database.albumCollections)
-              ..where((tbl) => tbl.id.equals(collectionId)))
-            .write(
-          AlbumCollectionsCompanion(
-            updatedAt: Value(now),
-          ),
-        );
-      }
-    });
-
-    return (await getPhotoById(photoId))!;
+    return database.albumsDao.addPhoto(
+      AlbumPhotosCompanion.insert(
+        id: photoId,
+        collectionId: collectionId,
+        relativeImagePath: relativeImagePath,
+        relativeThumbnailPath: relativeThumbnailPath,
+        caption: Value(caption),
+        locationTag: Value(locationTag),
+        shotAt: Value(shotAt),
+        sortOrder: Value(resolvedSortOrder),
+        aspectRatio: Value(aspectRatio),
+        createdAt: Value(now),
+      ),
+    );
   }
 
-  /// Inserts multiple photo companions into [collectionId] in a single atomic batch.
-  /// Automatically assigns `coverImagePath` on the parent collection if it has none.
-  Future<List<AlbumPhoto>> addPhotosBatch(
-    String collectionId,
-    List<AlbumPhotosCompanion> photos,
-  ) async {
-    if (photos.isEmpty) return const [];
-    final now = DateTime.now();
-
-    await database.transaction(() async {
-      await database.batch((batch) {
-        batch.insertAll(database.albumPhotos, photos);
-      });
-
-      final collection = await getCollectionById(collectionId);
-      if (collection != null) {
-        final needsCover = collection.coverImagePath == null ||
-            collection.coverImagePath!.isEmpty;
-        final firstCover =
-            needsCover ? photos.first.relativeImagePath.value : null;
-        await (database.update(database.albumCollections)
-              ..where((tbl) => tbl.id.equals(collectionId)))
-            .write(
-          AlbumCollectionsCompanion(
-            coverImagePath: needsCover
-                ? Value(firstCover)
-                : const Value.absent(),
-            updatedAt: Value(now),
-          ),
-        );
-      }
-    });
-
-    return getPhotosForCollection(collectionId);
-  }
-
-  Future<int> _nextPhotoSortOrder(String collectionId) async {
-    final existing = await (database.select(database.albumPhotos)
-          ..where((tbl) => tbl.collectionId.equals(collectionId))
-          ..orderBy([(tbl) => OrderingTerm.desc(tbl.sortOrder)])
-          ..limit(1))
-        .getSingleOrNull();
-    return existing != null ? existing.sortOrder + 1 : 0;
-  }
-
-  /// Retrieves a single photo by its [id], or null if not found.
-  Future<AlbumPhoto?> getPhotoById(String id) {
-    return (database.select(database.albumPhotos)
-          ..where((tbl) => tbl.id.equals(id)))
-        .getSingleOrNull();
-  }
-
-  /// Retrieves all photos in [collectionId] ordered by `sortOrder ASC, createdAt ASC`.
-  Future<List<AlbumPhoto>> getPhotosForCollection(String collectionId) {
-    return (database.select(database.albumPhotos)
-          ..where((tbl) => tbl.collectionId.equals(collectionId))
-          ..orderBy([
-            (tbl) => OrderingTerm.asc(tbl.sortOrder),
-            (tbl) => OrderingTerm.asc(tbl.createdAt),
-          ]))
-        .get();
-  }
-
-  /// Reactive stream of all photos in [collectionId] ordered by `sortOrder ASC, createdAt ASC`.
-  Stream<List<AlbumPhoto>> watchPhotosForCollection(String collectionId) {
-    return (database.select(database.albumPhotos)
-          ..where((tbl) => tbl.collectionId.equals(collectionId))
-          ..orderBy([
-            (tbl) => OrderingTerm.asc(tbl.sortOrder),
-            (tbl) => OrderingTerm.asc(tbl.createdAt),
-          ]))
-        .watch();
-  }
-
-  /// Updates per-photo notation fields (`caption`, `locationTag`, `shotAt`).
-  Future<void> updatePhotoAnnotation({
-    required String photoId,
-    Value<String?> caption = const Value.absent(),
-    Value<String?> locationTag = const Value.absent(),
-    Value<DateTime?> shotAt = const Value.absent(),
-  }) async {
-    final photo = await getPhotoById(photoId);
-    if (photo == null) return;
-
-    await database.transaction(() async {
-      await (database.update(database.albumPhotos)
-            ..where((tbl) => tbl.id.equals(photoId)))
-          .write(
-        AlbumPhotosCompanion(
-          caption: caption,
-          locationTag: locationTag,
-          shotAt: shotAt,
-        ),
-      );
-
-      await (database.update(database.albumCollections)
-            ..where((tbl) => tbl.id.equals(photo.collectionId)))
-          .write(
-        AlbumCollectionsCompanion(
-          updatedAt: Value(DateTime.now()),
-        ),
-      );
-    });
-  }
-
-  /// Updates a photo's annotation (`caption`, `locationTag`, `shotAt`) and automatically
-  /// regenerates the parent collection's `routeSummary` if the route was previously empty
-  /// or auto-synthesized (preserving manual user overrides).
+  /// Updates a photo's annotation (`caption`, `locationTag`, `shotAt`) and
+  /// automatically regenerates the parent collection's `routeSummary` if the
+  /// route was previously empty or auto-synthesized (preserving manual overrides).
   Future<void> updatePhotoAnnotationAndSyncRoute({
     required String photoId,
     Value<String?> caption = const Value.absent(),
     Value<String?> locationTag = const Value.absent(),
     Value<DateTime?> shotAt = const Value.absent(),
   }) async {
-    final photo = await getPhotoById(photoId);
+    final photo = await database.albumsDao.getPhotoById(photoId);
     if (photo == null) return;
 
-    final collection = await getCollectionById(photo.collectionId);
+    final collection =
+        await database.albumsDao.getCollectionById(photo.collectionId);
     final preEditSynthesized = await synthesizeRouteSummary(photo.collectionId);
 
     final currentRoute = collection?.routeSummary?.trim();
@@ -416,7 +152,7 @@ class AlbumRepository {
         currentRoute.isEmpty ||
         currentRoute == preEditSynthesized;
 
-    await updatePhotoAnnotation(
+    await database.albumsDao.updatePhotoAnnotation(
       photoId: photoId,
       caption: caption,
       locationTag: locationTag,
@@ -431,43 +167,11 @@ class AlbumRepository {
     }
   }
 
-  /// Batch-updates `sortOrder` (`0..N-1`) for photos in [collectionId] inside a transaction.
-  Future<void> reorderPhotos(
-    String collectionId,
-    List<String> orderedPhotoIds,
-  ) async {
-    final now = DateTime.now();
-    await database.transaction(() async {
-      for (var index = 0; index < orderedPhotoIds.length; index++) {
-        final photoId = orderedPhotoIds[index];
-        await (database.update(database.albumPhotos)
-              ..where((tbl) =>
-                  tbl.id.equals(photoId) &
-                  tbl.collectionId.equals(collectionId)))
-            .write(
-          AlbumPhotosCompanion(
-            sortOrder: Value(index),
-          ),
-        );
-      }
-
-      await (database.update(database.albumCollections)
-            ..where((tbl) => tbl.id.equals(collectionId)))
-          .write(
-        AlbumCollectionsCompanion(
-          updatedAt: Value(now),
-        ),
-      );
-    });
-  }
-
-  /// Deletes a single [photoId] and removes its physical `.webp` full-res and thumbnail
-  /// files from the `media/` sandbox directory.
-  Future<void> deletePhoto(String photoId) {
-    return mediaService.deletePhotoAndMedia(
-      photoId: photoId,
-      database: database,
-    );
+  /// Commits SQLite deletion of [photoId] (with atomic cover reassignment)
+  /// first, then removes unreferenced physical `.webp` files from disk.
+  Future<void> deletePhoto(String photoId) async {
+    final orphanPaths = await database.albumsDao.deletePhotoRecords(photoId);
+    await mediaService.deleteMediaPaths(orphanPaths);
   }
 
   /// Synthesizes a waypoint trajectory string (e.g. `"杭州 → 乌镇 → 苏州"`) from
@@ -477,7 +181,8 @@ class AlbumRepository {
     String collectionId, {
     bool persistToCollection = false,
   }) async {
-    final photos = await getPhotosForCollection(collectionId);
+    final photos =
+        await database.albumsDao.getPhotosForCollection(collectionId);
     final waypoints = <String>[];
 
     for (final photo in photos) {
@@ -491,7 +196,7 @@ class AlbumRepository {
     final summary = waypoints.isEmpty ? null : waypoints.join(' → ');
 
     if (persistToCollection) {
-      await updateCollection(
+      await database.albumsDao.updateCollection(
         AlbumCollectionsCompanion(
           id: Value(collectionId),
           routeSummary: Value(summary),
@@ -502,16 +207,12 @@ class AlbumRepository {
     return summary;
   }
 
-  // ===========================================================================
-  // Studio Document Persistence
-  // ===========================================================================
-
   /// Persists [document] as `studio_layout_json` and syncs `theme_id` on [collectionId].
   Future<void> saveStudioDocument(
     String collectionId,
     AlbumStudioDocument document,
   ) async {
-    await updateCollection(
+    await database.albumsDao.updateCollection(
       AlbumCollectionsCompanion(
         id: Value(collectionId),
         studioLayoutJson: Value(document.toJsonString()),
@@ -525,12 +226,13 @@ class AlbumRepository {
   Future<AlbumStudioDocument> loadOrSynthesizeStudioDocument(
     String collectionId,
   ) async {
-    final collection = await getCollectionById(collectionId);
+    final collection = await database.albumsDao.getCollectionById(collectionId);
     if (collection == null) {
       throw StateError('Collection $collectionId not found.');
     }
 
-    final photos = await getPhotosForCollection(collectionId);
+    final photos =
+        await database.albumsDao.getPhotosForCollection(collectionId);
     return AlbumLayoutEngine.resolveOrCompileDocument(
       collection: collection,
       photos: photos,
@@ -539,4 +241,3 @@ class AlbumRepository {
     );
   }
 }
-

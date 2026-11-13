@@ -49,7 +49,7 @@ class IngestionResult {
 /// Therefore, this service processes photos sequentially on the caller isolate (preventing
 /// OOM memory spikes from decoding 50 high-res photos simultaneously), yields between
 /// items so UI animations stay at 60 FPS, and commits all generated records in a single
-/// atomic `AlbumRepository.addPhotosBatch` SQLite transaction.
+/// atomic `AlbumsDao.addPhotosBatch` SQLite transaction.
 class AlbumIngestionService {
   static const int maxBatchSize = 50;
 
@@ -104,7 +104,8 @@ class AlbumIngestionService {
         wasTruncated ? sources.sublist(0, maxBatchSize) : sources;
     final total = cappedSources.length;
 
-    final existingPhotos = await repository.getPhotosForCollection(collectionId);
+    final existingPhotos = await repository.database.albumsDao
+        .getPhotosForCollection(collectionId);
     var nextSortOrder = existingPhotos.isEmpty
         ? 0
         : existingPhotos
@@ -176,7 +177,10 @@ class AlbumIngestionService {
     }
 
     if (pendingCompanions.isNotEmpty) {
-      await repository.addPhotosBatch(collectionId, pendingCompanions);
+      await repository.database.albumsDao.addPhotosBatch(
+        collectionId,
+        pendingCompanions,
+      );
     }
 
     onProgress?.call(

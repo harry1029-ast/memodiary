@@ -49,7 +49,7 @@ void main() {
       expect(progressEvents.last.isDone, isTrue);
       expect(progressEvents.last.processed, equals(3));
 
-      final photos = await harness.repository.getPhotosForCollection('col_batch');
+      final photos = await harness.database.albumsDao.getPhotosForCollection('col_batch');
       expect(photos.length, equals(3));
       expect(photos[0].sortOrder, equals(0));
       expect(photos[1].sortOrder, equals(1));
@@ -57,7 +57,7 @@ void main() {
       expect(photos[0].shotAt, equals(exifTime));
       expect(photos[1].shotAt, equals(fallbackTime));
 
-      final updatedCol = await harness.repository.getCollectionById('col_batch');
+      final updatedCol = await harness.database.albumsDao.getCollectionById('col_batch');
       expect(updatedCol!.coverImagePath, equals(photos[0].relativeImagePath));
     });
 
@@ -79,7 +79,7 @@ void main() {
       expect(result.imported, equals(2));
       expect(result.failed, equals(1));
 
-      final photos = await harness.repository.getPhotosForCollection('col_partial');
+      final photos = await harness.database.albumsDao.getPhotosForCollection('col_partial');
       expect(photos.length, equals(2));
     });
 
@@ -107,7 +107,7 @@ void main() {
       expect(result.wasCancelled, isTrue);
       expect(result.imported, equals(2));
 
-      final savedPhotos = await harness.repository.getPhotosForCollection('col_cancel');
+      final savedPhotos = await harness.database.albumsDao.getPhotosForCollection('col_cancel');
       expect(savedPhotos.length, equals(2));
     });
 
@@ -129,7 +129,7 @@ void main() {
 
       expect(result.wasTruncatedToMax, isTrue);
       expect(result.imported, equals(50));
-      final savedPhotos = await harness.repository.getPhotosForCollection('col_cap');
+      final savedPhotos = await harness.database.albumsDao.getPhotosForCollection('col_cap');
       expect(savedPhotos.length, equals(50));
     });
   });

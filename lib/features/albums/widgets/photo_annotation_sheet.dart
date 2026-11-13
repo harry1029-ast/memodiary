@@ -123,7 +123,7 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
   }
 
   Future<void> _handleSetCover() async {
-    await widget.repository.setCollectionCover(
+    await widget.repository.database.albumsDao.setCollectionCover(
       widget.collection.id,
       widget.photo.id,
     );

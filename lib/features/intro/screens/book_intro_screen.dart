@@ -4,7 +4,6 @@ import '../../../core/calendar/lunar_calendar.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/services/ocr/ocr_queue_manager.dart';
-import '../../albums/data/album_repository.dart';
 import '../../albums/screens/album_collections_screen.dart';
 import '../../timeline/screens/timeline_screen.dart';
 import '../models/book_intro_folio_data.dart';
@@ -18,7 +17,6 @@ import '../widgets/living_ink_background_painter.dart';
 class BookIntroScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
-  final AlbumRepository? albumRepository;
   final bool startOpened;
   final OcrQueueManager? ocrQueueManager;
 
@@ -29,7 +27,6 @@ class BookIntroScreen extends StatefulWidget {
     super.key,
     required this.database,
     required this.mediaService,
-    this.albumRepository,
     this.startOpened = false,
     this.ocrQueueManager,
     this.clock,
@@ -47,9 +44,6 @@ class _BookIntroScreenState extends State<BookIntroScreen>
   // Controller driving the 3D book leaf opening momentum
   late final AnimationController _bookFlipController;
 
-  // Decoupled repository for travel album metadata
-  late final AlbumRepository _albumRepository;
-
   double _swipeProgress = 0.0; // 0.0 (Closed) -> 1.0 (Open)
   int _lastHapticMilestone = 0;
   double _dragStartX = 0.0;
@@ -61,12 +55,6 @@ class _BookIntroScreenState extends State<BookIntroScreen>
   @override
   void initState() {
     super.initState();
-
-    _albumRepository = widget.albumRepository ??
-        AlbumRepository(
-          database: widget.database,
-          mediaService: widget.mediaService,
-        );
 
     final todayLunar = LunarCalendar.fromSolar((widget.clock ?? DateTime.now)());
     _folioData = _folioData.copyWith(
@@ -93,13 +81,13 @@ class _BookIntroScreenState extends State<BookIntroScreen>
 
     _swipeProgress = widget.startOpened ? 1.0 : 0.0;
 
-    // 3. Load live travel album context via repository
+    // 3. Load live travel album context via AlbumsDao
     _loadLatestTravelAlbum();
   }
 
   Future<void> _loadLatestTravelAlbum() async {
     try {
-      final latest = await _albumRepository.getLatestCollection();
+      final latest = await widget.database.albumsDao.getLatestCollection();
 
       if (mounted && latest != null) {
         setState(() {
