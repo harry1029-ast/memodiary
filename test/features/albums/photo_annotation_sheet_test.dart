@@ -32,7 +32,7 @@ void main() {
       final photos = [p1, p2];
 
       final refreshedCollection =
-          (await harness.repository.getCollectionById(collection.id))!;
+          (await harness.database.albumsDao.getCollectionById(collection.id))!;
 
       await pumpAlbumScreen(
         tester,
@@ -66,7 +66,7 @@ void main() {
       expect(find.text('当前封面'), findsOneWidget);
 
       final afterCover =
-          await harness.repository.getCollectionById(collection.id);
+          await harness.database.albumsDao.getCollectionById(collection.id);
       expect(afterCover!.coverImagePath, photos[1].relativeImagePath);
 
       // Enter locationTag and caption
@@ -83,14 +83,14 @@ void main() {
       await tester.pumpAndSettle();
 
       final updatedPhotos =
-          await harness.repository.getPhotosForCollection(collection.id);
+          await harness.database.albumsDao.getPhotosForCollection(collection.id);
       final updatedSecond =
           updatedPhotos.firstWhere((item) => item.id == photos[1].id);
       expect(updatedSecond.locationTag, '西湖断桥');
       expect(updatedSecond.caption, '柳浪闻莺，微雨初晴。');
 
       final afterRoute =
-          await harness.repository.getCollectionById(collection.id);
+          await harness.database.albumsDao.getCollectionById(collection.id);
       expect(afterRoute!.routeSummary, '西湖断桥');
     });
 
@@ -114,7 +114,7 @@ void main() {
       expect(thumbFile.existsSync(), isTrue);
 
       final refreshedCollection =
-          (await harness.repository.getCollectionById(collection.id))!;
+          (await harness.database.albumsDao.getCollectionById(collection.id))!;
 
       await pumpAlbumScreen(
         tester,
@@ -148,7 +148,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final remaining =
-          await harness.repository.getPhotosForCollection(collection.id);
+          await harness.database.albumsDao.getPhotosForCollection(collection.id);
       expect(remaining, isEmpty);
       expect(fullResFile.existsSync(), isFalse);
       expect(thumbFile.existsSync(), isFalse);

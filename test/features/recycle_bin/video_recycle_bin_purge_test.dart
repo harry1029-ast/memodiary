@@ -79,6 +79,89 @@ void main() {
       expect(await db.mediaOcrDao.getMediaForEntry('video_entry_delete'), isEmpty);
     });
 
+    test('permanentDeleteEntry preserves shared video/poster files and keeps disk untouched on SQLite error', () async {
+      final mediaDir = Directory(p.join(tempDir.path, 'media'))..createSync(recursive: true);
+      final sharedVideo = File(p.join(mediaDir.path, 'shared_clip.mp4'))..writeAsBytesSync([1, 2]);
+      final sharedThumb = File(p.join(mediaDir.path, 'shared_clip_thumb.webp'))..writeAsBytesSync([3, 4]);
+      final uniqueVideo = File(p.join(mediaDir.path, 'unique_clip.mp4'))..writeAsBytesSync([5, 6]);
+      final uniqueThumb = File(p.join(mediaDir.path, 'unique_clip_thumb.webp'))..writeAsBytesSync([7, 8]);
+
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'vid_trash',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          contentDelta: jsonEncode([{'insert': 'Trash video\n'}]),
+          plainText: 'Trash video',
+          entryDate: DateTime.now(),
+          isDeleted: const Value(true),
+        ),
+      );
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'vid_keeper',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          contentDelta: jsonEncode([{'insert': 'Keep video\n'}]),
+          plainText: 'Keep video',
+          entryDate: DateTime.now(),
+        ),
+      );
+
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: 'att_shared_vid',
+        entryId: 'vid_trash',
+        relativePath: 'media/shared_clip.mp4',
+        thumbnailPath: 'media/shared_clip_thumb.webp',
+        mediaType: 'video',
+      );
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: 'att_unique_vid',
+        entryId: 'vid_trash',
+        relativePath: 'media/unique_clip.mp4',
+        thumbnailPath: 'media/unique_clip_thumb.webp',
+        mediaType: 'video',
+      );
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: 'att_keeper_vid',
+        entryId: 'vid_keeper',
+        relativePath: 'media/shared_clip.mp4',
+        thumbnailPath: 'media/shared_clip_thumb.webp',
+        mediaType: 'video',
+      );
+
+      // Simulate SQLite delete failure first -> all 4 files must remain on disk
+      await db.customStatement(
+        "CREATE TRIGGER block_video_entry_delete BEFORE DELETE ON entries BEGIN SELECT RAISE(ABORT, 'simulated sqlite failure'); END;",
+      );
+      await expectLater(
+        () => RecycleBinService.permanentDeleteEntry(
+          entryId: 'vid_trash',
+          database: db,
+          mediaService: mediaService,
+        ),
+        throwsA(anything),
+      );
+      expect(uniqueVideo.existsSync(), isTrue);
+      expect(uniqueThumb.existsSync(), isTrue);
+      expect(sharedVideo.existsSync(), isTrue);
+      expect(sharedThumb.existsSync(), isTrue);
+
+      // Drop trigger and purge -> unique files deleted, shared files preserved
+      await db.customStatement('DROP TRIGGER block_video_entry_delete;');
+      await RecycleBinService.permanentDeleteEntry(
+        entryId: 'vid_trash',
+        database: db,
+        mediaService: mediaService,
+      );
+
+      expect(await db.entriesDao.getEntryById('vid_trash'), isNull);
+      expect(uniqueVideo.existsSync(), isFalse);
+      expect(uniqueThumb.existsSync(), isFalse);
+      expect(sharedVideo.existsSync(), isTrue);
+      expect(sharedThumb.existsSync(), isTrue);
+    });
+
     test('emptyRecycleBin permanently removes all deleted entries with videos', () async {
       final mediaDir = Directory(p.join(tempDir.path, 'media'))..createSync(recursive: true);
 

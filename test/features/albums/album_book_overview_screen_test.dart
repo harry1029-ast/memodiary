@@ -82,9 +82,9 @@ void main() {
     }
 
     final collection =
-        (await harness.repository.getCollectionById('col-studio-2'))!;
+        (await harness.database.albumsDao.getCollectionById('col-studio-2'))!;
     final photos =
-        await harness.repository.getPhotosForCollection('col-studio-2');
+        await harness.database.albumsDao.getPhotosForCollection('col-studio-2');
 
     await pumpAlbumScreen(
       tester,
@@ -171,9 +171,9 @@ void main() {
     }
 
     final collection =
-        (await harness.repository.getCollectionById('col-studio-3'))!;
+        (await harness.database.albumsDao.getCollectionById('col-studio-3'))!;
     final photos =
-        await harness.repository.getPhotosForCollection('col-studio-3');
+        await harness.database.albumsDao.getPhotosForCollection('col-studio-3');
 
     await pumpAlbumScreen(
       tester,
