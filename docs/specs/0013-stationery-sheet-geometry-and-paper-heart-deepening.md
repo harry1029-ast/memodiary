@@ -1,7 +1,7 @@
 ---
 id: SPEC-013
 title: Deepen Stationery Sheet Geometry & Paper Heart Sizing
-status: ready-for-agent
+status: completed
 created_at: 2026-11-13T00:20:00+08:00
 adr: ADR-0006, ADR-0008
 ---

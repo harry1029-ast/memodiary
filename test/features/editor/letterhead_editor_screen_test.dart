@@ -9,7 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
-import 'package:memodiary/features/editor/widgets/integer_snapped_letterhead.dart';
+import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
+import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 
 import '../../helpers/editor_test_harness.dart';
@@ -62,13 +63,19 @@ void main() {
     return database.updateEntryContent(_entryId, jsonEncode(multiSheetDelta.toJson()), 'Multi-sheet content');
   }
 
-  Future<void> pumpEditor(WidgetTester tester, {Size viewportSize = _phoneViewport}) {
+  Future<void> pumpEditor(
+    WidgetTester tester, {
+    String entryId = _entryId,
+    Size viewportSize = _phoneViewport,
+    bool settle = true,
+  }) {
     return pumpEntryEditorScreen(
       tester,
       database: database,
       mediaSandboxService: sandboxService,
-      entryId: _entryId,
+      entryId: entryId,
       viewportSize: viewportSize,
+      settle: settle,
     );
   }
 
@@ -78,8 +85,8 @@ void main() {
       );
 
   void expectFourRowLetterhead(WidgetTester tester) {
-    final letterhead = tester.widget<IntegerSnappedLetterhead>(find.byType(IntegerSnappedLetterhead));
-    expect(tester.getSize(find.byType(IntegerSnappedLetterhead)).height, equals(4 * letterhead.lineStridePx));
+    final letterhead = tester.widget<JournalLetterhead>(find.byType(JournalLetterhead));
+    expect(tester.getSize(find.byType(JournalLetterhead)).height, equals(4 * letterhead.rowHeight));
     final canvas = tester.widget<TemplateCanvasContainer>(find.byType(TemplateCanvasContainer));
     expect(canvas.layoutMetrics!.rowCount, equals(14));
   }
@@ -128,7 +135,7 @@ void main() {
     testWidgets('sits the larger title on the bottom row, below the muted date lines', (tester) async {
       await pumpEditor(tester);
 
-      final letterhead = tester.getRect(find.byType(IntegerSnappedLetterhead));
+      final letterhead = tester.getRect(find.byType(JournalLetterhead));
       final title = tester.getRect(find.byType(TextField).first);
       final lunar = tester.getRect(find.byKey(const Key('letterhead_lunar_line')));
       expect(title.bottom, closeTo(letterhead.bottom, 0.5));
@@ -225,6 +232,99 @@ void main() {
       expect(find.byKey(const Key('letterhead_date_seal')), findsNothing);
       expect(find.byKey(const Key('letterhead_weather_charm')), findsNothing);
       expect(find.byKey(const Key('letterhead_solar_line')), findsNothing);
+    });
+
+    testWidgets('lined template with 29px line stride renders headerHeight 116.0 on frame 1 without post-frame drift', (tester) async {
+      const linedEntryId = 'letterhead_lined_entry';
+      await database.into(database.entries).insert(
+            EntriesCompanion.insert(
+              id: linedEntryId,
+              notebookId: 'notebook_default',
+              templateId: 'template_lined_paper',
+              title: const Value('秋水偶得'),
+              contentDelta: '[]',
+              plainText: '',
+              entryDate: DateTime(2026, 11, 10, 10, 30),
+              mood: const Value(4),
+              weather: const Value('sunny'),
+            ),
+          );
+
+      await pumpEditor(tester, entryId: linedEntryId, settle: false);
+
+      // On frame 1, TemplateCanvasContainer must immediately have headerHeight == 116.0
+      final canvasContainer = tester.widget<TemplateCanvasContainer>(
+        find.byType(TemplateCanvasContainer),
+      );
+      expect(canvasContainer.headerHeight, equals(116.0));
+
+      // Pump another single frame to verify no post-frame callback triggers a setState layout jitter.
+      await tester.pump();
+
+      final canvasContainerAfter = tester.widget<TemplateCanvasContainer>(
+        find.byType(TemplateCanvasContainer),
+      );
+      expect(canvasContainerAfter.headerHeight, equals(116.0));
+    });
+
+    testWidgets('switching template updates geometry and headerHeight synchronously on frame 1 without post-frame drift', (tester) async {
+      const switchEntryId = 'letterhead_switch_entry';
+      await database.into(database.entries).insert(
+            EntriesCompanion.insert(
+              id: switchEntryId,
+              notebookId: 'notebook_default',
+              templateId: 'template_lined_paper',
+              title: const Value('换笺沉思'),
+              contentDelta: '[]',
+              plainText: '',
+              entryDate: DateTime(2026, 11, 10, 10, 30),
+              mood: const Value(4),
+              weather: const Value('sunny'),
+            ),
+          );
+
+      await pumpEditor(
+        tester,
+        entryId: switchEntryId,
+        viewportSize: const Size(412, 800),
+      );
+
+      Finder editorCanvasContainer() => find.descendant(
+            of: find.byType(EditorPaperCanvas),
+            matching: find.byType(TemplateCanvasContainer),
+          );
+
+      // Initial lined template: 29px line stride -> headerHeight 116.0
+      expect(
+        tester.widget<TemplateCanvasContainer>(editorCanvasContainer()).headerHeight,
+        equals(116.0),
+      );
+
+      // Open the scholar chest stationery drawer
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
+      await tester.pumpAndSettle();
+
+      // Switch to grid template (Weekly Review template with 24px line stride)
+      final gridChip = find.byKey(const Key('chest_template_chip_template_weekly_review'));
+      await tester.ensureVisible(gridChip);
+      await tester.tap(gridChip);
+
+      // Tapping triggers onSelectTemplate with setState.
+      // Pump exactly 1 frame without pumpAndSettle.
+      await tester.pump();
+
+      // On this single frame, geometry must immediately update to grid: 24px stride -> 4 * 24.0 = 96.0
+      expect(
+        tester.widget<TemplateCanvasContainer>(editorCanvasContainer()).headerHeight,
+        equals(96.0),
+      );
+
+      // Pump another single frame to verify zero post-frame setState was scheduled.
+      await tester.pump();
+      expect(
+        tester.widget<TemplateCanvasContainer>(editorCanvasContainer()).headerHeight,
+        equals(96.0),
+      );
     });
   });
 }

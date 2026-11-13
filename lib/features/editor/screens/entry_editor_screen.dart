@@ -71,9 +71,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   EditorPaginationHandler? _paginationHandler;
   EditorMediaBinding? _mediaBinding;
 
-  final GlobalKey _letterheadKey = GlobalKey();
-  double _headerHeight = 96.0;
-
   Template? _currentTemplate;
   TypographySettings _typography = const TypographySettings();
 
@@ -328,8 +325,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     final currentSheetIndex = _paginationHandler!.currentSheetIndex;
 
     final letterheadConfig = StationeryLetterheadConfig(
-      letterheadKey: _letterheadKey,
-      headerHeight: _headerHeight,
       data: LetterheadData.resolve(entryDate: _entryDate, weather: _weather, mood: _mood),
       titleController: _titleController,
       onDateChanged: (selectedDate) {
@@ -346,7 +341,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       },
     );
 
-    _updateHeaderHeight();
     if (_chrome.syncKeyboardInset(MediaQuery.viewInsetsOf(context).bottom)) {
       _focusGuard.onKeyboardClosed(context);
     }
@@ -414,18 +408,5 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
         ),
       ),
     );
-  }
-
-  void _updateHeaderHeight() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final renderBox = _letterheadKey.currentContext?.findRenderObject() as RenderBox?;
-      if (renderBox != null && renderBox.hasSize) {
-        final height = renderBox.size.height;
-        if ((height - _headerHeight).abs() > 0.5) {
-          setState(() => _headerHeight = height);
-        }
-      }
-    });
   }
 }

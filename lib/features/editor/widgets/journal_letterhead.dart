@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/ink_diary_theme.dart';
+import '../domain/stationery_sheet_descriptor.dart';
 import '../models/letterhead_data.dart';
 import 'letterhead_charm.dart';
 import 'letterhead_date_block.dart';
@@ -14,7 +15,7 @@ import 'lunar_date_seal.dart';
 /// Charms at the right.
 class JournalLetterhead extends StatelessWidget {
   /// Ruled rows the letterhead spans.
-  static const int rowCount = 4;
+  static const int rowCount = kJournalLetterheadReservedRows;
 
   /// Largest text scale the letterhead honours, keeping it inside its rows.
   static const double maxTextScale = 1.3;

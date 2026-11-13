@@ -41,8 +41,6 @@ class StationerySheetThemeConfig {
 
 /// Cohesive immutable metadata and callbacks for Sheet 1's Journal Letterhead.
 class StationeryLetterheadConfig {
-  final GlobalKey letterheadKey;
-  final double headerHeight;
   final LetterheadData data;
   final TextEditingController titleController;
   final ValueChanged<DateTime> onDateChanged;
@@ -50,8 +48,6 @@ class StationeryLetterheadConfig {
   final ValueChanged<String?> onWeatherChanged;
 
   const StationeryLetterheadConfig({
-    required this.letterheadKey,
-    required this.headerHeight,
     required this.data,
     required this.titleController,
     required this.onDateChanged,
