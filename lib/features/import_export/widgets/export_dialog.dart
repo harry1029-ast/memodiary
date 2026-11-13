@@ -62,7 +62,7 @@ class _ExportDialogState extends State<ExportDialog> {
       if (_selectedScope == ExportScope.single && widget.singleEntry != null) {
         entriesToExport = [widget.singleEntry!];
       } else {
-        entriesToExport = await widget.database.getAllActiveEntries();
+        entriesToExport = await widget.database.entriesDao.getAllActiveEntries();
       }
 
       if (entriesToExport.isEmpty) {

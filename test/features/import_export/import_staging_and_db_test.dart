@@ -42,10 +42,10 @@ void main() {
         ),
       ];
 
-      final count = await db.batchImportEntries(companions);
+      final count = await db.entriesDao.batchImportEntries(companions);
       expect(count, equals(2));
 
-      final active = await db.getAllActiveEntries();
+      final active = await db.entriesDao.getAllActiveEntries();
       expect(active.length, equals(2));
     });
 
@@ -53,7 +53,7 @@ void main() {
       final now = DateTime.now();
 
       // Pre-insert an entry with id 'conflict_id'
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'conflict_id',
           notebookId: 'notebook_default',
@@ -89,15 +89,15 @@ void main() {
 
       // Expect batchImportEntries to throw
       expect(
-        () => db.batchImportEntries(companions),
+        () => db.entriesDao.batchImportEntries(companions),
         throwsA(isA<Exception>()),
       );
 
       // Verify atomic rollback: valid_import_1 must NOT exist in the database!
-      final rolledBackEntry = await db.getEntryById('valid_import_1');
+      final rolledBackEntry = await db.entriesDao.getEntryById('valid_import_1');
       expect(rolledBackEntry, isNull);
 
-      final total = await db.getAllActiveEntries();
+      final total = await db.entriesDao.getAllActiveEntries();
       expect(total.length, equals(1)); // Only the pre-existing entry
     });
 
@@ -153,7 +153,7 @@ void main() {
       await tester.tap(find.text('View Timeline'));
       await tester.pumpAndSettle();
 
-      final active = await db.getAllActiveEntries();
+      final active = await db.entriesDao.getAllActiveEntries();
       expect(active.length, equals(2));
     });
   });

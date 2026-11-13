@@ -53,7 +53,7 @@ void main() {
       final db = AppDatabase.encrypted(dbFile: dbFile, encryptionKey: testKey);
 
       // Trigger schema creation and verify tables are operational
-      final templates = await db.getAllTemplates();
+      final templates = await db.templatesDao.getAllTemplates();
       expect(templates.length, equals(4));
 
       await db.close();

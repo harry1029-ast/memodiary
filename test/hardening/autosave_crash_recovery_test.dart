@@ -26,7 +26,7 @@ void main() {
         {'insert': 'Initial paragraph text.\n'}
       ]);
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: entryId,
           notebookId: 'default',
@@ -66,7 +66,7 @@ void main() {
       autosaveManager.dispose();
       coordinator.dispose();
 
-      final recoveredEntry = await db.getEntryById(entryId);
+      final recoveredEntry = await db.entriesDao.getEntryById(entryId);
       expect(recoveredEntry, isNotNull);
       expect(
         recoveredEntry!.plainText,
@@ -84,7 +84,7 @@ void main() {
     test('Immediate flush on app pause/exit flushes buffer before process termination', () async {
       const entryId = 'autosave_recovery_entry_2';
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: entryId,
           notebookId: 'default',
@@ -118,7 +118,7 @@ void main() {
       autosaveManager.dispose();
       coordinator.dispose();
 
-      final recovered = await db.getEntryById(entryId);
+      final recovered = await db.entriesDao.getEntryById(entryId);
       expect(recovered, isNotNull);
       expect(recovered!.plainText, equals('Urgent last second note before OS kill.'));
     });

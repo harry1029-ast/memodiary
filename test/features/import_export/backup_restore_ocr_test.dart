@@ -70,7 +70,7 @@ void main() {
         final createdAt = DateTime(2026, 10, 20, 14, 35);
         final shotAt = DateTime(2026, 10, 20, 12, 15);
 
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'entry_ocr_1',
             notebookId: 'notebook_default',
@@ -88,66 +88,69 @@ void main() {
 
         const ticketBlocksJson =
             '[{"text":"灵隐飞来峰门票 45元","box":[0.11,0.22,0.75,0.09]}]';
-        await db.into(db.mediaAttachments).insert(
-              MediaAttachmentsCompanion.insert(
-                id: 'att_ticket_1',
-                entryId: 'entry_ocr_1',
-                mediaType: 'image',
-                relativePath: 'media/entry_ticket.webp',
-                thumbnailPath: const Value('media/entry_ticket_thumb.webp'),
-                ocrText: const Value('灵隐飞来峰门票 45元'),
-                ocrBlocksJson: const Value(ticketBlocksJson),
-                caption: const Value('山门留影'),
-                createdAt: Value(createdAt),
-              ),
-            );
+        await db.mediaOcrDao.attachMediaToEntry(
+          id: 'att_ticket_1',
+          entryId: 'entry_ocr_1',
+          mediaType: 'image',
+          relativePath: 'media/entry_ticket.webp',
+          thumbnailPath: 'media/entry_ticket_thumb.webp',
+        );
+        await db.mediaOcrDao.updateMediaOcr(
+          'att_ticket_1',
+          ocrText: '灵隐飞来峰门票 45元',
+          ocrBlocksJson: ticketBlocksJson,
+        );
+        await db.mediaOcrDao.updateMediaCaption(
+          'att_ticket_1',
+          caption: '山门留影',
+        );
 
         // Sentinel attachment (scanned with zero words)
-        await db.into(db.mediaAttachments).insert(
-              MediaAttachmentsCompanion.insert(
-                id: 'att_scenery_sentinel',
-                entryId: 'entry_ocr_1',
-                mediaType: 'image',
-                relativePath: 'media/entry_scenery.webp',
-                ocrText: const Value(''),
-                ocrBlocksJson: const Value('[]'),
-                createdAt: Value(createdAt),
-              ),
-            );
+        await db.mediaOcrDao.attachMediaToEntry(
+          id: 'att_scenery_sentinel',
+          entryId: 'entry_ocr_1',
+          mediaType: 'image',
+          relativePath: 'media/entry_scenery.webp',
+        );
+        await db.mediaOcrDao.updateMediaOcr(
+          'att_scenery_sentinel',
+          ocrText: '',
+          ocrBlocksJson: '[]',
+        );
 
-        await db.into(db.albumCollections).insert(
-              AlbumCollectionsCompanion.insert(
-                id: 'col_ocr_1',
-                title: '杭州寻味录',
-                description: const Value('茶馆与老街'),
-                destinationTag: const Value('杭州'),
-                routeSummary: const Value('灵隐 → 龙井'),
-                coverImagePath: const Value('media/album_menu.webp'),
-                createdAt: Value(createdAt),
-                updatedAt: Value(createdAt),
-              ),
-            );
+        await db.albumsDao.insertCollection(
+          AlbumCollectionsCompanion.insert(
+            id: 'col_ocr_1',
+            title: '杭州寻味录',
+            description: const Value('茶馆与老街'),
+            destinationTag: const Value('杭州'),
+            routeSummary: const Value('灵隐 → 龙井'),
+            coverImagePath: const Value('media/album_menu.webp'),
+            createdAt: Value(createdAt),
+            updatedAt: Value(createdAt),
+          ),
+        );
 
         const menuBlocksJson =
             '[{"text":"狮峰龙井明前特级","box":[0.15,0.3,0.6,0.08]}]';
-        await db.into(db.albumPhotos).insert(
-              AlbumPhotosCompanion.insert(
-                id: 'photo_menu_1',
-                collectionId: 'col_ocr_1',
-                relativeImagePath: 'media/album_menu.webp',
-                relativeThumbnailPath: 'media/album_menu_thumb.webp',
-                caption: const Value('山中茶席'),
-                locationTag: const Value('龙井村'),
-                shotAt: Value(shotAt),
-                sortOrder: const Value(2),
-                aspectRatio: const Value(1.33),
-                ocrText: const Value('狮峰龙井明前特级'),
-                ocrBlocksJson: const Value(menuBlocksJson),
-                createdAt: Value(createdAt),
-              ),
-            );
+        await db.albumsDao.addPhoto(
+          AlbumPhotosCompanion.insert(
+            id: 'photo_menu_1',
+            collectionId: 'col_ocr_1',
+            relativeImagePath: 'media/album_menu.webp',
+            relativeThumbnailPath: 'media/album_menu_thumb.webp',
+            caption: const Value('山中茶席'),
+            locationTag: const Value('龙井村'),
+            shotAt: Value(shotAt),
+            sortOrder: const Value(2),
+            aspectRatio: const Value(1.33),
+            ocrText: const Value('狮峰龙井明前特级'),
+            ocrBlocksJson: const Value(menuBlocksJson),
+            createdAt: Value(createdAt),
+          ),
+        );
 
-        final preBackupSnapshot = await db.exportAllTablesSnapshot();
+        final preBackupSnapshot = await db.backupDao.exportAllTablesSnapshot();
         final backupFile = File(p.join(tempDir.path, 'v5_ocr_roundtrip.mdbak'));
 
         await backupService.createBackup(
@@ -167,7 +170,7 @@ void main() {
           passphrase: 'ocr-vault-passphrase',
         );
 
-        final postRestoreSnapshot = await db.exportAllTablesSnapshot();
+        final postRestoreSnapshot = await db.backupDao.exportAllTablesSnapshot();
 
         // Deep field parity on Entry
         expect(
@@ -198,22 +201,22 @@ void main() {
         expect(ftsCountRow.read<int>('cnt'), equals(2));
 
         // Verify immediate searchability without re-running OCR
-        final ticketMatches = await db.searchPhotoText('飞来峰');
+        final ticketMatches = await db.mediaOcrDao.searchPhotoText('飞来峰');
         expect(ticketMatches.length, equals(1));
         expect(ticketMatches.single.id, equals('att_ticket_1'));
         expect(ticketMatches.single.ocrBlocksJson, equals(ticketBlocksJson));
 
         // Restored captions are round-tripped but never enter photo text search
         expect(postRestoreSnapshot.mediaAttachments.first.caption, equals('山门留影'));
-        expect(await db.searchPhotoText('山门'), isEmpty);
+        expect(await db.mediaOcrDao.searchPhotoText('山门'), isEmpty);
 
-        final menuMatches = await db.searchPhotoText('狮峰龙井');
+        final menuMatches = await db.mediaOcrDao.searchPhotoText('狮峰龙井');
         expect(menuMatches.length, equals(1));
         expect(menuMatches.single.id, equals('photo_menu_1'));
         expect(menuMatches.single.ocrBlocksJson, equals(menuBlocksJson));
 
         // Sentinel image is NOT considered unindexed after restore
-        expect(await db.countUnindexedImages(), equals(0));
+        expect(await db.mediaOcrDao.countUnindexedImages(), equals(0));
       },
     );
 
@@ -354,19 +357,21 @@ void main() {
         expect(restoreRes.entriesRestored, equals(1));
         expect(restoreRes.albumPhotosRestored, equals(1));
 
-        final restoredMedia = (await db.getMediaForEntry('v4_entry_1')).single;
+        final restoredMedia =
+            (await db.mediaOcrDao.getMediaForEntry('v4_entry_1')).single;
         // Pre-v7 captions lived in ocrText; restore applies the v7 migration rule
         expect(restoredMedia.caption, equals('Legacy V4 Signpost'));
         expect(restoredMedia.ocrText, isNull);
         expect(restoredMedia.ocrBlocksJson, isNull);
 
-        final restoredAlbumPhoto = (await db.select(db.albumPhotos).get()).single;
+        final restoredAlbumPhoto =
+            (await db.albumsDao.getPhotosForCollection('v4_col_1')).single;
         expect(restoredAlbumPhoto.ocrText, isNull);
         expect(restoredAlbumPhoto.ocrBlocksJson, isNull);
 
         // The moved caption is not photo-searchable; both legacy images are queued for OCR backfill
-        expect(await db.searchPhotoText('Signpost'), isEmpty);
-        expect(await db.countUnindexedImages(), equals(2));
+        expect(await db.mediaOcrDao.searchPhotoText('Signpost'), isEmpty);
+        expect(await db.mediaOcrDao.countUnindexedImages(), equals(2));
       },
     );
   });

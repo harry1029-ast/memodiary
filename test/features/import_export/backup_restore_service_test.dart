@@ -44,7 +44,7 @@ void main() {
 
   Future<void> seedRichDatabaseAndMedia() async {
     // 1. Custom template
-    await db.createCustomTemplate(
+    await db.templatesDao.createCustomTemplate(
       id: 'template_custom_ocean',
       name: 'Ocean Breeze',
       backgroundType: 'lined',
@@ -55,20 +55,20 @@ void main() {
     );
 
     // 2. Second notebook
-    await db.into(db.notebooks).insert(
-          NotebooksCompanion.insert(
-            id: 'notebook_travel',
-            title: 'Travel Logs',
-            defaultTemplateId: 'template_custom_ocean',
-          ),
-        );
+    await db.templatesDao.createNotebook(
+      NotebooksCompanion.insert(
+        id: 'notebook_travel',
+        title: 'Travel Logs',
+        defaultTemplateId: 'template_custom_ocean',
+      ),
+    );
 
     final d1 = DateTime(2026, 10, 1, 10, 0);
     final d2 = DateTime(2026, 10, 5, 20, 0);
     final futureUnlock = DateTime(2027, 10, 1);
 
     // 3. Entries: active, locked, time-capsule, soft-deleted
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_active_1',
         notebookId: 'notebook_travel',
@@ -84,7 +84,7 @@ void main() {
       ),
     );
 
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_locked_2',
         notebookId: 'notebook_default',
@@ -98,7 +98,7 @@ void main() {
       ),
     );
 
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_capsule_3',
         notebookId: 'notebook_default',
@@ -111,7 +111,7 @@ void main() {
       ),
     );
 
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_deleted_4',
         notebookId: 'notebook_default',
@@ -135,13 +135,13 @@ void main() {
     File(p.join(mediaDir.path, 'video_1_thumb.webp'))
         .writeAsBytesSync([0x52, 0x49, 0x46, 0x46, 9, 9, 9]);
 
-    await db.attachMediaToEntry(
+    await db.mediaOcrDao.attachMediaToEntry(
       id: 'media_img_1',
       entryId: 'entry_active_1',
       relativePath: 'media/photo_1.webp',
       mediaType: 'image',
     );
-    await db.attachMediaToEntry(
+    await db.mediaOcrDao.attachMediaToEntry(
       id: 'media_vid_1',
       entryId: 'entry_active_1',
       relativePath: 'media/video_1.mp4',
@@ -173,7 +173,7 @@ void main() {
       // Mutate live database & delete media to verify Replace Mode
       await db.delete(db.mediaAttachments).go();
       await db.delete(db.entries).go();
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'ephemeral_entry',
           notebookId: 'notebook_default',
@@ -200,24 +200,25 @@ void main() {
       expect(restoreRes.notebooksRestored, 2);
 
       // Ephemeral post-backup entry should be gone (Replace mode)
-      expect(await db.getEntryById('ephemeral_entry'), isNull);
+      expect(await db.entriesDao.getEntryById('ephemeral_entry'), isNull);
 
       // Verify custom template, locked entry, capsule, and recycle bin entry
-      final customTemplate = await db.getTemplateById('template_custom_ocean');
+      final customTemplate =
+          await db.templatesDao.getTemplateById('template_custom_ocean');
       expect(customTemplate, isNotNull);
       expect(customTemplate!.name, 'Ocean Breeze');
       expect(customTemplate.isCustom, isTrue);
 
-      final lockedEntry = await db.getEntryById('entry_locked_2');
+      final lockedEntry = await db.entriesDao.getEntryById('entry_locked_2');
       expect(lockedEntry, isNotNull);
       expect(lockedEntry!.isLocked, isTrue);
       expect(lockedEntry.entryPinHash, 'salt_abc:hash_xyz');
 
-      final capsuleEntry = await db.getEntryById('entry_capsule_3');
+      final capsuleEntry = await db.entriesDao.getEntryById('entry_capsule_3');
       expect(capsuleEntry, isNotNull);
       expect(capsuleEntry!.unlockAt, isNotNull);
 
-      final deletedEntries = await db.getDeletedEntries();
+      final deletedEntries = await db.entriesDao.getDeletedEntries();
       expect(deletedEntries.map((e) => e.id), contains('entry_deleted_4'));
 
       // Verify Watchpoint 1: No duplicate rows in entries_fts
@@ -226,7 +227,7 @@ void main() {
           .getSingle();
       expect(ftsCountRow.read<int>('cnt'), 4);
 
-      final searchHits = await db.searchEntries('Hangzhou');
+      final searchHits = await db.entriesDao.searchEntries('Hangzhou');
       expect(searchHits.length, 1);
       expect(searchHits.single.id, 'entry_active_1');
 
@@ -266,7 +267,7 @@ void main() {
         passphrase: null,
       );
       expect(restoreRes.entriesRestored, 4);
-      expect(await db.getEntryById('entry_active_1'), isNotNull);
+      expect(await db.entriesDao.getEntryById('entry_active_1'), isNotNull);
     });
   });
 
@@ -282,7 +283,7 @@ void main() {
       );
 
       // Add a post-backup entry that must survive a failed restore
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'must_survive_entry',
           notebookId: 'notebook_default',
@@ -303,7 +304,7 @@ void main() {
       );
 
       // Verify live database & media were not touched
-      expect(await db.getEntryById('must_survive_entry'), isNotNull);
+      expect(await db.entriesDao.getEntryById('must_survive_entry'), isNotNull);
       expect(
         File(p.join(baseDir.path, 'media', 'photo_1.webp')).existsSync(),
         isTrue,
@@ -314,7 +315,7 @@ void main() {
       await seedRichDatabaseAndMedia();
 
       // Build a tampered unencrypted .mdbak where photo_1.webp bytes don't match manifest sha256
-      final snapshot = await db.exportAllTablesSnapshot();
+      final snapshot = await db.backupDao.exportAllTablesSnapshot();
       final manifest = BackupManifest(
         appSchemaVersion: 2,
         createdAt: DateTime.now().toUtc(),
@@ -414,8 +415,8 @@ void main() {
       );
 
       // Pre-restore entries and media must remain completely intact!
-      expect(await db.getEntryById('entry_active_1'), isNotNull);
-      expect(await db.getEntryById('entry_locked_2'), isNotNull);
+      expect(await db.entriesDao.getEntryById('entry_active_1'), isNotNull);
+      expect(await db.entriesDao.getEntryById('entry_locked_2'), isNotNull);
       expect(
         File(p.join(baseDir.path, 'media', 'photo_1.webp')).existsSync(),
         isTrue,
@@ -487,32 +488,32 @@ void main() {
             .writeAsBytesSync([0x52, 0x49, 0x46, 0x46, 40, 50]);
 
         final tripDate = DateTime(2026, 4, 10, 8, 0);
-        await db.into(db.albumCollections).insert(
-              AlbumCollectionsCompanion.insert(
-                id: 'album_col_1',
-                title: '江南春行纪',
-                description: const Value('山河沿路，笔底留痕'),
-                destinationTag: const Value('江南'),
-                routeSummary: const Value('杭州 → 乌镇 → 苏州'),
-                coverImagePath: const Value('media/album_img_1.webp'),
-                startDate: Value(tripDate),
-                endDate: Value(tripDate.add(const Duration(days: 3))),
-                sortIndex: const Value(0),
-              ),
-            );
-        await db.into(db.albumPhotos).insert(
-              AlbumPhotosCompanion.insert(
-                id: 'album_photo_1',
-                collectionId: 'album_col_1',
-                relativeImagePath: 'media/album_img_1.webp',
-                relativeThumbnailPath: 'media/album_img_1_thumb.webp',
-                caption: const Value('烟雨长廊'),
-                locationTag: const Value('乌镇'),
-                shotAt: Value(tripDate),
-                sortOrder: const Value(0),
-                aspectRatio: const Value(1.33),
-              ),
-            );
+        await db.albumsDao.insertCollection(
+          AlbumCollectionsCompanion.insert(
+            id: 'album_col_1',
+            title: '江南春行纪',
+            description: const Value('山河沿路，笔底留痕'),
+            destinationTag: const Value('江南'),
+            routeSummary: const Value('杭州 → 乌镇 → 苏州'),
+            coverImagePath: const Value('media/album_img_1.webp'),
+            startDate: Value(tripDate),
+            endDate: Value(tripDate.add(const Duration(days: 3))),
+            sortIndex: const Value(0),
+          ),
+        );
+        await db.albumsDao.addPhoto(
+          AlbumPhotosCompanion.insert(
+            id: 'album_photo_1',
+            collectionId: 'album_col_1',
+            relativeImagePath: 'media/album_img_1.webp',
+            relativeThumbnailPath: 'media/album_img_1_thumb.webp',
+            caption: const Value('烟雨长廊'),
+            locationTag: const Value('乌镇'),
+            shotAt: Value(tripDate),
+            sortOrder: const Value(0),
+            aspectRatio: const Value(1.33),
+          ),
+        );
 
         final backupFile = File(p.join(tempDir.path, 'v3_albums.mdbak'));
         final createRes = await backupService.createBackup(
@@ -539,13 +540,14 @@ void main() {
         expect(restoreRes.albumPhotosRestored, equals(1));
         expect(restoreRes.mediaFilesRestored, equals(5));
 
-        final restoredCols = await db.select(db.albumCollections).get();
+        final restoredCols = await db.albumsDao.getAllCollections();
         expect(restoredCols.single.id, equals('album_col_1'));
         expect(restoredCols.single.title, equals('江南春行纪'));
         expect(restoredCols.single.destinationTag, equals('江南'));
         expect(restoredCols.single.routeSummary, equals('杭州 → 乌镇 → 苏州'));
 
-        final restoredPhotos = await db.select(db.albumPhotos).get();
+        final restoredPhotos =
+            await db.albumsDao.getPhotosForCollection('album_col_1');
         expect(restoredPhotos.single.id, equals('album_photo_1'));
         expect(restoredPhotos.single.caption, equals('烟雨长廊'));
         expect(restoredPhotos.single.locationTag, equals('乌镇'));

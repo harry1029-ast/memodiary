@@ -36,8 +36,8 @@ class PdfExportEngine {
     final resolver = fontResolver ?? PdfFontResolver.cjk();
 
     // 1. Resolve visual template
-    final template = await database.getTemplateById(entry.templateId) ??
-        (await database.getAllTemplates()).first;
+    final template = await database.templatesDao.getTemplateById(entry.templateId) ??
+        (await database.templatesDao.getAllTemplates()).first;
     final style = TemplateStyle.fromTemplate(template);
 
     // 2. Resolve diarist colophon signature seal inscription
@@ -48,7 +48,7 @@ class PdfExportEngine {
     // staged (unmounted) attachments are left out.
     final mountPlan = FolioMediaPairing.pairLeaves(
       entry: entry,
-      attachments: await database.getMediaForEntry(entry.id),
+      attachments: await database.mediaOcrDao.getMediaForEntry(entry.id),
       templateStyle: style,
     );
 
@@ -186,7 +186,7 @@ class PdfExportEngine {
 
     // Sort entries chronologically for book format
     final sortedEntries = List<Entry>.from(entries)
-      ..sort((a, b) => a.entryDate.compareTo(b.entryDate));
+      ..sort((first, second) => first.entryDate.compareTo(second.entryDate));
 
     final title = resolver.sanitizeText(bookTitle ?? 'MemoDiary Journal Archive');
     final startDateStr =
@@ -260,8 +260,8 @@ class PdfExportEngine {
 
     // 2. Sequential Entry MultiPages preserving individual visual templates
     for (final entry in sortedEntries) {
-      final template = await database.getTemplateById(entry.templateId) ??
-          (await database.getAllTemplates()).first;
+      final template = await database.templatesDao.getTemplateById(entry.templateId) ??
+          (await database.templatesDao.getAllTemplates()).first;
       final style = TemplateStyle.fromTemplate(template);
 
       final contentWidgets = await PdfEntrySerializer.convertDeltaToWidgets(

@@ -27,41 +27,42 @@ void main() {
       // 1. Batched chunk insertion (1,000 items per transaction)
       final seedStopwatch = Stopwatch()..start();
       for (int chunkStart = 0; chunkStart < totalEntries; chunkStart += chunkSize) {
-        await db.transaction(() async {
-          for (int i = chunkStart; i < chunkStart + chunkSize; i++) {
-            final isKyoto = (i % 10 == 0);
-            await db.into(db.entries).insert(
-              EntriesCompanion.insert(
-                id: 'entry_$i',
-                notebookId: 'default',
-                templateId: 'template_minimalist_white',
-                title: Value('Diary Entry #$i${isKyoto ? " Kyoto Trip" : ""}'),
-                contentDelta: jsonEncode([
-                  {'insert': 'Today was journal day $i with thoughtful notes.\n'}
-                ]),
-                plainText: 'Today was journal day $i with thoughtful notes.${isKyoto ? " Kyoto Trip memories." : ""}',
-                entryDate: DateTime(2020, 1, 1).add(Duration(hours: i * 2)),
-                mood: Value((i % 5) + 1),
-                weather: Value(['sunny', 'cloudy', 'rainy', 'windy', 'snowy'][i % 5]),
-              ),
-            );
-          }
-        });
+        final chunk = <EntriesCompanion>[];
+        for (int i = chunkStart; i < chunkStart + chunkSize; i++) {
+          final isKyoto = (i % 10 == 0);
+          chunk.add(
+            EntriesCompanion.insert(
+              id: 'entry_$i',
+              notebookId: 'default',
+              templateId: 'template_minimalist_white',
+              title: Value('Diary Entry #$i${isKyoto ? " Kyoto Trip" : ""}'),
+              contentDelta: jsonEncode([
+                {'insert': 'Today was journal day $i with thoughtful notes.\n'}
+              ]),
+              plainText:
+                  'Today was journal day $i with thoughtful notes.${isKyoto ? " Kyoto Trip memories." : ""}',
+              entryDate: DateTime(2020, 1, 1).add(Duration(hours: i * 2)),
+              mood: Value((i % 5) + 1),
+              weather: Value(['sunny', 'cloudy', 'rainy', 'windy', 'snowy'][i % 5]),
+            ),
+          );
+        }
+        await db.entriesDao.batchImportEntries(chunk);
       }
       seedStopwatch.stop();
 
       // Verify all 10,000 entries and seeded templates are present
-      final countQuery = await (db.selectOnly(db.entries)..addColumns([db.entries.id.count()])).getSingle();
-      final rowCount = countQuery.read(db.entries.id.count());
-      expect(rowCount, equals(totalEntries));
+      final allEntries = await db.entriesDao.getAllActiveEntries();
+      expect(allEntries.length, equals(totalEntries));
 
       // 2. Timeline pagination query execution benchmark
       // Warm up once
-      await db.getTimelineEntries(limit: 20, offset: 0);
+      await db.entriesDao.getTimelineEntries(limit: 20, offset: 0);
 
       // Measure pagination at offset 5,000
       final paginationStopwatch = Stopwatch()..start();
-      final paginatedEntries = await db.getTimelineEntries(limit: 20, offset: 5000);
+      final paginatedEntries =
+          await db.entriesDao.getTimelineEntries(limit: 20, offset: 5000);
       paginationStopwatch.stop();
 
       expect(paginatedEntries.length, equals(20));
@@ -83,7 +84,7 @@ void main() {
       // 3. SQLite FTS5 search query latency benchmark
       // Search for keyword "Kyoto" across the 10,000 indexed entries
       final ftsStopwatch = Stopwatch()..start();
-      final searchResults = await db.searchEntriesWithFilters(
+      final searchResults = await db.entriesDao.searchEntriesWithFilters(
         query: 'Kyoto',
         limit: 50,
       );
