@@ -58,10 +58,10 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final entries =
-          await widget.database.getEntriesForCalendarWeek(_year, _weekNumber);
-      final debrief =
-          await widget.database.getWeeklyReviewEntry(_year, _weekNumber);
+      final entries = await widget.database.entriesDao
+          .getEntriesForCalendarWeek(_year, _weekNumber);
+      final debrief = await widget.database.entriesDao
+          .getWeeklyReviewEntry(_year, _weekNumber);
 
       if (mounted) {
         setState(() {
@@ -120,7 +120,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
     }
 
     final newId = const Uuid().v4();
-    final notebooks = await widget.database.getAllNotebooks();
+    final notebooks = await widget.database.templatesDao.getAllNotebooks();
     final notebookId =
         notebooks.isNotEmpty ? notebooks.first.id : 'notebook_default';
     final range = CalendarWeekUtils.getIsoWeekRange(_year, _weekNumber);
@@ -132,7 +132,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
       0,
     );
 
-    await widget.database.createEntry(
+    await widget.database.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: newId,
         notebookId: notebookId,
@@ -168,7 +168,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
 
   Future<void> _handleAddEntryForDate(DateTime day) async {
     final newId = const Uuid().v4();
-    final notebooks = await widget.database.getAllNotebooks();
+    final notebooks = await widget.database.templatesDao.getAllNotebooks();
     final notebookId =
         notebooks.isNotEmpty ? notebooks.first.id : 'notebook_default';
     final defaultTemplateId = notebooks.isNotEmpty
@@ -177,7 +177,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
 
     final entryDateTime = DateTime(day.year, day.month, day.day, 12, 0);
 
-    await widget.database.createEntry(
+    await widget.database.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: newId,
         notebookId: notebookId,

@@ -127,14 +127,15 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   Future<void> _loadEntryData() async {
     try {
-      final entry = await widget.database.getEntryById(widget.entryId);
+      final entry =
+          await widget.database.entriesDao.getEntryById(widget.entryId);
       if (entry == null) {
         if (mounted) Navigator.pop(context);
         return;
       }
       _entry = entry;
 
-      final templates = await widget.database.select(widget.database.templates).get();
+      final templates = await widget.database.templatesDao.getAllTemplates();
       final template = templates.firstWhere(
         (item) => item.id == entry.templateId,
         orElse: () => templates.first,
@@ -142,7 +143,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
       final derivedTypography = TypographySettings.fromTemplate(template);
       final templateStyle = TemplateStyle.fromTemplate(template);
-      final attachments = await widget.database.getMediaForEntry(widget.entryId);
+      final attachments =
+          await widget.database.mediaOcrDao.getMediaForEntry(widget.entryId);
       _coordinator = EditorPaginationCoordinator(
         typography: derivedTypography,
         templateStyle: templateStyle,
@@ -211,7 +213,10 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   /// Staging Handscroll (ADR-0009).
   Future<void> _persistLegacyMountPass(Entry entry, {required bool didMount}) async {
     final contentDelta = didMount ? _coordinator.reSynthesize().$1 : entry.contentDelta;
-    await widget.database.completeLegacyMountPass(entry.id, contentDelta: contentDelta);
+    await widget.database.entriesDao.completeLegacyMountPass(
+      entry.id,
+      contentDelta: contentDelta,
+    );
   }
 
   void _toggleCenterAlignment() {
@@ -247,14 +252,16 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           _typography,
           newTemplateStyle: TemplateStyle.fromTemplate(newTemplate),
         );
-        await widget.database.updateEntryTemplate(widget.entryId, newTemplate.id);
+        await widget.database.entriesDao
+            .updateEntryTemplate(widget.entryId, newTemplate.id);
       },
       onTypographyChanged: (newTypography) {
         setState(() => _typography = newTypography);
         _coordinator.updateTypography(newTypography);
       },
       onLockChanged: (newUnlockAt) async {
-        await widget.database.updateEntryUnlockAt(widget.entryId, newUnlockAt);
+        await widget.database.entriesDao
+            .updateEntryUnlockAt(widget.entryId, newUnlockAt);
         if (mounted) setState(() => _unlockAt = newUnlockAt);
       },
       onToggleAlignment: _toggleCenterAlignment,
@@ -329,15 +336,24 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       titleController: _titleController,
       onDateChanged: (selectedDate) {
         setState(() => _entryDate = selectedDate);
-        widget.database.updateEntryMetadata(widget.entryId, entryDate: selectedDate);
+        widget.database.entriesDao.updateEntryMetadata(
+          widget.entryId,
+          entryDate: selectedDate,
+        );
       },
       onMoodChanged: (selectedMood) {
         setState(() => _mood = selectedMood);
-        widget.database.updateEntryMetadata(widget.entryId, mood: selectedMood);
+        widget.database.entriesDao.updateEntryMetadata(
+          widget.entryId,
+          mood: selectedMood,
+        );
       },
       onWeatherChanged: (selectedWeather) {
         setState(() => _weather = selectedWeather);
-        widget.database.updateEntryMetadata(widget.entryId, weather: selectedWeather);
+        widget.database.entriesDao.updateEntryMetadata(
+          widget.entryId,
+          weather: selectedWeather,
+        );
       },
     );
 

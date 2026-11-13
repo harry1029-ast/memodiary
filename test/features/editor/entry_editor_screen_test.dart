@@ -43,7 +43,7 @@ void main() {
     dictationService = DictationService(speech: fakeSpeech);
 
     // Insert test entry
-    await db.into(db.entries).insert(
+    await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'editor_test_entry',
             notebookId: 'notebook_default',
@@ -124,7 +124,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify database gets updated with quoted prompt content
-      final entry = await db.getEntryById('editor_test_entry');
+      final entry = await db.entriesDao.getEntryById('editor_test_entry');
       expect(entry!.plainText.contains('【灵感拾遗】'), isTrue);
     });
 
@@ -330,7 +330,7 @@ void main() {
       expect(linedParagraphStyle.letterSpacing, equals(0.0));
 
       // Verify database contentDelta remains byte-for-byte identical
-      final entry = await db.getEntryById('editor_test_entry');
+      final entry = await db.entriesDao.getEntryById('editor_test_entry');
       expect(entry!.contentDelta, equals('[]'));
     });
 
@@ -360,7 +360,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify template changed in database
-      final entry = await db.getEntryById('editor_test_entry');
+      final entry = await db.entriesDao.getEntryById('editor_test_entry');
       expect(entry!.templateId, 'template_lined_paper');
 
       // Switch artifact to Brush Mountain for Typography without having to leave the chest
@@ -437,7 +437,7 @@ void main() {
       expect(find.byType(KeepsakeScrollView), findsNothing);
 
       // Verify database delta is untouched
-      final entry = await db.getEntryById('editor_test_entry');
+      final entry = await db.entriesDao.getEntryById('editor_test_entry');
       expect(entry!.contentDelta, equals('[]'));
     });
   });

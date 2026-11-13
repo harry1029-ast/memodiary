@@ -33,7 +33,7 @@ void main() {
     final photo = File('${tempDirectory.path}/picked_photo.png')..writeAsBytesSync(kValid1x1PngBytes);
     picker = StubEditorImagePicker(imageResult: XFile(photo.path));
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',
@@ -92,7 +92,7 @@ void main() {
 
       expect(closedScroll, findsNothing);
       expect(handscroll, findsOneWidget);
-      expect(await database.getMediaForEntry(_entryId), hasLength(1));
+      expect(await database.mediaOcrDao.getMediaForEntry(_entryId), hasLength(1));
     });
 
     testWidgets('the workstation takes the remaining space beneath the sheet down to the desk edge', (tester) async {
@@ -240,7 +240,7 @@ void main() {
       await tester.tap(closedScroll);
       await tester.pumpAndSettle();
       await pickFromGallery(tester);
-      final mediaId = (await database.getMediaForEntry(_entryId)).single.id;
+      final mediaId = (await database.mediaOcrDao.getMediaForEntry(_entryId)).single.id;
       await tester.tap(find.byKey(Key('handscroll_mount_$mediaId')));
       await tester.pumpAndSettle();
       expect(tuckedPrintsFan, findsOneWidget);

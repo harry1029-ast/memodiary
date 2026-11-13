@@ -110,7 +110,7 @@ class EditorMediaActions {
       // One transaction for the whole pick, so a multi-pick is a single write.
       await database.transaction(() async {
         for (final item in collected) {
-          await database.attachMediaToEntry(
+          await database.mediaOcrDao.attachMediaToEntry(
             id: item.id,
             entryId: entryId,
             relativePath: item.relativePath,
@@ -202,7 +202,7 @@ class EditorMediaActions {
       );
 
       final mediaId = const Uuid().v4();
-      await database.attachMediaToEntry(
+      await database.mediaOcrDao.attachMediaToEntry(
         id: mediaId,
         entryId: entryId,
         relativePath: result.relativePath,

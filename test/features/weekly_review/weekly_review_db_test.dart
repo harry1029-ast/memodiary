@@ -18,7 +18,7 @@ void main() {
     test('getEntriesForCalendarWeek respects exact Monday 00:00:00.000 to Sunday 23:59:59.999 bounds (Watchpoint 2)', () async {
       // ISO Week 42 of 2026: Mon Oct 12 00:00:00.000 to Sun Oct 18 23:59:59.999
       // 1. Entry 1ms before Monday start (Sun Oct 11 23:59:59.999 -> Week 41)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_prev_week_edge',
           notebookId: 'notebook_default',
@@ -30,7 +30,7 @@ void main() {
       );
 
       // 2. Entry at exact Monday start (Mon Oct 12 00:00:00.000 -> Week 42)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_mon_start',
           notebookId: 'notebook_default',
@@ -42,7 +42,7 @@ void main() {
       );
 
       // 3. Multiple entries on Wednesday (Wed Oct 14 -> Week 42)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_wed_morning',
           notebookId: 'notebook_default',
@@ -52,7 +52,7 @@ void main() {
           entryDate: DateTime(2026, 10, 14, 9, 0),
         ),
       );
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_wed_night',
           notebookId: 'notebook_default',
@@ -64,7 +64,7 @@ void main() {
       );
 
       // 4. Entry at exact Sunday end (Sun Oct 18 23:59:59.999 -> Week 42)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_sun_end',
           notebookId: 'notebook_default',
@@ -76,7 +76,7 @@ void main() {
       );
 
       // 5. Entry 1ms after Sunday end (Mon Oct 19 00:00:00.000 -> Week 43)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_next_week_edge',
           notebookId: 'notebook_default',
@@ -88,7 +88,7 @@ void main() {
       );
 
       // 6. Soft-deleted entry inside Week 42 (must be excluded)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_deleted_in_week',
           notebookId: 'notebook_default',
@@ -100,7 +100,8 @@ void main() {
         ),
       );
 
-      final week42Entries = await db.getEntriesForCalendarWeek(2026, 42);
+      final week42Entries =
+          await db.entriesDao.getEntriesForCalendarWeek(2026, 42);
       expect(
         week42Entries.map((e) => e.id).toList(),
         equals([
@@ -113,7 +114,7 @@ void main() {
     });
 
     test('getWeeklyReviewEntry retrieves existing weekly debrief for target ISO week', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'debrief_w42_2026',
           notebookId: 'notebook_default',
@@ -127,14 +128,16 @@ void main() {
         ),
       );
 
-      final found = await db.getWeeklyReviewEntry(2026, 42);
+      final found = await db.entriesDao.getWeeklyReviewEntry(2026, 42);
       expect(found, isNotNull);
       expect(found!.id, equals('debrief_w42_2026'));
 
-      final notFoundOtherWeek = await db.getWeeklyReviewEntry(2026, 41);
+      final notFoundOtherWeek =
+          await db.entriesDao.getWeeklyReviewEntry(2026, 41);
       expect(notFoundOtherWeek, isNull);
 
-      final notFoundOtherYear = await db.getWeeklyReviewEntry(2025, 42);
+      final notFoundOtherYear =
+          await db.entriesDao.getWeeklyReviewEntry(2025, 42);
       expect(notFoundOtherYear, isNull);
     });
   });

@@ -38,7 +38,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
   Future<void> _loadDeletedEntries() async {
     setState(() => _isLoading = true);
     try {
-      final entries = await widget.database.getDeletedEntries();
+      final entries = await widget.database.entriesDao.getDeletedEntries();
       if (mounted) {
         setState(() {
           _deletedEntries = entries;
@@ -58,7 +58,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
 
   Future<void> _handleRestore(Entry entry) async {
     HapticFeedback.lightImpact();
-    await widget.database.restoreEntry(entry.id);
+    await widget.database.entriesDao.restoreEntry(entry.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

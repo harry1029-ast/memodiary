@@ -32,7 +32,7 @@ void main() {
     tempDirectory = Directory.systemTemp.createTempSync('ephemera_folio_test_');
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'ephemera_folio_entry',
             notebookId: 'notebook_default',
@@ -84,7 +84,7 @@ void main() {
       expect(find.text('第 1 / 1 页'), findsOneWidget);
       expect(find.byKey(const Key('staging_handscroll')), findsOneWidget);
 
-      final attachmentsBeforeDelete = await database.getMediaForEntry('ephemera_folio_entry');
+      final attachmentsBeforeDelete = await database.mediaOcrDao.getMediaForEntry('ephemera_folio_entry');
       expect(attachmentsBeforeDelete, hasLength(1));
 
       // Erase the photo from the Staging Handscroll
@@ -100,11 +100,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify SQLite media_attachments row is deleted
-      final attachmentsAfterDelete = await database.getMediaForEntry('ephemera_folio_entry');
+      final attachmentsAfterDelete = await database.mediaOcrDao.getMediaForEntry('ephemera_folio_entry');
       expect(attachmentsAfterDelete, isEmpty);
 
       // Verify FolioPaginationEngine does NOT resurrect deleted ephemera
-      final updatedEntry = await database.getEntryById('ephemera_folio_entry');
+      final updatedEntry = await database.entriesDao.getEntryById('ephemera_folio_entry');
       final folioLeaves = FolioPaginationEngine.paginate(
         entry: updatedEntry!,
         attachments: attachmentsAfterDelete,
@@ -128,7 +128,7 @@ void main() {
 
     testWidgets('collecting a photo mid-sheet preserves uninterrupted prose and fills the handscroll', (tester) async {
       final initialDelta = Delta()..insert('上卷春风十里。\n下卷秋水人家。\n');
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         'ephemera_folio_entry',
         jsonEncode(initialDelta.toJson()),
         '上卷春风十里。\n下卷秋水人家。',
@@ -177,12 +177,12 @@ void main() {
         ..insert({'image': 'media/existing_mount.webp'})
         ..insert('\n');
 
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         'ephemera_folio_entry',
         jsonEncode(initialDelta.toJson()),
         '开篇首段墨迹。',
       );
-      await database.attachMediaToEntry(
+      await database.mediaOcrDao.attachMediaToEntry(
         id: 'media_existing_1',
         entryId: 'ephemera_folio_entry',
         relativePath: 'media/existing_mount.webp',
@@ -219,7 +219,7 @@ void main() {
       await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
       await tester.pumpAndSettle();
 
-      final savedEntry = await database.getEntryById('ephemera_folio_entry');
+      final savedEntry = await database.entriesDao.getEntryById('ephemera_folio_entry');
       expect(savedEntry!.contentDelta, contains('{夹注:}'));
       // Verify '{夹注:}' was placed AFTER the image embed, leaving Sheet 1 prose intact
       final ops = jsonDecode(savedEntry.contentDelta) as List<dynamic>;
@@ -232,7 +232,7 @@ void main() {
         initialDelta.insert('第${index.toString().padLeft(2, '0')}行测试文心素笺墨格内容\n');
       }
 
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         'ephemera_folio_entry',
         jsonEncode(initialDelta.toJson()),
         '15 lines text',
@@ -257,7 +257,7 @@ void main() {
       await tester.tap(find.byKey(const Key('chest_dismiss_handle')));
       await tester.pumpAndSettle();
 
-      final savedEntry = await database.getEntryById('ephemera_folio_entry');
+      final savedEntry = await database.entriesDao.getEntryById('ephemera_folio_entry');
       expect(savedEntry, isNotNull);
       expect(savedEntry!.templateId, equals('template_lined_paper'));
       expect(savedEntry.contentDelta, contains('第01行'));
@@ -273,13 +273,13 @@ void main() {
 
       const plainText = '兰亭清话，暮春之初，修禊事也。\n后之视今，亦犹今之视昔，悲夫！故列叙时人，录其所谓。';
 
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         'ephemera_folio_entry',
         jsonEncode(unifiedDelta.toJson()),
         plainText,
       );
 
-      await database.attachMediaToEntry(
+      await database.mediaOcrDao.attachMediaToEntry(
         id: 'media_autumn_1',
         entryId: 'ephemera_folio_entry',
         relativePath: 'media/photo_autumn_mount.webp',
@@ -306,8 +306,8 @@ void main() {
       expect(find.text('第 3 / 3 页'), findsOneWidget);
       expect(find.byKey(const Key('editor_continuation_colophon_header')), findsOneWidget);
 
-      final entryFromDatabase = await database.getEntryById('ephemera_folio_entry');
-      final attachments = await database.getMediaForEntry('ephemera_folio_entry');
+      final entryFromDatabase = await database.entriesDao.getEntryById('ephemera_folio_entry');
+      final attachments = await database.mediaOcrDao.getMediaForEntry('ephemera_folio_entry');
 
       final folioLeaves = FolioPaginationEngine.paginate(
         entry: entryFromDatabase!,
@@ -330,7 +330,7 @@ void main() {
 
     testWidgets('Folio leaves carry exactly the items each editor sheet mounts; staged items stay out', (tester) async {
       final lines = List.generate(30, (index) => '第${index + 1}行墨迹').join('\n');
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         'ephemera_folio_entry',
         jsonEncode((Delta()..insert('$lines\n')).toJson()),
         lines,
@@ -354,7 +354,7 @@ void main() {
         await tester.tap(find.text('相册选撷 · Photo Gallery'));
         await tester.pumpAndSettle();
       }
-      final ids = (await database.getMediaForEntry('ephemera_folio_entry')).map((media) => media.id).toList();
+      final ids = (await database.mediaOcrDao.getMediaForEntry('ephemera_folio_entry')).map((media) => media.id).toList();
       expect(ids, hasLength(3));
 
       await tester.tap(find.byKey(Key('handscroll_mount_${ids[0]}')));
@@ -369,10 +369,10 @@ void main() {
       await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
       await tester.pumpAndSettle();
 
-      final savedEntry = await database.getEntryById('ephemera_folio_entry');
+      final savedEntry = await database.entriesDao.getEntryById('ephemera_folio_entry');
       final folioLeaves = FolioPaginationEngine.paginate(
         entry: savedEntry!,
-        attachments: await database.getMediaForEntry('ephemera_folio_entry'),
+        attachments: await database.mediaOcrDao.getMediaForEntry('ephemera_folio_entry'),
       );
 
       final cover = folioLeaves.first as FolioFrontispieceCoverLeaf;

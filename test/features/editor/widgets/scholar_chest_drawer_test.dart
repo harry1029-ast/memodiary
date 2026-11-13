@@ -25,7 +25,7 @@ void main() {
     audioSanctumService = AudioSanctumService(enablePlatformAudio: false);
 
     // Seed test entry
-    await db.into(db.entries).insert(
+    await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'test_chest_entry',
             notebookId: 'nb_default',

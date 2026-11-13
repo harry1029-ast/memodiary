@@ -76,7 +76,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
     try {
       final targetId = _entry?.id ?? widget.entryId!;
-      final freshEntry = await _db.getEntryById(targetId);
+      final freshEntry = await _db.entriesDao.getEntryById(targetId);
       if (freshEntry != null) {
         _entry = freshEntry;
       }
@@ -87,15 +87,15 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         return;
       }
 
-      _template = await _db.getTemplateById(entry.templateId);
+      _template = await _db.templatesDao.getTemplateById(entry.templateId);
       if (_template == null) {
-        final allTemplates = await _db.getAllTemplates();
+        final allTemplates = await _db.templatesDao.getAllTemplates();
         if (allTemplates.isNotEmpty) {
           _template = allTemplates.first;
         }
       }
 
-      _attachments = await _db.getMediaForEntry(entry.id);
+      _attachments = await _db.mediaOcrDao.getMediaForEntry(entry.id);
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -157,7 +157,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     if (entry == null) return;
 
     if (entry.isLocked) {
-      await _db.unlockEntryPermanently(entry.id);
+      await _db.entriesDao.unlockEntryPermanently(entry.id);
       HapticFeedback.lightImpact();
       await _loadData();
       if (mounted) {
@@ -198,7 +198,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
     if (pin != null && pin.length >= 4) {
       final pinHash = _authService.hashEntryPin(pin);
-      await _db.lockEntry(entry.id, pinHash: pinHash);
+      await _db.entriesDao.lockEntry(entry.id, pinHash: pinHash);
       HapticFeedback.lightImpact();
       setState(() => _isSessionUnlocked = false);
       await _loadData();
@@ -290,7 +290,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     );
 
     if (confirmed == true) {
-      await _db.softDeleteEntry(entry.id);
+      await _db.entriesDao.softDeleteEntry(entry.id);
       if (mounted) Navigator.pop(context, true);
     }
   }
@@ -438,7 +438,11 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         onExportText: _handleExportText,
       ),
       onOverlayPositionChanged: (photoId, xRatio, yRatio) =>
-          _db.updateMediaAttachmentOverlayPosition(photoId, xRatio: xRatio, yRatio: yRatio),
+          _db.mediaOcrDao.updateMediaAttachmentOverlayPosition(
+        photoId,
+        xRatio: xRatio,
+        yRatio: yRatio,
+      ),
     );
   }
 }

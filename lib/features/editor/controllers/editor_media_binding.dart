@@ -141,7 +141,7 @@ class EditorMediaBinding {
   Future<void> _purge(String mediaId) async {
     final item = _pendingErasures.remove(mediaId);
     if (item == null) return;
-    await database.deleteMediaForEntryByPath(
+    await database.mediaOcrDao.deleteMediaForEntryByPath(
       entryId: entryId,
       relativePath: item.relativePath,
     );
@@ -150,7 +150,7 @@ class EditorMediaBinding {
 
   /// Persists an edited caption for [mediaId].
   Future<void> updateCaption(String mediaId, String newCaption) async {
-    await database.updateMediaCaption(mediaId, caption: newCaption);
+    await database.mediaOcrDao.updateMediaCaption(mediaId, caption: newCaption);
   }
 
   /// Purges erasures still inside their undo window, since the editor that

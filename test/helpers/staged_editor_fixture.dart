@@ -23,7 +23,7 @@ class StagedEditorFixture {
     database = AppDatabase.forTesting(NativeDatabase.memory());
     tempDirectory = Directory.systemTemp.createTempSync('staged_editor_fixture_');
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: entryId,
             notebookId: 'notebook_default',
@@ -49,7 +49,11 @@ class StagedEditorFixture {
       File('${tempDirectory.path}/$relativePath')
         ..parent.createSync(recursive: true)
         ..writeAsBytesSync(kValid1x1PngBytes);
-      await database.attachMediaToEntry(id: 'seeded_$index', entryId: entryId, relativePath: relativePath);
+      await database.mediaOcrDao.attachMediaToEntry(
+        id: 'seeded_$index',
+        entryId: entryId,
+        relativePath: relativePath,
+      );
     }
   }
 }

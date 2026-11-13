@@ -164,17 +164,18 @@ class _TimelineScreenState extends State<TimelineScreen> {
     });
 
     try {
-      final entries = await widget.database.getTimelineEntries(
+      final entries = await widget.database.entriesDao.getTimelineEntries(
         limit: _pageSize,
         offset: 0,
       );
 
-      final ids = entries.map((e) => e.id).toList();
-      final mediaMap = await widget.database.getPrimaryMediaForEntries(ids);
+      final ids = entries.map((entry) => entry.id).toList();
+      final mediaMap =
+          await widget.database.mediaOcrDao.getPrimaryMediaForEntries(ids);
       final onThisDay =
-          await widget.database.getEntriesOnThisDay(DateTime.now());
+          await widget.database.entriesDao.getEntriesOnThisDay(DateTime.now());
 
-      final notebooks = await widget.database.getAllNotebooks();
+      final notebooks = await widget.database.templatesDao.getAllNotebooks();
       final activeNotebook = notebooks.isNotEmpty ? notebooks.first : null;
 
       if (mounted) {
@@ -207,13 +208,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
     setState(() => _isLoadingMore = true);
 
     try {
-      final nextBatch = await widget.database.getTimelineEntries(
+      final nextBatch = await widget.database.entriesDao.getTimelineEntries(
         limit: _pageSize,
         offset: _offset,
       );
 
-      final ids = nextBatch.map((e) => e.id).toList();
-      final nextMediaMap = await widget.database.getPrimaryMediaForEntries(ids);
+      final ids = nextBatch.map((entry) => entry.id).toList();
+      final nextMediaMap =
+          await widget.database.mediaOcrDao.getPrimaryMediaForEntries(ids);
 
       if (mounted) {
         setState(() {
@@ -250,7 +252,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
             {'insert': '\n'}
           ];
 
-    await widget.database.createEntry(
+    await widget.database.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: newId,
         notebookId: notebookId,

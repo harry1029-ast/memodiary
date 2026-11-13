@@ -27,7 +27,7 @@ void main() {
     tempDirectory = Directory.systemTemp.createTempSync('split_desk_centering_test_');
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'text_only_scholar_entry',
             notebookId: 'notebook_default',
@@ -116,7 +116,7 @@ void main() {
         multiSheetDelta.insert('第${lineIndex.toString().padLeft(2, '0')}行砚池墨痕记录\n');
       }
 
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         'text_only_scholar_entry',
         jsonEncode(multiSheetDelta.toJson()),
         'Multi-sheet content',

@@ -19,7 +19,7 @@ void main() {
     tempDirectory = Directory.systemTemp.createTempSync('freeze_repro_test_');
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'freeze_repro_entry',
             notebookId: 'notebook_default',

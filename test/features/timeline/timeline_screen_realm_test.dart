@@ -63,7 +63,7 @@ void main() {
       'newest accessible entry with indoor situation keywords resolves Indoor realm and 随文入境 badge',
       (tester) async {
         final now = DateTime.now();
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'indoor_entry_1',
             notebookId: 'notebook_default',
@@ -90,7 +90,7 @@ void main() {
         final now = DateTime.now();
 
         // 1. Newest entry is soft-deleted with indoor keywords
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'deleted_entry',
             notebookId: 'notebook_default',
@@ -104,7 +104,7 @@ void main() {
         );
 
         // 2. Second newest is PIN-locked with indoor keywords
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'locked_entry',
             notebookId: 'notebook_default',
@@ -118,7 +118,7 @@ void main() {
         );
 
         // 3. Third newest is a future Time Capsule sealed until tomorrow
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'time_capsule_entry',
             notebookId: 'notebook_default',
@@ -132,7 +132,7 @@ void main() {
         );
 
         // 4. Accessible entry: outdoor street market keywords
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'accessible_outdoor_entry',
             notebookId: 'notebook_default',
@@ -157,7 +157,7 @@ void main() {
       (tester) async {
         final now = DateTime.now();
 
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'old_entry',
             notebookId: 'notebook_default',
@@ -181,7 +181,7 @@ void main() {
       '1-tap realm switcher on card overrides inferred realm and persists via ScenerySettingsService',
       (tester) async {
         final now = DateTime.now();
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'indoor_entry',
             notebookId: 'notebook_default',
@@ -217,7 +217,7 @@ void main() {
       'tapping painting canvas navigates to ContemplationViewScreen with active and real-time state',
       (tester) async {
         final now = DateTime.now();
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'indoor_entry',
             notebookId: 'notebook_default',

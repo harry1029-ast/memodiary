@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,7 +23,7 @@ void main() {
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
     File('${tempDirectory.path}/media_ticket.webp').writeAsBytesSync(kValid1x1PngBytes);
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: entryId,
             notebookId: 'notebook_default',
@@ -34,16 +33,16 @@ void main() {
             entryDate: DateTime(2026, 11, 5, 10),
           ),
         );
-    await database.into(database.mediaAttachments).insert(
-          MediaAttachmentsCompanion.insert(
-            id: mediaId,
-            entryId: entryId,
-            mediaType: 'image',
-            relativePath: 'media_ticket.webp',
-            ocrText: const Value('灵隐门票'),
-            ocrBlocksJson: const Value('[{"text":"灵隐门票"}]'),
-          ),
-        );
+    await database.mediaOcrDao.attachMediaToEntry(
+      id: mediaId,
+      entryId: entryId,
+      relativePath: 'media_ticket.webp',
+    );
+    await database.mediaOcrDao.updateMediaOcr(
+      mediaId,
+      ocrText: '灵隐门票',
+      ocrBlocksJson: '[{"text":"灵隐门票"}]',
+    );
   });
 
   tearDown(() async {

@@ -33,7 +33,7 @@ void main() {
 
   group('Recycle Bin & 30-Day Auto-Purge Tests', () {
     test('softDeleteEntry sets isDeleted=true and restoreEntry restores it', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'test_entry',
           notebookId: 'notebook_default',
@@ -46,17 +46,17 @@ void main() {
       );
 
       // Soft delete
-      await db.softDeleteEntry('test_entry');
-      var deletedList = await db.getDeletedEntries();
+      await db.entriesDao.softDeleteEntry('test_entry');
+      var deletedList = await db.entriesDao.getDeletedEntries();
       expect(deletedList.length, equals(1));
       expect(deletedList.first.id, equals('test_entry'));
 
       // Restore
-      await db.restoreEntry('test_entry');
-      deletedList = await db.getDeletedEntries();
+      await db.entriesDao.restoreEntry('test_entry');
+      deletedList = await db.entriesDao.getDeletedEntries();
       expect(deletedList.isEmpty, isTrue);
 
-      final active = await db.getEntryById('test_entry');
+      final active = await db.entriesDao.getEntryById('test_entry');
       expect(active, isNotNull);
       expect(active!.isDeleted, isFalse);
     });
@@ -71,7 +71,7 @@ void main() {
       expect(await physicalFile.exists(), isTrue);
 
       // 2. Insert entry and link media
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_with_disk_media',
           notebookId: 'notebook_default',
@@ -82,14 +82,15 @@ void main() {
           entryDate: DateTime.now(),
         ),
       );
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_disk_1',
         entryId: 'entry_with_disk_media',
         relativePath: relPath,
       );
 
       // Verify records exist in SQLite
-      final attachments = await db.getMediaForEntry('entry_with_disk_media');
+      final attachments =
+          await db.mediaOcrDao.getMediaForEntry('entry_with_disk_media');
       expect(attachments.length, equals(1));
 
       // 3. Permanent delete via RecycleBinService
@@ -103,9 +104,11 @@ void main() {
       expect(await physicalFile.exists(), isFalse);
 
       // Verify SQLite records were removed
-      final entryAfter = await db.getEntryById('entry_with_disk_media');
+      final entryAfter =
+          await db.entriesDao.getEntryById('entry_with_disk_media');
       expect(entryAfter, isNull);
-      final mediaAfter = await db.getMediaForEntry('entry_with_disk_media');
+      final mediaAfter =
+          await db.mediaOcrDao.getMediaForEntry('entry_with_disk_media');
       expect(mediaAfter.isEmpty, isTrue);
     });
 
@@ -113,7 +116,7 @@ void main() {
       final now = DateTime.now();
 
       // Entry 1: Soft-deleted 35 days ago (should be purged)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'old_deleted',
           notebookId: 'notebook_default',
@@ -128,7 +131,7 @@ void main() {
       );
 
       // Entry 2: Soft-deleted 5 days ago (should be retained)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'recent_deleted',
           notebookId: 'notebook_default',
@@ -150,17 +153,17 @@ void main() {
 
       expect(purgedCount, equals(1));
 
-      final remaining = await db.getDeletedEntries();
+      final remaining = await db.entriesDao.getDeletedEntries();
       expect(remaining.length, equals(1));
       expect(remaining.first.id, equals('recent_deleted'));
-      expect(await db.getEntryById('old_deleted'), isNull);
+      expect(await db.entriesDao.getEntryById('old_deleted'), isNull);
     });
 
     test('emptyRecycleBin removes all soft-deleted items', () async {
       final now = DateTime.now();
 
       for (int i = 0; i < 3; i++) {
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'trash_$i',
             notebookId: 'notebook_default',
@@ -174,7 +177,7 @@ void main() {
         );
       }
 
-      var deleted = await db.getDeletedEntries();
+      var deleted = await db.entriesDao.getDeletedEntries();
       expect(deleted.length, equals(3));
 
       final emptied = await RecycleBinService.emptyRecycleBin(
@@ -183,7 +186,7 @@ void main() {
       );
       expect(emptied, equals(3));
 
-      deleted = await db.getDeletedEntries();
+      deleted = await db.entriesDao.getDeletedEntries();
       expect(deleted.isEmpty, isTrue);
     });
   });
