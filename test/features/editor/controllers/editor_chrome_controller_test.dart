@@ -177,6 +177,41 @@ void main() {
     });
   });
 
+  group('formatting ribbon', () {
+    test('starts closed and toggles with listener notifications', () {
+      expect(chrome.isFormattingOpen, isFalse);
+
+      chrome.toggleFormatting();
+      expect(chrome.isFormattingOpen, isTrue);
+      expect(notifications, 1);
+
+      chrome.toggleFormatting();
+      expect(chrome.isFormattingOpen, isFalse);
+      expect(notifications, 2);
+    });
+
+    test('stays open across keyboard transitions, dock hide/restore, and workstation collapse/expand', () {
+      chrome.toggleFormatting();
+      expect(chrome.isFormattingOpen, isTrue);
+
+      chrome.syncKeyboardInset(300.0);
+      expect(chrome.isFormattingOpen, isTrue);
+
+      chrome.setWritingDockVisible(false);
+      expect(chrome.isFormattingOpen, isTrue);
+
+      chrome.collapseWorkstation();
+      expect(chrome.isFormattingOpen, isTrue);
+
+      chrome.syncKeyboardInset(0.0);
+      expect(chrome.isFormattingOpen, isTrue);
+
+      chrome.setWritingDockVisible(true);
+      chrome.expandWorkstation();
+      expect(chrome.isFormattingOpen, isTrue);
+    });
+  });
+
   testWidgets('a deferred collapse after disposal does not notify', (tester) async {
     final disposable = EditorChromeController()..addListener(() => notifications++);
     disposable.resolveInitialWorkstation(workstationFits: false);

@@ -312,7 +312,6 @@ void main() {
         'lib/features/editor/widgets/editor_desk_media_area.dart',
         'lib/features/search/screens/search_screen.dart',
         'lib/features/editor/widgets/editor_toolbar.dart',
-        'lib/features/editor/widgets/writing_dock.dart',
       };
       final callbackUnwrapRegex = RegExp(r'\bon[A-Z][A-Za-z]*!');
 

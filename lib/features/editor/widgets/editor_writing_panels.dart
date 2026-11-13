@@ -38,6 +38,11 @@ class EditorWritingPanels extends StatelessWidget {
     required this.isPaperDark,
   });
 
+  void _toggleFormatting() {
+    if (!chrome.isFormattingOpen) onEnsureTextController();
+    chrome.toggleFormatting();
+  }
+
   void _toggleDictation() {
     if (!chrome.isDictating) onEnsureTextController();
     chrome.toggleDictation();
@@ -59,6 +64,8 @@ class EditorWritingPanels extends StatelessWidget {
           KeyboardAccessoryRow(
             controller: controller,
             onEnsureTextController: onEnsureTextController,
+            isFormattingOpen: chrome.isFormattingOpen,
+            onToggleFormatting: _toggleFormatting,
             onToggleDictation: _toggleDictation,
             isWritingDockVisible: chrome.isWritingDockVisible,
             onToggleWritingDock: () => chrome.setWritingDockVisible(!chrome.isWritingDockVisible),
@@ -76,6 +83,8 @@ class EditorWritingPanels extends StatelessWidget {
             onPickVideo: onPickVideo,
             onToggleDictation: _toggleDictation,
             onShuffleSpark: onShuffleSpark,
+            isFormattingOpen: chrome.isFormattingOpen,
+            onToggleFormatting: _toggleFormatting,
             isDictating: chrome.isDictating,
             backgroundColor: backgroundColor,
             inkColor: inkColor,
