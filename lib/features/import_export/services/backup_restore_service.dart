@@ -93,7 +93,7 @@ class BackupRestoreService {
     onProgress?.call(0.15);
 
     // 2. Discover and hash all physical sandboxed media files
-    final baseDir = await mediaService.getBaseDirectory();
+    final baseDir = await _baseDirProvider();
     final referencedPaths =
         await database.mediaOcrDao.getAllReferencedMediaPaths();
     final sandboxFiles = await mediaService.listMediaFiles();
@@ -235,7 +235,7 @@ class BackupRestoreService {
       );
     }
 
-    final baseDir = await mediaService.getBaseDirectory();
+    final baseDir = await _baseDirProvider();
     final tempRoot = await _tempDirProvider();
     final runId = const Uuid().v4();
     final workDir = Directory(

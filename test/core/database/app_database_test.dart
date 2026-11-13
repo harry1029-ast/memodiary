@@ -162,7 +162,7 @@ void main() {
       expect(bakeryResults.first.id, 'entry_fts_2');
 
       // Delete entry and verify FTS5 no longer returns it
-      await db.entriesDao.hardDeleteEntryRecords('entry_fts_1');
+      await db.entriesDao.hardDeleteEntryAndCollectMediaPaths('entry_fts_1');
       final deletedSearch = await db.entriesDao.searchEntries('Mountains');
       expect(deletedSearch.isEmpty, isTrue);
     });
