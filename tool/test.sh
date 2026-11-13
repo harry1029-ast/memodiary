@@ -10,10 +10,15 @@ else
   FLUTTER_BIN="/home/harry1029/development/flutter/bin/flutter"
 fi
 
+EXTRA_FLAGS=()
+if [ -f ".dart_tool/package_config.json" ]; then
+  EXTRA_FLAGS+=(--no-pub)
+fi
+
 LOG="$(mktemp)"
 trap 'rm -f "$LOG"' EXIT
 
-"$FLUTTER_BIN" test --reporter=expanded "$@" >"$LOG" 2>&1
+"$FLUTTER_BIN" test "${EXTRA_FLAGS[@]}" --reporter=expanded "$@" >"$LOG" 2>&1
 STATUS=$?
 
 tr '\r' '\n' <"$LOG" | grep -E "All tests passed|Some tests failed|No tests ran" | tail -n 1
