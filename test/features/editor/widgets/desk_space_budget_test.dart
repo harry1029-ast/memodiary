@@ -59,6 +59,38 @@ void main() {
       expect(resolve(canvasHeight: 549.0).workstationFits, isFalse);
     });
 
+    test('fitsWorkstation matches resolve.workstationFits across open, empty, and short viewports', () {
+      const cases = <(double canvas, double sheet, bool empty, bool expected)>[
+        (590.0, 400.0, false, true),
+        (589.0, 400.0, false, false),
+        (550.0, 400.0, true, true),
+        (549.0, 400.0, true, false),
+        (410.0, 280.0, true, false), // < 420dp short viewport: 410 - 30 - 280 - 10 = 90 < 110
+      ];
+      for (final (canvas, sheet, empty, expected) in cases) {
+        expect(
+          DeskSpaceBudget.fitsWorkstation(
+            canvasHeight: canvas,
+            sheetHeight: sheet,
+            isHandscrollEmpty: empty,
+          ),
+          expected,
+        );
+        expect(
+          DeskSpaceBudget.resolve(
+            canvasHeight: canvas,
+            sheetHeight: sheet,
+            sealBlockHeight: sealBlockHeight,
+            isHandscrollEmpty: empty,
+            isWorkstationCollapsed: false,
+            isKeyboardVisible: false,
+            isLastSheet: false,
+          ).workstationFits,
+          expected,
+        );
+      }
+    });
+
     test('collapsing the workstation centres the sheet on the desk', () {
       final budget = resolve(isWorkstationCollapsed: true);
 

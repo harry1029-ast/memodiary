@@ -129,22 +129,13 @@ class EditorPaperCanvas extends StatelessWidget {
         const sealGap = 16.0;
         const sealBlockHeight = sealSize + sealGap;
 
-        DeskSpaceBudget resolveBudget({required bool isWorkstationCollapsed}) =>
-            DeskSpaceBudget.resolve(
-              canvasHeight: canvasHeight,
-              sheetHeight: cardHeight,
-              sealBlockHeight: sealBlockHeight,
-              isHandscrollEmpty: stagedItems.isEmpty,
-              isWorkstationCollapsed: isWorkstationCollapsed,
-              isKeyboardVisible: keyboardVisible,
-              isLastSheet: currentSheetIndex == totalSheets - 1,
-            );
-        final isWorkstationCollapsed = chrome.resolveInitialWorkstation(
-          workstationFits:
-              resolveBudget(isWorkstationCollapsed: false).workstationFits,
+        final budget = chrome.resolveDeskBudget(
+          restingDeskHeight: canvasHeight,
+          sheetHeight: cardHeight,
+          sealBlockHeight: sealBlockHeight,
+          isHandscrollEmpty: stagedItems.isEmpty,
+          isLastSheet: currentSheetIndex == totalSheets - 1,
         );
-        final budget =
-            resolveBudget(isWorkstationCollapsed: isWorkstationCollapsed);
         final topOffset = budget.sheetTop;
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -312,11 +303,7 @@ class EditorPaperCanvas extends StatelessWidget {
                           mediaSandboxService: mediaSandboxService,
                           activeSheetNumber: currentSheetIndex + 1,
                           isPaperDark: themeConfig.isPaperDark,
-                          isWorkstationCollapsed: isWorkstationCollapsed,
-                          onCollapseWorkstation: chrome.collapseWorkstation,
-                          onRestoreWorkstation: chrome.expandWorkstation,
-                          onRestoreWritingDock:
-                              chrome.showsWritingDockRestoreTab ? () => chrome.setWritingDockVisible(true) : null,
+                          chrome: chrome,
                           handlers: deskMedia,
                           onCaptionChanged: (mediaId, newCaption) {
                             coordinator.updateCaption(mediaId, newCaption);

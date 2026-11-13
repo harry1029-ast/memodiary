@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/media_sandbox_service.dart';
+import '../controllers/editor_chrome_controller.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/desk_media_handlers.dart';
 import 'desk_workstation/desk_space_budget.dart';
@@ -33,15 +34,7 @@ class EditorDeskMediaArea extends StatelessWidget {
   /// 1-based number of the active Stationery Sheet.
   final int activeSheetNumber;
   final bool isPaperDark;
-
-  /// Whether the diarist (or a short desk) has put the workstation away.
-  final bool isWorkstationCollapsed;
-  final VoidCallback onCollapseWorkstation;
-  final VoidCallback onRestoreWorkstation;
-
-  /// Brings the hidden Writing Dock back; non-null only while its 展开文房 tab
-  /// floats at the desk's bottom-right.
-  final VoidCallback? onRestoreWritingDock;
+  final EditorChromeController chrome;
 
   /// Collect, mount, erase, unmount and Brush Reveal plumbing.
   final DeskMediaHandlers handlers;
@@ -60,10 +53,7 @@ class EditorDeskMediaArea extends StatelessWidget {
     required this.mediaSandboxService,
     required this.activeSheetNumber,
     this.isPaperDark = false,
-    this.isWorkstationCollapsed = false,
-    required this.onCollapseWorkstation,
-    required this.onRestoreWorkstation,
-    this.onRestoreWritingDock,
+    required this.chrome,
     this.handlers = const DeskMediaHandlers(),
     this.onCaptionChanged,
   });
@@ -94,7 +84,7 @@ class EditorDeskMediaArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasDockTab = onRestoreWritingDock != null;
+    final hasDockTab = chrome.showsWritingDockRestoreTab;
     final tabInset = hasDockTab ? WritingDockRestoreTab.kTargetSize : 0.0;
     final systemBarInset = hasDockTab ? MediaQuery.viewPaddingOf(context).bottom : 0.0;
     return Stack(
@@ -140,7 +130,7 @@ class EditorDeskMediaArea extends StatelessWidget {
           height: WorkstationPullTab.kTargetSize,
           child: _StepAside(
             isShown: budget.showWorkstation,
-            child: WorkstationPullTab(onCollapse: onCollapseWorkstation),
+            child: WorkstationPullTab(onCollapse: chrome.collapseWorkstation),
           ),
         ),
         Positioned(
@@ -148,11 +138,11 @@ class EditorDeskMediaArea extends StatelessWidget {
           right: 16.0 + tabInset,
           bottom: DeskSpaceBudget.kBottomMargin + systemBarInset,
           child: _StepAside(
-            isShown: isWorkstationCollapsed,
+            isShown: chrome.isWorkstationCollapsed,
             child: Center(
               child: WorkstationRestorePill(
                 stagedCount: stagedItems.length,
-                onRestore: onRestoreWorkstation,
+                onRestore: chrome.expandWorkstation,
               ),
             ),
           ),
@@ -162,7 +152,7 @@ class EditorDeskMediaArea extends StatelessWidget {
           Positioned(
             right: 0.0,
             bottom: systemBarInset,
-            child: WritingDockRestoreTab(onRestore: onRestoreWritingDock!),
+            child: WritingDockRestoreTab(onRestore: () => chrome.setWritingDockVisible(true)),
           ),
       ],
     );

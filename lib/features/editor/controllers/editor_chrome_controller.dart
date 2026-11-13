@@ -2,11 +2,13 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
 import '../services/editor_settings_service.dart';
+import '../widgets/desk_workstation/desk_space_budget.dart';
 
 /// The entry editor's panel state, shared by the screen, the desk canvas and
 /// the writing panels below it: the software keyboard (and the app bar that
 /// slides away for it), the desk's resting height, the Desk Workstation's
-/// collapsed state, dictation and the Writing Dock's visibility.
+/// collapsed state, formatting ribbon openness, dictation and the Writing
+/// Dock's visibility.
 class EditorChromeController extends ChangeNotifier {
   /// The app-wide preference store behind the Writing Dock's visibility. Null
   /// keeps the controller memory-only.
@@ -22,6 +24,7 @@ class EditorChromeController extends ChangeNotifier {
   /// Whether the first measured layout has decided the workstation's state.
   bool _isWorkstationResolved = false;
   bool _isWorkstationCollapsed = false;
+  bool _isFormattingOpen = false;
   bool _isDictating = false;
   bool _isWritingDockVisible = true;
   bool _isDisposed = false;
@@ -30,6 +33,7 @@ class EditorChromeController extends ChangeNotifier {
   double get keyboardInset => _keyboardInset;
   bool get isKeyboardVisible => _keyboardInset > 0;
   bool get isWorkstationCollapsed => _isWorkstationCollapsed;
+  bool get isFormattingOpen => _isFormattingOpen;
   bool get isDictating => _isDictating;
   bool get isWritingDockVisible => _isWritingDockVisible;
 
@@ -65,11 +69,37 @@ class EditorChromeController extends ChangeNotifier {
     return _restingDeskHeight ?? visibleHeight + _keyboardInset - _appBarHiddenExtent;
   }
 
-  /// Until the diarist toggles it, the first measured layout decides: the
-  /// workstation starts collapsed when its minimum height does not fit.
-  /// Returns the resolved state. Safe to call during layout: listeners are
-  /// notified after the frame.
-  bool resolveInitialWorkstation({required bool workstationFits}) {
+  /// Resolves the Desk Space Budget against [restingDeskHeight] in one pass.
+  ///
+  /// On the first unresolved layout, auto-collapses the Desk Workstation if its
+  /// minimum height does not fit and schedules a post-frame listener
+  /// notification so external observers sync safely outside build/layout.
+  DeskSpaceBudget resolveDeskBudget({
+    required double restingDeskHeight,
+    required double sheetHeight,
+    required double sealBlockHeight,
+    required bool isHandscrollEmpty,
+    required bool isLastSheet,
+  }) {
+    final isCollapsed = _resolveInitialWorkstation(
+      workstationFits: DeskSpaceBudget.fitsWorkstation(
+        canvasHeight: restingDeskHeight,
+        sheetHeight: sheetHeight,
+        isHandscrollEmpty: isHandscrollEmpty,
+      ),
+    );
+    return DeskSpaceBudget.resolve(
+      canvasHeight: restingDeskHeight,
+      sheetHeight: sheetHeight,
+      sealBlockHeight: sealBlockHeight,
+      isHandscrollEmpty: isHandscrollEmpty,
+      isWorkstationCollapsed: isCollapsed,
+      isKeyboardVisible: isKeyboardVisible,
+      isLastSheet: isLastSheet,
+    );
+  }
+
+  bool _resolveInitialWorkstation({required bool workstationFits}) {
     if (!_isWorkstationResolved) {
       _isWorkstationResolved = true;
       _isWorkstationCollapsed = !workstationFits;
@@ -93,6 +123,11 @@ class EditorChromeController extends ChangeNotifier {
     if (!_isWorkstationCollapsed) return;
     _isWorkstationResolved = true;
     _isWorkstationCollapsed = false;
+    notifyListeners();
+  }
+
+  void toggleFormatting() {
+    _isFormattingOpen = !_isFormattingOpen;
     notifyListeners();
   }
 

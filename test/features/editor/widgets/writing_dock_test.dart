@@ -27,19 +27,32 @@ void main() {
       VoidCallback? onToggleDictation,
       VoidCallback? onShuffleSpark,
       bool isDictating = false,
+      bool initialFormattingOpen = false,
+      VoidCallback? onToggleFormatting,
+      bool includeToggleFormatting = true,
     }) {
+      var isFormattingOpen = initialFormattingOpen;
       return MaterialApp(
         theme: InkDiaryTheme.light,
         home: Scaffold(
           body: Align(
             alignment: Alignment.bottomCenter,
-            child: WritingDock(
-              controller: controller,
-              onPickImage: onPickImage ?? () {},
-              onPickVideo: onPickVideo,
-              onToggleDictation: onToggleDictation ?? () {},
-              onShuffleSpark: onShuffleSpark,
-              isDictating: isDictating,
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                return WritingDock(
+                  controller: controller,
+                  onPickImage: onPickImage ?? () {},
+                  onPickVideo: onPickVideo,
+                  onToggleDictation: onToggleDictation ?? () {},
+                  onShuffleSpark: onShuffleSpark,
+                  isFormattingOpen: isFormattingOpen,
+                  onToggleFormatting: includeToggleFormatting
+                      ? (onToggleFormatting ??
+                          () => setState(() => isFormattingOpen = !isFormattingOpen))
+                      : null,
+                  isDictating: isDictating,
+                );
+              },
             ),
           ),
         ),
@@ -195,6 +208,24 @@ void main() {
       expect(controller.selection.isCollapsed, isTrue);
       // Wrapped "{夹注:Hello}". Length is 11, cursor after '}' at index 11
       expect(controller.selection.baseOffset, equals('{夹注:Hello}'.length));
+    });
+
+    testWidgets('omitted optional callbacks do not crash and isFormattingOpen controls ribbon directly',
+        (tester) async {
+      await tester.pumpWidget(buildTestWidget(
+        initialFormattingOpen: true,
+        includeToggleFormatting: false,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('B'), findsOneWidget);
+      expect(find.byKey(const Key('writing_dock_video_btn')), findsNothing);
+      expect(find.byKey(const Key('writing_dock_spark_btn')), findsNothing);
+
+      // Tapping format button when onToggleFormatting is omitted is a safe no-op.
+      await tester.tap(find.byKey(const Key('writing_dock_format_btn')));
+      await tester.pumpAndSettle();
+      expect(find.text('B'), findsOneWidget);
     });
   });
 }
