@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:path/path.dart' as p;
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 
@@ -38,48 +36,28 @@ class StorageOptimizerService {
     required AppDatabase database,
     required MediaSandboxService mediaService,
   }) async {
-    final activeEntries = await database.getAllActiveEntries();
-    final deletedEntries = await database.getDeletedEntries();
-    final referencedPaths = await database.getAllMediaRelativePaths();
-    final dummyFile = await mediaService.getFileFromRelativePath('media/.probe');
-    final mediaDir = dummyFile.parent;
+    final activeEntries = await database.entriesDao.getAllActiveEntries();
+    final deletedEntries = await database.entriesDao.getDeletedEntries();
+    final referencedPaths =
+        await database.mediaOcrDao.getAllReferencedMediaPaths();
+    final mediaFiles = await mediaService.listMediaFiles();
 
-    int totalMediaCount = 0;
-    int totalMediaBytes = 0;
-    int orphanCount = 0;
-    int orphanBytes = 0;
+    var totalMediaBytes = 0;
+    var orphanCount = 0;
+    var orphanBytes = 0;
 
-    if (mediaDir.existsSync()) {
-      final entities = mediaDir.listSync(followLinks: false);
-      for (final entity in entities) {
-        if (entity is File) {
-          final fileName = p.basename(entity.path);
-          if (fileName.startsWith('.')) continue;
-
-          final ext = p.extension(entity.path).toLowerCase();
-          if (ext != '.webp' && ext != '.mp4' && ext != '.png' && ext != '.jpg' && ext != '.jpeg') {
-            continue;
-          }
-
-          final size = entity.lengthSync();
-          final relPath = 'media/$fileName';
-
-          totalMediaCount++;
-          totalMediaBytes += size;
-
-          // Check if file is referenced in SQLite media_attachments
-          if (!referencedPaths.contains(relPath)) {
-            orphanCount++;
-            orphanBytes += size;
-          }
-        }
+    for (final mediaFile in mediaFiles) {
+      totalMediaBytes += mediaFile.sizeBytes;
+      if (!referencedPaths.contains(mediaFile.relativePath)) {
+        orphanCount++;
+        orphanBytes += mediaFile.sizeBytes;
       }
     }
 
     return StorageStats(
       activeEntriesCount: activeEntries.length,
       deletedEntriesCount: deletedEntries.length,
-      totalMediaFiles: totalMediaCount,
+      totalMediaFiles: mediaFiles.length,
       totalMediaBytes: totalMediaBytes,
       orphanMediaFiles: orphanCount,
       orphanMediaBytes: orphanBytes,
@@ -87,44 +65,18 @@ class StorageOptimizerService {
   }
 
   /// Identifies and permanently deletes physical sandbox media files that have
-  /// zero references in SQLite `media_attachments`. Reclaims orphaned storage.
+  /// zero references across diary attachments, album photos, and collection covers.
   static Future<int> purgeOrphanMedia({
     required AppDatabase database,
     required MediaSandboxService mediaService,
   }) async {
-    final referencedPaths = await database.getAllMediaRelativePaths();
-    final dummyFile = await mediaService.getFileFromRelativePath('media/.probe');
-    final mediaDir = dummyFile.parent;
-
-    if (!await mediaDir.exists()) return 0;
-
-    int purgedCount = 0;
-    final entities = mediaDir.listSync(followLinks: false);
-
-    for (final entity in entities) {
-      if (entity is File) {
-        final fileName = p.basename(entity.path);
-        if (fileName.startsWith('.')) continue;
-
-        final ext = p.extension(entity.path).toLowerCase();
-        if (ext != '.webp' && ext != '.mp4' && ext != '.png' && ext != '.jpg' && ext != '.jpeg') {
-          continue;
-        }
-
-        final relPath = 'media/$fileName';
-
-        if (!referencedPaths.contains(relPath)) {
-          try {
-            await entity.delete();
-            purgedCount++;
-          } catch (_) {
-            // Ignore if file is locked
-          }
-        }
-      }
-    }
-
-    return purgedCount;
+    final referencedPaths =
+        await database.mediaOcrDao.getAllReferencedMediaPaths();
+    final mediaFiles = await mediaService.listMediaFiles();
+    final orphanPaths = mediaFiles
+        .where((mediaFile) => !referencedPaths.contains(mediaFile.relativePath))
+        .map((mediaFile) => mediaFile.relativePath);
+    return mediaService.deleteMediaPaths(orphanPaths);
   }
 }
 

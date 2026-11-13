@@ -83,6 +83,79 @@ void main() {
         throwsA(isA<FileSystemException>()),
       );
     });
+
+    test('listMediaFiles returns empty list when media directory does not exist', () async {
+      final files = await service.listMediaFiles();
+      expect(files, isEmpty);
+    });
+
+    test('listMediaFiles filters dotfiles and unsupported extensions with normalized paths', () async {
+      final mediaDir = Directory(p.join(tempDir.path, 'media'))
+        ..createSync(recursive: true);
+
+      File(p.join(mediaDir.path, 'photo_a.webp')).writeAsBytesSync([1, 2, 3]);
+      File(p.join(mediaDir.path, 'photo_b.JPG')).writeAsBytesSync([1, 2, 3, 4]);
+      File(p.join(mediaDir.path, 'photo_c.png')).writeAsBytesSync([1, 2]);
+      File(p.join(mediaDir.path, 'photo_d.jpeg')).writeAsBytesSync([1]);
+      File(p.join(mediaDir.path, 'clip.mp4')).writeAsBytesSync([1, 2, 3, 4, 5]);
+      File(p.join(mediaDir.path, '.DS_Store')).writeAsStringSync('finder metadata');
+      File(p.join(mediaDir.path, '.probe')).writeAsStringSync('probe');
+      File(p.join(mediaDir.path, 'scratch.tmp')).writeAsStringSync('temp');
+      Directory(p.join(mediaDir.path, 'nested_dir')).createSync();
+
+      final defaultFiles = await service.listMediaFiles();
+      expect(
+        defaultFiles,
+        equals(const [
+          MediaSandboxFile(relativePath: 'media/clip.mp4', sizeBytes: 5),
+          MediaSandboxFile(relativePath: 'media/photo_a.webp', sizeBytes: 3),
+          MediaSandboxFile(relativePath: 'media/photo_b.JPG', sizeBytes: 4),
+          MediaSandboxFile(relativePath: 'media/photo_c.png', sizeBytes: 2),
+          MediaSandboxFile(relativePath: 'media/photo_d.jpeg', sizeBytes: 1),
+        ]),
+      );
+
+      final customFiles = await service.listMediaFiles(
+        allowedExtensions: {'webp', '.TMP'},
+      );
+      expect(
+        customFiles.map((file) => file.relativePath),
+        equals(['media/photo_a.webp', 'media/scratch.tmp']),
+      );
+    });
+
+    test('deleteMediaPaths deletes valid relative paths, ignores unsafe/missing paths, and deduplicates', () async {
+      final mediaDir = Directory(p.join(tempDir.path, 'media'))
+        ..createSync(recursive: true);
+      final targetA = File(p.join(mediaDir.path, 'a.webp'))
+        ..writeAsBytesSync([1, 2, 3]);
+      final targetB = File(p.join(mediaDir.path, 'b.webp'))
+        ..writeAsBytesSync([4, 5]);
+
+      final outsideDir = Directory.systemTemp.createTempSync('outside_sandbox_');
+      addTearDown(() {
+        if (outsideDir.existsSync()) outsideDir.deleteSync(recursive: true);
+      });
+      final outsideFile = File(p.join(outsideDir.path, 'keep_me.webp'))
+        ..writeAsBytesSync([9, 9]);
+
+      final deletedCount = await service.deleteMediaPaths([
+        'media/a.webp',
+        r'media\a.webp', // duplicate after normalization
+        'media/b.webp',
+        'media/does_not_exist.webp',
+        '',
+        '   ',
+        '/etc/passwd',
+        '../${p.basename(outsideDir.path)}/keep_me.webp',
+        r'C:\Windows\System32\evil.webp',
+      ]);
+
+      expect(deletedCount, equals(2));
+      expect(targetA.existsSync(), isFalse);
+      expect(targetB.existsSync(), isFalse);
+      expect(outsideFile.existsSync(), isTrue);
+    });
   });
 }
 

@@ -562,6 +562,54 @@ void main() {
         );
       },
     );
+
+    test(
+      'backup discovery excludes dotfiles and scratch files while including dedicated album covers',
+      () async {
+        final mediaDir = Directory(p.join(baseDir.path, 'media'))
+          ..createSync(recursive: true);
+        File(p.join(mediaDir.path, 'cover_only.webp'))
+            .writeAsBytesSync([0x52, 0x49, 0x46, 0x46, 1, 2, 3]);
+        File(p.join(mediaDir.path, '.DS_Store')).writeAsStringSync('ignore-me');
+        File(p.join(mediaDir.path, 'scratch.tmp')).writeAsStringSync('ignore-tmp');
+
+        await db.albumsDao.insertCollection(
+          AlbumCollectionsCompanion.insert(
+            id: 'col_cover_only',
+            title: 'Cover Test',
+            coverImagePath: const Value('media/cover_only.webp'),
+          ),
+        );
+
+        final backupFile = File(p.join(tempDir.path, 'clean_media_scan.mdbak'));
+        final createRes = await backupService.createBackup(
+          destination: backupFile,
+          passphrase: null,
+        );
+
+        expect(createRes.mediaFilesCount, equals(1));
+
+        mediaDir.deleteSync(recursive: true);
+        final restoreRes = await backupService.restoreBackup(
+          source: backupFile,
+          passphrase: null,
+        );
+
+        expect(restoreRes.mediaFilesRestored, equals(1));
+        expect(
+          File(p.join(baseDir.path, 'media', 'cover_only.webp')).existsSync(),
+          isTrue,
+        );
+        expect(
+          File(p.join(baseDir.path, 'media', '.DS_Store')).existsSync(),
+          isFalse,
+        );
+        expect(
+          File(p.join(baseDir.path, 'media', 'scratch.tmp')).existsSync(),
+          isFalse,
+        );
+      },
+    );
   });
 }
 
