@@ -193,7 +193,7 @@ class EditorPaginationHandler {
     });
 
     if (deletedRelativePath != null && deletedRelativePath.isNotEmpty) {
-      await autosaveManager.database.deleteMediaForEntryByPath(
+      await autosaveManager.database.mediaOcrDao.deleteMediaForEntryByPath(
         entryId: autosaveManager.entryId,
         relativePath: deletedRelativePath,
       );

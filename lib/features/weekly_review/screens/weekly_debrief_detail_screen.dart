@@ -68,14 +68,16 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final fresh = await widget.database.getEntryById(_debrief.id);
+      final fresh =
+          await widget.database.entriesDao.getEntryById(_debrief.id);
       if (fresh != null) {
         _debrief = fresh;
       }
 
-      _template = await widget.database.getTemplateById(_debrief.templateId);
+      _template =
+          await widget.database.templatesDao.getTemplateById(_debrief.templateId);
       if (_template == null) {
-        final all = await widget.database.getAllTemplates();
+        final all = await widget.database.templatesDao.getAllTemplates();
         if (all.isNotEmpty) _template = all.first;
       }
 
@@ -194,17 +196,19 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
             icon: Icon(Icons.style_outlined, color: tokens.nongmo),
             tooltip: '更换信笺',
             onPressed: () async {
-              final templates = await widget.database.getAllTemplates();
+              final templates =
+                  await widget.database.templatesDao.getAllTemplates();
               if (!context.mounted) return;
               await TemplateSwitcherSheet.show(
                 context: context,
                 templates: templates,
                 currentTemplateId: _debrief.templateId,
                 database: widget.database,
-                onTemplateSelected: (newT) async {
-                  await widget.database.updateEntryTemplate(_debrief.id, newT.id);
+                onTemplateSelected: (newTemplate) async {
+                  await widget.database.entriesDao
+                      .updateEntryTemplate(_debrief.id, newTemplate.id);
                   setState(() {
-                    _template = newT;
+                    _template = newTemplate;
                   });
                 },
               );

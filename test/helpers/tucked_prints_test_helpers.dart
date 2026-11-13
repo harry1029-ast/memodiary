@@ -86,7 +86,7 @@ Future<void> seedMountedEntry(
   final derivedPlainText = delta != null
       ? Document.fromDelta(MountMarker.strip(delta)).toPlainText().trim()
       : '雨巷。';
-  await database.into(database.entries).insert(
+  await database.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: entryId,
           notebookId: 'notebook_default',
@@ -103,7 +103,7 @@ Future<void> seedMountedEntry(
     File('${sandboxDirectory.path}/$relativePath')
       ..parent.createSync(recursive: true)
       ..writeAsBytesSync(isVideo ? kValidMp4FtypBytes : kValid1x1PngBytes);
-    await database.attachMediaToEntry(
+    await database.mediaOcrDao.attachMediaToEntry(
       id: mediaId,
       entryId: entryId,
       relativePath: relativePath,

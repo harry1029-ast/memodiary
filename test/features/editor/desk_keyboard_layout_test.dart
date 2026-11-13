@@ -38,7 +38,7 @@ void main() {
     for (int lineIndex = 1; lineIndex <= 26; lineIndex++) {
       delta.insert('第${lineIndex.toString().padLeft(2, '0')}行砚池墨痕\n');
     }
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',

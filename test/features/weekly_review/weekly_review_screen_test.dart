@@ -24,7 +24,7 @@ void main() {
   group('WeeklyReviewScreen Widget Tests', () {
     testWidgets('renders multiple entries logged on the same weekday without truncation (Watchpoint 1)', (tester) async {
       // ISO Week 42 of 2026: Monday Oct 12 to Sunday Oct 18
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'mon_entry_1',
           notebookId: 'notebook_default',
@@ -37,7 +37,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'mon_entry_2',
           notebookId: 'notebook_default',
@@ -123,7 +123,7 @@ void main() {
       expect(find.byType(EntryEditorScreen), findsOneWidget);
 
       // Verify weekly review entry was created in database
-      final debrief = await db.getWeeklyReviewEntry(2026, 42);
+      final debrief = await db.entriesDao.getWeeklyReviewEntry(2026, 42);
       expect(debrief, isNotNull);
       expect(debrief!.isWeeklyReview, isTrue);
       expect(debrief.weekNumber, equals(42));

@@ -15,7 +15,7 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    await db.into(db.entries).insert(
+    await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'entry_autosave_1',
             notebookId: 'notebook_default',
@@ -72,7 +72,7 @@ void main() {
 
       expect(autosave.statusNotifier.value, AutosaveStatus.saved);
 
-      final entry = await db.getEntryById('entry_autosave_1');
+      final entry = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(entry, isNotNull);
       expect(entry!.plainText, contains('Hello Autosave World'));
       expect(jsonDecode(entry.contentDelta), isA<List>());
@@ -96,7 +96,7 @@ void main() {
 
       expect(autosave.statusNotifier.value, AutosaveStatus.saved);
 
-      final entry = await db.getEntryById('entry_autosave_1');
+      final entry = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(entry!.plainText, contains('Immediate Text'));
 
       autosave.dispose();
@@ -124,7 +124,7 @@ void main() {
 
       expect(autosave.statusNotifier.value, AutosaveStatus.saved);
 
-      final entry = await db.getEntryById('entry_autosave_1');
+      final entry = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(entry, isNotNull);
       expect(entry!.title, equals('Updated Autumn Reverie'));
 
@@ -152,7 +152,7 @@ void main() {
 
       expect(autosave.statusNotifier.value, AutosaveStatus.saved);
 
-      final entry = await db.getEntryById('entry_autosave_1');
+      final entry = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(entry!.title, equals('Forced Saved Title'));
       expect(entry.plainText, contains('Forced Content'));
 
@@ -183,7 +183,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 150));
       expect(autosave.statusNotifier.value, AutosaveStatus.saved);
 
-      var saved = await db.getEntryById('entry_autosave_1');
+      var saved = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(saved!.contentDelta, contains('雾凇沆砀'));
 
       // Re-balance via updateTypography (replaces all sheet instances) and then type on Sheet 1:
@@ -196,7 +196,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 150));
       expect(autosave.statusNotifier.value, AutosaveStatus.saved);
 
-      saved = await db.getEntryById('entry_autosave_1');
+      saved = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(saved!.plainText, contains('崇祯五年十二月，湖心亭看雪'));
 
       autosave.dispose();
@@ -239,7 +239,7 @@ void main() {
       await expectDirtyThenSave(() {
         expect(coordinator.mountOnActiveSheet('print_1'), isTrue);
       });
-      var saved = await db.getEntryById('entry_autosave_1');
+      var saved = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(saved!.contentDelta, contains('print_1'));
 
       await expectDirtyThenSave(() {
@@ -249,7 +249,7 @@ void main() {
       await expectDirtyThenSave(() {
         expect(coordinator.unmountMedia('print_1'), isTrue);
       });
-      saved = await db.getEntryById('entry_autosave_1');
+      saved = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(saved!.contentDelta, isNot(contains('print_1')));
 
       SheetMediaItem? removed;
@@ -265,7 +265,7 @@ void main() {
       await expectDirtyThenSave(() {
         coordinator.removeEphemeraSheet(1);
       });
-      saved = await db.getEntryById('entry_autosave_1');
+      saved = await db.entriesDao.getEntryById('entry_autosave_1');
       expect(saved!.contentDelta, isNot(contains('legacy_ephemera.webp')));
 
       autosave.dispose();

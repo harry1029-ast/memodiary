@@ -19,7 +19,7 @@ void main() {
     tempDirectory = Directory.systemTemp.createTempSync('enter_spill_test_');
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'enter_spill_entry',
             notebookId: 'notebook_default',

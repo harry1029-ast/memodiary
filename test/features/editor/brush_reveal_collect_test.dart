@@ -42,7 +42,7 @@ void main() {
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
     photo = File('${tempDirectory.path}/picked_photo.png')..writeAsBytesSync(kValid1x1PngBytes);
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',
@@ -89,7 +89,7 @@ void main() {
   }
 
   Future<List<String>> attachmentIds() async =>
-      (await database.getMediaForEntry(_entryId)).map((row) => row.id).toList();
+      (await database.mediaOcrDao.getMediaForEntry(_entryId)).map((row) => row.id).toList();
 
   Finder cover(String id) => find.byKey(Key('brush_reveal_cover_$id'));
   final anyCover = find.byWidgetPredicate(
@@ -190,16 +190,20 @@ void main() {
     File('${tempDirectory.path}/media/plum.webp')
       ..parent.createSync(recursive: true)
       ..writeAsBytesSync(kValid1x1PngBytes);
-    await database.attachMediaToEntry(id: 'plum', entryId: _entryId, relativePath: 'media/plum.webp');
-    await (database.update(database.entries)..where((row) => row.id.equals(_entryId))).write(
-          EntriesCompanion(
-            contentDelta: Value(jsonEncode((Delta()
-                  ..insert('断桥残雪')
-                  ..insert({'mount': 'plum'})
-                  ..insert('\n'))
-                .toJson())),
-          ),
-        );
+    await database.mediaOcrDao.attachMediaToEntry(
+      id: 'plum',
+      entryId: _entryId,
+      relativePath: 'media/plum.webp',
+    );
+    await database.entriesDao.updateEntryContent(
+      _entryId,
+      jsonEncode((Delta()
+            ..insert('断桥残雪')
+            ..insert({'mount': 'plum'})
+            ..insert('\n'))
+          .toJson()),
+      '断桥残雪',
+    );
     await openEditor(tester);
     expect(tuckedPrint('plum'), findsOneWidget);
 

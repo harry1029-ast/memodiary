@@ -46,7 +46,7 @@ void main() {
   });
 
   Future<void> seedEntry(Delta delta, List<String> attachmentIds) async {
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',
@@ -58,17 +58,13 @@ void main() {
           ),
         );
     final mediaDir = Directory('${tempDirectory.path}/media')..createSync(recursive: true);
-    for (final (index, id) in attachmentIds.indexed) {
+    for (final id in attachmentIds) {
       File('${mediaDir.path}/$id.webp').writeAsBytesSync(kValid1x1PngBytes);
-      await database.into(database.mediaAttachments).insert(
-            MediaAttachmentsCompanion.insert(
-              id: id,
-              entryId: _entryId,
-              mediaType: 'image',
-              relativePath: 'media/$id.webp',
-              createdAt: Value(DateTime(2026, 11, 6, 9, index)),
-            ),
-          );
+      await database.mediaOcrDao.attachMediaToEntry(
+        id: id,
+        entryId: _entryId,
+        relativePath: 'media/$id.webp',
+      );
     }
   }
 
@@ -100,7 +96,7 @@ void main() {
   Finder handscrollItem(String mediaId) => find.byKey(Key('handscroll_item_$mediaId'));
 
   Future<List<String>> savedMarkerIds() async {
-    final entry = await database.getEntryById(_entryId);
+    final entry = await database.entriesDao.getEntryById(_entryId);
     return MountMarker.mediaIdsIn(Delta.fromJson(jsonDecode(entry!.contentDelta) as List));
   }
 
@@ -148,7 +144,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tuckedPrint('plum'), findsNothing);
       expect(handscrollItem('plum'), findsOneWidget);
-      expect(await database.getMediaForEntry(_entryId), hasLength(1), reason: 'never deleted');
+      expect(await database.mediaOcrDao.getMediaForEntry(_entryId), hasLength(1), reason: 'never deleted');
 
       controller.undo();
       await tester.pumpAndSettle();

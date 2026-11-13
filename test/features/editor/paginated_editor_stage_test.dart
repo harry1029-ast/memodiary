@@ -29,7 +29,7 @@ void main() {
     tempDirectory = Directory.systemTemp.createTempSync('paginated_editor_stage_test_');
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'paginated_test_entry',
             notebookId: 'notebook_default',
@@ -94,7 +94,7 @@ void main() {
         multiSheetDelta.insert('第${lineIndex.toString().padLeft(2, '0')}行信笺书法墨迹书写记录\n');
       }
 
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         'paginated_test_entry',
         jsonEncode(multiSheetDelta.toJson()),
         'Multi-sheet content',
@@ -219,7 +219,7 @@ void main() {
       for (int lineIndex = 1; lineIndex <= 12; lineIndex++) {
         delta.insert('第${lineIndex.toString().padLeft(2, '0')}行墨迹\n');
       }
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         'paginated_test_entry',
         jsonEncode(delta.toJson()),
         '12 lines',

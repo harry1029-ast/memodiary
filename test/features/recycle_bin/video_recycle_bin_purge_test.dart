@@ -32,7 +32,7 @@ void main() {
       final mediaDir = Directory(p.join(tempDir.path, 'media'))..createSync(recursive: true);
 
       // 1. Create entry
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'video_entry_delete',
           notebookId: 'notebook_default',
@@ -48,7 +48,7 @@ void main() {
       final videoFile = File(p.join(mediaDir.path, 'family_clip.mp4'))..writeAsBytesSync([1, 2, 3]);
       final thumbFile = File(p.join(mediaDir.path, 'family_clip_thumb.webp'))..writeAsBytesSync([4, 5]);
 
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_family_clip',
         entryId: 'video_entry_delete',
         relativePath: 'media/family_clip.mp4',
@@ -60,8 +60,8 @@ void main() {
       expect(thumbFile.existsSync(), isTrue);
 
       // 3. Soft delete first
-      await db.softDeleteEntry('video_entry_delete');
-      expect((await db.getDeletedEntries()).length, 1);
+      await db.entriesDao.softDeleteEntry('video_entry_delete');
+      expect((await db.entriesDao.getDeletedEntries()).length, 1);
 
       // 4. Permanently delete entry
       await RecycleBinService.permanentDeleteEntry(
@@ -75,8 +75,8 @@ void main() {
       expect(thumbFile.existsSync(), isFalse);
 
       // Verify database records are deleted
-      expect(await db.getEntryById('video_entry_delete'), isNull);
-      expect(await db.getMediaForEntry('video_entry_delete'), isEmpty);
+      expect(await db.entriesDao.getEntryById('video_entry_delete'), isNull);
+      expect(await db.mediaOcrDao.getMediaForEntry('video_entry_delete'), isEmpty);
     });
 
     test('emptyRecycleBin permanently removes all deleted entries with videos', () async {
@@ -84,7 +84,7 @@ void main() {
 
       for (int i = 1; i <= 2; i++) {
         final id = 'batch_vid_entry_$i';
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: id,
             notebookId: 'notebook_default',
@@ -99,7 +99,7 @@ void main() {
         File(p.join(mediaDir.path, 'clip_$i.mp4')).writeAsBytesSync([i]);
         File(p.join(mediaDir.path, 'clip_${i}_thumb.webp')).writeAsBytesSync([i]);
 
-        await db.attachMediaToEntry(
+        await db.mediaOcrDao.attachMediaToEntry(
           id: 'media_clip_$i',
           entryId: id,
           relativePath: 'media/clip_$i.mp4',
@@ -107,10 +107,10 @@ void main() {
           mediaType: 'video',
         );
 
-        await db.softDeleteEntry(id);
+        await db.entriesDao.softDeleteEntry(id);
       }
 
-      expect((await db.getDeletedEntries()).length, 2);
+      expect((await db.entriesDao.getDeletedEntries()).length, 2);
 
       final purged = await RecycleBinService.emptyRecycleBin(
         database: db,
@@ -118,7 +118,7 @@ void main() {
       );
 
       expect(purged, 2);
-      expect((await db.getDeletedEntries()).isEmpty, isTrue);
+      expect((await db.entriesDao.getDeletedEntries()).isEmpty, isTrue);
 
       // Verify all physical video and thumbnail files deleted
       for (int i = 1; i <= 2; i++) {

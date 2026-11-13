@@ -55,7 +55,7 @@ void main() {
       final now = DateTime.now();
 
       // Standard entry
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'normal_entry_1',
           notebookId: 'notebook_default',
@@ -70,7 +70,7 @@ void main() {
       );
 
       // Sealed Time Capsule
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'sealed_capsule_1',
           notebookId: 'notebook_default',
@@ -241,7 +241,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(EntryEditorScreen), findsOneWidget);
-      final allEntries = await db.select(db.entries).get();
+      final allEntries = await db.entriesDao.getAllActiveEntries();
       expect(
         allEntries.any((entry) => entry.plainText.contains('今天有没有一瞬间')),
         isTrue,
@@ -286,7 +286,7 @@ void main() {
     });
 
     testWidgets('ShanshuiSceneryCard reflects recent entry weather tag', (tester) async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'rainy_entry_1',
           notebookId: 'notebook_default',
@@ -308,7 +308,7 @@ void main() {
     testWidgets('scrolling timeline past header unmounts scenery card and scroll restoration re-renders it', (tester) async {
       // Create several entries so list is scrollable
       for (int i = 0; i < 15; i++) {
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'scroll_entry_$i',
             notebookId: 'notebook_default',

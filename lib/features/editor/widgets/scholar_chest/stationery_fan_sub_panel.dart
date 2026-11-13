@@ -39,7 +39,7 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
   }
 
   void _loadTemplates() {
-    _templatesFuture = widget.database.getAllTemplates();
+    _templatesFuture = widget.database.templatesDao.getAllTemplates();
   }
 
   Future<void> _handleCreateCustom() async {
@@ -80,10 +80,11 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
 
     final confirmed = await showTemplateDeleteDialog(context, templateItem);
     if (confirmed == true && mounted) {
-      await widget.database.deleteCustomTemplate(templateItem.id);
+      await widget.database.templatesDao.deleteCustomTemplate(templateItem.id);
       setState(_loadTemplates);
       if (widget.activeTemplateId == templateItem.id) {
-        final remainingTemplates = await widget.database.getAllTemplates();
+        final remainingTemplates =
+            await widget.database.templatesDao.getAllTemplates();
         final fallbackTemplate = remainingTemplates.firstWhere(
           (fallbackCandidate) => fallbackCandidate.id == 'template_minimalist_white',
           orElse: () => remainingTemplates.first,

@@ -31,7 +31,7 @@ void main() {
     tempDirectory = Directory.systemTemp.createTempSync('letterhead_editor_screen_test_');
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',
@@ -60,7 +60,7 @@ void main() {
     for (var lineIndex = 1; lineIndex <= 29; lineIndex++) {
       multiSheetDelta.insert('第${lineIndex.toString().padLeft(2, '0')}行信笺书法墨迹书写记录\n');
     }
-    return database.updateEntryContent(_entryId, jsonEncode(multiSheetDelta.toJson()), 'Multi-sheet content');
+    return database.entriesDao.updateEntryContent(_entryId, jsonEncode(multiSheetDelta.toJson()), 'Multi-sheet content');
   }
 
   Future<void> pumpEditor(
@@ -174,7 +174,7 @@ void main() {
       expect(sealText('孟'), findsNothing);
       expectFourRowLetterhead(tester);
 
-      final stored = await database.getEntryById(_entryId);
+      final stored = await database.entriesDao.getEntryById(_entryId);
       expect(stored!.entryDate.day, 7);
     });
 
@@ -190,7 +190,7 @@ void main() {
       final charm = find.byKey(const Key('letterhead_mood_charm'));
       expect(find.descendant(of: charm, matching: find.text('欢')), findsOneWidget);
       expect(find.descendant(of: charm, matching: find.text('😄')), findsOneWidget);
-      expect((await database.getEntryById(_entryId))!.mood, 5);
+      expect((await database.entriesDao.getEntryById(_entryId))!.mood, 5);
     });
 
     testWidgets('weather charm opens its picker, saves the choice and relabels itself', (tester) async {
@@ -204,7 +204,7 @@ void main() {
 
       final charm = find.byKey(const Key('letterhead_weather_charm'));
       expect(find.descendant(of: charm, matching: find.text('润')), findsOneWidget);
-      expect((await database.getEntryById(_entryId))!.weather, 'rainy');
+      expect((await database.entriesDao.getEntryById(_entryId))!.weather, 'rainy');
     });
 
     testWidgets('labels the seal, date block and charms for screen readers', (tester) async {
@@ -236,7 +236,7 @@ void main() {
 
     testWidgets('lined template with 29px line stride renders headerHeight 116.0 on frame 1 without post-frame drift', (tester) async {
       const linedEntryId = 'letterhead_lined_entry';
-      await database.into(database.entries).insert(
+      await database.entriesDao.createEntry(
             EntriesCompanion.insert(
               id: linedEntryId,
               notebookId: 'notebook_default',
@@ -269,7 +269,7 @@ void main() {
 
     testWidgets('switching template updates geometry and headerHeight synchronously on frame 1 without post-frame drift', (tester) async {
       const switchEntryId = 'letterhead_switch_entry';
-      await database.into(database.entries).insert(
+      await database.entriesDao.createEntry(
             EntriesCompanion.insert(
               id: switchEntryId,
               notebookId: 'notebook_default',
