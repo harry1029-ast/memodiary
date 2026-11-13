@@ -42,7 +42,7 @@ void main() {
         durationSeconds: 24,
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_video_1',
           notebookId: 'default',
@@ -58,7 +58,7 @@ void main() {
         ),
       );
 
-      final entry = await db.getEntryById('entry_video_1');
+      final entry = await db.entriesDao.getEntryById('entry_video_1');
       expect(entry, isNotNull);
 
       final pdfBytes = await PdfExportEngine.generatePdfForEntry(
@@ -76,7 +76,7 @@ void main() {
     });
 
     test('renders graceful placeholder when video thumbnail is missing', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_video_missing_poster',
           notebookId: 'default',
@@ -92,7 +92,7 @@ void main() {
         ),
       );
 
-      final entry = await db.getEntryById('entry_video_missing_poster');
+      final entry = await db.entriesDao.getEntryById('entry_video_missing_poster');
       expect(entry, isNotNull);
 
       final pdfBytes = await PdfExportEngine.generatePdfForEntry(

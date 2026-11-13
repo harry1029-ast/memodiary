@@ -36,7 +36,7 @@ void main() {
 
   group('PdfExportEngine Tests', () {
     test('generatePdfForEntry generates valid PDF bytes with template preservation', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_single_1',
           notebookId: 'default',
@@ -53,7 +53,7 @@ void main() {
         ),
       );
 
-      final entry = await db.getEntryById('entry_single_1');
+      final entry = await db.entriesDao.getEntryById('entry_single_1');
       expect(entry, isNotNull);
 
       final bytes = await PdfExportEngine.generatePdfForEntry(
@@ -68,7 +68,7 @@ void main() {
 
     test('generateConsolidatedPdf generates multi-entry journal book with cover page', () async {
       // 1. Create a custom template
-      await db.createCustomTemplate(
+      await db.templatesDao.createCustomTemplate(
         id: 'custom_lavender',
         name: 'Lavender Field',
         backgroundType: 'color',
@@ -79,7 +79,7 @@ void main() {
       );
 
       // 2. Insert entries using different templates
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_book_1',
           notebookId: 'default',
@@ -93,7 +93,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_book_2',
           notebookId: 'default',
@@ -110,7 +110,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_book_3',
           notebookId: 'default',
@@ -124,7 +124,7 @@ void main() {
         ),
       );
 
-      final entries = await db.getTimelineEntries(limit: 100);
+      final entries = await db.entriesDao.getTimelineEntries(limit: 100);
       expect(entries.length, equals(3));
 
       final bytes = await PdfExportEngine.generateConsolidatedPdf(
@@ -151,7 +151,7 @@ void main() {
     });
 
     test('generatePdfForEntry in verticalScroll mode generates valid %PDF- bytes', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_vertical_scroll_1',
           notebookId: 'default',
@@ -169,7 +169,7 @@ void main() {
         ),
       );
 
-      final entry = await db.getEntryById('entry_vertical_scroll_1');
+      final entry = await db.entriesDao.getEntryById('entry_vertical_scroll_1');
       expect(entry, isNotNull);
 
       final bytes = await PdfExportEngine.generatePdfForEntry(
@@ -185,7 +185,7 @@ void main() {
     });
 
     test('generatePdfForEntry faithfully renders 4-layer StationeryVisualTokens with Cold Gold flecks', () async {
-      await db.createCustomTemplate(
+      await db.templatesDao.createCustomTemplate(
         id: 'custom_cold_gold',
         name: '冷金洒粉笺',
         backgroundType: 'paperTexture',
@@ -200,7 +200,7 @@ void main() {
         marginHorizontal: 30.0,
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_cold_gold_1',
           notebookId: 'default',
@@ -214,7 +214,7 @@ void main() {
         ),
       );
 
-      final entry = await db.getEntryById('entry_cold_gold_1');
+      final entry = await db.entriesDao.getEntryById('entry_cold_gold_1');
       expect(entry, isNotNull);
 
       // Verify horizontal stationery with cold gold tokens
@@ -241,7 +241,7 @@ void main() {
     });
 
     test('generatePdfForEntry processes interlinear notes in verticalScroll and horizontal modes', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_interlinear_1',
           notebookId: 'default',
@@ -257,7 +257,7 @@ void main() {
         ),
       );
 
-      final entry = await db.getEntryById('entry_interlinear_1');
+      final entry = await db.entriesDao.getEntryById('entry_interlinear_1');
       expect(entry, isNotNull);
 
       // 1. Verify verticalScroll export with interlinear sub-notes produces valid %PDF-
@@ -299,7 +299,7 @@ void main() {
     });
 
     test('generatePdfForEntry in verticalScroll mode correctly rotates Latin runs and fallback punctuation', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_rot_1',
           notebookId: 'default',
@@ -313,7 +313,7 @@ void main() {
         ),
       );
 
-      final entry = await db.getEntryById('entry_rot_1');
+      final entry = await db.entriesDao.getEntryById('entry_rot_1');
       expect(entry, isNotNull);
 
       final verticalBytes = await PdfExportEngine.generatePdfForEntry(
@@ -329,7 +329,7 @@ void main() {
 
     for (final layoutMode in PdfLayoutMode.values) {
       test('generatePdfForEntry ($layoutMode) renders mounted items and leaves staged items out', () async {
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'entry_mounts',
             notebookId: 'default',
@@ -345,12 +345,12 @@ void main() {
             entryDate: DateTime(2026, 11, 5),
           ),
         );
-        await db.attachMediaToEntry(
+        await db.mediaOcrDao.attachMediaToEntry(
           id: 'photo_staged',
           entryId: 'entry_mounts',
           relativePath: 'media/photo_staged.webp',
         );
-        await db.attachMediaToEntry(
+        await db.mediaOcrDao.attachMediaToEntry(
           id: 'photo_mounted',
           entryId: 'entry_mounts',
           relativePath: 'media/photo_mounted.webp',
@@ -358,7 +358,7 @@ void main() {
         final recordingService = _RecordingMediaService(tempDir);
 
         final bytes = await PdfExportEngine.generatePdfForEntry(
-          entry: (await db.getEntryById('entry_mounts'))!,
+          entry: (await db.entriesDao.getEntryById('entry_mounts'))!,
           database: db,
           mediaService: recordingService,
           layoutMode: layoutMode,

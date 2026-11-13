@@ -41,7 +41,7 @@ void main() {
       ]);
 
       // 2. Insert into SQLite entries table
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: entryId,
           notebookId: 'default',
@@ -56,13 +56,13 @@ void main() {
       );
 
       // 3. Attach two sandboxed WebP media attachments
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_attachment_1',
         entryId: entryId,
         relativePath: 'media/bamboo_grove.webp',
         mediaType: 'image',
       );
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_attachment_2',
         entryId: entryId,
         relativePath: 'media/matcha_teahouse.webp',
@@ -70,7 +70,7 @@ void main() {
       );
 
       // Verify baseline media attachments
-      final initialMedia = await db.getMediaForEntry(entryId);
+      final initialMedia = await db.mediaOcrDao.getMediaForEntry(entryId);
       expect(initialMedia.length, equals(2));
 
       // 4. Perform 100 consecutive template switches cycling across all 4 templates
@@ -83,12 +83,13 @@ void main() {
 
       for (int cycle = 0; cycle < 100; cycle++) {
         final targetTemplateId = templateIds[cycle % templateIds.length];
-        final rowsAffected = await db.updateEntryTemplate(entryId, targetTemplateId);
+        final rowsAffected =
+            await db.entriesDao.updateEntryTemplate(entryId, targetTemplateId);
         expect(rowsAffected, equals(1));
       }
 
       // 5. Query entry after 100 stress cycles
-      final finalEntry = await db.getEntryById(entryId);
+      final finalEntry = await db.entriesDao.getEntryById(entryId);
       expect(finalEntry, isNotNull);
 
       // INVARIANT 1: contentDelta JSON string must be 100% byte-for-byte identical
@@ -107,7 +108,7 @@ void main() {
       expect(finalEntry.templateId, equals(expectedFinalTemplate));
 
       // INVARIANT 5: SQLite media attachments records are 100% intact
-      final finalMedia = await db.getMediaForEntry(entryId);
+      final finalMedia = await db.mediaOcrDao.getMediaForEntry(entryId);
       expect(finalMedia.length, equals(2));
       expect(finalMedia.map((m) => m.relativePath).toSet(), equals({
         'media/bamboo_grove.webp',

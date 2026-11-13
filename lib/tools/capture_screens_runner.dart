@@ -49,7 +49,7 @@ void main() async {
   final now = DateTime(2026, 10, 26, 14, 30);
 
   // 1. Standard Entry
-  final entry1 = await db.into(db.entries).insertReturning(
+  final entry1 = await db.entriesDao.createEntryReturning(
         EntriesCompanion.insert(
           id: 'entry_sample_1',
           notebookId: 'notebook_default',
@@ -70,7 +70,7 @@ void main() async {
       );
 
   // 2. Sealed Time Capsule Entry
-  await db.into(db.entries).insert(
+  await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_sample_2',
           notebookId: 'notebook_default',
@@ -88,7 +88,7 @@ void main() async {
       );
 
   // 3. Weekly Debrief Entry
-  final debrief = await db.into(db.entries).insertReturning(
+  final debrief = await db.entriesDao.createEntryReturning(
         EntriesCompanion.insert(
           id: 'debrief_sample_1',
           notebookId: 'notebook_default',
@@ -111,7 +111,7 @@ void main() async {
       );
 
   // 4. Soft-deleted Entry for Recycle Bin
-  await db.into(db.entries).insert(
+  await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'deleted_sample_1',
           notebookId: 'notebook_default',
