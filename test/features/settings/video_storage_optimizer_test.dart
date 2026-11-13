@@ -32,7 +32,7 @@ void main() {
       final mediaDir = Directory(p.join(tempDir.path, 'media'))..createSync(recursive: true);
 
       // 1. Create an active entry
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'active_video_entry',
           notebookId: 'notebook_default',
@@ -50,7 +50,7 @@ void main() {
       final activeThumbFile = File(p.join(mediaDir.path, 'active_video_thumb.webp'))
         ..writeAsBytesSync(List.filled(500, 2));
 
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_active_vid_1',
         entryId: 'active_video_entry',
         relativePath: 'media/active_video.mp4',

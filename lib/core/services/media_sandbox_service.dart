@@ -1,78 +1,25 @@
 import 'dart:io';
-import 'dart:typed_data';
-import 'dart:ui' as ui;
 import 'package:drift/drift.dart' show OrderingTerm, Value;
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:video_player/video_player.dart';
 import '../database/app_database.dart';
+import 'media_sandbox_codecs.dart';
+import 'media_sandbox_types.dart';
 
-typedef ImageCompressor = Future<File?> Function(
-  String sourcePath,
-  String targetPath, {
-  int minWidth,
-  int minHeight,
-  int quality,
-});
-
-typedef VideoDurationExtractor = Future<Duration?> Function(File videoFile);
-
-typedef VideoThumbnailGenerator = Future<File?> Function(
-  File videoFile,
-  String targetThumbnailPath, {
-  int? durationSeconds,
-});
-
-typedef AspectRatioExtractor = Future<double> Function(File imageFile);
-
-/// Exception thrown when a user selects or records a video exceeding the 60s limit.
-class VideoDurationExceededException implements Exception {
-  final int durationSeconds;
-  final int maxAllowedSeconds;
-  final String message;
-
-  VideoDurationExceededException({
-    required this.durationSeconds,
-    this.maxAllowedSeconds = 60,
-  }) : message =
-            'Video duration (${durationSeconds}s) exceeds the maximum allowed limit of ${maxAllowedSeconds}s.';
-
-  @override
-  String toString() => 'VideoDurationExceededException: $message';
-}
-
-/// Result of sandboxing a video with its companion poster thumbnail.
-class VideoSandboxResult {
-  final String relativePath;
-  final String thumbnailPath;
-  final int durationSeconds;
-
-  const VideoSandboxResult({
-    required this.relativePath,
-    required this.thumbnailPath,
-    required this.durationSeconds,
-  });
-}
-
-/// Result of sandboxing a travel album photo with its 1600px full-res WebP,
-/// 300px preview thumbnail WebP, and cached width/height aspect ratio.
-class AlbumPhotoSandboxResult {
-  final String relativeImagePath;
-  final String relativeThumbnailPath;
-  final double aspectRatio;
-
-  const AlbumPhotoSandboxResult({
-    required this.relativeImagePath,
-    required this.relativeThumbnailPath,
-    required this.aspectRatio,
-  });
-}
+export 'media_sandbox_types.dart';
 
 /// Service managing sandboxed media isolation, WebP compression, video sandboxing,
 /// duration capping (<=60s), and strictly relative paths.
 class MediaSandboxService {
+  static const Set<String> defaultSupportedMediaExtensions = <String>{
+    '.webp',
+    '.mp4',
+    '.png',
+    '.jpg',
+    '.jpeg',
+  };
+
   final Future<Directory> Function() _getBaseDir;
   final ImageCompressor _compressor;
   final VideoDurationExtractor _durationExtractor;
@@ -88,63 +35,19 @@ class MediaSandboxService {
     AspectRatioExtractor? aspectRatioExtractor,
     Uuid? uuid,
   })  : _getBaseDir = baseDirProvider ?? getApplicationDocumentsDirectory,
-        _compressor = compressor ?? _defaultCompressor,
-        _durationExtractor = durationExtractor ?? _defaultDurationExtractor,
+        _compressor = compressor ?? defaultMediaImageCompressor,
+        _durationExtractor = durationExtractor ?? defaultVideoDurationExtractor,
         _thumbnailGenerator = thumbnailGenerator ?? _defaultThumbnailGenerator,
-        _aspectRatioExtractor = aspectRatioExtractor ?? _extractAspectRatio,
+        _aspectRatioExtractor =
+            aspectRatioExtractor ?? extractMediaImageAspectRatio,
         _uuid = uuid ?? const Uuid();
 
-  /// Default compressor using FlutterImageCompress with WebP format and fallback
-  static Future<File?> _defaultCompressor(
-    String sourcePath,
-    String targetPath, {
-    int minWidth = 1600,
-    int minHeight = 1600,
-    int quality = 80,
-  }) async {
-    try {
-      final xfile = await FlutterImageCompress.compressAndGetFile(
-        sourcePath,
-        targetPath,
-        minWidth: minWidth,
-        minHeight: minHeight,
-        quality: quality,
-        format: CompressFormat.webp,
-      );
-      if (xfile != null) {
-        return File(xfile.path);
-      }
-    } catch (_) {
-      // In headless testing or environments without native encoders, fallback to copy
-    }
-
-    final source = File(sourcePath);
-    if (await source.exists()) {
-      return source.copy(targetPath);
-    }
-    return null;
-  }
-
-  /// Default duration extractor using VideoPlayerController
-  static Future<Duration?> _defaultDurationExtractor(File videoFile) async {
-    try {
-      final controller = VideoPlayerController.file(videoFile);
-      await controller.initialize();
-      final duration = controller.value.duration;
-      await controller.dispose();
-      return duration;
-    } catch (_) {
-      return null;
-    }
-  }
-
   /// Default procedural vector poster thumbnail generator (Watchpoint 1).
-  /// Generates a stylish dark slate poster with a film frame and play triangle.
   static Future<File?> _defaultThumbnailGenerator(
     File videoFile,
     String targetThumbnailPath, {
     int? durationSeconds,
-  }) async {
+  }) {
     return generateProceduralVideoPoster(
       targetThumbnailPath: targetThumbnailPath,
       durationSeconds: durationSeconds,
@@ -157,74 +60,13 @@ class MediaSandboxService {
     int? durationSeconds,
     int width = 640,
     int height = 360,
-  }) async {
-    final target = File(targetThumbnailPath);
-    await target.parent.create(recursive: true);
-
-    try {
-      final recorder = ui.PictureRecorder();
-      final canvas = ui.Canvas(
-        recorder,
-        ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
-      );
-
-      // 1. Dark slate cinematic background
-      final bgPaint = ui.Paint()..color = const ui.Color(0xFF1E222D);
-      canvas.drawRect(
-        ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
-        bgPaint,
-      );
-
-      // 2. Film border guide
-      final framePaint = ui.Paint()
-        ..color = const ui.Color(0xFF2E384D)
-        ..style = ui.PaintingStyle.stroke
-        ..strokeWidth = 2.0;
-      canvas.drawRRect(
-        ui.RRect.fromRectAndRadius(
-          ui.Rect.fromLTWH(24, 24, width - 48.0, height - 48.0),
-          const ui.Radius.circular(12),
-        ),
-        framePaint,
-      );
-
-      // 3. Play triangle
-      final playPaint = ui.Paint()
-        ..color = const ui.Color(0xFFE2E8F0)
-        ..style = ui.PaintingStyle.fill;
-      final playPath = ui.Path()
-        ..moveTo(width / 2.0 - 16, height / 2.0 - 24)
-        ..lineTo(width / 2.0 + 24, height / 2.0)
-        ..lineTo(width / 2.0 - 16, height / 2.0 + 24)
-        ..close();
-      canvas.drawPath(playPath, playPaint);
-
-      final picture = recorder.endRecording();
-      final image = await picture.toImage(width, height);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-
-      if (byteData != null) {
-        await target.writeAsBytes(byteData.buffer.asUint8List());
-        return target;
-      }
-    } catch (_) {
-      // In headless environments where ui.toImage may not be available
-    }
-
-    // Fallback minimal 1x1 transparent PNG if picture recording fails
-    final fallbackPng = Uint8List.fromList([
-      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-      0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-      0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
-      0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
-      0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-      0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00,
-      0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE,
-      0x42, 0x60, 0x82,
-    ]);
-    await target.writeAsBytes(fallbackPng);
-    return target;
+  }) {
+    return renderProceduralVideoPoster(
+      targetThumbnailPath: targetThumbnailPath,
+      durationSeconds: durationSeconds,
+      width: width,
+      height: height,
+    );
   }
 
   /// Copies an image from source into the sandboxed `media/` directory,
@@ -317,24 +159,6 @@ class MediaSandboxService {
       relativeThumbnailPath: thumbRelPath.replaceAll('\\', '/'),
       aspectRatio: aspectRatio,
     );
-  }
-
-  static Future<double> _extractAspectRatio(File imageFile) async {
-    try {
-      final bytes = await imageFile.readAsBytes();
-      if (bytes.isEmpty) return 1.0;
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
-      final width = frame.image.width;
-      final height = frame.image.height;
-      frame.image.dispose();
-      if (width > 0 && height > 0) {
-        return width / height;
-      }
-    } catch (_) {
-      // Fallback to 1.0 in headless tests or non-image mock bytes
-    }
-    return 1.0;
   }
 
   /// Removes all physical `.webp` full-res, thumbnail, and cover files associated with
@@ -554,6 +378,59 @@ class MediaSandboxService {
       return true;
     }
     return false;
+  }
+
+  /// Lists supported media files in `media/`, skipping dotfiles (`.*`).
+  Future<List<MediaSandboxFile>> listMediaFiles({
+    Set<String>? allowedExtensions,
+  }) async {
+    final normalizedExts = (allowedExtensions ?? defaultSupportedMediaExtensions)
+        .map((ext) {
+          final lower = ext.trim().toLowerCase();
+          return lower.startsWith('.') ? lower : '.$lower';
+        })
+        .toSet();
+    if (normalizedExts.isEmpty) return const [];
+
+    final baseDir = await _getBaseDir();
+    final mediaDir = Directory(p.join(baseDir.path, 'media'));
+    if (!mediaDir.existsSync()) return const [];
+
+    final files = <MediaSandboxFile>[];
+    for (final entity in mediaDir.listSync(followLinks: false)) {
+      if (entity is! File) continue;
+      final fileName = p.basename(entity.path);
+      if (fileName.startsWith('.')) continue;
+      final ext = p.extension(fileName).toLowerCase();
+      if (!normalizedExts.contains(ext)) continue;
+      files.add(
+        MediaSandboxFile(
+          relativePath: 'media/$fileName',
+          sizeBytes: entity.lengthSync(),
+        ),
+      );
+    }
+    files.sort((left, right) => left.relativePath.compareTo(right.relativePath));
+    return files;
+  }
+
+  /// Batch-deletes strictly relative media paths, tolerating missing or unsafe paths.
+  Future<int> deleteMediaPaths(Iterable<String> relativePaths) async {
+    final baseDir = await _getBaseDir();
+    final seen = <String>{};
+    var deletedCount = 0;
+    for (final rawPath in relativePaths) {
+      final normalized = rawPath.trim().replaceAll('\\', '/');
+      if (!isStrictlyRelative(normalized) || !seen.add(normalized)) continue;
+      final file = File(p.join(baseDir.path, normalized));
+      try {
+        if (file.existsSync()) {
+          file.deleteSync();
+          deletedCount++;
+        }
+      } catch (_) {}
+    }
+    return deletedCount;
   }
 
   /// Validates that a path is strictly relative and does not leak system gallery roots or traverse directories
