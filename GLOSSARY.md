@@ -41,8 +41,12 @@ The subtle inspirational thought cue rendered as placeholder text directly insid
 _Avoid_: Thought spark container, prompt banner, inspiration card
 
 **Writing Dock**:
-The consolidated, de-duplicated bottom toolbar in the entry editor providing contextual rich-text formatting, media attachments, and ambiance controls in a single streamlined dock.
+The resting-desk bottom toolbar in the entry editor providing an expandable rich-text formatting ribbon, media collection, dictation, and thought sparks; collapsible to a brass restore tab and yielding to the Keyboard Accessory Row while typing.
 _Avoid_: Editor toolbar, formatting strip, action bar
+
+**Keyboard Accessory Row**:
+The slim tool row resting directly above the open software keyboard in place of the Writing Dock, presenting the formatting ribbon toggle (`Tt`), dictation, and Writing Dock visibility control without disturbing writing focus. Its formatting ribbon openness stays unified with the Writing Dock across keyboard transitions.
+_Avoid_: Input accessory bar, keyboard toolbar, quick bar
 
 **Photo Text Match**:
 A search result record (`PhotoTextMatch`) sourced from `media_fts` representing text recognized inside an entry attachment or album photo, paired with normalized line bounding boxes and parent context.
@@ -155,6 +159,10 @@ _Avoid_: Editor background, canvas backdrop, desk theme
 **Page Corner**:
 The curling folded corner (折角) at the foot of a Stationery Sheet that turns to the previous or next sheet when tapped.
 _Avoid_: Chevron, page arrow, next button
+
+**Desk Workstation**:
+The bamboo mat (案头画案) docked at the foot of the Scholar's Desk holding the Staging Handscroll (resting closed as a brocade scroll when empty). Starts collapsed if the desk lacks height, collapses into the Restore Pill when put away, and steps aside while the software keyboard is open.
+_Avoid_: Bottom tray, media dock, staging mat
 
 **Restore Pill**:
 The small walnut-and-brass tab (展案签) resting at the foot of the Scholar's Desk while the Desk Workstation is put away, showing how many items wait in the Staging Handscroll and bringing the workstation back.
