@@ -33,7 +33,7 @@ void main() {
       ocrService: fakeOcr,
     );
 
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_test',
         notebookId: 'notebook_default',
