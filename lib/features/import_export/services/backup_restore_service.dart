@@ -8,6 +8,7 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import '../models/backup_manifest.dart';
+import 'backup_archive_helper.dart';
 import 'backup_crypto.dart';
 
 /// Service orchestrating full-archive `.mdbak` creation, inspection, and atomic restoration.
@@ -88,55 +89,19 @@ class BackupRestoreService {
     onProgress?.call(0.05);
 
     // 1. Snapshot all SQLite tables inside a consistent read transaction
-    final snapshot = await database.exportAllTablesSnapshot();
+    final snapshot = await database.backupDao.exportAllTablesSnapshot();
     onProgress?.call(0.15);
 
     // 2. Discover and hash all physical sandboxed media files
-    final baseDir = await mediaService.getBaseDirectory();
-    final mediaDir = Directory(p.join(baseDir.path, 'media'));
+    final baseDir = await _baseDirProvider();
+    final referencedPaths =
+        await database.mediaOcrDao.getAllReferencedMediaPaths();
+    final sandboxFiles = await mediaService.listMediaFiles();
 
-    final candidateRelPaths = <String>{};
-    for (final m in snapshot.mediaAttachments) {
-      if (m.relativePath.isNotEmpty &&
-          MediaSandboxService.isStrictlyRelative(m.relativePath)) {
-        candidateRelPaths.add(m.relativePath.replaceAll('\\', '/'));
-      }
-      if (m.thumbnailPath != null &&
-          m.thumbnailPath!.isNotEmpty &&
-          MediaSandboxService.isStrictlyRelative(m.thumbnailPath!)) {
-        candidateRelPaths.add(m.thumbnailPath!.replaceAll('\\', '/'));
-      }
-    }
-
-    for (final col in snapshot.albumCollections) {
-      if (col.coverImagePath != null &&
-          col.coverImagePath!.isNotEmpty &&
-          MediaSandboxService.isStrictlyRelative(col.coverImagePath!)) {
-        candidateRelPaths.add(col.coverImagePath!.replaceAll('\\', '/'));
-      }
-    }
-
-    for (final photo in snapshot.albumPhotos) {
-      if (photo.relativeImagePath.isNotEmpty &&
-          MediaSandboxService.isStrictlyRelative(photo.relativeImagePath)) {
-        candidateRelPaths.add(photo.relativeImagePath.replaceAll('\\', '/'));
-      }
-      if (photo.relativeThumbnailPath.isNotEmpty &&
-          MediaSandboxService.isStrictlyRelative(photo.relativeThumbnailPath)) {
-        candidateRelPaths.add(
-          photo.relativeThumbnailPath.replaceAll('\\', '/'),
-        );
-      }
-    }
-
-    if (await mediaDir.exists()) {
-      await for (final entity in mediaDir.list(recursive: false, followLinks: false)) {
-        if (entity is File) {
-          final rel = 'media/${p.basename(entity.path)}';
-          candidateRelPaths.add(rel);
-        }
-      }
-    }
+    final candidateRelPaths = <String>{
+      ...referencedPaths.where(MediaSandboxService.isStrictlyRelative),
+      ...sandboxFiles.map((mediaFile) => mediaFile.relativePath),
+    };
 
     final sortedRelPaths = candidateRelPaths.toList()..sort();
     final mediaRecords = <BackupMediaRecord>[];
@@ -179,7 +144,7 @@ class BackupRestoreService {
     final baseDirPath = baseDir.path;
     final workDirPath = workDir.path;
     final destPath = destination.path;
-    final recordMaps = mediaRecords.map((r) => r.toJson()).toList();
+    final recordMaps = mediaRecords.map((record) => record.toJson()).toList();
 
     try {
       await destination.parent.create(recursive: true);
@@ -270,7 +235,7 @@ class BackupRestoreService {
       );
     }
 
-    final baseDir = await mediaService.getBaseDirectory();
+    final baseDir = await _baseDirProvider();
     final tempRoot = await _tempDirProvider();
     final runId = const Uuid().v4();
     final workDir = Directory(
@@ -288,166 +253,16 @@ class BackupRestoreService {
       final stagingDirPath = stagingMediaDir.path;
 
       // 2. Decrypt/unwrap and verify ZIP + SHA-256 hashes inside background Isolate
-      final manifestJsonStr = await Isolate.run(() async {
-        final tempZipFile = File(p.join(workDirPath, 'decrypted.zip'));
-
-        if (header.isEncrypted) {
-          await BackupCrypto.decryptFileChunked(
-            sourceFile: File(sourcePath),
-            destinationFile: tempZipFile,
-            passphrase: passphrase!,
-          );
-        } else {
-          await BackupCrypto.unwrapUnencryptedZip(
-            sourceMdbak: File(sourcePath),
-            destinationZip: tempZipFile,
-          );
-        }
-
-        final inputStream = InputFileStream(tempZipFile.path);
-        try {
-          final Archive archive;
-          try {
-            archive = ZipDecoder().decodeStream(inputStream);
-          } catch (e) {
-            throw BackupCorruptedException('Invalid or corrupted ZIP payload: $e');
-          }
-
-          // Zip-Slip & symlink defense on every archive entry
-          for (final entry in archive.files) {
-            final normalized = entry.name.replaceAll('\\', '/');
-            if (entry.isSymbolicLink ||
-                !MediaSandboxService.isStrictlyRelative(normalized)) {
-              throw BackupCorruptedException(
-                'Unsafe path detected in backup archive: ${entry.name}',
-              );
-            }
-          }
-
-          final manifestEntry = archive.find('manifest.json');
-          final shaEntry = archive.find('manifest.sha256');
-          if (manifestEntry == null || shaEntry == null) {
-            throw const BackupCorruptedException(
-              'Backup archive is missing manifest.json or manifest.sha256.',
-            );
-          }
-
-          final manifestBytes = manifestEntry.readBytes();
-          final shaBytes = shaEntry.readBytes();
-          if (manifestBytes == null || shaBytes == null) {
-            throw const BackupCorruptedException(
-              'Unable to read manifest.json or manifest.sha256 from archive.',
-            );
-          }
-
-          final expectedManifestSha =
-              utf8.decode(shaBytes, allowMalformed: true).trim().toLowerCase();
-          final actualManifestSha =
-              crypto.sha256.convert(manifestBytes).toString().toLowerCase();
-
-          if (actualManifestSha != expectedManifestSha) {
-            throw const BackupCorruptedException(
-              'Manifest SHA-256 checksum mismatch: backup metadata is corrupted.',
-            );
-          }
-
-          final manifestStr = utf8.decode(manifestBytes);
-          final manifest = BackupManifest.fromJsonString(manifestStr);
-
-          // Validate all DB media attachment and album paths are strictly relative
-          for (final att in manifest.snapshot.mediaAttachments) {
-            if (!MediaSandboxService.isStrictlyRelative(att.relativePath)) {
-              throw BackupCorruptedException(
-                'Invalid media attachment relativePath in manifest: ${att.relativePath}',
-              );
-            }
-            if (att.thumbnailPath != null &&
-                att.thumbnailPath!.isNotEmpty &&
-                !MediaSandboxService.isStrictlyRelative(att.thumbnailPath!)) {
-              throw BackupCorruptedException(
-                'Invalid media attachment thumbnailPath in manifest: ${att.thumbnailPath}',
-              );
-            }
-          }
-
-          for (final col in manifest.snapshot.albumCollections) {
-            if (col.coverImagePath != null &&
-                col.coverImagePath!.isNotEmpty &&
-                !MediaSandboxService.isStrictlyRelative(col.coverImagePath!)) {
-              throw BackupCorruptedException(
-                'Invalid album collection coverImagePath in manifest: ${col.coverImagePath}',
-              );
-            }
-          }
-
-          for (final photo in manifest.snapshot.albumPhotos) {
-            if (!MediaSandboxService.isStrictlyRelative(
-              photo.relativeImagePath,
-            )) {
-              throw BackupCorruptedException(
-                'Invalid album photo relativeImagePath in manifest: ${photo.relativeImagePath}',
-              );
-            }
-            if (!MediaSandboxService.isStrictlyRelative(
-              photo.relativeThumbnailPath,
-            )) {
-              throw BackupCorruptedException(
-                'Invalid album photo relativeThumbnailPath in manifest: ${photo.relativeThumbnailPath}',
-              );
-            }
-          }
-
-          // Extract and verify every media file into stagingMediaDir
-          final stagingDir = Directory(stagingDirPath);
-          await stagingDir.create(recursive: true);
-
-          for (final mediaRecord in manifest.mediaFiles) {
-            final rel = mediaRecord.relativePath.replaceAll('\\', '/');
-            if (!MediaSandboxService.isStrictlyRelative(rel) ||
-                !rel.startsWith('media/') ||
-                p.dirname(rel) != 'media') {
-              throw BackupCorruptedException(
-                'Invalid media file path in manifest: ${mediaRecord.relativePath}',
-              );
-            }
-
-            final archiveMedia = archive.find(rel);
-            if (archiveMedia == null || !archiveMedia.isFile) {
-              throw BackupCorruptedException(
-                'Media file listed in manifest is missing from archive: $rel',
-              );
-            }
-
-            final mediaBytes = archiveMedia.readBytes();
-            if (mediaBytes == null) {
-              throw BackupCorruptedException(
-                'Failed to read media file bytes from archive: $rel',
-              );
-            }
-
-            if (mediaBytes.length != mediaRecord.sizeBytes) {
-              throw BackupCorruptedException(
-                'Media file size mismatch for $rel (expected ${mediaRecord.sizeBytes}, got ${mediaBytes.length}).',
-              );
-            }
-
-            final actualMediaSha =
-                crypto.sha256.convert(mediaBytes).toString().toLowerCase();
-            if (actualMediaSha != mediaRecord.sha256.toLowerCase()) {
-              throw BackupCorruptedException(
-                'Media file SHA-256 mismatch for $rel.',
-              );
-            }
-
-            final stagedFile = File(p.join(stagingDirPath, p.basename(rel)));
-            await stagedFile.writeAsBytes(mediaBytes, flush: true);
-          }
-
-          return manifestStr;
-        } finally {
-          await inputStream.close();
-        }
-      });
+      final isEncrypted = header.isEncrypted;
+      final manifestJsonStr = await Isolate.run(
+        () => unpackAndVerifyBackupArchive(
+          isEncrypted: isEncrypted,
+          sourcePath: sourcePath,
+          workDirPath: workDirPath,
+          stagingDirPath: stagingDirPath,
+          passphrase: passphrase,
+        ),
+      );
 
       onProgress?.call(0.65);
 
@@ -455,7 +270,7 @@ class BackupRestoreService {
 
       // 3. Execute atomic SQLite Replace Transaction
       try {
-        await database.replaceAllFromBackup(manifest.snapshot);
+        await database.backupDao.replaceAllFromBackup(manifest.snapshot);
       } catch (e) {
         throw BackupCorruptedException(
           'Database restore transaction failed and was rolled back: $e',

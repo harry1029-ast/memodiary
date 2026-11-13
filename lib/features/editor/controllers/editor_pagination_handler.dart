@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
+import '../../../core/database/daos/media_ocr_dao.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'editor_autosave_manager.dart';
@@ -12,6 +13,7 @@ class EditorPaginationHandler {
   final EditorPaginationCoordinator coordinator;
   final PageController pageController;
   final EditorAutosaveManager autosaveManager;
+  final MediaOcrDao _mediaOcrDao;
   final VoidCallback onStateChanged;
 
   int currentSheetIndex = 0;
@@ -21,7 +23,8 @@ class EditorPaginationHandler {
     required this.pageController,
     required this.autosaveManager,
     required this.onStateChanged,
-  }) {
+    MediaOcrDao? mediaOcrDao,
+  }) : _mediaOcrDao = mediaOcrDao ?? autosaveManager.database.mediaOcrDao {
     _init();
   }
 
@@ -193,7 +196,7 @@ class EditorPaginationHandler {
     });
 
     if (deletedRelativePath != null && deletedRelativePath.isNotEmpty) {
-      await autosaveManager.database.deleteMediaForEntryByPath(
+      await _mediaOcrDao.deleteMediaForEntryByPath(
         entryId: autosaveManager.entryId,
         relativePath: deletedRelativePath,
       );

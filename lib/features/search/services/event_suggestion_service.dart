@@ -1,6 +1,7 @@
 import 'dart:isolate';
 import 'dart:math';
 import 'package:memodiary/core/database/app_database.dart';
+import 'event_suggestion_vocabulary.dart';
 
 /// Represents a ranked historical event or topic suggestion chip.
 class EventSuggestion {
@@ -21,133 +22,12 @@ class EventSuggestion {
   });
 }
 
-class _CuratedTopicGroup {
-  final String zhCanonical;
-  final String enCanonical;
-  final List<String> zhSynonyms;
-  final List<String> enSynonyms;
-
-  const _CuratedTopicGroup({
-    required this.zhCanonical,
-    required this.enCanonical,
-    required this.zhSynonyms,
-    required this.enSynonyms,
-  });
-}
-
 /// Offline analyzer scanning active entries to extract and rank frequent historical
 /// event/topic terms (curated vocabulary + recurring title tokens).
 class EventSuggestionService {
   final AppDatabase database;
 
   const EventSuggestionService(this.database);
-
-  static const List<_CuratedTopicGroup> _curatedGroups = [
-    _CuratedTopicGroup(
-      zhCanonical: '旅行',
-      enCanonical: 'Travel',
-      zhSynonyms: ['旅行', '旅游'],
-      enSynonyms: ['travel', 'trip'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '考试',
-      enCanonical: 'Exam',
-      zhSynonyms: ['考试', '测验'],
-      enSynonyms: ['exam', 'exams'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '生日',
-      enCanonical: 'Birthday',
-      zhSynonyms: ['生日'],
-      enSynonyms: ['birthday'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '工作',
-      enCanonical: 'Work',
-      zhSynonyms: ['工作', '加班'],
-      enSynonyms: ['work', 'project'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '复盘',
-      enCanonical: 'Review',
-      zhSynonyms: ['复盘', '总结'],
-      enSynonyms: ['review', 'retrospective'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '运动',
-      enCanonical: 'Workout',
-      zhSynonyms: ['运动', '跑步', '健身'],
-      enSynonyms: ['workout', 'fitness', 'running'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '阅读',
-      enCanonical: 'Reading',
-      zhSynonyms: ['阅读', '读书'],
-      enSynonyms: ['reading', 'book'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '电影',
-      enCanonical: 'Movie',
-      zhSynonyms: ['电影'],
-      enSynonyms: ['movie', 'cinema'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '聚会',
-      enCanonical: 'Party',
-      zhSynonyms: ['聚会', '朋友'],
-      enSynonyms: ['party', 'gathering'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '家人',
-      enCanonical: 'Family',
-      zhSynonyms: ['家人', '家庭'],
-      enSynonyms: ['family'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '学习',
-      enCanonical: 'Study',
-      zhSynonyms: ['学习'],
-      enSynonyms: ['study', 'studying'],
-    ),
-    _CuratedTopicGroup(
-      zhCanonical: '音乐',
-      enCanonical: 'Music',
-      zhSynonyms: ['音乐', '演唱会'],
-      enSynonyms: ['music', 'concert'],
-    ),
-  ];
-
-  static const Set<String> _enStopWords = {
-    'the',
-    'and',
-    'for',
-    'with',
-    'day',
-    'diary',
-    'note',
-    'notes',
-    'entry',
-    'entries',
-    'week',
-    'weekly',
-    'from',
-    'this',
-    'that',
-    'about',
-    'into',
-    'today',
-  };
-
-  static const Set<String> _zhStopWords = {
-    '日记',
-    '周记',
-    '今天',
-    '今日',
-    '记录',
-    '随笔',
-    '生活',
-    '心情',
-  };
 
   /// Scans active entries (offloading to a background Isolate for large datasets
   /// or when [forceIsolate] is true) and returns up to [limit] smart event
@@ -158,7 +38,7 @@ class EventSuggestionService {
     int minRecurringTitleCount = 3,
     bool forceIsolate = false,
   }) async {
-    final activeEntries = await database.getAllActiveEntries();
+    final activeEntries = await database.entriesDao.getAllActiveEntries();
     if (activeEntries.isEmpty) return const [];
 
     final refNow = now ?? DateTime.now();
@@ -173,14 +53,14 @@ class EventSuggestionService {
 
     // Serialize minimal primitives for Isolate transfer
     final rawRecords = activeEntries
-        .map((e) => <String, Object?>{
-              'id': e.id,
-              'title': e.title,
-              'plainText': e.plainText,
-              'entryDateMs': e.entryDate.millisecondsSinceEpoch,
-              'unlockAtMs': e.unlockAt?.millisecondsSinceEpoch,
-              'isDeleted': e.isDeleted,
-              'isLocked': e.isLocked,
+        .map((entry) => <String, Object?>{
+              'id': entry.id,
+              'title': entry.title,
+              'plainText': entry.plainText,
+              'entryDateMs': entry.entryDate.millisecondsSinceEpoch,
+              'unlockAtMs': entry.unlockAt?.millisecondsSinceEpoch,
+              'isDeleted': entry.isDeleted,
+              'isLocked': entry.isLocked,
             })
         .toList();
 
@@ -188,20 +68,20 @@ class EventSuggestionService {
 
     return Isolate.run(() {
       final reconstructed = rawRecords
-          .map((m) => _LightweightEntry(
-                id: m['id'] as String,
-                title: m['title'] as String?,
-                plainText: m['plainText'] as String,
+          .map((record) => _LightweightEntry(
+                id: record['id'] as String,
+                title: record['title'] as String?,
+                plainText: record['plainText'] as String,
                 entryDate: DateTime.fromMillisecondsSinceEpoch(
-                  m['entryDateMs'] as int,
+                  record['entryDateMs'] as int,
                 ),
-                unlockAt: m['unlockAtMs'] != null
+                unlockAt: record['unlockAtMs'] != null
                     ? DateTime.fromMillisecondsSinceEpoch(
-                        m['unlockAtMs'] as int,
+                        record['unlockAtMs'] as int,
                       )
                     : null,
-                isDeleted: m['isDeleted'] as bool,
-                isLocked: m['isLocked'] as bool,
+                isDeleted: record['isDeleted'] as bool,
+                isLocked: record['isLocked'] as bool,
               ))
           .toList();
 
@@ -223,14 +103,14 @@ class EventSuggestionService {
   }) {
     final refNow = now ?? DateTime.now();
     final lightweight = entries
-        .map((e) => _LightweightEntry(
-              id: e.id,
-              title: e.title,
-              plainText: e.plainText,
-              entryDate: e.entryDate,
-              unlockAt: e.unlockAt,
-              isDeleted: e.isDeleted,
-              isLocked: e.isLocked,
+        .map((entry) => _LightweightEntry(
+              id: entry.id,
+              title: entry.title,
+              plainText: entry.plainText,
+              entryDate: entry.entryDate,
+              unlockAt: entry.unlockAt,
+              isDeleted: entry.isDeleted,
+              isLocked: entry.isLocked,
             ))
         .toList();
 
@@ -251,31 +131,32 @@ class EventSuggestionService {
     if (limit <= 0) return const [];
 
     // 1. Filter out deleted entries and sealed time capsules
-    final eligible = entries.where((e) {
-      if (e.isDeleted) return false;
-      if (e.unlockAt != null && e.unlockAt!.isAfter(now)) return false;
+    final eligible = entries.where((entry) {
+      if (entry.isDeleted) return false;
+      if (entry.unlockAt != null && entry.unlockAt!.isAfter(now)) return false;
       return true;
     }).toList();
 
     if (eligible.isEmpty) return const [];
 
     final allCuratedSynonymsLower = <String>{};
-    for (final group in _curatedGroups) {
+    for (final group in EventSuggestionVocabulary.curatedGroups) {
       allCuratedSynonymsLower.addAll(group.zhSynonyms);
       allCuratedSynonymsLower
-          .addAll(group.enSynonyms.map((s) => s.toLowerCase()));
+          .addAll(group.enSynonyms.map((synonym) => synonym.toLowerCase()));
     }
 
     final suggestions = <EventSuggestion>[];
 
     // 2. Evaluate Curated Topic Groups (merges Chinese & English synonyms)
-    for (final group in _curatedGroups) {
+    for (final group in EventSuggestionVocabulary.curatedGroups) {
       int matchedCount = 0;
       int zhMatchCount = 0;
       DateTime? latestDate;
 
       final enRegexes = group.enSynonyms
-          .map((w) => RegExp('\\b${RegExp.escape(w)}\\b', caseSensitive: false))
+          .map((word) =>
+              RegExp('\\b${RegExp.escape(word)}\\b', caseSensitive: false))
           .toList();
 
       for (final entry in eligible) {
@@ -355,8 +236,8 @@ class EventSuggestionService {
     }
 
     final candidateKeys = titleTokenCounts.entries
-        .where((e) => e.value >= minRecurringTitleCount)
-        .map((e) => e.key)
+        .where((entry) => entry.value >= minRecurringTitleCount)
+        .map((entry) => entry.key)
         .toList();
 
     for (final normKey in candidateKeys) {
@@ -387,14 +268,14 @@ class EventSuggestionService {
     }
 
     // 4. Sort descending by score, then count, then lastSeen, then alphabetically
-    suggestions.sort((a, b) {
-      final scoreCmp = b.score.compareTo(a.score);
+    suggestions.sort((left, right) {
+      final scoreCmp = right.score.compareTo(left.score);
       if (scoreCmp != 0) return scoreCmp;
-      final countCmp = b.count.compareTo(a.count);
+      final countCmp = right.count.compareTo(left.count);
       if (countCmp != 0) return countCmp;
-      final dateCmp = b.lastSeen.compareTo(a.lastSeen);
+      final dateCmp = right.lastSeen.compareTo(left.lastSeen);
       if (dateCmp != 0) return dateCmp;
-      return a.term.compareTo(b.term);
+      return left.term.compareTo(right.term);
     });
 
     return suggestions.take(limit).toList();
@@ -405,23 +286,26 @@ class EventSuggestionService {
 
     // 1. English words (3+ letters)
     final enMatches = RegExp(r'\b[a-zA-Z]{3,}\b').allMatches(title);
-    for (final m in enMatches) {
-      final word = m.group(0)!;
-      if (!_enStopWords.contains(word.toLowerCase())) {
+    for (final match in enMatches) {
+      final word = match.group(0)!;
+      if (!EventSuggestionVocabulary.enStopWords.contains(word.toLowerCase())) {
         result.add(word);
       }
     }
 
     // 2. Contiguous CJK segments and their 2..6 char prefixes/ngrams
     final zhMatches = RegExp(r'[\u4e00-\u9fff]{2,12}').allMatches(title);
-    for (final m in zhMatches) {
-      var seg = m.group(0)!;
-      for (final suffix in _zhStopWords) {
+    for (final match in zhMatches) {
+      var seg = match.group(0)!;
+      for (final suffix in EventSuggestionVocabulary.zhStopWords) {
         if (seg.endsWith(suffix) && seg.length > suffix.length) {
           seg = seg.substring(0, seg.length - suffix.length);
         }
       }
-      if (seg.length < 2 || _zhStopWords.contains(seg)) continue;
+      if (seg.length < 2 ||
+          EventSuggestionVocabulary.zhStopWords.contains(seg)) {
+        continue;
+      }
 
       if (seg.length <= 6) {
         result.add(seg);
@@ -431,7 +315,7 @@ class EventSuggestionService {
       final maxPrefix = min(6, seg.length);
       for (int len = 2; len <= maxPrefix; len++) {
         final prefix = seg.substring(0, len);
-        if (!_zhStopWords.contains(prefix)) {
+        if (!EventSuggestionVocabulary.zhStopWords.contains(prefix)) {
           result.add(prefix);
         }
       }

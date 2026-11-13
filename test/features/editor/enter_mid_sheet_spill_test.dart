@@ -36,7 +36,7 @@ void main() {
     }
     delta.insert('wnd\n');
     delta.insert('\n' * 13);
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',

@@ -45,7 +45,7 @@ void main() {
     final createdAt = DateTime(2026, 11, 5, 10);
 
     Future<void> insertEntry(String id, String delta, {bool legacyPending = false}) {
-      return db.createEntry(EntriesCompanion.insert(
+      return db.entriesDao.createEntry(EntriesCompanion.insert(
         id: id,
         notebookId: 'notebook_default',
         templateId: 'template_lined_paper',
@@ -58,15 +58,16 @@ void main() {
       ));
     }
 
-    Future<void> insertMedia(String id, String entryId, {String? caption}) {
-      return db.into(db.mediaAttachments).insert(MediaAttachmentsCompanion.insert(
-            id: id,
-            entryId: entryId,
-            mediaType: 'image',
-            relativePath: 'media/$id.webp',
-            caption: Value(caption),
-            createdAt: Value(createdAt),
-          ));
+    Future<void> insertMedia(String id, String entryId, {String? caption}) async {
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: id,
+        entryId: entryId,
+        relativePath: 'media/$id.webp',
+        mediaType: 'image',
+      );
+      if (caption != null) {
+        await db.mediaOcrDao.updateMediaCaption(id, caption: caption);
+      }
     }
 
     await insertEntry(
@@ -78,7 +79,7 @@ void main() {
     await insertEntry('entry_legacy', '[{"insert":"旧日\\n"}]', legacyPending: true);
     await insertMedia('legacy', 'entry_legacy');
 
-    final before = await db.exportAllTablesSnapshot();
+    final before = await db.backupDao.exportAllTablesSnapshot();
     final backupFile = File(p.join(tempDir.path, 'mounts.mdbak'));
     await backupService.createBackup(destination: backupFile);
 
@@ -86,7 +87,7 @@ void main() {
     await db.delete(db.entries).go();
 
     await backupService.restoreBackup(source: backupFile);
-    final after = await db.exportAllTablesSnapshot();
+    final after = await db.backupDao.exportAllTablesSnapshot();
 
     expect(after.entries, equals(before.entries));
     expect(after.mediaAttachments, equals(before.mediaAttachments));

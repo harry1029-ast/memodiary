@@ -4,15 +4,15 @@
 - **Local-First & Zero Backend**: MemoDiary is an offline-first, privacy-focused personal diary and weekly review app for Android (10+) and iOS (15+). All user data defaults to local device storage with zero mandatory registration or cloud uploads.
 - **$0 Build & Runtime Cost**: Use 100% free, open-source packages (MIT/BSD/Apache/SIL OFL) and built-in native OS APIs (with the sole documented exception of Android's free bundled on-device `com.google.mlkit:text-recognition-chinese` binary stripped of `INTERNET` permissions per ADR 0004). Never introduce paid third-party SDKs (no paid speech APIs, no paid handwriting SDKs, no cloud LLM/OCR APIs).
 - **Decoupled Content & Presentation**: Diary text/media semantics (`flutter_quill` Delta JSON) must be strictly separated from visual template styling (`templates` table). Switching a template on a saved entry must only alter visual presentation without mutating or losing text content.
-- **Sandboxed Media Isolation**: Never store absolute paths to the system photo gallery[cite: 1]. Copy all captured/imported photos into the app's private sandbox directory using UUID filenames, compress images to WebP (max 1600px, 80% quality), and store only relative paths in SQLite.
-- **Multimodal System Reuse**: Rely strictly on native OS keyboards (Pinyin, English, and OS handwriting input panel) and native OS Speech-to-Text (`iOS Speech` / `Android SpeechRecognizer`). Do not build a custom freehand stylus drawing engine[cite: 1, 5].
+- **Sandboxed Media Isolation**: Never store absolute paths to the system photo gallery. Copy all captured/imported photos into the app's private sandbox directory using UUID filenames, compress images to WebP (max 1600px, 80% quality), and store only relative paths in SQLite.
+- **Multimodal System Reuse**: Rely strictly on native OS keyboards (Pinyin, English, and OS handwriting input panel) and native OS Speech-to-Text (`iOS Speech` / `Android SpeechRecognizer`). Do not build a custom freehand stylus drawing engine.
 
 ## 2. Locked Tech Stack ($0 FOSS)
 - **Framework**: Flutter (Dart)
-- **Database & Encryption**: `drift` + `sqlcipher_flutter_libs` (SQLCipher AES-256 encryption at rest)[cite: 1, 2]
-- **Key Storage & Auth**: `flutter_secure_storage` + `local_auth` (Face ID / Fingerprint / PIN lock)[cite: 1, 2]
-- **Rich Text Editor**: `flutter_quill` (Delta JSON serialization)[cite: 1, 2]
-- **Full-Text Search**: SQLite FTS5 virtual tables (`entries_fts` + `media_fts`) + offline Chinese word segmentation (`jieba`)[cite: 1, 2]
+- **Database & Encryption**: `drift` + `sqlcipher_flutter_libs` (SQLCipher AES-256 encryption at rest)
+- **Key Storage & Auth**: `flutter_secure_storage` + `local_auth` (Face ID / Fingerprint / PIN lock)
+- **Rich Text Editor**: `flutter_quill` (Delta JSON serialization)
+- **Full-Text Search**: SQLite FTS5 virtual tables (`entries_fts` + `media_fts`) + offline Chinese word segmentation (`jieba`)
 - **On-Device OCR**: Native `memodiary/ocr` channel (`Apple Vision` on iOS 15.0+, bundled `com.google.mlkit:text-recognition-chinese` with `INTERNET` stripped on Android per ADR 0004)
 - **Media & Files**: `image_picker`, `flutter_image_compress`, `file_picker`, `path_provider`, `share_plus`
 - **Typography**: System built-in fonts + bundled SIL Open Font License (OFL) fonts (≥10 fonts total)
@@ -27,41 +27,13 @@ Table definitions live in `lib/core/database/tables/`, the schema version and mi
 
 ## 4. Coding & Verification Standards
 - Keep UI widgets decoupled from SQLite queries using repository/provider layers.
-- Ensure all file imports and bulk SQLite writes run inside background `Isolate` workers or batched transactions so the UI thread maintains 60 FPS[cite: 1, 2].
+- Ensure all file imports and bulk SQLite writes run inside background `Isolate` workers or batched transactions so the UI thread maintains 60 FPS.
 - Write unit tests for every data model, date-parsing regex rule, and repository method.
-- **Generated Code Boundary (`.g.dart`)**: Never inspect, diff, or manually edit `.g.dart` files. Always modify table schema definitions in `lib/core/database/tables/` or `app_database.dart` and regenerate code using `dart run build_runner build`.
-- Detailed code shape, naming, a11y semantics, and test harness standards are specified in [CODING_STANDARDS.md](file:///home/harry1029/projects/memodiary/CODING_STANDARDS.md).
-- **Specs & ADRs**: Numbered specifications live at `docs/specs/000X-<slug>.md` and architecture records at `docs/adr/000X-<slug>.md`.
+- **Generated Code Boundary (`.g.dart`)**: Never inspect, diff, or manually edit `.g.dart` files. Always modify table schema definitions in `lib/core/database/tables/` or `app_database.dart` and regenerate inside that working directory (`cd <dir> && /home/harry1029/development/flutter/bin/dart run build_runner build`; `dart run` has no `--directory` flag).
+- Detailed code shape, naming, `< 450` LOC decomposition, a11y semantics, and test harness standards live in [CODING_STANDARDS.md](file:///home/harry1029/projects/memodiary/CODING_STANDARDS.md); read it during `/code-review` and before UI/service refactors.
+- **Specs, ADRs & Roadmap**: Numbered specifications live at `docs/specs/000X-<slug>.md`, architecture records at `docs/adr/000X-<slug>.md`, and Milestone 1–4 phase history at [docs/roadmap.md](file:///home/harry1029/projects/memodiary/docs/roadmap.md).
 - **Implementer Worktree Branches**: Worktree branches for feature or ticket subagents must use flat hyphenated names (`spec-NNN-XX-<slug>`), never slashes (`spec-NNN/...`), to prevent Git loose ref directory collisions with the integration branch file.
 - **Agent Skills Config**: Issue tracker, triage labels, and domain-doc conventions used by the engineering skills are defined in `docs/agents/` (`issue-tracker.md`, `triage-labels.md`, `domain.md`).
-- **Execution & Tooling**: In environments where `flutter` or `dart` is not on the default sandbox `$PATH`, invoke the Flutter SDK binary directly at `/home/harry1029/development/flutter/bin/flutter` (or `/home/harry1029/development/flutter/bin/dart`). Note that external SDK binaries (`/home/harry1029/development/...`) and Git index writes (`git add`, `git rm`, `git commit`) reside outside or are protected by the sandbox mount, requiring execution outside the sandbox (`BypassSandbox: true`). Prefer Standard Sandbox Mode (`BypassSandbox: false`) for all read-only inspection, search, and file commands (`find`, `grep`, `wc`, `git status`, `git log`, `git diff`) to prevent unnecessary user approval stalls in autonomous subagents. For one-off Dart evaluations, write a scratch script in `<appDataDir>/brain/<id>/scratch/` and run with `dart run <file>` (the Dart CLI does not support inline `-e` flags).
+- **Execution & Tooling**: In environments where `flutter` or `dart` is not on the default sandbox `$PATH`, invoke `/home/harry1029/development/flutter/bin/flutter` (or `/home/harry1029/development/flutter/bin/dart`). External SDK binaries and Git index writes (`git add`, `git rm`, `git commit`) require `BypassSandbox: true`; use Standard Sandbox Mode (`BypassSandbox: false`) for all read-only inspection, search, and file commands (`find`, `grep`, `wc`, `git status`, `git log`, `git diff`) to prevent approval stalls in autonomous subagents. For isolated git worktrees, verify with `tool/worktree-verify.sh <worktree> [test-paths...]` instead of passing a worktree path to `flutter analyze` from the main workspace. For one-off Dart evaluations, write a scratch script in `<appDataDir>/brain/<id>/scratch/` and run with `dart run <file>`. On headless Linux (where `xdg-open` is absent), link generated HTML files directly instead of invoking `xdg-open`.
 - **Tool Economy & Token Hygiene**: Run tests with `tool/test.sh <paths>` (no paths = full suite): one summary line on success, only failing test names and Expected/Actual lines on failure. Reserve full-suite runs for milestone certification. Restrict log/search inspections using pipe limits (`head -n 20`, `grep -m 5`).
 - **Headless Release Diagnostics**: When investigating release APK crashes without a physical device, inspect R8 mapping outputs under `build/app/outputs/mapping/release/` (`usage.txt` lists stripped classes/constructors, `seeds.txt` lists preserved entry points) and verify merged APK binary manifest attributes (`extractNativeLibs`) via `/home/harry1029/android-sdk/build-tools/34.0.0/aapt2 dump xmltree --file AndroidManifest.xml build/app/outputs/flutter-apk/app-release.apk`.
-- **Generative Canvas Decomposition**: When implementing custom canvas painters (`CustomPainter`) or complex vector graphics, decompose the implementation into modular units (< 450 lines per file): separate static background geometry (recorded into immutable `ui.Picture` layers) from dynamic 60 FPS animation painters to prevent stream timeouts, context bloat, and maintain 60 FPS UI performance.
-
-## Development Roadmap (Reference Only)
-Milestone 1 (Alpha):
-- Phase 0: Encrypted Drift DB, Media Sandbox & Launch Security
-- Phase 1: Decoupled Templates & Rich-Text Editor
-- Phase 2: Timeline View, CRUD & Offline FTS5 Search
-- Phase 3: Smart .txt/.md Date Ingestion & Export
-- Phase 4: Benchmarking & Hardening
-Milestone 2 (Beta):
-- Phase 5: Custom Template Builder & Dedicated Weekly Review Aggregated Grid
-- Phase 6: High-Fidelity Template-Preserving PDF Export Engine
-- Phase 7: Sandboxed Short Video Ingestion & Inline Playback
-- Phase 8: Retrospective Suite, Writing Sanctum, Local Reminders & Analytics
-Milestone 3: Release Candidate (v1.0.0-rc.1)
-- Phase 9: Encrypted Full-Archive Backup/Restore & Smart Natural Language Search
-- Phase 10: Release Candidate Polish, Round-Trip Stress Audit & v1.0.0 Certification
-Milestone 3.5: Travel Memory Album (v1.1.0-alpha)
-- Phase 11: Drift Schema v3 Migration, Media Pipeline & Album Repository
-- Phase 12: Collection Management, Batch Ingestion & Photo Annotation Workspace
-- Phase 13: Keepsake Synthesis Engine, Interactive In-App Viewer & PDF Photobook Export
-Intermediate Milestone 3.6: DIY Photobook Studio & Scrapbook Editor (v1.2.0-alpha)
-- Phase 14: Studio Data Model, Collage Layout Library, Book Themes & Sticker/Background Engine
-- Phase 15: Book Overview Spread Feed & Interactive Drag-and-Drop Page Editor UI
-- Phase 16: WYSIWYG Vector PDF Photobook Renderer, Offline CJK Font Fix & Hardening
-Milestone 4: On-Device Vision & Smart Archiving (v1.3.0-alpha)
-- Phase 17: On-Device OCR Pipeline, FTS5 Photo Indexing & Reverse Image Search
-- Phase 18: Image-to-Text Ingestion & Smart Notebook Auto-Archiving

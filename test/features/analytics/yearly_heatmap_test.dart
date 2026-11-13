@@ -41,7 +41,7 @@ void main() {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(() => db.close());
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'dash_1',
           notebookId: 'notebook_default',

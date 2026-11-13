@@ -18,7 +18,7 @@ void main() {
       final auth = AuthService();
       final pinHash = auth.hashEntryPin('2580');
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_lock_1',
           notebookId: 'notebook_default',
@@ -30,22 +30,22 @@ void main() {
         ),
       );
 
-      var fetched = await db.getEntryById('entry_lock_1');
+      var fetched = await db.entriesDao.getEntryById('entry_lock_1');
       expect(fetched, isNotNull);
       expect(fetched!.isLocked, isFalse);
       expect(fetched.entryPinHash, isNull);
 
       // Lock entry with PIN hash
-      await db.lockEntry('entry_lock_1', pinHash: pinHash);
-      fetched = await db.getEntryById('entry_lock_1');
+      await db.entriesDao.lockEntry('entry_lock_1', pinHash: pinHash);
+      fetched = await db.entriesDao.getEntryById('entry_lock_1');
       expect(fetched!.isLocked, isTrue);
       expect(fetched.entryPinHash, equals(pinHash));
       expect(auth.verifyEntryPin('2580', fetched.entryPinHash!), isTrue);
       expect(auth.verifyEntryPin('9999', fetched.entryPinHash!), isFalse);
 
       // Permanently unlock entry
-      await db.unlockEntryPermanently('entry_lock_1');
-      fetched = await db.getEntryById('entry_lock_1');
+      await db.entriesDao.unlockEntryPermanently('entry_lock_1');
+      fetched = await db.entriesDao.getEntryById('entry_lock_1');
       expect(fetched!.isLocked, isFalse);
       expect(fetched.entryPinHash, isNull);
     });
@@ -131,7 +131,7 @@ void main() {
       addTearDown(() => db.close());
 
       // Trigger migration to schemaVersion 2 by querying the legacy entry
-      final migratedEntry = await db.getEntryById('legacy_v1_entry');
+      final migratedEntry = await db.entriesDao.getEntryById('legacy_v1_entry');
       expect(migratedEntry, isNotNull);
       expect(migratedEntry!.title, 'V1 Entry');
       expect(migratedEntry.plainText, 'Legacy text');
@@ -140,8 +140,8 @@ void main() {
 
       // Verify newly added v2 columns can be updated on migrated row
       final pinHash = AuthService().hashEntryPin('1234');
-      await db.lockEntry('legacy_v1_entry', pinHash: pinHash);
-      final locked = await db.getEntryById('legacy_v1_entry');
+      await db.entriesDao.lockEntry('legacy_v1_entry', pinHash: pinHash);
+      final locked = await db.entriesDao.getEntryById('legacy_v1_entry');
       expect(locked!.isLocked, isTrue);
       expect(locked.entryPinHash, pinHash);
     });
@@ -153,7 +153,7 @@ void main() {
       final auth = AuthService();
       final pinHash = auth.hashEntryPin('4321');
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'locked_ui_entry',
           notebookId: 'notebook_default',
@@ -167,7 +167,7 @@ void main() {
         ),
       );
 
-      final entry = (await db.getEntryById('locked_ui_entry'))!;
+      final entry = (await db.entriesDao.getEntryById('locked_ui_entry'))!;
       final mediaService = MediaSandboxService();
 
       // 1. Verify EntrySummaryCard obscures snippet

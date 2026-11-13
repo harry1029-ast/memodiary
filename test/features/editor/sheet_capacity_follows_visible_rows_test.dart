@@ -53,7 +53,7 @@ void main() {
 
   Future<void> seedEntry({required String templateId, String? text, Delta? delta}) async {
     final content = delta ?? (Delta()..insert(text!));
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',
@@ -68,19 +68,15 @@ void main() {
 
   /// Attaches a photo per id (in order) to the seeded entry.
   Future<void> seedPhotos(List<String> mediaIds) async {
-    for (final (index, mediaId) in mediaIds.indexed) {
+    for (final mediaId in mediaIds) {
       File('${tempDirectory.path}/media/$mediaId.webp')
         ..parent.createSync(recursive: true)
         ..writeAsBytesSync(kValid1x1PngBytes);
-      await database.into(database.mediaAttachments).insert(
-            MediaAttachmentsCompanion.insert(
-              id: mediaId,
-              entryId: _entryId,
-              mediaType: 'image',
-              relativePath: 'media/$mediaId.webp',
-              createdAt: Value(DateTime(2026, 11, 11, 21, index)),
-            ),
-          );
+      await database.mediaOcrDao.attachMediaToEntry(
+        id: mediaId,
+        entryId: _entryId,
+        relativePath: 'media/$mediaId.webp',
+      );
     }
   }
 
@@ -212,17 +208,14 @@ void main() {
     testWidgets('with $rows ruled rows, Auto-Spill moves text on exactly when the last ruled row is full',
         (tester) async {
       final templateId = 'template_rows_$rows';
-      await database.into(database.templates).insert(
-            TemplatesCompanion.insert(
-              id: templateId,
-              name: '$rows 行笺',
-              backgroundType: 'color',
-              backgroundValue: '#FFFFFF',
-              lineSpacing: Value(lineSpacing),
-              marginHorizontal: const Value(20.0),
-              isCustom: const Value(true),
-            ),
-          );
+      await database.templatesDao.createCustomTemplate(
+        id: templateId,
+        name: '$rows 行笺',
+        backgroundType: 'color',
+        backgroundValue: '#FFFFFF',
+        lineSpacing: lineSpacing,
+        marginHorizontal: 20.0,
+      );
       final openingRows = rows - _letterheadRows;
       await seedEntry(templateId: templateId, text: _lines(openingRows + rows - 1));
       await openEditor(tester);
@@ -268,7 +261,7 @@ void main() {
       await openEditor(tester);
     }
 
-    Future<String> savedDelta() async => (await database.getEntryById(_entryId))!.contentDelta;
+    Future<String> savedDelta() async => (await database.entriesDao.getEntryById(_entryId))!.contentDelta;
 
     testWidgets('are the same every time the entry opens at the same layout', (tester) async {
       await seedEntry(templateId: 'template_lined_paper', text: text);
@@ -293,7 +286,7 @@ void main() {
       final fourteenRowSheets = sheetTexts(tester);
       expect(renderedRows(tester, textSheets(tester)[0]), 10);
 
-      await database.updateEntryTemplate(_entryId, 'template_lined_paper');
+      await database.entriesDao.updateEntryTemplate(_entryId, 'template_lined_paper');
       await saveAndReopen(tester);
       final thirteenRowSheets = sheetTexts(tester);
       expect(visibleRows(tester), 13);

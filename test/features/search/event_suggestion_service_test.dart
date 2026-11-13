@@ -67,11 +67,11 @@ void main() {
       );
 
       expect(suggestions, isNotEmpty);
-      final travelChip = suggestions.firstWhere((s) => s.term == '旅行');
+      final travelChip = suggestions.firstWhere((suggestion) => suggestion.term == '旅行');
       expect(travelChip.count, 2); // Merged entry 1 (zh) + entry 2 (en)
       expect(travelChip.isCurated, isTrue);
 
-      final examChip = suggestions.firstWhere((s) => s.term == '考试');
+      final examChip = suggestions.firstWhere((suggestion) => suggestion.term == '考试');
       expect(examChip.count, 1);
       expect(examChip.isCurated, isTrue);
 
@@ -98,7 +98,7 @@ void main() {
         now: refNow,
       );
 
-      expect(suggestions.map((s) => s.term), containsAll(['Travel', 'Birthday']));
+      expect(suggestions.map((suggestion) => suggestion.term), containsAll(['Travel', 'Birthday']));
     });
 
     test('extracts recurring title tokens appearing in >= 3 entries and ignores stop words', () {
@@ -117,12 +117,12 @@ void main() {
 
       // '马拉松训练' appears in 3 titles (after stripping trailing '日记')
       final marathonChip =
-          suggestions.firstWhere((s) => s.term == '马拉松训练');
+          suggestions.firstWhere((suggestion) => suggestion.term == '马拉松训练');
       expect(marathonChip.count, 3);
       expect(marathonChip.isCurated, isFalse);
 
       // '吉他练习' only appears twice (< 3 threshold)
-      expect(suggestions.any((s) => s.term == '吉他练习'), isFalse);
+      expect(suggestions.any((suggestion) => suggestion.term == '吉他练习'), isFalse);
     });
 
     test('applies recency boost so newer topics outrank stale topics with equal count', () {
@@ -160,8 +160,8 @@ void main() {
         now: refNow,
       );
 
-      final workoutIndex = suggestions.indexWhere((s) => s.term == '运动');
-      final readingIndex = suggestions.indexWhere((s) => s.term == '阅读');
+      final workoutIndex = suggestions.indexWhere((suggestion) => suggestion.term == '运动');
+      final readingIndex = suggestions.indexWhere((suggestion) => suggestion.term == '阅读');
 
       expect(workoutIndex, isNot(-1));
       expect(readingIndex, isNot(-1));
@@ -208,7 +208,7 @@ void main() {
         now: refNow,
       );
 
-      final terms = suggestions.map((s) => s.term).toSet();
+      final terms = suggestions.map((suggestion) => suggestion.term).toSet();
       expect(terms, containsAll(['生日', '工作', '复盘']));
       expect(terms, isNot(contains('旅行')));
       expect(terms, isNot(contains('考试')));
@@ -229,7 +229,7 @@ void main() {
     });
 
     test('getSuggestions queries AppDatabase and ranks in background Isolate', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'e1',
           notebookId: 'notebook_default',
@@ -240,7 +240,7 @@ void main() {
           entryDate: DateTime(2026, 10, 1),
         ),
       );
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'e2',
           notebookId: 'notebook_default',
@@ -258,7 +258,7 @@ void main() {
         forceIsolate: true,
       );
 
-      expect(results.map((r) => r.term), containsAll(['旅行', '运动']));
+      expect(results.map((result) => result.term), containsAll(['旅行', '运动']));
     });
   });
 }

@@ -37,7 +37,7 @@ void main() {
       videoResult: XFile(video.path),
     );
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',
@@ -88,7 +88,7 @@ void main() {
       File('${tempDirectory.path}/$relativePath')
         ..parent.createSync(recursive: true)
         ..writeAsBytesSync(kValid1x1PngBytes);
-      await database.attachMediaToEntry(
+      await database.mediaOcrDao.attachMediaToEntry(
         id: 'seeded_$index',
         entryId: _entryId,
         relativePath: relativePath,
@@ -96,7 +96,7 @@ void main() {
     }
   }
 
-  Future<List<MediaAttachment>> attachments() => database.getMediaForEntry(_entryId);
+  Future<List<MediaAttachment>> attachments() => database.mediaOcrDao.getMediaForEntry(_entryId);
   Future<List<String>> attachmentIds() async => (await attachments()).map((row) => row.id).toList();
 
   Future<void> mount(WidgetTester tester, String mediaId) async {
@@ -141,7 +141,7 @@ void main() {
       expect(handscrollItem(mediaId), findsOneWidget);
 
       await reopenEditor(tester);
-      final savedEntry = await database.getEntryById(_entryId);
+      final savedEntry = await database.entriesDao.getEntryById(_entryId);
       expect(jsonDecode(savedEntry!.contentDelta), [
         {'insert': '疏影横斜。\n'},
       ]);

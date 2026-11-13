@@ -3,8 +3,9 @@
 Project rules are shared with Antigravity. `GEMINI.md` is the source of truth; do not duplicate its content here.
 
 @GEMINI.md
-@CODING_STANDARDS.md
-@GLOSSARY.md
+
+- Read `CODING_STANDARDS.md` during `/code-review` and before UI/service refactors.
+- Read `GLOSSARY.md` before exploring or naming domain concepts.
 
 ## Claude Code overrides
 

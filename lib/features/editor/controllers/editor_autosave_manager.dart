@@ -82,9 +82,12 @@ class EditorAutosaveManager {
 
       await database.transaction(() async {
         if (titleText != null) {
-          await database.updateEntryMetadata(entryId, title: titleText);
+          await database.entriesDao.updateEntryMetadata(
+            entryId,
+            title: titleText,
+          );
         }
-        await database.updateEntryContent(
+        await database.entriesDao.updateEntryContent(
           entryId,
           deltaJson,
           plainText,

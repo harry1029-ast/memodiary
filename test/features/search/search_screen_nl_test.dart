@@ -20,7 +20,7 @@ void main() {
     );
 
     // 1. Entry from Last Year National Day (2025-10-03) with CJK sentence containing 旅行
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'e_last_year_nat_day',
         notebookId: 'notebook_default',
@@ -34,7 +34,7 @@ void main() {
     );
 
     // 2. Entry from October 2026 that IS a Weekly Review
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'e_oct_weekly_review',
         notebookId: 'notebook_default',
@@ -49,7 +49,7 @@ void main() {
     );
 
     // 3. Entry from October 2026 that is NOT a Weekly Review
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'e_oct_daily',
         notebookId: 'notebook_default',

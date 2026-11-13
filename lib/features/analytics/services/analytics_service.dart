@@ -43,9 +43,7 @@ class AnalyticsService {
     AppDatabase database, {
     DateTime? referenceToday,
   }) async {
-    final entries = await (database.select(database.entries)
-          ..where((e) => e.isDeleted.equals(false)))
-        .get();
+    final entries = await database.entriesDao.getAllActiveEntries();
 
     return computeStatsFromEntries(entries, referenceToday: referenceToday);
   }
@@ -123,7 +121,7 @@ class AnalyticsService {
     }
 
     return WritingStats(
-      totalEntries: entries.where((e) => !e.isDeleted).length,
+      totalEntries: entries.where((entry) => !entry.isDeleted).length,
       totalWords: totalWords,
       currentStreakDays: currentStreak,
       longestStreakDays: longestStreak,

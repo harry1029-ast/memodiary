@@ -104,7 +104,8 @@ void main() {
       reorderList.onReorderItem!(2, 0);
       await tester.pumpAndSettle();
 
-      final updatedPhotos = await harness.repository.getPhotosForCollection(
+      final updatedPhotos =
+          await harness.database.albumsDao.getPhotosForCollection(
         collection.id,
       );
       expect(
@@ -113,7 +114,8 @@ void main() {
       );
 
       // Route summary should auto-update to reflect the new order
-      final updatedCollection = await harness.repository.getCollectionById(
+      final updatedCollection =
+          await harness.database.albumsDao.getCollectionById(
         collection.id,
       );
       expect(updatedCollection!.routeSummary, '苏州 → 杭州 → 乌镇');

@@ -27,7 +27,7 @@ void main() {
     tempDirectory = Directory.systemTemp.createTempSync('desk_palette_test_');
     sandboxService = SyncTestMediaSandboxService(tempDir: tempDirectory);
     for (final templateId in _templates) {
-      await database.into(database.entries).insert(
+      await database.entriesDao.createEntry(
             EntriesCompanion.insert(
               id: 'entry_$templateId',
               notebookId: 'notebook_default',

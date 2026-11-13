@@ -117,7 +117,7 @@ void main() {
     });
 
     testWidgets('ExportDialog allows choosing format and scope, saving file in <= 3 taps', (WidgetTester tester) async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: testEntry.id,
           notebookId: testEntry.notebookId,

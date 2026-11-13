@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart' show Value;
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/analytics/services/analytics_service.dart';
@@ -105,6 +107,49 @@ void main() {
       expect(stats.moodCounts[1], 1);
       expect(stats.dailyActivityMap['2026-10-18'], 1);
       expect(stats.dailyActivityMap.containsKey('2026-10-15'), isFalse);
+    });
+
+    test('computeStats reads active entries via EntriesDao and ignores soft-deleted rows', () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+
+      final refToday = DateTime(2026, 10, 18);
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'active_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('Sunny'),
+          contentDelta: '[{"insert":"Walked outside\\n"}]',
+          plainText: 'Walked outside',
+          entryDate: DateTime(2026, 10, 18, 9, 0),
+          mood: const Value(5),
+        ),
+      );
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'deleted_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('Deleted'),
+          contentDelta: '[{"insert":"Ignored text\\n"}]',
+          plainText: 'Ignored text',
+          entryDate: DateTime(2026, 10, 17, 9, 0),
+          mood: const Value(1),
+          isDeleted: const Value(true),
+        ),
+      );
+
+      final stats = await AnalyticsService.computeStats(
+        db,
+        referenceToday: refToday,
+      );
+
+      expect(stats.totalEntries, 1);
+      expect(stats.totalWords, 3); // "Sunny" (1) + "Walked outside" (2)
+      expect(stats.currentStreakDays, 1);
+      expect(stats.moodCounts[5], 1);
+      expect(stats.moodCounts[1], 0);
     });
   });
 }

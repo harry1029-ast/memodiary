@@ -40,7 +40,7 @@ void main() {
     test('Mid-batch constraint violation triggers atomic rollback: zero corrupt records in SQLite or FTS5', () async {
       // 1. Seed baseline database state with 3 valid entries
       for (int i = 1; i <= 3; i++) {
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'baseline_entry_$i',
             notebookId: 'default',
@@ -53,7 +53,7 @@ void main() {
         );
       }
 
-      final initialCount = (await db.getAllActiveEntries()).length;
+      final initialCount = (await db.entriesDao.getAllActiveEntries()).length;
       expect(initialCount, equals(3));
 
       final initialFtsRows = await db.customSelect('SELECT count(*) as count FROM entries_fts').getSingle();
@@ -103,12 +103,12 @@ void main() {
 
       // 3. Attempt batch import and assert it fails with an exception
       expect(
-        () => db.batchImportEntries(batchCompanions),
+        () => db.entriesDao.batchImportEntries(batchCompanions),
         throwsA(anything),
       );
 
       // 4. Verify atomic rollback: neither new_entry_1 nor new_entry_2 were persisted
-      final postFailureEntries = await db.getAllActiveEntries();
+      final postFailureEntries = await db.entriesDao.getAllActiveEntries();
       expect(postFailureEntries.length, equals(initialCount));
       expect(postFailureEntries.any((e) => e.id == 'new_entry_1'), isFalse);
       expect(postFailureEntries.any((e) => e.id == 'new_entry_2'), isFalse);
@@ -117,7 +117,8 @@ void main() {
       final postFailureFtsRows = await db.customSelect('SELECT count(*) as count FROM entries_fts').getSingle();
       expect(postFailureFtsRows.read<int>('count'), equals(3));
 
-      final ftsSearchResults = await db.searchEntriesWithFilters(query: 'Batch entry');
+      final ftsSearchResults =
+          await db.entriesDao.searchEntriesWithFilters(query: 'Batch entry');
       expect(ftsSearchResults.isEmpty, isTrue);
 
       // 6. Verify subsequent valid batch import executes successfully
@@ -133,10 +134,10 @@ void main() {
         ),
       ];
 
-      final importedCount = await db.batchImportEntries(cleanBatch);
+      final importedCount = await db.entriesDao.batchImportEntries(cleanBatch);
       expect(importedCount, equals(1));
 
-      final updatedEntries = await db.getAllActiveEntries();
+      final updatedEntries = await db.entriesDao.getAllActiveEntries();
       expect(updatedEntries.length, equals(4));
     });
   });

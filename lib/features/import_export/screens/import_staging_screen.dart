@@ -32,18 +32,19 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
     _candidates = List.from(widget.initialCandidates);
   }
 
-  int get _selectedCount => _candidates.where((c) => c.isSelected).length;
+  int get _selectedCount =>
+      _candidates.where((candidate) => candidate.isSelected).length;
 
   int get _needsReviewCount => _candidates
-      .where((c) =>
-          c.confidence == DateParseConfidence.none ||
-          c.confidence == DateParseConfidence.low)
+      .where((candidate) =>
+          candidate.confidence == DateParseConfidence.none ||
+          candidate.confidence == DateParseConfidence.low)
       .length;
 
   void _toggleSelectAll(bool select) {
     setState(() {
-      for (final c in _candidates) {
-        c.isSelected = select;
+      for (final candidate in _candidates) {
+        candidate.isSelected = select;
       }
     });
   }
@@ -78,13 +79,14 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
   }
 
   Future<void> _executeBatchImport() async {
-    final selected = _candidates.where((c) => c.isSelected).toList();
+    final selected =
+        _candidates.where((candidate) => candidate.isSelected).toList();
     if (selected.isEmpty) return;
 
     setState(() => _isImporting = true);
 
     try {
-      final notebooks = await widget.database.getAllNotebooks();
+      final notebooks = await widget.database.templatesDao.getAllNotebooks();
       final notebookId =
           notebooks.isNotEmpty ? notebooks.first.id : 'notebook_default';
       final templateId = notebooks.isNotEmpty
@@ -92,14 +94,14 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
           : 'template_minimalist_white';
 
       final companions = selected
-          .map((c) => c.toCompanion(
+          .map((candidate) => candidate.toCompanion(
                 notebookId: notebookId,
                 templateId: templateId,
               ))
           .toList();
 
       // Atomic Drift transaction
-      final count = await widget.database.batchImportEntries(companions);
+      final count = await widget.database.entriesDao.batchImportEntries(companions);
 
       if (!mounted) return;
 

@@ -93,6 +93,25 @@ void main() {
       expect(bytes[2], equals(0x4E));
       expect(bytes[3], equals(0x47));
     });
+
+    test('listMediaFiles includes sandboxed video and poster thumbnail and deleteMediaPaths cleans both', () async {
+      final sourceFile = File(p.join(tempDir.path, 'source_video_scan.mp4'));
+      await sourceFile.writeAsString('dummy mp4 binary content');
+
+      final result = await service.copyAndSandboxVideo(sourceFile);
+      final listed = await service.listMediaFiles();
+      expect(
+        listed.map((file) => file.relativePath).toSet(),
+        equals({result.relativePath, result.thumbnailPath}),
+      );
+
+      final deletedCount = await service.deleteMediaPaths([
+        result.relativePath,
+        result.thumbnailPath,
+      ]);
+      expect(deletedCount, equals(2));
+      expect(await service.listMediaFiles(), isEmpty);
+    });
   });
 }
 

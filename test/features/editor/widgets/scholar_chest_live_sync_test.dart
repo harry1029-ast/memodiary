@@ -18,7 +18,7 @@ void main() {
     tempDir = await Directory.systemTemp.createTemp('scholar_chest_live_test_');
     audioSanctumService = AudioSanctumService(enablePlatformAudio: false);
 
-    await db.into(db.entries).insert(
+    await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'test_live_entry',
             notebookId: 'nb_default',

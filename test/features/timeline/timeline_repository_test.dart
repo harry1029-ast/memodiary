@@ -20,7 +20,7 @@ void main() {
       final now = DateTime.now();
 
       for (int i = 0; i < 5; i++) {
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'entry_$i',
             notebookId: 'notebook_default',
@@ -34,7 +34,7 @@ void main() {
       }
 
       // Fetch page 1 (limit 3, offset 0)
-      final page1 = await db.getTimelineEntries(limit: 3, offset: 0);
+      final page1 = await db.entriesDao.getTimelineEntries(limit: 3, offset: 0);
       expect(page1.length, equals(3));
       // Reverse chronological order: entry_4 (newest), entry_3, entry_2
       expect(page1[0].id, equals('entry_4'));
@@ -42,7 +42,7 @@ void main() {
       expect(page1[2].id, equals('entry_2'));
 
       // Fetch page 2 (limit 3, offset 3)
-      final page2 = await db.getTimelineEntries(limit: 3, offset: 3);
+      final page2 = await db.entriesDao.getTimelineEntries(limit: 3, offset: 3);
       expect(page2.length, equals(2));
       expect(page2[0].id, equals('entry_1'));
       expect(page2[1].id, equals('entry_0'));
@@ -51,7 +51,7 @@ void main() {
     test('getTimelineEntries strictly excludes soft-deleted entries', () async {
       final now = DateTime.now();
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'active_entry',
           notebookId: 'notebook_default',
@@ -63,7 +63,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'deleted_entry',
           notebookId: 'notebook_default',
@@ -75,15 +75,15 @@ void main() {
         ),
       );
 
-      await db.softDeleteEntry('deleted_entry');
+      await db.entriesDao.softDeleteEntry('deleted_entry');
 
-      final timeline = await db.getTimelineEntries();
+      final timeline = await db.entriesDao.getTimelineEntries();
       expect(timeline.length, equals(1));
       expect(timeline.first.id, equals('active_entry'));
     });
 
     test('getPrimaryMediaForEntries batch retrieves first media attachment per entry', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_with_media',
           notebookId: 'notebook_default',
@@ -95,18 +95,20 @@ void main() {
         ),
       );
 
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_1',
         entryId: 'entry_with_media',
         relativePath: 'media/photo1.webp',
       );
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_2',
         entryId: 'entry_with_media',
         relativePath: 'media/photo2.webp',
       );
 
-      final mediaMap = await db.getPrimaryMediaForEntries(['entry_with_media', 'entry_empty']);
+      final mediaMap = await db.mediaOcrDao.getPrimaryMediaForEntries(
+        ['entry_with_media', 'entry_empty'],
+      );
       expect(mediaMap.containsKey('entry_with_media'), isTrue);
       expect(mediaMap['entry_with_media']!.relativePath, equals('media/photo1.webp'));
       expect(mediaMap.containsKey('entry_empty'), isFalse);

@@ -13,7 +13,7 @@ void main() {
 
 
         // Trigger database creation
-        await db.getAllTemplates();
+        await db.templatesDao.getAllTemplates();
 
         final ftsTableRows = await db
             .customSelect(
@@ -42,7 +42,7 @@ void main() {
         );
 
         final now = DateTime(2026, 10, 31, 10, 0);
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'entry_v5_1',
             notebookId: 'notebook_default',
@@ -91,7 +91,7 @@ void main() {
               ),
             );
 
-        final savedMedia = (await db.getMediaForEntry('entry_v5_1')).single;
+        final savedMedia = (await db.mediaOcrDao.getMediaForEntry('entry_v5_1')).single;
         expect(savedMedia.ocrText, equals('西湖十景'));
         expect(savedMedia.ocrBlocksJson, equals(blocksJson));
 
@@ -253,7 +253,7 @@ void main() {
         final db = AppDatabase(executor);
         addTearDown(() => db.close());
 
-        final attachments = await db.getMediaForEntry('v4_entry_1');
+        final attachments = await db.mediaOcrDao.getMediaForEntry('v4_entry_1');
         expect(attachments.length, equals(4));
         final migratedTicket =
             attachments.firstWhere((item) => item.id == 'v4_img_with_ocr');
@@ -277,7 +277,7 @@ void main() {
             .customSelect('SELECT id FROM media_fts')
             .get();
         expect(ftsRows, isEmpty);
-        expect(await db.searchPhotoText('Ferry'), isEmpty);
+        expect(await db.mediaOcrDao.searchPhotoText('Ferry'), isEmpty);
       },
     );
 

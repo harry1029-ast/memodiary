@@ -1,27 +1,14 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/theme/ink_diary_theme.dart';
-import '../../editor/models/typography_settings.dart';
-import '../../editor/widgets/cinnabar_signature_seal.dart';
 import '../models/template_style.dart';
-import '../services/stationery_layout_calculator.dart';
-import '../widgets/template_canvas_container.dart';
+import '../widgets/custom_template_color_typography_section.dart';
+import '../widgets/custom_template_preview_card.dart';
+import '../widgets/custom_template_style_selectors.dart';
 
-/// Preset diary background color swatch with literati naming.
-class ColorSwatchOption {
-  final String name;
-  final String hex;
-  final Color color;
-
-  const ColorSwatchOption({
-    required this.name,
-    required this.hex,
-    required this.color,
-  });
-}
+export '../widgets/custom_template_color_typography_section.dart'
+    show ColorSwatchOption;
 
 /// Interactive screen allowing users to build or edit custom visual diary templates
 /// with a real-time procedural canvas preview in Ink & Paper aesthetic.
@@ -122,8 +109,9 @@ class _CustomTemplateEditorScreenState
     final cleaned = value.trim();
     final regex = RegExp(r'^#?[0-9A-Fa-f]{6}$');
     if (regex.hasMatch(cleaned)) {
-      final normalized =
-          cleaned.startsWith('#') ? cleaned.toUpperCase() : '#${cleaned.toUpperCase()}';
+      final normalized = cleaned.startsWith('#')
+          ? cleaned.toUpperCase()
+          : '#${cleaned.toUpperCase()}';
       setState(() {
         _backgroundHex = normalized;
       });
@@ -150,10 +138,11 @@ class _CustomTemplateEditorScreenState
           ? _backgroundHex
           : tokens.toBackgroundValue();
 
+      final templatesDao = widget.database.templatesDao;
       Template savedTemplate;
 
       if (widget.existingTemplate != null) {
-        await widget.database.updateCustomTemplate(
+        await templatesDao.updateCustomTemplate(
           widget.existingTemplate!.id,
           name: trimmedName,
           backgroundType: _backgroundType.toDbValue,
@@ -163,10 +152,10 @@ class _CustomTemplateEditorScreenState
           marginHorizontal: _marginHorizontal,
         );
         final updated =
-            await widget.database.getTemplateById(widget.existingTemplate!.id);
+            await templatesDao.getTemplateById(widget.existingTemplate!.id);
         savedTemplate = updated!;
       } else {
-        savedTemplate = await widget.database.createCustomTemplate(
+        savedTemplate = await templatesDao.createCustomTemplate(
           name: trimmedName,
           backgroundType: _backgroundType.toDbValue,
           backgroundValue: bgValue,
@@ -179,11 +168,11 @@ class _CustomTemplateEditorScreenState
       if (mounted) {
         Navigator.pop(context, savedTemplate);
       }
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败: $e')),
+          SnackBar(content: Text('保存失败: $error')),
         );
       }
     }
@@ -229,7 +218,9 @@ class _CustomTemplateEditorScreenState
               style: FilledButton.styleFrom(
                 backgroundColor: tokens.cinnabar,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               ),
               onPressed: _isSaving ? null : _handleSave,
               icon: const Icon(Icons.check, size: 16),
@@ -248,153 +239,14 @@ class _CustomTemplateEditorScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. Live Interactive Preview Card
-              Row(
-                children: [
-                  Container(
-                    width: 3,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: tokens.cinnabar,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '案头即时笺样 · LIVE PREVIEW',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                      color: tokens.jiaomo,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              LayoutBuilder(
-                builder: (previewContext, constraints) {
-                  final previewWidth = constraints.maxWidth;
-                  const previewHeight = 190.0;
-                  final previewTypography = TypographySettings(
-                    fontSize: 14,
-                    lineSpacing: _lineSpacing,
-                    fontFamily: previewStyle.fontFamily,
-                  );
-                  final previewMetrics = StationeryLayoutCalculator.calculateMetrics(
-                    canvasWidth: previewWidth,
-                    canvasHeight: previewHeight,
-                    backgroundType: previewStyle.type,
-                    horizontalMargin: _marginHorizontal,
-                    lineSpacing: _lineSpacing,
-                    fontSize: 14,
-                    compactMargins: true,
-                  );
-
-                  final isPreviewDark =
-                      ThemeData.estimateBrightnessForColor(previewStyle.backgroundColor) ==
-                          Brightness.dark;
-                  final previewTokens =
-                      isPreviewDark ? InkDiaryTokens.dark : InkDiaryTokens.light;
-                  final activeFont = previewStyle.fontFamily;
-
-                  final padLeft = previewMetrics.innerFrameRect.left + 16.0;
-                  final padTop = previewMetrics.innerFrameRect.top + 8.0;
-                  final padRight = math.max(16.0, previewWidth - previewMetrics.innerFrameRect.right + 16.0);
-
-                  return Container(
-                    key: const Key('template_live_preview_card'),
-                    height: previewHeight,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: tokens.agedFiber),
-                      boxShadow: [
-                        BoxShadow(
-                          color: tokens.jiaomo.withValues(alpha: 0.06),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: Stack(
-                        children: [
-                          TemplateCanvasContainer(
-                            style: previewStyle,
-                            typography: previewTypography,
-                            layoutMetrics: previewMetrics,
-                            customPadding: EdgeInsets.fromLTRB(padLeft, padTop, padRight, 8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '丙午岁九月廿一 · ☀️ 晴朗',
-                                  style: TextStyle(
-                                    fontFamily: activeFont ?? 'serif',
-                                    fontFamilyFallback: const ['Noto Serif SC', 'serif'],
-                                    fontSize: 11,
-                                    letterSpacing: 0.5,
-                                    color: previewTokens.danmo,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _nameController.text.trim().isEmpty
-                                      ? '秋山晚眺 · 随笔起兴'
-                                      : _nameController.text.trim(),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: activeFont ?? 'serif',
-                                    fontFamilyFallback: const ['Noto Serif SC', 'serif'],
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                    color: previewTokens.jiaomo,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Expanded(
-                                  child: Text(
-                                    '秋水初凝，晨光微露，案头烹茶一瓯，静观落叶飘飏。\n拾光日记 · 记录每一个值得珍藏的瞬间。',
-                                    style: TextStyle(
-                                      fontFamily: activeFont ?? 'serif',
-                                      fontFamilyFallback: const ['Noto Serif SC', 'serif'],
-                                      fontSize: 13,
-                                      height: _lineSpacing,
-                                      letterSpacing: 0.3,
-                                      color: previewTokens.nongmo,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            bottom: (previewHeight - previewMetrics.innerFrameRect.bottom + 8.0).clamp(8.0, 26.0),
-                            right: (previewWidth - previewMetrics.innerFrameRect.right + 12.0).clamp(12.0, 32.0),
-                            child: IgnorePointer(
-                              child: Opacity(
-                                opacity: 0.65,
-                                child: CinnabarSignatureSeal(
-                                  sealStyle: _selectedSealStyle,
-                                  size: 32,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+              CustomTemplatePreviewCard(
+                previewStyle: previewStyle,
+                lineSpacing: _lineSpacing,
+                marginHorizontal: _marginHorizontal,
+                templateTitle: _nameController.text,
+                sealStyle: _selectedSealStyle,
               ),
               const SizedBox(height: 22),
-
-              // 2. Template Name Field
               TextFormField(
                 key: const Key('template_name_input'),
                 controller: _nameController,
@@ -412,7 +264,10 @@ class _CustomTemplateEditorScreenState
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(color: tokens.agedFiber),
                   ),
-                  prefixIcon: Icon(Icons.drive_file_rename_outline, color: tokens.danmo),
+                  prefixIcon: Icon(
+                    Icons.drive_file_rename_outline,
+                    color: tokens.danmo,
+                  ),
                 ),
                 onChanged: (_) => setState(() {}),
                 validator: (val) {
@@ -423,383 +278,51 @@ class _CustomTemplateEditorScreenState
                 },
               ),
               const SizedBox(height: 16),
-
-              // 3. Background Pattern Type Selector
-              Text(
-                '界格规制 · Paper Pattern',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: TemplateBackgroundType.values.map((type) {
-                  final isSelected = _backgroundType == type;
-                  return ChoiceChip(
-                    key: Key('bg_type_${type.toDbValue}'),
-                    label: Text(type.label),
-                    selected: isSelected,
-                    selectedColor: tokens.jiaomo,
-                    backgroundColor: tokens.ricePaper,
-                    labelStyle: TextStyle(
-                      fontFamily: InkDiaryTheme.fontKaiti,
-                      color: isSelected ? tokens.xuanGround : tokens.nongmo,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    onSelected: (selected) {
-                      if (selected) {
-                        HapticFeedback.lightImpact();
-                        setState(() => _backgroundType = type);
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-
-              // 3.1 Paper Substrate Selector
-              Text(
-                '宣纸基底 · Paper Substrate',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: PaperSubstrate.values.map((sub) {
-                  final isSelected = _selectedSubstrate == sub;
-                  return ChoiceChip(
-                    key: Key('substrate_${sub.name}'),
-                    label: Text(sub.label),
-                    selected: isSelected,
-                    selectedColor: tokens.jiaomo,
-                    backgroundColor: tokens.ricePaper,
-                    labelStyle: TextStyle(
-                      fontFamily: InkDiaryTheme.fontKaiti,
-                      color: isSelected ? tokens.xuanGround : tokens.nongmo,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    onSelected: (selected) {
-                      if (selected) {
-                        HapticFeedback.lightImpact();
-                        setState(() {
-                          _selectedSubstrate = sub;
-                          _backgroundHex = TemplateStyle.toHexString(sub.defaultColor);
-                          _hexController.text = _backgroundHex;
-                        });
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-
-              // 3.2 Rule Ink Tint Selector
-              Text(
-                '界格印色 · Rule Ink Tint',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: RuleInkTint.values.map((tint) {
-                  final isSelected = _selectedRuleTint == tint;
-                  return ChoiceChip(
-                    key: Key('rule_tint_${tint.name}'),
-                    label: Text(tint.label),
-                    selected: isSelected,
-                    selectedColor: tokens.jiaomo,
-                    backgroundColor: tokens.ricePaper,
-                    labelStyle: TextStyle(
-                      fontFamily: InkDiaryTheme.fontKaiti,
-                      color: isSelected ? tokens.xuanGround : tokens.nongmo,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    onSelected: (selected) {
-                      if (selected) {
-                        HapticFeedback.lightImpact();
-                        setState(() => _selectedRuleTint = tint);
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-
-              // 3.3 Seal Style Selector
-              Text(
-                '落款印式 · Seal Style',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: SealCarvingStyle.values.map((style) {
-                  final isSelected = _selectedSealStyle == style;
-                  return ChoiceChip(
-                    key: Key('seal_style_${style.name}'),
-                    label: Text(style.label),
-                    selected: isSelected,
-                    selectedColor: tokens.jiaomo,
-                    backgroundColor: tokens.ricePaper,
-                    labelStyle: TextStyle(
-                      fontFamily: InkDiaryTheme.fontKaiti,
-                      color: isSelected ? tokens.xuanGround : tokens.nongmo,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                    onSelected: (selected) {
-                      if (selected) {
-                        HapticFeedback.lightImpact();
-                        setState(() => _selectedSealStyle = style);
-                      }
-                    },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-
-              // 4. Background Color Swatches & Hex Picker
-              Text(
-                '笺纸底色 · Paper Color',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: CustomTemplateEditorScreen.presetSwatches.map((swatch) {
-                  final isSelected =
-                      _backgroundHex.toUpperCase() == swatch.hex.toUpperCase();
-                  return GestureDetector(
-                    key: Key('color_swatch_${swatch.hex}'),
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      setState(() {
-                        _backgroundHex = swatch.hex;
-                        _hexController.text = swatch.hex;
-                      });
-                    },
-                    child: Tooltip(
-                      message: swatch.name,
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: swatch.color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected
-                                ? tokens.cinnabar
-                                : tokens.agedFiber,
-                            width: isSelected ? 2.5 : 1.0,
-                          ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: tokens.cinnabar.withValues(alpha: 0.3),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: isSelected
-                            ? Icon(
-                                Icons.check,
-                                size: 16,
-                                color: tokens.cinnabar,
-                              )
-                            : null,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                key: const Key('template_hex_input'),
-                controller: _hexController,
-                decoration: InputDecoration(
-                  labelText: '自定义色值十六进制 (#RRGGBB)',
-                  filled: true,
-                  fillColor: tokens.ricePaper,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: tokens.agedFiber),
-                  ),
-                  prefixIcon: Icon(Icons.palette_outlined, color: tokens.danmo),
-                  isDense: true,
-                ),
-                onChanged: _onHexChanged,
-                validator: (val) {
-                  final regex = RegExp(r'^#?[0-9A-Fa-f]{6}$');
-                  if (val == null || !regex.hasMatch(val.trim())) {
-                    return '请输入有效 6 位十六进制色值 (例如 #FDFBF7)';
-                  }
-                  return null;
+              CustomTemplateStyleSelectors(
+                backgroundType: _backgroundType,
+                selectedSubstrate: _selectedSubstrate,
+                selectedRuleTint: _selectedRuleTint,
+                selectedSealStyle: _selectedSealStyle,
+                onBackgroundTypeChanged: (type) =>
+                    setState(() => _backgroundType = type),
+                onSubstrateChanged: (sub) {
+                  setState(() {
+                    _selectedSubstrate = sub;
+                    _backgroundHex = TemplateStyle.toHexString(sub.defaultColor);
+                    _hexController.text = _backgroundHex;
+                  });
                 },
+                onRuleTintChanged: (tint) =>
+                    setState(() => _selectedRuleTint = tint),
+                onSealStyleChanged: (style) =>
+                    setState(() => _selectedSealStyle = style),
               ),
               const SizedBox(height: 20),
-
-              // 5. Line Spacing Slider
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '行间疏密 · Line Spacing',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.jiaomo,
-                    ),
-                  ),
-                  Text(
-                    '${_lineSpacing.toStringAsFixed(1)}x',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: tokens.cinnabar,
-                    ),
-                  ),
-                ],
-              ),
-              SliderTheme(
-                data: SliderThemeData(
-                  activeTrackColor: tokens.cinnabar,
-                  inactiveTrackColor: tokens.agedFiber,
-                  thumbColor: tokens.cinnabar,
-                  trackHeight: 3.5,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                ),
-                child: Slider(
-                  key: const Key('line_spacing_slider'),
-                  value: _lineSpacing,
-                  min: 1.0,
-                  max: 2.5,
-                  divisions: 15,
-                  label: '${_lineSpacing.toStringAsFixed(1)}x',
-                  onChanged: (val) {
-                    setState(() {
-                      _lineSpacing = double.parse(val.toStringAsFixed(1));
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // 6. Horizontal Margin Slider
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '左右留白 · Horizontal Margin',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.jiaomo,
-                    ),
-                  ),
-                  Text(
-                    '${_marginHorizontal.round()} px',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: tokens.cinnabar,
-                    ),
-                  ),
-                ],
-              ),
-              SliderTheme(
-                data: SliderThemeData(
-                  activeTrackColor: tokens.cinnabar,
-                  inactiveTrackColor: tokens.agedFiber,
-                  thumbColor: tokens.cinnabar,
-                  trackHeight: 3.5,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                ),
-                child: Slider(
-                  key: const Key('margin_horizontal_slider'),
-                  value: _marginHorizontal,
-                  min: 12.0,
-                  max: 48.0,
-                  divisions: 18,
-                  label: '${_marginHorizontal.round()} px',
-                  onChanged: (val) {
-                    setState(() {
-                      _marginHorizontal = val.roundToDouble();
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 7. Font Family Selector
-              Text(
-                '默认文字体式 · Font Family',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                key: const Key('font_family_dropdown'),
-                isExpanded: true,
-                initialValue: _selectedFontFamily,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: tokens.ricePaper,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: tokens.agedFiber),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                ),
-                items: [
-                  const DropdownMenuItem(
-                    value: 'System',
-                    child: Text('系统默认 · System Default'),
-                  ),
-                  ...TypographyCatalog.options.map((opt) {
-                    return DropdownMenuItem(
-                      value: opt.fontFamily ?? opt.id,
-                      child: Text(
-                        '${opt.name} (${opt.description})',
-                        style: TextStyle(fontFamily: opt.fontFamily),
-                      ),
-                    );
-                  }),
-                ],
-                onChanged: (val) {
+              CustomTemplateColorTypographySection(
+                presetSwatches: CustomTemplateEditorScreen.presetSwatches,
+                backgroundHex: _backgroundHex,
+                hexController: _hexController,
+                lineSpacing: _lineSpacing,
+                marginHorizontal: _marginHorizontal,
+                selectedFontFamily: _selectedFontFamily,
+                onSelectSwatchHex: (hex) {
+                  setState(() {
+                    _backgroundHex = hex;
+                    _hexController.text = hex;
+                  });
+                },
+                onHexChanged: _onHexChanged,
+                onLineSpacingChanged: (val) {
+                  setState(() {
+                    _lineSpacing = double.parse(val.toStringAsFixed(1));
+                  });
+                },
+                onMarginHorizontalChanged: (val) {
+                  setState(() {
+                    _marginHorizontal = val.roundToDouble();
+                  });
+                },
+                onFontFamilyChanged: (val) {
                   if (val != null) {
                     setState(() => _selectedFontFamily = val);
                   }

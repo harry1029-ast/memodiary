@@ -112,7 +112,7 @@ void main() {
       db = AppDatabase.memory();
 
       // Seed an entry with matching text
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_coffee',
           notebookId: 'notebook_default',
@@ -125,7 +125,7 @@ void main() {
       );
 
       // Seed an entry with an image attachment having OCR text
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_travel',
           notebookId: 'notebook_default',

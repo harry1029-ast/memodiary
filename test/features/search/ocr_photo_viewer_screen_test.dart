@@ -166,7 +166,7 @@ void main() {
 
   group('OcrPhotoViewerScreen - Parent Navigation', () {
     testWidgets('navigates to EntryDetailScreen when sourceType is entry_media', (tester) async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_123',
           notebookId: 'notebook_default',

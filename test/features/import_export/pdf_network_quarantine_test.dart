@@ -77,7 +77,7 @@ void main() {
       await imageFile.writeAsBytes(pngBytes);
 
       // 2. Insert diary entry with text, headers, and media embed
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'quarantine_entry_1',
           notebookId: 'default',
@@ -97,7 +97,7 @@ void main() {
         ),
       );
 
-      final entry = await db.getEntryById('quarantine_entry_1');
+      final entry = await db.entriesDao.getEntryById('quarantine_entry_1');
       expect(entry, isNotNull);
 
       // 3. Generate PDF - must not trigger any HTTP/network call
@@ -112,7 +112,7 @@ void main() {
     });
 
     test('Consolidated journal book export executes in 100% offline quarantine', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_offline_1',
           notebookId: 'default',
@@ -124,7 +124,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_offline_2',
           notebookId: 'default',
@@ -136,7 +136,7 @@ void main() {
         ),
       );
 
-      final entries = await db.getTimelineEntries(limit: 10);
+      final entries = await db.entriesDao.getTimelineEntries(limit: 10);
       final bytes = await PdfExportEngine.generateConsolidatedPdf(
         entries: entries,
         database: db,

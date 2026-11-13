@@ -116,7 +116,7 @@ void main() {
 
   Future<void> seedAllProductionInvariants() async {
     // 1. Custom Template
-    await db.createCustomTemplate(
+    await db.templatesDao.createCustomTemplate(
       id: 'template_custom_rc_grid',
       name: 'RC Vintage Grid',
       backgroundType: 'grid',
@@ -127,16 +127,16 @@ void main() {
     );
 
     // 2. Custom Notebook
-    await db.into(db.notebooks).insert(
-          NotebooksCompanion.insert(
-            id: 'notebook_rc_2026',
-            title: '2026 拾光纪事',
-            defaultTemplateId: 'template_custom_rc_grid',
-          ),
-        );
+    await db.templatesDao.createNotebook(
+      NotebooksCompanion.insert(
+        id: 'notebook_rc_2026',
+        title: '2026 拾光纪事',
+        defaultTemplateId: 'template_custom_rc_grid',
+      ),
+    );
 
     // 3. Entry 1 (Active Multimodal + NL Target)
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_rc_01',
         notebookId: 'notebook_rc_2026',
@@ -153,7 +153,7 @@ void main() {
     );
 
     // 4. Entry 2 (Soft-Deleted Recycle Bin)
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_rc_02',
         notebookId: 'notebook_rc_2026',
@@ -168,7 +168,7 @@ void main() {
 
     // 5. Entry 3 (Single-Entry PIN-Locked)
     final pinHash = authService.hashEntryPin('8426');
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_rc_03',
         notebookId: 'notebook_rc_2026',
@@ -183,7 +183,7 @@ void main() {
     );
 
     // 6. Entry 4 (Sealed Time Capsule)
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_rc_04',
         notebookId: 'notebook_rc_2026',
@@ -197,7 +197,7 @@ void main() {
     );
 
     // 7. Entry 5 (Weekly Review)
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_rc_05',
         notebookId: 'notebook_rc_2026',
@@ -212,7 +212,7 @@ void main() {
     );
 
     // 8. Entry 6 (Event-Tagged Active Entry)
-    await db.createEntry(
+    await db.entriesDao.createEntry(
       EntriesCompanion.insert(
         id: 'entry_rc_06',
         notebookId: 'notebook_rc_2026',
@@ -236,13 +236,13 @@ void main() {
         .writeAsBytesSync(thumbBytes);
 
     // 10. Relational Media Attachments
-    await db.attachMediaToEntry(
+    await db.mediaOcrDao.attachMediaToEntry(
       id: 'media_rc_photo_1',
       entryId: 'entry_rc_01',
       relativePath: 'media/rc_photo_01.webp',
       mediaType: 'image',
     );
-    await db.attachMediaToEntry(
+    await db.mediaOcrDao.attachMediaToEntry(
       id: 'media_rc_video_1',
       entryId: 'entry_rc_01',
       relativePath: 'media/rc_video_01.mp4',
@@ -260,7 +260,7 @@ void main() {
       const passphrase = 'ReleaseCandidatePassphrase2026!';
 
       // 1. Capture snapshot before backup
-      final preBackupSnapshot = await db.exportAllTablesSnapshot();
+      final preBackupSnapshot = await db.backupDao.exportAllTablesSnapshot();
       expect(preBackupSnapshot.entries.length, 6);
       expect(preBackupSnapshot.templates.length, 5); // 4 default + 1 custom
       expect(preBackupSnapshot.notebooks.length, 2); // 1 default + 1 custom
@@ -291,7 +291,7 @@ void main() {
       }
 
       // Assert database and media sandbox are completely empty
-      final emptySnapshot = await db.exportAllTablesSnapshot();
+      final emptySnapshot = await db.backupDao.exportAllTablesSnapshot();
       expect(emptySnapshot.entries, isEmpty);
       expect(emptySnapshot.templates, isEmpty);
       expect(emptySnapshot.notebooks, isEmpty);
@@ -313,7 +313,7 @@ void main() {
       expect(restoreResult.mediaFilesRestored, 3);
 
       // 5. Assert 100% Relational Field Parity
-      final restoredSnapshot = await db.exportAllTablesSnapshot();
+      final restoredSnapshot = await db.backupDao.exportAllTablesSnapshot();
       expect(restoredSnapshot.entries.length, 6);
       expect(restoredSnapshot.templates.length, 5);
       expect(restoredSnapshot.notebooks.length, 2);
@@ -356,7 +356,7 @@ void main() {
 
       // Verify custom template
       final customTpl =
-          await db.getTemplateById('template_custom_rc_grid');
+          await db.templatesDao.getTemplateById('template_custom_rc_grid');
       expect(customTpl, isNotNull);
       expect(customTpl!.name, 'RC Vintage Grid');
       expect(customTpl.backgroundType, 'grid');
@@ -367,9 +367,12 @@ void main() {
       expect(customTpl.isCustom, isTrue);
 
       // Verify custom notebook
-      final customNb = await (db.select(db.notebooks)
-            ..where((tbl) => tbl.id.equals('notebook_rc_2026')))
-          .getSingleOrNull();
+      final customNb = (await db.templatesDao.getAllNotebooks())
+          .cast<Notebook?>()
+          .firstWhere(
+            (notebook) => notebook?.id == 'notebook_rc_2026',
+            orElse: () => null,
+          );
       expect(customNb, isNotNull);
       expect(customNb!.title, '2026 拾光纪事');
       expect(customNb.defaultTemplateId, 'template_custom_rc_grid');
@@ -400,13 +403,13 @@ void main() {
 
       // 8. Assert SQLite FTS5 Keyword Search Parity
       final searchKyoto =
-          await db.searchEntriesWithFilters(query: '京都');
+          await db.entriesDao.searchEntriesWithFilters(query: '京都');
       final kyotoIds = searchKyoto.map((e) => e.id).toSet();
       expect(kyotoIds, containsAll(['entry_rc_01', 'entry_rc_06']));
 
       // 9. Assert CJK LIKE Substring Fallback
       final searchTravel =
-          await db.searchEntriesWithFilters(query: '旅行');
+          await db.entriesDao.searchEntriesWithFilters(query: '旅行');
       final travelIds = searchTravel.map((e) => e.id).toList();
       expect(travelIds, contains('entry_rc_01'));
 
@@ -417,7 +420,7 @@ void main() {
         '去年国庆 晴天 带图',
         now: nlRefDate,
       );
-      final nlResults = await db.searchEntriesWithFilters(
+      final nlResults = await db.entriesDao.searchEntriesWithFilters(
         query: parsedNlQuery.keywords,
         startDate: parsedNlQuery.startDate,
         endDate: parsedNlQuery.endDate,
@@ -435,7 +438,7 @@ void main() {
         '10月所有周记',
         now: nlRefDate,
       );
-      final weeklyResults = await db.searchEntriesWithFilters(
+      final weeklyResults = await db.entriesDao.searchEntriesWithFilters(
         query: parsedWeekly.keywords,
         startDate: parsedWeekly.startDate,
         endDate: parsedWeekly.endDate,
@@ -446,23 +449,22 @@ void main() {
       expect(weeklyResults.first.id, 'entry_rc_05');
 
       // 11. Assert Privacy Invariants (Sealed Capsules & Recycle Bin Excluded)
-      final secretSearchResults = await db.searchEntriesWithFilters(
+      final secretSearchResults = await db.entriesDao.searchEntriesWithFilters(
         query: '绝对机密令牌',
         excludeSealedTimeCapsules: true,
       );
       expect(secretSearchResults, isEmpty,
           reason: 'Sealed time capsules must never leak into search results');
 
-      final trashSearchResults = await db.searchEntriesWithFilters(
+      final trashSearchResults = await db.entriesDao.searchEntriesWithFilters(
         query: '回收站保留',
       );
       expect(trashSearchResults, isEmpty,
           reason: 'Soft-deleted recycle bin entries must never appear in active search');
 
       // 12. Assert Single-Entry PIN Authentication
-      final restoredLockedEntry = await (db.select(db.entries)
-            ..where((tbl) => tbl.id.equals('entry_rc_03')))
-          .getSingle();
+      final restoredLockedEntry =
+          (await db.entriesDao.getEntryById('entry_rc_03'))!;
       expect(restoredLockedEntry.isLocked, isTrue);
       expect(restoredLockedEntry.entryPinHash, isNotNull);
       expect(
@@ -511,9 +513,9 @@ void main() {
       });
 
       // Fresh database starts with 4 default templates and 1 default notebook
-      final initialTemplates = await freshDb.getAllTemplates();
+      final initialTemplates = await freshDb.templatesDao.getAllTemplates();
       expect(initialTemplates.length, 4);
-      final initialNotebooks = await freshDb.select(freshDb.notebooks).get();
+      final initialNotebooks = await freshDb.templatesDao.getAllNotebooks();
       expect(initialNotebooks.length, 1);
 
       // Restore into fresh install
@@ -525,16 +527,16 @@ void main() {
       expect(res.mediaFilesRestored, 3);
 
       final freshCustomTpl =
-          await freshDb.getTemplateById('template_custom_rc_grid');
+          await freshDb.templatesDao.getTemplateById('template_custom_rc_grid');
       expect(freshCustomTpl, isNotNull);
       expect(freshCustomTpl!.name, 'RC Vintage Grid');
 
-      final freshTemplates = await freshDb.getAllTemplates();
+      final freshTemplates = await freshDb.templatesDao.getAllTemplates();
       expect(freshTemplates.length, 5,
           reason: 'Must contain 4 default templates and 1 restored custom template without duplicates');
 
       // Assert restored notebooks count and custom notebook parity
-      final freshNotebooks = await freshDb.select(freshDb.notebooks).get();
+      final freshNotebooks = await freshDb.templatesDao.getAllNotebooks();
       expect(freshNotebooks.length, 2,
           reason: 'Must contain both default notebook and restored custom notebook');
       final customNotebook =
@@ -542,7 +544,8 @@ void main() {
       expect(customNotebook.title, '2026 拾光纪事');
       expect(customNotebook.defaultTemplateId, 'template_custom_rc_grid');
 
-      final freshEntries = await freshDb.select(freshDb.entries).get();
+      final freshEntries =
+          (await freshDb.backupDao.exportAllTablesSnapshot()).entries;
       expect(freshEntries.length, 6);
 
       // Media files exist in fresh sandbox
@@ -565,7 +568,8 @@ void main() {
         pbkdf2Iterations: 2000,
       );
 
-      final preWipeEntries = await db.select(db.entries).get();
+      final preWipeEntries =
+          (await db.backupDao.exportAllTablesSnapshot()).entries;
       expect(preWipeEntries.length, 6);
 
       // Attempt restore with wrong password
@@ -578,7 +582,8 @@ void main() {
       );
 
       // Target database and media must remain 100% intact
-      final postAttemptEntries = await db.select(db.entries).get();
+      final postAttemptEntries =
+          (await db.backupDao.exportAllTablesSnapshot()).entries;
       expect(postAttemptEntries.length, 6);
 
       final photo = File(p.join(baseDir.path, 'media', 'rc_photo_01.webp'));

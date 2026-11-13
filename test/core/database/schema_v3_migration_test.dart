@@ -146,7 +146,7 @@ void main() {
         addTearDown(() => db.close());
 
         // 1. Verify legacy v2 entry is preserved intact after v2 -> v3 migration
-        final entry = await db.getEntryById('v2_preserved_entry');
+        final entry = await db.entriesDao.getEntryById('v2_preserved_entry');
         expect(entry, isNotNull);
         expect(entry!.title, equals('V2 Locked Entry'));
         expect(entry.plainText, equals('Preserved across v3 upgrade'));

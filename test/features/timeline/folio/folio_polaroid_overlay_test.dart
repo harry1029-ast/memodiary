@@ -370,7 +370,7 @@ void main() {
     testWidgets('ThreadBoundFolioScreen persists custom coordinates to SQLite database on drag', (tester) async {
       final db = AppDatabase.memory();
       addTearDown(() => db.close());
-      await db.getAllTemplates();
+      await db.templatesDao.getAllTemplates();
 
       final now = DateTime(2026, 11, 4, 21, 30);
       final entry = Entry(
@@ -394,7 +394,7 @@ void main() {
         isLocked: false,
         legacyMountsPending: false,
       );
-      await db.createEntry(entry.toCompanion(false));
+      await db.entriesDao.createEntry(entry.toCompanion(false));
 
       final attachment = MediaAttachment(
         id: 'media_persist_1',
@@ -403,7 +403,12 @@ void main() {
         relativePath: 'media/persist_test.webp',
         createdAt: now,
       );
-      await db.into(db.mediaAttachments).insert(attachment.toCompanion(false));
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: attachment.id,
+        entryId: attachment.entryId,
+        relativePath: attachment.relativePath,
+        mediaType: attachment.mediaType,
+      );
 
       await tester.pumpWidget(
         buildTestHarness(
@@ -411,7 +416,11 @@ void main() {
             entry: entry,
             attachments: [attachment],
             onOverlayPositionChanged: (photoId, xRatio, yRatio) =>
-                db.updateMediaAttachmentOverlayPosition(photoId, xRatio: xRatio, yRatio: yRatio),
+                db.mediaOcrDao.updateMediaAttachmentOverlayPosition(
+              photoId,
+              xRatio: xRatio,
+              yRatio: yRatio,
+            ),
           ),
         ),
       );
@@ -429,7 +438,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify row in SQLite has updated overlay ratios
-      final savedMedia = (await db.getMediaForEntry(entry.id)).single;
+      final savedMedia =
+          (await db.mediaOcrDao.getMediaForEntry(entry.id)).single;
       expect(savedMedia.overlayXRatio, isNotNull);
       expect(savedMedia.overlayYRatio, isNotNull);
 
@@ -437,7 +447,8 @@ void main() {
       await tester.tap(find.byKey(const Key('folio_polaroid_reset_button')));
       await tester.pumpAndSettle();
 
-      final resetMedia = (await db.getMediaForEntry(entry.id)).single;
+      final resetMedia =
+          (await db.mediaOcrDao.getMediaForEntry(entry.id)).single;
       expect(resetMedia.overlayXRatio, isNull);
       expect(resetMedia.overlayYRatio, isNull);
     });

@@ -25,7 +25,7 @@ void main() {
   });
 
   Future<void> seedEntry({required bool legacyMountsPending}) async {
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',
@@ -38,17 +38,13 @@ void main() {
           ),
         );
     final mediaDir = Directory('${tempDirectory.path}/media')..createSync(recursive: true);
-    for (final (index, id) in ['plum', 'pavilion'].indexed) {
+    for (final id in const ['plum', 'pavilion']) {
       File('${mediaDir.path}/$id.webp').writeAsBytesSync(kValid1x1PngBytes);
-      await database.into(database.mediaAttachments).insert(
-            MediaAttachmentsCompanion.insert(
-              id: id,
-              entryId: _entryId,
-              mediaType: 'image',
-              relativePath: 'media/$id.webp',
-              createdAt: Value(DateTime(2026, 2, 14, 9, index)),
-            ),
-          );
+      await database.mediaOcrDao.attachMediaToEntry(
+        id: id,
+        entryId: _entryId,
+        relativePath: 'media/$id.webp',
+      );
     }
   }
 
@@ -101,7 +97,7 @@ void main() {
       expect(tuckedPrint('pavilion'), findsOneWidget);
       expect(find.byKey(const Key('staging_handscroll')), findsNothing);
 
-      final entry = (await database.getEntryById(_entryId))!;
+      final entry = (await database.entriesDao.getEntryById(_entryId))!;
       expect(jsonDecode(entry.contentDelta), mountedOps);
       expect(entry.plainText, '孤山梅开。');
       expect(entry.legacyMountsPending, isFalse);
@@ -110,13 +106,13 @@ void main() {
     testWidgets('reopening a migrated entry leaves its mounts unchanged', (tester) async {
       await seedEntry(legacyMountsPending: true);
       await openEditor(tester);
-      final migrated = (await database.getEntryById(_entryId))!;
+      final migrated = (await database.entriesDao.getEntryById(_entryId))!;
 
       await reopenEditor(tester);
 
       expect(tuckedPrint('plum'), findsOneWidget);
       expect(tuckedPrint('pavilion'), findsOneWidget);
-      expect(await database.getEntryById(_entryId), migrated);
+      expect(await database.entriesDao.getEntryById(_entryId), migrated);
     });
 
     testWidgets('an entry not pending the pass keeps its unanchored items staged', (tester) async {
@@ -128,7 +124,7 @@ void main() {
       expect(find.byKey(const Key('handscroll_item_pavilion')), findsOneWidget);
       expect(tuckedPrintsFan, findsNothing);
       expect(
-        jsonDecode((await database.getEntryById(_entryId))!.contentDelta),
+        jsonDecode((await database.entriesDao.getEntryById(_entryId))!.contentDelta),
         [
           {'insert': '孤山梅开。\n'},
         ],

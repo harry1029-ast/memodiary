@@ -80,7 +80,7 @@ void main() {
 
       try {
         // 1. Database CRUD & FTS5 search
-        await db.createEntry(
+        await db.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: 'quarantine_entry_1',
             notebookId: 'notebook_default',
@@ -93,7 +93,8 @@ void main() {
           ),
         );
 
-        final entries = await db.searchEntriesWithFilters(query: 'local');
+        final entries =
+            await db.entriesDao.searchEntriesWithFilters(query: 'local');
         expect(entries.length, equals(1));
 
         // 2. Export engine formatting

@@ -40,7 +40,7 @@ void main() {
 
   Finder reminder() => find.byKey(const Key('staged_exit_reminder'));
   Finder editorScreen() => find.byType(EntryEditorScreen);
-  Future<List<String>> attachmentIds() async => (await fixture.database.getMediaForEntry(_entryId)).map((row) => row.id).toList();
+  Future<List<String>> attachmentIds() async => (await fixture.database.mediaOcrDao.getMediaForEntry(_entryId)).map((row) => row.id).toList();
 
   Future<void> tapExit(WidgetTester tester, Finder exitPath) async {
     await tester.tap(exitPath);

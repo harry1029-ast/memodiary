@@ -52,7 +52,7 @@ class _NotebookSelectorSheetState extends State<NotebookSelectorSheet> {
   Future<void> _loadNotebooks() async {
     setState(() => _isLoading = true);
     try {
-      final list = await widget.database.getAllNotebooks();
+      final list = await widget.database.templatesDao.getAllNotebooks();
       if (mounted) {
         setState(() {
           _notebooks = list;
@@ -94,7 +94,7 @@ class _NotebookSelectorSheetState extends State<NotebookSelectorSheet> {
 
     if (name != null && name.isNotEmpty) {
       final id = 'nb_${DateTime.now().millisecondsSinceEpoch}';
-      await widget.database.createNotebook(
+      await widget.database.templatesDao.createNotebook(
         NotebooksCompanion.insert(
           id: id,
           title: name,

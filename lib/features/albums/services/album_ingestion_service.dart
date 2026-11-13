@@ -49,12 +49,13 @@ class IngestionResult {
 /// Therefore, this service processes photos sequentially on the caller isolate (preventing
 /// OOM memory spikes from decoding 50 high-res photos simultaneously), yields between
 /// items so UI animations stay at 60 FPS, and commits all generated records in a single
-/// atomic `AlbumRepository.addPhotosBatch` SQLite transaction.
+/// atomic `AlbumsDao.addPhotosBatch` SQLite transaction.
 class AlbumIngestionService {
   static const int maxBatchSize = 50;
 
   final AlbumRepository repository;
   final MediaSandboxService mediaService;
+  final AlbumsDao _albumsDao;
   final Future<DateTime?> Function(File source) _captureDateReader;
   final DateTime Function() _clock;
   final Uuid _uuid;
@@ -62,10 +63,12 @@ class AlbumIngestionService {
   AlbumIngestionService({
     required this.repository,
     required this.mediaService,
+    AlbumsDao? albumsDao,
     Future<DateTime?> Function(File source)? captureDateReader,
     DateTime Function()? clock,
     Uuid? uuid,
-  })  : _captureDateReader =
+  })  : _albumsDao = albumsDao ?? repository.database.albumsDao,
+        _captureDateReader =
             captureDateReader ?? ExifDateReader.readCaptureDate,
         _clock = clock ?? DateTime.now,
         _uuid = uuid ?? const Uuid();
@@ -104,7 +107,8 @@ class AlbumIngestionService {
         wasTruncated ? sources.sublist(0, maxBatchSize) : sources;
     final total = cappedSources.length;
 
-    final existingPhotos = await repository.getPhotosForCollection(collectionId);
+    final existingPhotos =
+        await _albumsDao.getPhotosForCollection(collectionId);
     var nextSortOrder = existingPhotos.isEmpty
         ? 0
         : existingPhotos
@@ -176,7 +180,10 @@ class AlbumIngestionService {
     }
 
     if (pendingCompanions.isNotEmpty) {
-      await repository.addPhotosBatch(collectionId, pendingCompanions);
+      await _albumsDao.addPhotosBatch(
+        collectionId,
+        pendingCompanions,
+      );
     }
 
     onProgress?.call(

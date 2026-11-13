@@ -156,7 +156,7 @@ void main() {
       final db = AppDatabase.memory();
       addTearDown(() => db.close());
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'cjk_entry_1',
           notebookId: 'notebook_default',
@@ -170,7 +170,7 @@ void main() {
       );
 
       final parsed = parser.parse('去年国庆旅行', now: refNow);
-      final results = await db.searchEntriesWithFilters(
+      final results = await db.entriesDao.searchEntriesWithFilters(
         query: parsed.keywords, // '旅行'
         startDate: parsed.startDate,
         endDate: parsed.endDate,

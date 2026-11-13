@@ -42,7 +42,7 @@ void main() {
       videoResult: XFile(video.path),
     );
 
-    await database.into(database.entries).insert(
+    await database.entriesDao.createEntry(
           EntriesCompanion.insert(
             id: _entryId,
             notebookId: 'notebook_default',
@@ -92,7 +92,7 @@ void main() {
   }
 
   Future<List<String>> attachmentIds() async =>
-      (await database.getMediaForEntry(_entryId)).map((attachment) => attachment.id).toList();
+      (await database.mediaOcrDao.getMediaForEntry(_entryId)).map((attachment) => attachment.id).toList();
 
   Future<void> mount(WidgetTester tester, String mediaId) async {
     await tester.tap(find.byKey(Key('handscroll_mount_$mediaId')));
@@ -162,7 +162,7 @@ void main() {
 
     testWidgets('mounting onto a full opening sheet never spills its 10 rows onto a new sheet', (tester) async {
       final tenLines = List.generate(10, (index) => '第$index行').join('\n');
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         _entryId,
         jsonEncode((Delta()..insert('$tenLines\n')).toJson()),
         tenLines,
@@ -181,7 +181,7 @@ void main() {
     testWidgets('mounting on a full 14-row continuation sheet keeps it there across reopen', (tester) async {
       final openingLines = List.generate(10, (index) => '首页$index').join('\n');
       final continuationLines = List.generate(14, (index) => '次页$index').join('\n');
-      await database.updateEntryContent(
+      await database.entriesDao.updateEntryContent(
         _entryId,
         jsonEncode((Delta()..insert('$openingLines\n$continuationLines\n')).toJson()),
         '$openingLines\n$continuationLines',
@@ -220,8 +220,8 @@ void main() {
       await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
       await tester.pumpAndSettle();
 
-      final savedEntry = await database.getEntryById(_entryId);
-      final savedAttachments = await database.getMediaForEntry(_entryId);
+      final savedEntry = await database.entriesDao.getEntryById(_entryId);
+      final savedAttachments = await database.mediaOcrDao.getMediaForEntry(_entryId);
       final savedOps = jsonDecode(savedEntry!.contentDelta) as List<dynamic>;
       expect(savedOps, [
         {'insert': '断桥残雪。'},
@@ -241,10 +241,10 @@ void main() {
       // Reopening alone writes nothing: deep parity on Delta and attachment rows.
       await tester.tap(find.byKey(const Key('editor_seal_done_btn')));
       await tester.pumpAndSettle();
-      final reopenedEntry = await database.getEntryById(_entryId);
+      final reopenedEntry = await database.entriesDao.getEntryById(_entryId);
       expect(reopenedEntry!.contentDelta, savedEntry.contentDelta);
       expect(reopenedEntry.plainText, savedEntry.plainText);
-      expect(await database.getMediaForEntry(_entryId), savedAttachments);
+      expect(await database.mediaOcrDao.getMediaForEntry(_entryId), savedAttachments);
     });
 
     testWidgets('tapping a handscroll item opens the fullscreen lightbox; tapping the Tucked Prints fans them out instead', (tester) async {

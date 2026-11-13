@@ -93,7 +93,7 @@ void main() {
     testWidgets('non-destructive Reading Perspective switching updates active layout', (WidgetTester tester) async {
       final now = DateTime(2026, 10, 16, 14, 30);
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'detail_entry_persp',
           notebookId: 'notebook_default',
@@ -108,7 +108,7 @@ void main() {
           weather: const Value('cloudy'),
         ),
       );
-      final entry = (await db.getEntryById('detail_entry_persp'))!;
+      final entry = (await db.entriesDao.getEntryById('detail_entry_persp'))!;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -139,14 +139,14 @@ void main() {
       expect(find.text('朱丝古刻'), findsOneWidget);
 
       // Verify SQLite entry record template is completely untouched
-      final dbEntry = await db.getEntryById('detail_entry_persp');
+      final dbEntry = await db.entriesDao.getEntryById('detail_entry_persp');
       expect(dbEntry?.templateId, equals('template_minimalist_white'));
     });
 
     testWidgets('soft delete via consolidated More menu triggers confirmation dialog', (WidgetTester tester) async {
       final now = DateTime.now();
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_to_soft_delete',
           notebookId: 'notebook_default',
@@ -158,7 +158,7 @@ void main() {
         ),
       );
 
-      final entry = (await db.getEntryById('entry_to_soft_delete'))!;
+      final entry = (await db.entriesDao.getEntryById('entry_to_soft_delete'))!;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -189,13 +189,13 @@ void main() {
       await tester.pumpAndSettle();
 
       // Entry should now be soft deleted in the database
-      final updated = await db.getEntryById('entry_to_soft_delete');
+      final updated = await db.entriesDao.getEntryById('entry_to_soft_delete');
       expect(updated!.isDeleted, isTrue);
     });
 
     testWidgets('loads asynchronously when initialized via entryId with clean spinner', (tester) async {
       final now = DateTime(2026, 10, 20);
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'async_loaded_entry',
           notebookId: 'notebook_default',
@@ -230,7 +230,7 @@ void main() {
     testWidgets('tapping page indicator opens FolioPageJumpSheet and jumps to selected page', (tester) async {
       final now = DateTime(2026, 10, 20);
       final longText = List.generate(40, (i) => '这是第$i行长文本，用于产生多页手稿。').join('\n');
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'multipage_entry',
           notebookId: 'notebook_default',
@@ -242,7 +242,7 @@ void main() {
         ),
       );
 
-      final entry = (await db.getEntryById('multipage_entry'))!;
+      final entry = (await db.entriesDao.getEntryById('multipage_entry'))!;
 
       await tester.pumpWidget(
         MaterialApp(

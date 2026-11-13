@@ -105,7 +105,8 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
               layoutMode: _layoutMode,
             );
           } else {
-            final list = widget.entries ?? await widget.database.getTimelineEntries(limit: 100);
+            final list = widget.entries ??
+                await widget.database.entriesDao.getTimelineEntries(limit: 100);
             return PdfExportEngine.generateConsolidatedPdf(
               entries: list,
               database: widget.database,
