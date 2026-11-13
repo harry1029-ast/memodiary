@@ -58,7 +58,7 @@ class _SerendipityRouletteCardState extends State<SerendipityRouletteCard> {
     setState(() => _isSpinning = true);
     HapticFeedback.lightImpact();
 
-    final entry = await widget.database.getRandomOldEntry(
+    final entry = await widget.database.entriesDao.getRandomOldEntry(
       minDaysAgo: widget.minDaysAgo,
     );
 

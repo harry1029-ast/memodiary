@@ -17,7 +17,7 @@ void main() {
 
   group('Offline FTS5 & Multi-Condition Search Tests', () {
     test('FTS5 matches keyword in title or plainText', () async {
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_coffee',
           notebookId: 'notebook_default',
@@ -29,7 +29,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_tea',
           notebookId: 'notebook_default',
@@ -42,12 +42,12 @@ void main() {
       );
 
       // Search keyword in title
-      final titleMatch = await db.searchEntriesWithFilters(query: 'Cafe');
+      final titleMatch = await db.entriesDao.searchEntriesWithFilters(query: 'Cafe');
       expect(titleMatch.length, equals(1));
       expect(titleMatch.first.id, equals('entry_coffee'));
 
       // Search keyword in plain text
-      final bodyMatch = await db.searchEntriesWithFilters(query: 'ceremony');
+      final bodyMatch = await db.entriesDao.searchEntriesWithFilters(query: 'ceremony');
       expect(bodyMatch.length, equals(1));
       expect(bodyMatch.first.id, equals('entry_tea'));
     });
@@ -55,7 +55,7 @@ void main() {
     test('Clean query branching: empty query uses relational filters directly', () async {
       final now = DateTime.now();
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_happy_sunny',
           notebookId: 'notebook_default',
@@ -69,7 +69,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_calm_rainy',
           notebookId: 'notebook_default',
@@ -84,12 +84,12 @@ void main() {
       );
 
       // Filter by mood with empty query
-      final moodResults = await db.searchEntriesWithFilters(query: '', mood: 5);
+      final moodResults = await db.entriesDao.searchEntriesWithFilters(query: '', mood: 5);
       expect(moodResults.length, equals(1));
       expect(moodResults.first.id, equals('entry_happy_sunny'));
 
       // Filter by weather with empty query
-      final weatherResults = await db.searchEntriesWithFilters(query: '', weather: 'rainy');
+      final weatherResults = await db.entriesDao.searchEntriesWithFilters(query: '', weather: 'rainy');
       expect(weatherResults.length, equals(1));
       expect(weatherResults.first.id, equals('entry_calm_rainy'));
     });
@@ -97,7 +97,7 @@ void main() {
     test('Multi-condition search combines FTS5 keyword and relational filters', () async {
       final now = DateTime.now();
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_1',
           notebookId: 'notebook_default',
@@ -111,7 +111,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_2',
           notebookId: 'notebook_default',
@@ -126,7 +126,7 @@ void main() {
       );
 
       // Keyword "Flutter" + mood 4 => only entry_1
-      final combined = await db.searchEntriesWithFilters(
+      final combined = await db.entriesDao.searchEntriesWithFilters(
         query: 'Flutter',
         mood: 4,
       );
@@ -137,7 +137,7 @@ void main() {
     test('Filter by weekly review only and has image', () async {
       final now = DateTime.now();
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_review',
           notebookId: 'notebook_default',
@@ -150,7 +150,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_with_img',
           notebookId: 'notebook_default',
@@ -161,17 +161,17 @@ void main() {
           entryDate: now,
         ),
       );
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_img_1',
         entryId: 'entry_with_img',
         relativePath: 'media/test.webp',
       );
 
-      final reviewOnly = await db.searchEntriesWithFilters(weeklyReviewOnly: true);
+      final reviewOnly = await db.entriesDao.searchEntriesWithFilters(weeklyReviewOnly: true);
       expect(reviewOnly.length, equals(1));
       expect(reviewOnly.first.id, equals('entry_review'));
 
-      final hasImgOnly = await db.searchEntriesWithFilters(hasImage: true);
+      final hasImgOnly = await db.entriesDao.searchEntriesWithFilters(hasImage: true);
       expect(hasImgOnly.length, equals(1));
       expect(hasImgOnly.first.id, equals('entry_with_img'));
     });
@@ -179,7 +179,7 @@ void main() {
     test('Privacy Invariant: Sealed Time Capsules are strictly excluded from text search', () async {
       final now = DateTime.now();
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'capsule_sealed',
           notebookId: 'notebook_default',
@@ -192,7 +192,7 @@ void main() {
         ),
       );
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'normal_entry',
           notebookId: 'notebook_default',
@@ -205,14 +205,14 @@ void main() {
       );
 
       // Search for keyword 'Secret' with excludeSealedTimeCapsules = true
-      final results = await db.searchEntriesWithFilters(
+      final results = await db.entriesDao.searchEntriesWithFilters(
         query: 'Secret',
         excludeSealedTimeCapsules: true,
       );
 
       expect(results.length, equals(1));
       expect(results.first.id, equals('normal_entry'));
-      expect(results.any((e) => e.id == 'capsule_sealed'), isFalse);
+      expect(results.any((entry) => entry.id == 'capsule_sealed'), isFalse);
     });
 
     test('SearchFilters date range helper resolves expected week and month boundaries', () {

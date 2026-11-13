@@ -35,7 +35,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Please enter a template name'), findsOneWidget);
-      final customTemplates = await db.getCustomTemplates();
+      final customTemplates = await db.templatesDao.getCustomTemplates();
       expect(customTemplates, isEmpty);
     });
 
@@ -100,7 +100,7 @@ void main() {
       expect(returnedTemplate!.isCustom, isTrue);
 
       // Verify in database
-      final stored = await db.getTemplateById(returnedTemplate!.id);
+      final stored = await db.templatesDao.getTemplateById(returnedTemplate!.id);
       expect(stored, isNotNull);
       expect(stored!.name, equals('Mint Grid Studio'));
       expect(stored.isCustom, isTrue);
@@ -129,7 +129,7 @@ void main() {
       await tester.tap(find.byKey(const Key('save_custom_template_button')));
       await tester.pumpAndSettle();
 
-      final customTemplates = await db.getCustomTemplates();
+      final customTemplates = await db.templatesDao.getCustomTemplates();
       final created = customTemplates.firstWhere((template) => template.name == 'Zen Dot Grid');
       expect(created.backgroundType, equals('dot_grid'));
     });
@@ -173,8 +173,8 @@ void main() {
       await tester.tap(find.byKey(const Key('save_custom_template_button')));
       await tester.pumpAndSettle();
 
-      final customTemplates = await db.getCustomTemplates();
-      final created = customTemplates.firstWhere((t) => t.name == 'Cold Gold Studio');
+      final customTemplates = await db.templatesDao.getCustomTemplates();
+      final created = customTemplates.firstWhere((template) => template.name == 'Cold Gold Studio');
       expect(created, isNotNull);
 
       final tokens = StationeryVisualTokens.fromBackgroundValue(created.backgroundValue);

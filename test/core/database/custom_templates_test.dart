@@ -23,7 +23,7 @@ void main() {
 
   group('Custom Template Database CRUD & Safety Invariants', () {
     test('createCustomTemplate enforces isCustom = true and persists all styling attributes', () async {
-      final created = await db.createCustomTemplate(
+      final created = await db.templatesDao.createCustomTemplate(
         name: 'Lavender Haze',
         backgroundType: 'lined',
         backgroundValue: '#F3E5F5',
@@ -41,19 +41,19 @@ void main() {
       expect(created.marginHorizontal, equals(28.0));
       expect(created.isCustom, isTrue);
 
-      final customList = await db.getCustomTemplates();
+      final customList = await db.templatesDao.getCustomTemplates();
       expect(customList.length, equals(1));
       expect(customList.first.id, equals(created.id));
     });
 
     test('updateCustomTemplate modifies custom templates but protects seeded system templates', () async {
-      final custom = await db.createCustomTemplate(
+      final custom = await db.templatesDao.createCustomTemplate(
         name: 'Initial Custom',
         backgroundType: 'color',
         backgroundValue: '#FFFFFF',
       );
 
-      final updatedRows = await db.updateCustomTemplate(
+      final updatedRows = await db.templatesDao.updateCustomTemplate(
         custom.id,
         name: 'Updated Mint Grid',
         backgroundType: 'grid',
@@ -63,7 +63,7 @@ void main() {
       );
       expect(updatedRows, equals(1));
 
-      final reloaded = await db.getTemplateById(custom.id);
+      final reloaded = await db.templatesDao.getTemplateById(custom.id);
       expect(reloaded!.name, equals('Updated Mint Grid'));
       expect(reloaded.backgroundType, equals('grid'));
       expect(reloaded.backgroundValue, equals('#E8F5E9'));
@@ -72,7 +72,7 @@ void main() {
 
       // Attempting to modify a system template must throw StateError
       await expectLater(
-        db.updateCustomTemplate(
+        db.templatesDao.updateCustomTemplate(
           'template_minimalist_white',
           name: 'Hacked System Template',
         ),
@@ -90,17 +90,17 @@ void main() {
 
       for (final sysId in systemIds) {
         await expectLater(
-          db.deleteCustomTemplate(sysId),
+          db.templatesDao.deleteCustomTemplate(sysId),
           throwsA(isA<StateError>()),
         );
       }
 
-      final allTemplates = await db.getAllTemplates();
+      final allTemplates = await db.templatesDao.getAllTemplates();
       expect(allTemplates.length, equals(4));
     });
 
     test('deleteCustomTemplate atomically reassigns dependent entries to fallback template before deleting (Watchpoint 3)', () async {
-      final custom = await db.createCustomTemplate(
+      final custom = await db.templatesDao.createCustomTemplate(
         name: 'Ephemeral Theme',
         backgroundType: 'paper_texture',
         backgroundValue: '#EFE6D5',
@@ -109,7 +109,7 @@ void main() {
       const originalDelta = '[{"insert":"Precious diary text that must never be lost.\\n"}]';
       const originalPlain = 'Precious diary text that must never be lost.';
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_using_custom_1',
           notebookId: 'notebook_default',
@@ -122,15 +122,15 @@ void main() {
       );
 
       // Delete custom template while PRAGMA foreign_keys = ON is active
-      await db.deleteCustomTemplate(custom.id);
+      await db.templatesDao.deleteCustomTemplate(custom.id);
 
       // Verify custom template was removed
-      final deletedTemplate = await db.getTemplateById(custom.id);
+      final deletedTemplate = await db.templatesDao.getTemplateById(custom.id);
       expect(deletedTemplate, isNull);
 
       // Verify entry was safely reassigned to fallback 'template_minimalist_white'
       // and contentDelta / plainText remain 100% intact
-      final entryAfter = await db.getEntryById('entry_using_custom_1');
+      final entryAfter = await db.entriesDao.getEntryById('entry_using_custom_1');
       expect(entryAfter, isNotNull);
       expect(entryAfter!.templateId, equals('template_minimalist_white'));
       expect(entryAfter.contentDelta, equals(originalDelta));

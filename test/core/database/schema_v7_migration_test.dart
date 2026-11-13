@@ -85,9 +85,9 @@ void main() {
       addTearDown(() => db.close());
 
       expect(db.schemaVersion, greaterThanOrEqualTo(7));
-      await db.getAllTemplates();
+      await db.templatesDao.getAllTemplates();
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_v7_fresh',
           notebookId: 'notebook_default',
@@ -108,13 +108,13 @@ void main() {
         ),
       );
 
-      await db.updateMediaCaption('media_v7_ticket', caption: '秋日登山');
+      await db.mediaOcrDao.updateMediaCaption('media_v7_ticket', caption: '秋日登山');
 
-      final media = (await db.getMediaForEntry('entry_v7_fresh')).single;
+      final media = (await db.mediaOcrDao.getMediaForEntry('entry_v7_fresh')).single;
       expect(media.caption, equals('秋日登山'));
       expect(media.ocrText, equals('灵隐门票'));
-      expect((await db.searchPhotoText('灵隐')).map((match) => match.id), equals(['media_v7_ticket']));
-      expect(await db.searchPhotoText('秋日'), isEmpty);
+      expect((await db.mediaOcrDao.searchPhotoText('灵隐')).map((match) => match.id), equals(['media_v7_ticket']));
+      expect(await db.mediaOcrDao.searchPhotoText('秋日'), isEmpty);
     });
 
     test('upgrade from v6 moves captions out of OCR text only for rows without OCR blocks', () async {
@@ -144,9 +144,9 @@ void main() {
       final db = AppDatabase(executor);
       addTearDown(() => db.close());
 
-      await db.getAllTemplates();
+      await db.templatesDao.getAllTemplates();
       final byId = {
-        for (final media in await db.getMediaForEntry('entry_legacy')) media.id: media,
+        for (final media in await db.mediaOcrDao.getMediaForEntry('entry_legacy')) media.id: media,
       };
 
       expect(byId['legacy_caption']!.caption, equals('湖畔品茶'));
@@ -163,15 +163,15 @@ void main() {
       expect(byId['unscanned']!.caption, isNull);
       expect(byId['unscanned']!.ocrText, isNull);
 
-      expect((await db.searchPhotoText('狮峰')).map((match) => match.id), equals(['ocr_scanned']));
+      expect((await db.mediaOcrDao.searchPhotoText('狮峰')).map((match) => match.id), equals(['ocr_scanned']));
       // Moved captions leave photo text search and are queued for OCR backfill.
-      expect(await db.searchPhotoText('湖畔'), isEmpty);
-      expect(await db.searchPhotoText('雨后'), isEmpty);
-      expect(await db.countUnindexedImages(), equals(3));
+      expect(await db.mediaOcrDao.searchPhotoText('湖畔'), isEmpty);
+      expect(await db.mediaOcrDao.searchPhotoText('雨后'), isEmpty);
+      expect(await db.mediaOcrDao.countUnindexedImages(), equals(3));
 
-      await db.updateMediaCaption('ocr_scanned', caption: '明前新茶');
-      expect((await db.searchPhotoText('狮峰')).map((match) => match.id), equals(['ocr_scanned']));
-      expect(await db.searchPhotoText('明前'), isEmpty);
+      await db.mediaOcrDao.updateMediaCaption('ocr_scanned', caption: '明前新茶');
+      expect((await db.mediaOcrDao.searchPhotoText('狮峰')).map((match) => match.id), equals(['ocr_scanned']));
+      expect(await db.mediaOcrDao.searchPhotoText('明前'), isEmpty);
     });
   });
 }

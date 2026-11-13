@@ -12,7 +12,7 @@ import 'ocr_service.dart';
 /// - In-memory and stateful deduplication by image ID.
 /// - Error & empty-text sentinel assignment (`ocr_text = ''`, `ocr_blocks_json = '[]'`)
 ///   to prevent infinite re-scan loops.
-/// - Launch-bound reactive subscription to [AppDatabase.watchUnindexedImagesSince].
+/// - Launch-bound reactive subscription to [MediaOcrDao.watchUnindexedImagesSince].
 /// - Sequential, cancelable historical backfill via [runBackfill].
 class OcrQueueManager {
   final AppDatabase _database;
@@ -56,7 +56,7 @@ class OcrQueueManager {
       return;
     }
     final launchTime = _clock();
-    _streamSubscription = _database
+    _streamSubscription = _database.mediaOcrDao
         .watchUnindexedImagesSince(launchTime)
         .listen(_handleUnindexedImagesStream);
   }
@@ -98,9 +98,8 @@ class OcrQueueManager {
 
   Future<void> _resolveAndEnqueueMediaAttachment(String attachmentId) async {
     try {
-      final row = await (_database.select(_database.mediaAttachments)
-            ..where((tbl) => tbl.id.equals(attachmentId)))
-          .getSingleOrNull();
+      final row =
+          await _database.mediaOcrDao.getMediaAttachmentById(attachmentId);
 
       if (_isDisposed ||
           row == null ||
@@ -141,9 +140,7 @@ class OcrQueueManager {
 
   Future<void> _resolveAndEnqueueAlbumPhoto(String photoId) async {
     try {
-      final row = await (_database.select(_database.albumPhotos)
-            ..where((tbl) => tbl.id.equals(photoId)))
-          .getSingleOrNull();
+      final row = await _database.mediaOcrDao.getAlbumPhotoById(photoId);
 
       if (_isDisposed || row == null || row.ocrText != null) {
         _pendingOrProcessingIds.remove(photoId);
@@ -210,13 +207,13 @@ class OcrQueueManager {
     final ocrBlocksJson = hasText ? result.toBlocksJson() : '[]';
 
     if (item.sourceType == 'album_photo') {
-      await _database.updateAlbumPhotoOcr(
+      await _database.mediaOcrDao.updateAlbumPhotoOcr(
         item.id,
         ocrText: ocrText,
         ocrBlocksJson: ocrBlocksJson,
       );
     } else {
-      await _database.updateMediaOcr(
+      await _database.mediaOcrDao.updateMediaOcr(
         item.id,
         ocrText: ocrText,
         ocrBlocksJson: ocrBlocksJson,
@@ -251,7 +248,7 @@ class OcrQueueManager {
 
   /// Returns the number of unindexed images across entries and albums.
   Future<int> pendingBackfillCount() async {
-    return _database.countUnindexedImages();
+    return _database.mediaOcrDao.countUnindexedImages();
   }
 
   /// Sequentially indexes all unindexed historical images across entries and albums.
@@ -268,7 +265,7 @@ class OcrQueueManager {
       return;
     }
 
-    final items = await _database.getUnindexedImages();
+    final items = await _database.mediaOcrDao.getUnindexedImages();
     final total = items.length;
     if (total == 0) {
       return;

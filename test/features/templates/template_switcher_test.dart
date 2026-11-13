@@ -22,7 +22,7 @@ void main() {
       const originalText = 'A precious memory of sunset at the lake.';
 
       // Insert entry with initial template
-      await db.into(db.entries).insert(
+      await db.entriesDao.createEntry(
             EntriesCompanion.insert(
               id: 'entry_swap_test',
               notebookId: 'notebook_default',
@@ -35,21 +35,21 @@ void main() {
           );
 
       // Verify initial state
-      final before = await db.getEntryById('entry_swap_test');
+      final before = await db.entriesDao.getEntryById('entry_swap_test');
       expect(before, isNotNull);
       expect(before!.templateId, 'template_minimalist_white');
       expect(before.contentDelta, originalDelta);
       expect(before.plainText, originalText);
 
       // Swap template to Retro Kraft Scrapbook
-      final rowsUpdated = await db.updateEntryTemplate(
+      final rowsUpdated = await db.entriesDao.updateEntryTemplate(
         'entry_swap_test',
         'template_retro_kraft',
       );
       expect(rowsUpdated, 1);
 
       // Verify template changed, but Delta & plainText remain 100% unchanged
-      final after = await db.getEntryById('entry_swap_test');
+      final after = await db.entriesDao.getEntryById('entry_swap_test');
       expect(after, isNotNull);
       expect(after!.templateId, 'template_retro_kraft');
       expect(after.contentDelta, equals(originalDelta));
@@ -57,7 +57,7 @@ void main() {
     });
 
     testWidgets('TemplateSwitcherSheet renders all templates and triggers selection', (tester) async {
-      final templates = await db.select(db.templates).get();
+      final templates = await db.templatesDao.getAllTemplates();
       Template? selectedTemplate;
 
       await tester.pumpWidget(
@@ -70,7 +70,7 @@ void main() {
                     context: context,
                     templates: templates,
                     currentTemplateId: 'template_minimalist_white',
-                    onTemplateSelected: (t) => selectedTemplate = t,
+                    onTemplateSelected: (template) => selectedTemplate = template,
                   );
                 },
                 child: const Text('Open Switcher'),
@@ -99,12 +99,12 @@ void main() {
     });
 
     testWidgets('TemplateSwitcherSheet supports deleting a custom template and falls back safely', (tester) async {
-      final custom = await db.createCustomTemplate(
+      final custom = await db.templatesDao.createCustomTemplate(
         name: 'Sky Blue Custom',
         backgroundType: 'lined',
         backgroundValue: '#E3F2FD',
       );
-      final templates = await db.getAllTemplates();
+      final templates = await db.templatesDao.getAllTemplates();
       Template? activeSelection = custom;
 
       await tester.pumpWidget(
@@ -118,7 +118,7 @@ void main() {
                     templates: templates,
                     currentTemplateId: custom.id,
                     database: db,
-                    onTemplateSelected: (t) => activeSelection = t,
+                    onTemplateSelected: (template) => activeSelection = template,
                   );
                 },
                 child: const Text('Open Switcher With DB'),

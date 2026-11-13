@@ -43,7 +43,7 @@ void main() {
       addTearDown(() => db.close());
 
       expect(db.schemaVersion, equals(8));
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_fresh',
           notebookId: 'notebook_default',
@@ -54,7 +54,7 @@ void main() {
         ),
       );
 
-      expect((await db.getEntryById('entry_fresh'))!.legacyMountsPending, isFalse);
+      expect((await db.entriesDao.getEntryById('entry_fresh'))!.legacyMountsPending, isFalse);
     });
 
     test('upgrade from v7 flags only entries with attachments and no mount markers', () async {
@@ -98,7 +98,7 @@ void main() {
       final db = AppDatabase(executor);
       addTearDown(() => db.close());
 
-      Future<bool> pending(String id) async => (await db.getEntryById(id))!.legacyMountsPending;
+      Future<bool> pending(String id) async => (await db.entriesDao.getEntryById(id))!.legacyMountsPending;
 
       expect(await pending('sheet_paired'), isTrue);
       expect(await pending('inline_embed'), isTrue);
