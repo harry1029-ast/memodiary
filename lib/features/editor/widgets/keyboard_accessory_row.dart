@@ -15,9 +15,11 @@ import 'writing_dock_tool_button.dart';
 /// collecting closes the keyboard anyway.
 ///
 /// None of the three touch focus, so the keyboard stays open.
-class KeyboardAccessoryRow extends StatefulWidget {
+class KeyboardAccessoryRow extends StatelessWidget {
   final QuillController controller;
   final QuillController Function()? onEnsureTextController;
+  final bool isFormattingOpen;
+  final VoidCallback? onToggleFormatting;
   final VoidCallback onToggleDictation;
 
   /// Whether the Writing Dock returns when the keyboard closes.
@@ -34,6 +36,8 @@ class KeyboardAccessoryRow extends StatefulWidget {
     super.key,
     required this.controller,
     this.onEnsureTextController,
+    this.isFormattingOpen = false,
+    this.onToggleFormatting,
     required this.onToggleDictation,
     required this.isWritingDockVisible,
     required this.onToggleWritingDock,
@@ -44,19 +48,6 @@ class KeyboardAccessoryRow extends StatefulWidget {
   });
 
   @override
-  State<KeyboardAccessoryRow> createState() => _KeyboardAccessoryRowState();
-}
-
-class _KeyboardAccessoryRowState extends State<KeyboardAccessoryRow> {
-  bool _isFormattingOpen = false;
-
-  void _toggleFormatting() {
-    HapticFeedback.lightImpact();
-    if (!_isFormattingOpen) widget.onEnsureTextController?.call();
-    setState(() => _isFormattingOpen = !_isFormattingOpen);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final tokens = InkDiaryTheme.tokensOf(context);
     return MediaQuery.withClampedTextScaling(
@@ -64,7 +55,7 @@ class _KeyboardAccessoryRowState extends State<KeyboardAccessoryRow> {
       child: DecoratedBox(
         key: const Key('keyboard_accessory_row'),
         decoration: BoxDecoration(
-          color: widget.backgroundColor,
+          color: backgroundColor,
           border: Border(top: BorderSide(color: tokens.agedFiber, width: 1.0)),
         ),
         child: SafeArea(
@@ -73,12 +64,12 @@ class _KeyboardAccessoryRowState extends State<KeyboardAccessoryRow> {
             mainAxisSize: MainAxisSize.min,
             children: [
               FormattingRibbonReveal(
-                isOpen: _isFormattingOpen,
-                controller: widget.controller,
-                onEnsureTextController: widget.onEnsureTextController,
+                isOpen: isFormattingOpen,
+                controller: controller,
+                onEnsureTextController: onEnsureTextController,
                 tokens: tokens,
-                inkColor: widget.inkColor,
-                isPaperDark: widget.isPaperDark,
+                inkColor: inkColor,
+                isPaperDark: isPaperDark,
               ),
               SizedBox(height: KeyboardAccessoryRow.kRowHeight, child: _buildTools(tokens)),
             ],
@@ -95,25 +86,28 @@ class _KeyboardAccessoryRowState extends State<KeyboardAccessoryRow> {
         children: [
           WritingDockToolButton(
             buttonKey: const Key('keyboard_accessory_format_btn'),
-            icon: _TtGlyph(color: widget.inkColor),
+            icon: _TtGlyph(color: inkColor),
             tooltip: '字法排印 · Formatting',
-            isActive: _isFormattingOpen,
-            activeBackground: tokens.agedFiber.withValues(alpha: widget.isPaperDark ? 0.65 : 0.85),
+            isActive: isFormattingOpen,
+            activeBackground: tokens.agedFiber.withValues(alpha: isPaperDark ? 0.65 : 0.85),
             minHeight: KeyboardAccessoryRow.kRowHeight,
-            onTap: _toggleFormatting,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onToggleFormatting?.call();
+            },
           ),
           const SizedBox(width: 6.0),
           DictationToolButton(
             buttonKey: const Key('keyboard_accessory_dictation_btn'),
-            isDictating: widget.isDictating,
+            isDictating: isDictating,
             minHeight: KeyboardAccessoryRow.kRowHeight,
-            onTap: widget.onToggleDictation,
+            onTap: onToggleDictation,
           ),
           const Spacer(),
           _WritingDockToggle(
-            isWritingDockVisible: widget.isWritingDockVisible,
-            inkColor: widget.inkColor,
-            onTap: widget.onToggleWritingDock,
+            isWritingDockVisible: isWritingDockVisible,
+            inkColor: inkColor,
+            onTap: onToggleWritingDock,
           ),
         ],
       ),
