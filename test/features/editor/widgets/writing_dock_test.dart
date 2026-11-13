@@ -29,6 +29,7 @@ void main() {
       bool isDictating = false,
       bool initialFormattingOpen = false,
       VoidCallback? onToggleFormatting,
+      bool includeToggleFormatting = true,
     }) {
       var isFormattingOpen = initialFormattingOpen;
       return MaterialApp(
@@ -45,8 +46,10 @@ void main() {
                   onToggleDictation: onToggleDictation ?? () {},
                   onShuffleSpark: onShuffleSpark,
                   isFormattingOpen: isFormattingOpen,
-                  onToggleFormatting: onToggleFormatting ??
-                      () => setState(() => isFormattingOpen = !isFormattingOpen),
+                  onToggleFormatting: includeToggleFormatting
+                      ? (onToggleFormatting ??
+                          () => setState(() => isFormattingOpen = !isFormattingOpen))
+                      : null,
                   isDictating: isDictating,
                 );
               },
@@ -209,22 +212,10 @@ void main() {
 
     testWidgets('omitted optional callbacks do not crash and isFormattingOpen controls ribbon directly',
         (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: Scaffold(
-            body: Align(
-              alignment: Alignment.bottomCenter,
-              child: WritingDock(
-                controller: controller,
-                onPickImage: () {},
-                onToggleDictation: () {},
-                isFormattingOpen: true,
-              ),
-            ),
-          ),
-        ),
-      );
+      await tester.pumpWidget(buildTestWidget(
+        initialFormattingOpen: true,
+        includeToggleFormatting: false,
+      ));
       await tester.pumpAndSettle();
 
       expect(find.text('B'), findsOneWidget);

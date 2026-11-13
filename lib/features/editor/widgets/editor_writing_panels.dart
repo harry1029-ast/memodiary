@@ -38,15 +38,16 @@ class EditorWritingPanels extends StatelessWidget {
     required this.isPaperDark,
   });
 
-  void _toggleFormatting() {
-    if (!chrome.isFormattingOpen) onEnsureTextController();
-    chrome.toggleFormatting();
+  void _ensureAndToggle(bool isCurrentlyActive, VoidCallback toggle) {
+    if (!isCurrentlyActive) onEnsureTextController();
+    toggle();
   }
 
-  void _toggleDictation() {
-    if (!chrome.isDictating) onEnsureTextController();
-    chrome.toggleDictation();
-  }
+  void _toggleFormatting() =>
+      _ensureAndToggle(chrome.isFormattingOpen, chrome.toggleFormatting);
+
+  void _toggleDictation() =>
+      _ensureAndToggle(chrome.isDictating, chrome.toggleDictation);
 
   @override
   Widget build(BuildContext context) {
