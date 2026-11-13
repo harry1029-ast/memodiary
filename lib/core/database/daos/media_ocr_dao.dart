@@ -4,6 +4,7 @@ import '../tables/album_collections.dart';
 import '../tables/album_photos.dart';
 import '../tables/entries.dart';
 import '../tables/media_attachments.dart';
+import 'fts_query_utils.dart';
 import 'media_reference_utils.dart';
 
 part 'media_ocr_dao.g.dart';
@@ -16,7 +17,6 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
   MediaOcrDao(super.attachedDatabase);
 
   static final RegExp _alphaNumRegex = RegExp(r'[\p{L}\p{N}]', unicode: true);
-  static final RegExp _cjkCharacterRegex = RegExp(r'[\u4e00-\u9fff]');
 
   /// Records a media attachment linked to an entry with a strictly relative path.
   Future<int> attachMediaToEntry({
@@ -238,10 +238,9 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
     final albumPhotoIds = <String>{};
 
     if (_alphaNumRegex.hasMatch(trimmedQuery)) {
-      final escaped = trimmedQuery.replaceAll('"', '""');
       final ftsRows = await customSelect(
         'SELECT id, source_type FROM media_fts WHERE media_fts MATCH ?',
-        variables: [Variable.withString('"$escaped"*')],
+        variables: [Variable.withString(formatFts5PrefixQuery(trimmedQuery))],
         readsFrom: {mediaAttachments, albumPhotos},
       ).get();
 
@@ -256,9 +255,8 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
       }
     }
 
-    if (_cjkCharacterRegex.hasMatch(trimmedQuery)) {
-      final escapedLike =
-          '%${trimmedQuery.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+    if (containsCjkCharacters(trimmedQuery)) {
+      final escapedLike = formatSqlLikeContainsPattern(trimmedQuery);
       final mediaLikeRows = await customSelect(
         r"SELECT id FROM media_attachments WHERE media_type = 'image' AND coalesce(ocr_text, '') LIKE ? ESCAPE '\'",
         variables: [Variable.withString(escapedLike)],

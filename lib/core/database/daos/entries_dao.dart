@@ -4,6 +4,7 @@ import '../../../features/weekly_review/services/calendar_week_utils.dart';
 import '../app_database.dart';
 import '../tables/entries.dart';
 import '../tables/media_attachments.dart';
+import 'fts_query_utils.dart';
 import 'media_reference_utils.dart';
 
 part 'entries_dao.g.dart';
@@ -14,23 +15,19 @@ part 'entries_dao.g.dart';
 class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   EntriesDao(super.attachedDatabase);
 
-  static final RegExp _cjkCharacterRegex = RegExp(r'[\u4e00-\u9fff]');
-
   /// Resolves candidate entry IDs matching [trimmedQuery] via `entries_fts MATCH`
   /// plus escaped CJK substring `LIKE` matching when Han characters are present.
   Future<Set<String>> _findMatchingEntryIds(String trimmedQuery) async {
-    final escaped = trimmedQuery.replaceAll('"', '""');
     final ftsRows = await customSelect(
       'SELECT id FROM entries_fts WHERE entries_fts MATCH ?',
-      variables: [Variable.withString('"$escaped"*')],
+      variables: [Variable.withString(formatFts5PrefixQuery(trimmedQuery))],
       readsFrom: {entries},
     ).get();
 
     final ids = ftsRows.map((row) => row.read<String>('id')).toSet();
 
-    if (_cjkCharacterRegex.hasMatch(trimmedQuery)) {
-      final escapedLike =
-          '%${trimmedQuery.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+    if (containsCjkCharacters(trimmedQuery)) {
+      final escapedLike = formatSqlLikeContainsPattern(trimmedQuery);
       final likeRows = await customSelect(
         r"SELECT id FROM entries WHERE is_deleted = 0 AND (coalesce(title, '') LIKE ? ESCAPE '\' OR plain_text LIKE ? ESCAPE '\')",
         variables: [
@@ -290,16 +287,6 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
               entry.isDeleted.equals(true) &
               entry.updatedAt.isSmallerThanValue(threshold)))
         .get();
-  }
-
-  /// Permanently removes SQLite records for [entryId] and its media attachments.
-  Future<int> hardDeleteEntryRecords(String entryId) async {
-    return transaction(() async {
-      await (delete(mediaAttachments)
-            ..where((attachment) => attachment.entryId.equals(entryId)))
-          .go();
-      return (delete(entries)..where((entry) => entry.id.equals(entryId))).go();
-    });
   }
 
   /// Permanently removes SQLite records for [entryId] inside a transaction and

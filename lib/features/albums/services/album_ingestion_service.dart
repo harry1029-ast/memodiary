@@ -55,6 +55,7 @@ class AlbumIngestionService {
 
   final AlbumRepository repository;
   final MediaSandboxService mediaService;
+  final AlbumsDao _albumsDao;
   final Future<DateTime?> Function(File source) _captureDateReader;
   final DateTime Function() _clock;
   final Uuid _uuid;
@@ -62,10 +63,12 @@ class AlbumIngestionService {
   AlbumIngestionService({
     required this.repository,
     required this.mediaService,
+    AlbumsDao? albumsDao,
     Future<DateTime?> Function(File source)? captureDateReader,
     DateTime Function()? clock,
     Uuid? uuid,
-  })  : _captureDateReader =
+  })  : _albumsDao = albumsDao ?? repository.database.albumsDao,
+        _captureDateReader =
             captureDateReader ?? ExifDateReader.readCaptureDate,
         _clock = clock ?? DateTime.now,
         _uuid = uuid ?? const Uuid();
@@ -104,8 +107,8 @@ class AlbumIngestionService {
         wasTruncated ? sources.sublist(0, maxBatchSize) : sources;
     final total = cappedSources.length;
 
-    final existingPhotos = await repository.database.albumsDao
-        .getPhotosForCollection(collectionId);
+    final existingPhotos =
+        await _albumsDao.getPhotosForCollection(collectionId);
     var nextSortOrder = existingPhotos.isEmpty
         ? 0
         : existingPhotos
@@ -177,7 +180,7 @@ class AlbumIngestionService {
     }
 
     if (pendingCompanions.isNotEmpty) {
-      await repository.database.albumsDao.addPhotosBatch(
+      await _albumsDao.addPhotosBatch(
         collectionId,
         pendingCompanions,
       );

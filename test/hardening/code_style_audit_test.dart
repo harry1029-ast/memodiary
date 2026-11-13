@@ -147,10 +147,7 @@ void main() {
     test('Non-grandfathered Dart files in lib/ maintain strict file size limit (< 450 LOC)', () {
       const maxAllowedLoc = 450;
       const grandfatheredFilesExceeding450Loc = <String>{
-        'lib/core/database/app_database.dart',
-        'lib/core/services/media_sandbox_service.dart',
         'lib/core/theme/ink_diary_theme.dart',
-        'lib/features/albums/data/album_repository.dart',
         'lib/features/albums/models/album_studio_models.dart',
         'lib/features/albums/screens/album_book_overview_screen.dart',
         'lib/features/albums/screens/album_page_editor_screen.dart',
@@ -163,7 +160,6 @@ void main() {
         'lib/features/editor/widgets/soundscape_modal.dart',
         'lib/features/editor/widgets/typography_sheet.dart',
         'lib/features/import_export/services/backup_crypto.dart',
-        'lib/features/import_export/services/backup_restore_service.dart',
         'lib/features/import_export/services/date_parser_engine.dart',
         'lib/features/import_export/services/offline_cjk_ttf_generator.dart',
         'lib/features/import_export/services/pdf_entry_serializer.dart',
@@ -179,12 +175,8 @@ void main() {
         'lib/features/scenery/painters/outdoor_street_static_architecture.dart',
         'lib/features/scenery/widgets/shanshui_canvas_painter.dart',
         'lib/features/scenery/widgets/shanshui_scenery_card.dart',
-        'lib/features/search/screens/search_screen.dart',
-        'lib/features/search/services/event_suggestion_service.dart',
         'lib/features/search/services/natural_language_search_parser.dart',
         'lib/features/settings/screens/settings_screen.dart',
-        'lib/features/templates/screens/custom_template_editor_screen.dart',
-        'lib/features/templates/widgets/template_switcher_sheet.dart',
         'lib/features/timeline/screens/entry_detail_screen.dart',
         'lib/features/timeline/screens/timeline_screen.dart',
         'lib/features/weekly_review/screens/weekly_debrief_detail_screen.dart',

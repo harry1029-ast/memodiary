@@ -143,34 +143,38 @@ class SearchResultsList extends StatelessWidget {
     }
   }
 
+  Widget _buildEntryCard(Entry entry) {
+    final item = TimelineEntryItem(
+      entry: entry,
+      primaryMedia: mediaMap[entry.id],
+    );
+    return EntrySummaryCard(
+      item: item,
+      mediaService: mediaService,
+      onTap: () => onEntryTap(entry),
+    );
+  }
+
+  Widget _buildPhotoCard(PhotoTextMatch match) {
+    return PhotoTextMatchCard(
+      match: match,
+      mediaService: mediaService,
+      query: effectiveQuery,
+      onTap: () => onPhotoMatchTap(match),
+    );
+  }
+
   Widget _buildCombinedResultsList(InkDiaryTokens tokens) {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
         if (entries.isNotEmpty) ...[
           _buildSectionHeader('墨卷篇章', entries.length, tokens),
-          ...entries.map((entry) {
-            final item = TimelineEntryItem(
-              entry: entry,
-              primaryMedia: mediaMap[entry.id],
-            );
-            return EntrySummaryCard(
-              item: item,
-              mediaService: mediaService,
-              onTap: () => onEntryTap(entry),
-            );
-          }),
+          ...entries.map(_buildEntryCard),
         ],
         if (photoMatches.isNotEmpty) ...[
           _buildSectionHeader('图中文字', photoMatches.length, tokens),
-          ...photoMatches.map((match) {
-            return PhotoTextMatchCard(
-              match: match,
-              mediaService: mediaService,
-              query: effectiveQuery,
-              onTap: () => onPhotoMatchTap(match),
-            );
-          }),
+          ...photoMatches.map(_buildPhotoCard),
         ],
       ],
     );
@@ -180,18 +184,7 @@ class SearchResultsList extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: entries.length,
-      itemBuilder: (context, index) {
-        final entry = entries[index];
-        final item = TimelineEntryItem(
-          entry: entry,
-          primaryMedia: mediaMap[entry.id],
-        );
-        return EntrySummaryCard(
-          item: item,
-          mediaService: mediaService,
-          onTap: () => onEntryTap(entry),
-        );
-      },
+      itemBuilder: (context, index) => _buildEntryCard(entries[index]),
     );
   }
 
@@ -199,15 +192,7 @@ class SearchResultsList extends StatelessWidget {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: photoMatches.length,
-      itemBuilder: (context, index) {
-        final match = photoMatches[index];
-        return PhotoTextMatchCard(
-          match: match,
-          mediaService: mediaService,
-          query: effectiveQuery,
-          onTap: () => onPhotoMatchTap(match),
-        );
-      },
+      itemBuilder: (context, index) => _buildPhotoCard(photoMatches[index]),
     );
   }
 
