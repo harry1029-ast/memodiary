@@ -137,33 +137,33 @@ void main() {
       addTearDown(() => migratedDb.close());
 
       // Trigger database initialization / migration
-      await migratedDb.getAllTemplates();
+      await migratedDb.templatesDao.getAllTemplates();
 
 
       // Verify legacy record has null overlay coordinates
-      final legacyMedia = (await migratedDb.getMediaForEntry('entry_legacy')).single;
+      final legacyMedia = (await migratedDb.mediaOcrDao.getMediaForEntry('entry_legacy')).single;
       expect(legacyMedia.overlayXRatio, isNull);
       expect(legacyMedia.overlayYRatio, isNull);
 
       // Update overlay position using database method
-      await migratedDb.updateMediaAttachmentOverlayPosition(
+      await migratedDb.mediaOcrDao.updateMediaAttachmentOverlayPosition(
         'media_legacy',
         xRatio: 0.15,
         yRatio: 0.85,
       );
 
-      final updatedMedia = (await migratedDb.getMediaForEntry('entry_legacy')).single;
+      final updatedMedia = (await migratedDb.mediaOcrDao.getMediaForEntry('entry_legacy')).single;
       expect(updatedMedia.overlayXRatio, equals(0.15));
       expect(updatedMedia.overlayYRatio, equals(0.85));
 
       // Reset to null (snap-back reset)
-      await migratedDb.updateMediaAttachmentOverlayPosition(
+      await migratedDb.mediaOcrDao.updateMediaAttachmentOverlayPosition(
         'media_legacy',
         xRatio: null,
         yRatio: null,
       );
 
-      final resetMedia = (await migratedDb.getMediaForEntry('entry_legacy')).single;
+      final resetMedia = (await migratedDb.mediaOcrDao.getMediaForEntry('entry_legacy')).single;
       expect(resetMedia.overlayXRatio, isNull);
       expect(resetMedia.overlayYRatio, isNull);
     });
