@@ -55,6 +55,21 @@ class DeskSpaceBudget {
   /// Distance from the canvas top to the header band.
   double get headerTop => sheetTop - kHeaderHeight;
 
+  static double _minWorkstationHeight({required bool isHandscrollEmpty}) =>
+      isHandscrollEmpty ? kClosedMinHeight : kOpenMinHeight;
+
+  /// Whether the Desk Workstation's minimum height fits beneath the sheet at
+  /// [canvasHeight] (resting desk height, keyboard closed).
+  static bool fitsWorkstation({
+    required double canvasHeight,
+    required double sheetHeight,
+    required bool isHandscrollEmpty,
+  }) {
+    final minHeight = _minWorkstationHeight(isHandscrollEmpty: isHandscrollEmpty);
+    final roomBelowSheet = canvasHeight - kHeaderHeight - sheetHeight - kSheetGap;
+    return roomBelowSheet >= minHeight;
+  }
+
   /// [canvasHeight] is the resting desk height, keyboard closed.
   factory DeskSpaceBudget.resolve({
     required double canvasHeight,
@@ -65,9 +80,12 @@ class DeskSpaceBudget {
     required bool isKeyboardVisible,
     required bool isLastSheet,
   }) {
-    final minHeight = isHandscrollEmpty ? kClosedMinHeight : kOpenMinHeight;
-    final roomBelowSheet = canvasHeight - kHeaderHeight - sheetHeight - kSheetGap;
-    final workstationFits = roomBelowSheet >= minHeight;
+    final minHeight = _minWorkstationHeight(isHandscrollEmpty: isHandscrollEmpty);
+    final workstationFits = fitsWorkstation(
+      canvasHeight: canvasHeight,
+      sheetHeight: sheetHeight,
+      isHandscrollEmpty: isHandscrollEmpty,
+    );
     final showWorkstation = !isWorkstationCollapsed && !isKeyboardVisible;
 
     // Docked: the sheet sits under the header band. Collapsed: it centres,

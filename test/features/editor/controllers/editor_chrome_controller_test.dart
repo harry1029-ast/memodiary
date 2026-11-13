@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/controllers/editor_chrome_controller.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/desk_space_budget.dart';
 
 void main() {
   late EditorChromeController chrome;
@@ -86,28 +87,75 @@ void main() {
     });
   });
 
+  DeskSpaceBudget resolveBudget({
+    double restingDeskHeight = 690.0,
+    double sheetHeight = 400.0,
+    double sealBlockHeight = 64.0,
+    bool isHandscrollEmpty = true,
+    bool isLastSheet = false,
+  }) =>
+      chrome.resolveDeskBudget(
+        restingDeskHeight: restingDeskHeight,
+        sheetHeight: sheetHeight,
+        sealBlockHeight: sealBlockHeight,
+        isHandscrollEmpty: isHandscrollEmpty,
+        isLastSheet: isLastSheet,
+      );
+
   group('workstation', () {
     testWidgets('the first layout docks it when it fits, without notifying', (tester) async {
-      expect(chrome.resolveInitialWorkstation(workstationFits: true), isFalse);
-      await tester.pump();
+      final budget = resolveBudget(restingDeskHeight: 690.0, sheetHeight: 400.0);
+
+      expect(budget.workstationFits, isTrue);
+      expect(budget.showWorkstation, isTrue);
       expect(chrome.isWorkstationCollapsed, isFalse);
+      await tester.pump();
       expect(notifications, 0);
     });
 
-    testWidgets('the first layout collapses it when it does not fit and notifies after the frame',
+    testWidgets('the first layout collapses it on a short (< 420dp) viewport and notifies after the frame',
         (tester) async {
-      expect(chrome.resolveInitialWorkstation(workstationFits: false), isTrue);
+      final budget = resolveBudget(
+        restingDeskHeight: 410.0,
+        sheetHeight: 280.0,
+        isLastSheet: true,
+      );
+
+      expect(budget.workstationFits, isFalse);
+      expect(budget.showWorkstation, isFalse);
+      expect(chrome.isWorkstationCollapsed, isTrue);
       expect(notifications, 0);
+
       tester.binding.scheduleFrame();
       await tester.pump();
       expect(notifications, 1);
       expect(chrome.isWorkstationCollapsed, isTrue);
     });
 
-    testWidgets('only the first layout decides', (tester) async {
-      chrome.resolveInitialWorkstation(workstationFits: true);
-      expect(chrome.resolveInitialWorkstation(workstationFits: false), isFalse);
+    testWidgets('only the first layout decides: docked choice sticks across non-fitting changes', (tester) async {
+      resolveBudget(restingDeskHeight: 690.0, sheetHeight: 400.0);
+
+      final second = resolveBudget(
+        restingDeskHeight: 410.0,
+        sheetHeight: 350.0,
+        isHandscrollEmpty: false,
+      );
+
+      expect(second.workstationFits, isFalse);
+      expect(second.showWorkstation, isTrue);
       expect(chrome.isWorkstationCollapsed, isFalse);
+    });
+
+    testWidgets('only the first layout decides: collapsed choice sticks across taller viewports', (tester) async {
+      resolveBudget(restingDeskHeight: 410.0, sheetHeight: 280.0);
+      tester.binding.scheduleFrame();
+      await tester.pump();
+
+      final second = resolveBudget(restingDeskHeight: 750.0, sheetHeight: 400.0);
+
+      expect(second.workstationFits, isTrue);
+      expect(second.showWorkstation, isFalse);
+      expect(chrome.isWorkstationCollapsed, isTrue);
     });
 
     test('collapsing and expanding round-trip, and repeats are no-ops', () {
@@ -121,7 +169,17 @@ void main() {
 
     test('a collapse before the first layout wins over it', () {
       chrome.collapseWorkstation();
-      expect(chrome.resolveInitialWorkstation(workstationFits: true), isTrue);
+      final budget = resolveBudget(restingDeskHeight: 690.0, sheetHeight: 400.0);
+      expect(chrome.isWorkstationCollapsed, isTrue);
+      expect(budget.showWorkstation, isFalse);
+    });
+
+    test('resolveDeskBudget hides the workstation and seal while the keyboard is open', () {
+      chrome.syncKeyboardInset(300.0);
+      final budget = resolveBudget(restingDeskHeight: 690.0, sheetHeight: 400.0, isLastSheet: true);
+      expect(chrome.isWorkstationCollapsed, isFalse);
+      expect(budget.showWorkstation, isFalse);
+      expect(budget.showSeal, isFalse);
     });
 
     test('expanding restores a collapsed workstation and is a no-op when docked', () {
@@ -179,7 +237,13 @@ void main() {
 
   testWidgets('a deferred collapse after disposal does not notify', (tester) async {
     final disposable = EditorChromeController()..addListener(() => notifications++);
-    disposable.resolveInitialWorkstation(workstationFits: false);
+    disposable.resolveDeskBudget(
+      restingDeskHeight: 410.0,
+      sheetHeight: 280.0,
+      sealBlockHeight: 64.0,
+      isHandscrollEmpty: true,
+      isLastSheet: false,
+    );
     disposable.dispose();
     WidgetsBinding.instance.scheduleFrame();
     await tester.pump();
