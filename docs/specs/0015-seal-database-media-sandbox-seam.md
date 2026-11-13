@@ -1,7 +1,7 @@
 ---
 id: SPEC-015
 title: Seal the AppDatabase & Media Sandbox Seam
-status: ready-for-agent
+status: completed
 created_at: 2026-11-13T22:44:00+08:00
 adr: ADR-0010
 ---
