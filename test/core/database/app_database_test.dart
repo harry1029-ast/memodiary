@@ -17,10 +17,12 @@ void main() {
 
   group('AppDatabase Schema & Seeding Tests', () {
     test('seeds 4 default templates on creation', () async {
-      final templates = await db.select(db.templates).get();
+      final templates = await db.templatesDao.getAllTemplates();
       expect(templates.length, 4);
 
-      final templateMap = {for (var t in templates) t.id: t};
+      final templateMap = {
+        for (final template in templates) template.id: template,
+      };
 
       // 1. Minimalist White
       final white = templateMap['template_minimalist_white'];
@@ -64,7 +66,7 @@ void main() {
     });
 
     test('seeds default notebook on creation', () async {
-      final notebooks = await db.select(db.notebooks).get();
+      final notebooks = await db.templatesDao.getAllNotebooks();
       expect(notebooks.length, 1);
       final defaultNb = notebooks.first;
       expect(defaultNb.id, 'notebook_default');
@@ -76,7 +78,7 @@ void main() {
       final entryDate = DateTime.now();
 
       // Insert entry
-      await db.into(db.entries).insert(
+      await db.entriesDao.createEntry(
             EntriesCompanion.insert(
               id: 'entry_test_1',
               notebookId: 'notebook_default',
@@ -90,29 +92,27 @@ void main() {
             ),
           );
 
-      final entry = await (db.select(db.entries)..where((t) => t.id.equals('entry_test_1'))).getSingle();
+      final entry = (await db.entriesDao.getEntryById('entry_test_1'))!;
       expect(entry.title, 'First Entry');
       expect(entry.plainText, 'Hello World');
       expect(entry.mood, 5);
       expect(entry.isDeleted, isFalse);
 
       // Insert media attachment with strictly relative path
-      await db.into(db.mediaAttachments).insert(
-            MediaAttachmentsCompanion.insert(
-              id: 'media_test_1',
-              entryId: 'entry_test_1',
-              mediaType: 'image',
-              relativePath: 'media/test_uuid.webp',
-            ),
-          );
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: 'media_test_1',
+        entryId: 'entry_test_1',
+        mediaType: 'image',
+        relativePath: 'media/test_uuid.webp',
+      );
 
-      final media = await (db.select(db.mediaAttachments)..where((t) => t.id.equals('media_test_1'))).getSingle();
+      final media = (await db.mediaOcrDao.getMediaAttachmentById('media_test_1'))!;
       expect(media.relativePath, 'media/test_uuid.webp');
       expect(media.mediaType, 'image');
     });
 
     test('FTS5 automatically indexes inserted entries via triggers', () async {
-      await db.into(db.entries).insert(
+      await db.entriesDao.createEntry(
             EntriesCompanion.insert(
               id: 'entry_fts_1',
               notebookId: 'notebook_default',
@@ -124,7 +124,7 @@ void main() {
             ),
           );
 
-      await db.into(db.entries).insert(
+      await db.entriesDao.createEntry(
             EntriesCompanion.insert(
               id: 'entry_fts_2',
               notebookId: 'notebook_default',
@@ -137,35 +137,38 @@ void main() {
           );
 
       // Search by title keyword
-      final mountainResults = await db.searchEntries('Mountains');
+      final mountainResults = await db.entriesDao.searchEntries('Mountains');
       expect(mountainResults.length, 1);
       expect(mountainResults.first.id, 'entry_fts_1');
 
       // Search by body plain text keyword
-      final coffeeResults = await db.searchEntries('coffee');
+      final coffeeResults = await db.entriesDao.searchEntries('coffee');
       expect(coffeeResults.length, 1);
       expect(coffeeResults.first.id, 'entry_fts_2');
 
       // Update entry and check FTS5 reflects the update
-      await (db.update(db.entries)..where((t) => t.id.equals('entry_fts_2'))).write(
-        const EntriesCompanion(
-          title: Value('City Stroll and Bakery'),
-          plainText: Value('Visited a cozy bakery downtown'),
-        ),
+      await db.entriesDao.updateEntryMetadata(
+        'entry_fts_2',
+        title: 'City Stroll and Bakery',
+      );
+      await db.entriesDao.updateEntryContent(
+        'entry_fts_2',
+        '{"ops":[{"insert":"Visited a cozy bakery downtown\\n"}]}',
+        'Visited a cozy bakery downtown',
       );
 
-      final bakeryResults = await db.searchEntries('bakery');
+      final bakeryResults = await db.entriesDao.searchEntries('bakery');
       expect(bakeryResults.length, 1);
       expect(bakeryResults.first.id, 'entry_fts_2');
 
       // Delete entry and verify FTS5 no longer returns it
-      await (db.delete(db.entries)..where((t) => t.id.equals('entry_fts_1'))).go();
-      final deletedSearch = await db.searchEntries('Mountains');
+      await db.entriesDao.hardDeleteEntryRecords('entry_fts_1');
+      final deletedSearch = await db.entriesDao.searchEntries('Mountains');
       expect(deletedSearch.isEmpty, isTrue);
     });
 
     test('soft deleted entries are excluded from search results', () async {
-      await db.into(db.entries).insert(
+      await db.entriesDao.createEntry(
             EntriesCompanion.insert(
               id: 'entry_trash_1',
               notebookId: 'notebook_default',
@@ -178,7 +181,7 @@ void main() {
             ),
           );
 
-      final results = await db.searchEntries('Confidential');
+      final results = await db.entriesDao.searchEntries('Confidential');
       expect(results.isEmpty, isTrue);
     });
   });

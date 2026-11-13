@@ -63,7 +63,7 @@ void main() {
 
       for (final defaultId in defaultTemplateIds) {
         expect(
-          () => db.deleteCustomTemplate(defaultId),
+          () => db.templatesDao.deleteCustomTemplate(defaultId),
           throwsA(isA<StateError>()),
           reason: '$defaultId must throw StateError on deletion attempt',
         );
@@ -72,7 +72,7 @@ void main() {
 
     testWidgets('Custom template displays trash can button and can be deleted with fallback', (tester) async {
       // 1. Create a custom template
-      final customTemplate = await db.createCustomTemplate(
+      final customTemplate = await db.templatesDao.createCustomTemplate(
         name: 'My Special Paper',
         backgroundType: 'lined',
         backgroundValue: '#FDF7E7',
@@ -140,7 +140,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // 5. Verify the custom template is deleted from DB
-      final inDb = await db.getTemplateById(customTemplate.id);
+      final inDb = await db.templatesDao.getTemplateById(customTemplate.id);
       expect(inDb, isNull, reason: 'Custom template must be removed from the database');
 
       // 6. Verify custom template card is gone from the sub-panel

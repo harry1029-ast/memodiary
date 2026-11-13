@@ -14,7 +14,7 @@ void main() {
       addTearDown(() => db.close());
 
       // Entry 1: Same month/day 1 year ago (2025-10-18)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'otd_2025',
           notebookId: 'notebook_default',
@@ -27,7 +27,7 @@ void main() {
       );
 
       // Entry 2: Same month/day 2 years ago (2024-10-18)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'otd_2024',
           notebookId: 'notebook_default',
@@ -40,7 +40,7 @@ void main() {
       );
 
       // Entry 3: Today in current year (2026-10-18) -> should be excluded
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'otd_2026_today',
           notebookId: 'notebook_default',
@@ -53,7 +53,7 @@ void main() {
       );
 
       // Entry 4: Leap day entry (2024-02-29)
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'leap_2024',
           notebookId: 'notebook_default',
@@ -65,12 +65,12 @@ void main() {
         ),
       );
 
-      final matches = await db.getEntriesOnThisDay(DateTime(2026, 10, 18));
-      expect(matches.map((e) => e.id).toList(), equals(['otd_2025', 'otd_2024']));
+      final matches = await db.entriesDao.getEntriesOnThisDay(DateTime(2026, 10, 18));
+      expect(matches.map((entry) => entry.id).toList(), equals(['otd_2025', 'otd_2024']));
 
       // On Feb 28 of a non-leap year (2026-02-28), Feb 29 memories should also surface!
-      final nonLeapFeb28 = await db.getEntriesOnThisDay(DateTime(2026, 2, 28));
-      expect(nonLeapFeb28.map((e) => e.id), contains('leap_2024'));
+      final nonLeapFeb28 = await db.entriesDao.getEntriesOnThisDay(DateTime(2026, 2, 28));
+      expect(nonLeapFeb28.map((entry) => entry.id), contains('leap_2024'));
     });
 
     test('getRandomOldEntry draws only active unlocked entries >= 90 days old', () async {
@@ -80,7 +80,7 @@ void main() {
       final refDate = DateTime(2026, 10, 18);
 
       // Old entry (120 days ago) -> eligible
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'old_120d',
           notebookId: 'notebook_default',
@@ -93,7 +93,7 @@ void main() {
       );
 
       // Recent entry (10 days ago) -> ineligible
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'recent_10d',
           notebookId: 'notebook_default',
@@ -106,7 +106,7 @@ void main() {
       );
 
       // Old sealed time capsule -> ineligible
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'old_sealed_capsule',
           notebookId: 'notebook_default',
@@ -119,7 +119,7 @@ void main() {
         ),
       );
 
-      final drawn = await db.getRandomOldEntry(
+      final drawn = await db.entriesDao.getRandomOldEntry(
         minDaysAgo: 90,
         referenceDate: refDate,
         random: Random(42),
@@ -132,7 +132,7 @@ void main() {
       final db = AppDatabase(NativeDatabase.memory());
       addTearDown(() => db.close());
 
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'hist_1',
           notebookId: 'notebook_default',
@@ -144,7 +144,7 @@ void main() {
         ),
       );
 
-      final entry = (await db.getEntryById('hist_1'))!;
+      final entry = (await db.entriesDao.getEntryById('hist_1'))!;
       Entry? tappedEntry;
 
       await tester.pumpWidget(
@@ -153,12 +153,12 @@ void main() {
             body: Builder(
               builder: (context) => OnThisDayBanner(
                 entries: [entry],
-                onEntryTap: (e) => tappedEntry = e,
+                onEntryTap: (entry) => tappedEntry = entry,
                 onOpenSerendipity: () {
                   SerendipityRouletteCard.show(
                     context: context,
                     database: db,
-                    onOpenEntry: (e) => tappedEntry = e,
+                    onOpenEntry: (entry) => tappedEntry = entry,
                   );
                 },
               ),

@@ -20,7 +20,7 @@ void main() {
       final now = DateTime(2026, 10, 18);
 
       // 1. Create entry
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_with_video',
           notebookId: 'default',
@@ -38,7 +38,7 @@ void main() {
       );
 
       // 2. Attach video media
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_video_1',
         entryId: 'entry_with_video',
         relativePath: 'media/video_123.mp4',
@@ -47,7 +47,7 @@ void main() {
       );
 
       // 3. Attach image media
-      await db.attachMediaToEntry(
+      await db.mediaOcrDao.attachMediaToEntry(
         id: 'media_photo_1',
         entryId: 'entry_with_video',
         relativePath: 'media/photo_123.webp',
@@ -55,15 +55,15 @@ void main() {
       );
 
       // 4. Test getVideosForEntry filters strictly videos
-      final videos = await db.getVideosForEntry('entry_with_video');
+      final videos = await db.mediaOcrDao.getVideosForEntry('entry_with_video');
       expect(videos.length, equals(1));
       expect(videos.first.id, equals('media_video_1'));
       expect(videos.first.mediaType, equals('video'));
       expect(videos.first.relativePath, equals('media/video_123.mp4'));
       expect(videos.first.thumbnailPath, equals('media/video_123_thumb.webp'));
 
-      // 5. Test getAllMediaRelativePaths returns both video relativePath and thumbnailPath
-      final allPaths = await db.getAllMediaRelativePaths();
+      // 5. Test getAllReferencedMediaPaths returns both video relativePath and thumbnailPath
+      final allPaths = await db.mediaOcrDao.getAllReferencedMediaPaths();
       expect(allPaths.contains('media/video_123.mp4'), isTrue);
       expect(allPaths.contains('media/video_123_thumb.webp'), isTrue);
       expect(allPaths.contains('media/photo_123.webp'), isTrue);

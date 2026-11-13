@@ -11,10 +11,10 @@ void main() {
 
 
       // Trigger schema creation
-      await db.getAllTemplates();
+      await db.templatesDao.getAllTemplates();
 
       final now = DateTime(2026, 11, 4, 20, 0);
-      await db.createEntry(
+      await db.entriesDao.createEntry(
         EntriesCompanion.insert(
           id: 'entry_v6_fresh',
           notebookId: 'notebook_default',
@@ -38,7 +38,7 @@ void main() {
         ),
       );
 
-      final media = (await db.getMediaForEntry('entry_v6_fresh')).single;
+      final media = (await db.mediaOcrDao.getMediaForEntry('entry_v6_fresh')).single;
       expect(media.overlayXRatio, equals(0.25));
       expect(media.overlayYRatio, equals(0.75));
     });
