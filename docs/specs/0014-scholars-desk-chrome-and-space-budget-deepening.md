@@ -1,7 +1,7 @@
 ---
 id: SPEC-014
 title: Deepen Scholar's Desk Chrome & Formatting State Ownership
-status: ready-for-agent
+status: completed
 created_at: 2026-11-13T21:46:30+08:00
 adr: ADR-0003, ADR-0009
 ---

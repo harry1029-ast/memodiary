@@ -21,66 +21,95 @@ const _entryId = 'writing_panels_entry';
 /// dictation button opens the dictation bar above the dock, and closing the
 /// bar or tapping the button again puts it away.
 void main() {
-  final fixture = StagedEditorFixture(entryId: _entryId);
-  late FakeSpeechToText fakeSpeech;
+  group('EntryEditorScreen writing panels', () {
+    final fixture = StagedEditorFixture(entryId: _entryId);
+    late FakeSpeechToText fakeSpeech;
 
-  setUp(() async {
-    await fixture.setUp();
-    fakeSpeech = FakeSpeechToText();
-  });
-  tearDown(fixture.tearDown);
+    setUp(() async {
+      await fixture.setUp();
+      fakeSpeech = FakeSpeechToText();
+    });
+    tearDown(fixture.tearDown);
 
-  Future<void> openEditor(WidgetTester tester) => pumpEntryEditorScreen(
-        tester,
-        database: fixture.database,
-        mediaSandboxService: fixture.sandboxService,
-        entryId: _entryId,
-        dictationService: DictationService(speech: fakeSpeech),
-        viewportSize: const Size(360.0, 780.0),
+    Future<void> openEditor(WidgetTester tester) => pumpEntryEditorScreen(
+          tester,
+          database: fixture.database,
+          mediaSandboxService: fixture.sandboxService,
+          entryId: _entryId,
+          dictationService: DictationService(speech: fakeSpeech),
+          viewportSize: const Size(360.0, 780.0),
+        );
+
+    final dictationButton = find.byKey(const Key('writing_dock_dictation_btn'));
+
+    // The dictation bar pulses forever, so frames are pumped in bounded steps.
+    Future<void> pumpSteps(WidgetTester tester) async {
+      for (var step = 0; step < 5; step++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    testWidgets('the dictation button opens the bar above the dock and closes it again', (tester) async {
+      await openEditor(tester);
+      expect(find.byType(DictationBar), findsNothing);
+
+      await tester.tap(dictationButton);
+      await pumpSteps(tester);
+      expect(find.byType(DictationBar), findsOneWidget);
+      expect(fakeSpeech.isListeningVal, isTrue);
+      expect(
+        tester.getRect(find.byType(DictationBar)).bottom,
+        lessThanOrEqualTo(tester.getRect(find.byType(WritingDock)).top),
       );
 
-  final dictationButton = find.byKey(const Key('writing_dock_dictation_btn'));
+      await tester.tap(dictationButton);
+      await pumpSteps(tester);
+      expect(find.byType(DictationBar), findsNothing);
+    });
 
-  // The dictation bar pulses forever, so frames are pumped in bounded steps.
-  Future<void> pumpSteps(WidgetTester tester) async {
-    for (var step = 0; step < 5; step++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-  }
+    testWidgets('cancelling from the bar puts it away and the dock stays', (tester) async {
+      await openEditor(tester);
+      await tester.tap(dictationButton);
+      await pumpSteps(tester);
 
-  testWidgets('the dictation button opens the bar above the dock and closes it again', (tester) async {
-    await openEditor(tester);
-    expect(find.byType(DictationBar), findsNothing);
+      await tester.tap(find.byTooltip('Cancel Dictation'));
+      await pumpSteps(tester);
+      expect(find.byType(DictationBar), findsNothing);
+      expect(find.byType(WritingDock), findsOneWidget);
+    });
 
-    await tester.tap(dictationButton);
-    await pumpSteps(tester);
-    expect(find.byType(DictationBar), findsOneWidget);
-    expect(fakeSpeech.isListeningVal, isTrue);
-    expect(
-      tester.getRect(find.byType(DictationBar)).bottom,
-      lessThanOrEqualTo(tester.getRect(find.byType(WritingDock)).top),
-    );
+    testWidgets('opening formatting in WritingDock stays open when the software keyboard opens and closes',
+        (tester) async {
+      simulatePhoneSystemBars(tester);
+      await openEditor(tester);
 
-    await tester.tap(dictationButton);
-    await pumpSteps(tester);
-    expect(find.byType(DictationBar), findsNothing);
-  });
+      // Open formatting ribbon in WritingDock at rest
+      await tester.tap(find.byKey(const Key('writing_dock_format_btn')));
+      await tester.pumpAndSettle();
+      expect(find.byType(WritingDockFormattingRibbon), findsOneWidget);
+      expect(find.text('B'), findsOneWidget);
 
-  testWidgets('cancelling from the bar puts it away and the dock stays', (tester) async {
-    await openEditor(tester);
-    await tester.tap(dictationButton);
-    await pumpSteps(tester);
+      // Tap a sheet and open the software keyboard -> transitions to KeyboardAccessoryRow
+      await startWritingOn(tester, editorTextSheets(tester).first);
+      await openSoftKeyboard(tester);
+      expect(find.byType(KeyboardAccessoryRow), findsOneWidget);
+      expect(find.byType(WritingDock), findsNothing);
+      expect(find.byType(WritingDockFormattingRibbon), findsOneWidget);
+      expect(find.text('B'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Cancel Dictation'));
-    await pumpSteps(tester);
-    expect(find.byType(DictationBar), findsNothing);
-    expect(find.byType(WritingDock), findsOneWidget);
+      // Close the software keyboard -> transitions back to WritingDock
+      await closeSoftKeyboard(tester);
+      expect(find.byType(WritingDock), findsOneWidget);
+      expect(find.byType(KeyboardAccessoryRow), findsNothing);
+      expect(find.byType(WritingDockFormattingRibbon), findsOneWidget);
+      expect(find.text('B'), findsOneWidget);
+    });
   });
 
   testWidgets('EditorWritingPanels keeps formatting ribbon open across keyboard and dock transitions', (tester) async {
     final chrome = EditorChromeController();
     final quillController = QuillController.basic();
-    final dictationService = DictationService(speech: fakeSpeech);
+    final dictationService = DictationService(speech: FakeSpeechToText());
     addTearDown(chrome.dispose);
     addTearDown(quillController.dispose);
     addTearDown(dictationService.dispose);
@@ -175,32 +204,5 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(WritingDock), findsOneWidget);
     expect(find.byType(WritingDockFormattingRibbon), findsOneWidget);
-  });
-
-  testWidgets('opening formatting in WritingDock stays open when the software keyboard opens and closes',
-      (tester) async {
-    simulatePhoneSystemBars(tester);
-    await openEditor(tester);
-
-    // Open formatting ribbon in WritingDock at rest
-    await tester.tap(find.byKey(const Key('writing_dock_format_btn')));
-    await tester.pumpAndSettle();
-    expect(find.byType(WritingDockFormattingRibbon), findsOneWidget);
-    expect(find.text('B'), findsOneWidget);
-
-    // Tap a sheet and open the software keyboard -> transitions to KeyboardAccessoryRow
-    await startWritingOn(tester, editorTextSheets(tester).first);
-    await openSoftKeyboard(tester);
-    expect(find.byType(KeyboardAccessoryRow), findsOneWidget);
-    expect(find.byType(WritingDock), findsNothing);
-    expect(find.byType(WritingDockFormattingRibbon), findsOneWidget);
-    expect(find.text('B'), findsOneWidget);
-
-    // Close the software keyboard -> transitions back to WritingDock
-    await closeSoftKeyboard(tester);
-    expect(find.byType(WritingDock), findsOneWidget);
-    expect(find.byType(KeyboardAccessoryRow), findsNothing);
-    expect(find.byType(WritingDockFormattingRibbon), findsOneWidget);
-    expect(find.text('B'), findsOneWidget);
   });
 }
