@@ -309,7 +309,6 @@ void main() {
         'lib/features/albums/widgets/interactive_canvas/interactive_photo_slot.dart',
         'lib/features/editor/widgets/editor_paper_canvas.dart',
         'lib/features/editor/widgets/staging_handscroll_slot.dart',
-        'lib/features/editor/widgets/editor_desk_media_area.dart',
         'lib/features/search/screens/search_screen.dart',
         'lib/features/editor/widgets/editor_toolbar.dart',
       };
