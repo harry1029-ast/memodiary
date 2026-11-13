@@ -3633,6 +3633,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AlbumCollectionsTable albumCollections =
       $AlbumCollectionsTable(this);
   late final $AlbumPhotosTable albumPhotos = $AlbumPhotosTable(this);
+  late final EntriesDao entriesDao = EntriesDao(this as AppDatabase);
+  late final TemplatesDao templatesDao = TemplatesDao(this as AppDatabase);
+  late final MediaOcrDao mediaOcrDao = MediaOcrDao(this as AppDatabase);
+  late final AlbumsDao albumsDao = AlbumsDao(this as AppDatabase);
+  late final BackupDao backupDao = BackupDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
