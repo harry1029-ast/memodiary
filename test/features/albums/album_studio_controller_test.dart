@@ -1,5 +1,7 @@
 import 'dart:ui';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/albums/models/album_studio_models.dart';
 import 'package:memodiary/features/albums/services/album_studio_controller.dart';
 import 'package:memodiary/features/albums/services/album_theme_catalog.dart';
@@ -371,6 +373,66 @@ void main() {
       expect(reconciled.removedPhotoIds, isNot(contains('photo_deleted')));
     });
 
+    test(
+      'reconcileWithPhotoIds adapts layoutTemplateId when slots are pruned and preserves unaffected pages',
+      () {
+        final doc = AlbumStudioDocument(
+          activeThemeId: 'shanshui_ink',
+          pages: [
+            AlbumPageModel(
+              id: 'p_trio',
+              pageNumber: 1,
+              layoutTemplateId: 'trio_dated_columns',
+              photoSlots: const [
+                PhotoSlotAssignment(slotIndex: 0, photoId: 'p1'),
+                PhotoSlotAssignment(slotIndex: 1, photoId: 'p2'),
+                PhotoSlotAssignment(slotIndex: 2, photoId: 'p3_deleted'),
+              ],
+            ),
+            AlbumPageModel(
+              id: 'p_solo_emptied',
+              pageNumber: 2,
+              layoutTemplateId: 'solo_framed',
+              photoSlots: const [
+                PhotoSlotAssignment(slotIndex: 0, photoId: 'p4_deleted'),
+              ],
+            ),
+            AlbumPageModel(
+              id: 'p_untouched',
+              pageNumber: 3,
+              layoutTemplateId: 'duo_stacked',
+              photoSlots: const [
+                PhotoSlotAssignment(slotIndex: 0, photoId: 'p5'),
+                PhotoSlotAssignment(slotIndex: 1, photoId: 'p6'),
+              ],
+            ),
+          ],
+        );
+
+        final reconciled = doc.reconcileWithPhotoIds([
+          'p1',
+          'p2',
+          'p5',
+          'p6',
+        ]);
+
+        // 3 -> 2 slots adapts layout to default 2-photo template
+        expect(reconciled.pages[0].photoSlots.length, equals(2));
+        expect(
+          reconciled.pages[0].layoutTemplateId,
+          equals(PageLayoutCatalog.defaultTemplateForPhotoCount(2).id),
+        );
+
+        // 1 -> 0 slots adapts layout to 'solo_full_bleed'
+        expect(reconciled.pages[1].photoSlots, isEmpty);
+        expect(reconciled.pages[1].layoutTemplateId, equals('solo_full_bleed'));
+
+        // Unaffected page preserves its custom 'duo_stacked' template
+        expect(reconciled.pages[2].photoSlots.length, equals(2));
+        expect(reconciled.pages[2].layoutTemplateId, equals('duo_stacked'));
+      },
+    );
+
     test('StickerCatalog includes datePill category and paints correctly', () {
       final datePills = StickerCatalog.byCategory(StickerCategory.datePill);
       expect(datePills.length, greaterThanOrEqualTo(2));
@@ -385,5 +447,470 @@ void main() {
       final picture = recorder.endRecording();
       expect(picture, isNotNull);
     });
+  });
+
+  group('AlbumStudioController Reactive Session & Live Reconciliation', () {
+    test(
+      'exposes reactive session getters and retains unpersisted in-memory fixtures when SQLite collection is missing',
+      () async {
+        final harness = await AlbumTestHarness.create();
+        addTearDown(() => harness.dispose());
+
+        final seedCollection = AlbumCollection(
+          id: 'unpersisted_col',
+          title: '内存影集',
+          description: '未落盘测试夹具',
+          destinationTag: '江南',
+          routeSummary: '杭州 → 苏州',
+          coverImagePath: 'media/p1.webp',
+          layoutPreset: 'classic_photobook',
+          themeId: 'shanshui_ink',
+          sortIndex: 0,
+          createdAt: DateTime(2026, 4, 1),
+          updatedAt: DateTime(2026, 4, 1),
+        );
+        final seedPhotos = [
+          AlbumPhoto(
+            id: 'p1',
+            collectionId: 'unpersisted_col',
+            relativeImagePath: 'media/p1.webp',
+            relativeThumbnailPath: 'media/p1_thumb.webp',
+            caption: '西湖',
+            sortOrder: 0,
+            aspectRatio: 1.0,
+            createdAt: DateTime(2026, 4, 1),
+          ),
+          AlbumPhoto(
+            id: 'p2',
+            collectionId: 'unpersisted_col',
+            relativeImagePath: 'media/p2.webp',
+            relativeThumbnailPath: 'media/p2_thumb.webp',
+            caption: '平江路',
+            sortOrder: 1,
+            aspectRatio: 1.0,
+            createdAt: DateTime(2026, 4, 2),
+          ),
+        ];
+        final seedDoc = AlbumStudioDocument(
+          pages: [
+            AlbumPageModel(
+              id: 'page_1',
+              pageNumber: 1,
+              layoutTemplateId: 'duo_side_by_side',
+              photoSlots: const [
+                PhotoSlotAssignment(slotIndex: 0, photoId: 'p1'),
+                PhotoSlotAssignment(slotIndex: 1, photoId: 'p2'),
+              ],
+            ),
+          ],
+        );
+
+        final sessionController = AlbumStudioController(
+          collectionId: 'unpersisted_col',
+          initialDocument: seedDoc,
+          initialCollection: seedCollection,
+          initialPhotos: seedPhotos,
+          repository: harness.repository,
+        );
+        addTearDown(sessionController.dispose);
+
+        expect(sessionController.collection, equals(seedCollection));
+        expect(sessionController.photos, equals(seedPhotos));
+        expect(sessionController.photoById.keys, containsAll(['p1', 'p2']));
+        expect(
+          () => sessionController.photos.add(seedPhotos.first),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => sessionController.photoById['x'] = seedPhotos.first,
+          throwsUnsupportedError,
+        );
+        // 1 page (odd): overviewSpreads includes trailing blank spread, flipbookSpreads does not
+        expect(sessionController.overviewSpreads.length, equals(2));
+        expect(sessionController.flipbookSpreads.length, equals(1));
+
+        // Wait for Drift streams to emit null / [] for the unpersisted collection
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(sessionController.collection, equals(seedCollection));
+        expect(sessionController.photos, equals(seedPhotos));
+        expect(sessionController.photoById.keys, containsAll(['p1', 'p2']));
+        expect(sessionController.document, equals(seedDoc));
+      },
+    );
+
+    test(
+      'reconciles live photo imports into removedPhotoIds, photos, photoById, and persists while preserving pages and undo history',
+      () async {
+        final harness = await AlbumTestHarness.create();
+        addTearDown(() => harness.dispose());
+
+        final col = await harness.repository.createCollection(
+          id: 'col_import_live',
+          title: '西湖行',
+        );
+        await harness.repository.addPhoto(
+          id: 'p1',
+          collectionId: col.id,
+          relativeImagePath: 'media/p1.webp',
+          relativeThumbnailPath: 'media/p1_thumb.webp',
+          sortOrder: 0,
+        );
+        await harness.repository.addPhoto(
+          id: 'p2',
+          collectionId: col.id,
+          relativeImagePath: 'media/p2.webp',
+          relativeThumbnailPath: 'media/p2_thumb.webp',
+          sortOrder: 1,
+        );
+
+        final initialDoc = await harness.repository
+            .loadOrSynthesizeStudioDocument(col.id, autoPopulate: true);
+        final controller = AlbumStudioController(
+          collectionId: col.id,
+          initialDocument: initialDoc,
+          repository: harness.repository,
+          debounceDuration: const Duration(milliseconds: 30),
+        );
+        addTearDown(controller.dispose);
+
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+
+        // Perform a studio edit so Undo history is populated
+        controller.swapPhotoSlots(
+          pageId: controller.pages.first.id,
+          firstSlotIndex: 0,
+          secondSlotIndex: 1,
+        );
+        await controller.flush();
+        expect(controller.canUndo, isTrue);
+
+        // Import a 3rd photo into SQLite while controller is open
+        await harness.repository.addPhoto(
+          id: 'p3',
+          collectionId: col.id,
+          relativeImagePath: 'media/p3.webp',
+          relativeThumbnailPath: 'media/p3_thumb.webp',
+          sortOrder: 2,
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+
+        expect(
+          controller.photos.map((photo) => photo.id).toList(),
+          equals(['p1', 'p2', 'p3']),
+        );
+        expect(controller.photoById['p3']?.id, equals('p3'));
+        expect(controller.removedPhotoIds, equals(['p3']));
+        expect(
+          controller.pages.first.photoSlots.map((slot) => slot.photoId).toList(),
+          equals(['p2', 'p1']),
+        );
+
+        final persistedDoc = await harness.repository
+            .loadOrSynthesizeStudioDocument(col.id);
+        expect(persistedDoc.removedPhotoIds, equals(['p3']));
+
+        // Undo preserves the newly imported photo in the Collection Box tray
+        controller.undo();
+        expect(
+          controller.pages.first.photoSlots.map((slot) => slot.photoId).toList(),
+          equals(['p1', 'p2']),
+        );
+        expect(controller.removedPhotoIds, equals(['p3']));
+      },
+    );
+
+    test(
+      'reflects live photo annotation and collection cover updates without triggering document persistence',
+      () async {
+        final harness = await AlbumTestHarness.create();
+        addTearDown(() => harness.dispose());
+
+        final col = await harness.repository.createCollection(
+          id: 'col_meta_live',
+          title: '江南游记',
+        );
+        await harness.repository.addPhoto(
+          id: 'p1',
+          collectionId: col.id,
+          relativeImagePath: 'media/p1.webp',
+          relativeThumbnailPath: 'media/p1_thumb.webp',
+          sortOrder: 0,
+        );
+        await harness.repository.addPhoto(
+          id: 'p2',
+          collectionId: col.id,
+          relativeImagePath: 'media/p2.webp',
+          relativeThumbnailPath: 'media/p2_thumb.webp',
+          sortOrder: 1,
+        );
+
+        final initialDoc = await harness.repository
+            .loadOrSynthesizeStudioDocument(col.id, autoPopulate: true);
+        var persistCount = 0;
+        final controller = AlbumStudioController(
+          collectionId: col.id,
+          initialDocument: initialDoc,
+          repository: harness.repository,
+          debounceDuration: const Duration(milliseconds: 30),
+          onPersist: (doc) async {
+            persistCount++;
+          },
+        );
+        addTearDown(controller.dispose);
+
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(persistCount, equals(0));
+
+        var listenerCalls = 0;
+        controller.addListener(() {
+          listenerCalls++;
+        });
+
+        await harness.repository.updatePhotoAnnotationAndSyncRoute(
+          photoId: 'p1',
+          caption: const Value('苏堤春晓'),
+          locationTag: const Value('杭州'),
+        );
+        await harness.repository.setCollectionCover(col.id, 'p2');
+
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+
+        expect(listenerCalls, greaterThan(0));
+        expect(controller.photoById['p1']?.caption, equals('苏堤春晓'));
+        expect(controller.photoById['p1']?.locationTag, equals('杭州'));
+        expect(controller.collection?.coverImagePath, equals('media/p2.webp'));
+        expect(controller.collection?.routeSummary, equals('杭州'));
+        expect(persistCount, equals(0));
+      },
+    );
+
+    test(
+      'reconciles live photo deletion by adapting layout to (N - 1), scrubbing Undo/Redo history, and persisting',
+      () async {
+        final harness = await AlbumTestHarness.create();
+        addTearDown(() => harness.dispose());
+
+        final col = await harness.repository.createCollection(
+          id: 'col_delete_live',
+          title: '山居秋暝',
+        );
+        for (var i = 1; i <= 3; i++) {
+          await harness.repository.addPhoto(
+            id: 'p$i',
+            collectionId: col.id,
+            relativeImagePath: 'media/p$i.webp',
+            relativeThumbnailPath: 'media/p${i}_thumb.webp',
+            sortOrder: i,
+          );
+        }
+
+        final initialDoc = await harness.repository
+            .loadOrSynthesizeStudioDocument(col.id, autoPopulate: true);
+        final controller = AlbumStudioController(
+          collectionId: col.id,
+          initialDocument: initialDoc,
+          repository: harness.repository,
+          debounceDuration: const Duration(milliseconds: 30),
+        );
+        addTearDown(controller.dispose);
+
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        final pageId = controller.pages.first.id;
+        expect(controller.pages.first.photoSlots.length, equals(3));
+
+        // D1: remove p3 to tray -> [p1, p2]
+        controller.removePhotoToTray(pageId: pageId, slotIndex: 2);
+        // D2: update background color -> [p1, p2] with custom background
+        controller.updatePageBackground(
+          pageId: pageId,
+          backgroundConfig: const PageBackgroundConfig(
+            backgroundColorArgb: 0xFFEAF6F6,
+            textColorArgb: 0xFF1E1E1E,
+          ),
+        );
+        // Undo back to D1 so both _undoStack ([D0]) and _redoStack ([D2]) reference p2
+        controller.undo();
+        await controller.flush();
+        expect(controller.canUndo, isTrue);
+        expect(controller.canRedo, isTrue);
+
+        // Delete p2 from SQLite while studio session is open
+        await harness.repository.deletePhoto('p2');
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+
+        expect(
+          controller.photos.map((photo) => photo.id).toList(),
+          equals(['p1', 'p3']),
+        );
+        expect(controller.photoById.containsKey('p2'), isFalse);
+        expect(
+          controller.pages.first.photoSlots.map((slot) => slot.photoId).toList(),
+          equals(['p1']),
+        );
+        expect(controller.pages.first.layoutTemplateId, equals('solo_full_bleed'));
+
+        final persistedDoc = await harness.repository
+            .loadOrSynthesizeStudioDocument(col.id);
+        expect(persistedDoc, equals(controller.document));
+
+        // Undo reaches reconciled D0 ([p1, p3] on page_1 with duo layout, never p2)
+        controller.undo();
+        expect(
+          controller.pages.first.photoSlots.map((slot) => slot.photoId).toList(),
+          equals(['p1', 'p3']),
+        );
+        expect(
+          controller.pages.first.layoutTemplateId,
+          equals(PageLayoutCatalog.defaultTemplateForPhotoCount(2).id),
+        );
+
+        // Redo reaches reconciled D1 then D2 (never p2)
+        controller.redo();
+        expect(
+          controller.pages.first.photoSlots.map((slot) => slot.photoId).toList(),
+          equals(['p1']),
+        );
+        controller.redo();
+        expect(
+          controller.pages.first.backgroundConfig.backgroundColorArgb,
+          equals(0xFFEAF6F6),
+        );
+        expect(
+          controller.pages.first.photoSlots.map((slot) => slot.photoId).toList(),
+          equals(['p1']),
+        );
+      },
+    );
+
+    test(
+      'collapses adjacent duplicate Undo snapshots and handles deleting all photos on a persisted collection',
+      () async {
+        final harness = await AlbumTestHarness.create();
+        addTearDown(() => harness.dispose());
+
+        final col = await harness.repository.createCollection(
+          id: 'col_collapse_all',
+          title: '独行记',
+        );
+        await harness.repository.addPhoto(
+          id: 'p1',
+          collectionId: col.id,
+          relativeImagePath: 'media/p1.webp',
+          relativeThumbnailPath: 'media/p1_thumb.webp',
+          sortOrder: 0,
+        );
+        await harness.repository.addPhoto(
+          id: 'p2',
+          collectionId: col.id,
+          relativeImagePath: 'media/p2.webp',
+          relativeThumbnailPath: 'media/p2_thumb.webp',
+          sortOrder: 1,
+        );
+
+        final initialDoc = await harness.repository
+            .loadOrSynthesizeStudioDocument(col.id, autoPopulate: true);
+        final controller = AlbumStudioController(
+          collectionId: col.id,
+          initialDocument: initialDoc,
+          repository: harness.repository,
+          debounceDuration: const Duration(milliseconds: 30),
+        );
+        addTearDown(controller.dispose);
+
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+
+        // Remove p2 to tray -> D1 matches reconciled D0 once p2 is deleted!
+        controller.removePhotoToTray(
+          pageId: controller.pages.first.id,
+          slotIndex: 1,
+        );
+        expect(controller.canUndo, isTrue);
+
+        await harness.repository.deletePhoto('p2');
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+
+        // Reconciled D0 == reconciled D1, so no-op Undo step is collapsed
+        expect(controller.canUndo, isFalse);
+        expect(controller.removedPhotoIds, isEmpty);
+
+        // Delete the final photo on this persisted collection -> photos becomes empty
+        await harness.repository.deletePhoto('p1');
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+
+        expect(controller.photos, isEmpty);
+        expect(controller.photoById, isEmpty);
+        expect(controller.pages.first.photoSlots, isEmpty);
+        expect(controller.pages.first.layoutTemplateId, equals('solo_full_bleed'));
+        expect(controller.removedPhotoIds, isEmpty);
+      },
+    );
+
+    test(
+      'dispose cancels repository stream subscriptions before flushing pending debounced persistence',
+      () async {
+        final harness = await AlbumTestHarness.create();
+        addTearDown(() => harness.dispose());
+
+        final col = await harness.repository.createCollection(
+          id: 'col_dispose_clean',
+          title: '封卷测试',
+        );
+        await harness.repository.addPhoto(
+          id: 'p1',
+          collectionId: col.id,
+          relativeImagePath: 'media/p1.webp',
+          relativeThumbnailPath: 'media/p1_thumb.webp',
+          sortOrder: 0,
+        );
+
+        final initialDoc = await harness.repository
+            .loadOrSynthesizeStudioDocument(col.id, autoPopulate: true);
+        var persistCount = 0;
+        final controller = AlbumStudioController(
+          collectionId: col.id,
+          initialDocument: initialDoc,
+          repository: harness.repository,
+          debounceDuration: const Duration(milliseconds: 400),
+          onPersist: (doc) async {
+            persistCount++;
+          },
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+        var listenerCalls = 0;
+        controller.addListener(() {
+          listenerCalls++;
+        });
+
+        controller.updatePageBackground(
+          pageId: controller.pages.first.id,
+          backgroundConfig: const PageBackgroundConfig(
+            backgroundColorArgb: 0xFFEAF6F6,
+            textColorArgb: 0xFF1E1E1E,
+          ),
+        );
+        expect(persistCount, equals(0));
+
+        // Dispose immediately flushes pending debounce and cancels streams
+        controller.dispose();
+        expect(persistCount, equals(1));
+        final callsAtDispose = listenerCalls;
+
+        // Mutating SQLite after dispose must not trigger late callbacks or errors
+        await harness.repository.addPhoto(
+          id: 'p2',
+          collectionId: col.id,
+          relativeImagePath: 'media/p2.webp',
+          relativeThumbnailPath: 'media/p2_thumb.webp',
+          sortOrder: 1,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+
+        expect(listenerCalls, equals(callsAtDispose));
+        expect(persistCount, equals(1));
+      },
+    );
   });
 }

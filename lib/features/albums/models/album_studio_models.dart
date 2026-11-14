@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import '../services/page_layout_catalog.dart';
 
 /// Supported types of interactive scrapbook overlay elements on a page canvas.
 enum OverlayElementType {
@@ -452,8 +453,18 @@ class AlbumStudioDocument {
         }
       }
 
+      final slotsPruned = validSlots.length < page.photoSlots.length;
+      final nextLayoutId = !slotsPruned
+          ? page.layoutTemplateId
+          : (validSlots.isEmpty
+              ? 'solo_full_bleed'
+              : PageLayoutCatalog.defaultTemplateForPhotoCount(
+                  validSlots.length,
+                ).id);
+
       updatedPages.add(
         page.copyWith(
+          layoutTemplateId: nextLayoutId,
           photoSlots: validSlots,
         ),
       );

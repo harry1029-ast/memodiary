@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import '../../../core/database/app_database.dart';
 import '../data/album_repository.dart';
 import '../models/album_studio_models.dart';
 import 'album_theme_catalog.dart';
@@ -20,22 +21,55 @@ class AlbumStudioController extends ChangeNotifier {
   final Duration debounceDuration;
 
   AlbumStudioDocument _document;
+  AlbumCollection? _collection;
+  List<AlbumPhoto> _photos;
+  Map<String, AlbumPhoto> _photoById;
   final List<AlbumStudioDocument> _undoStack = [];
   final List<AlbumStudioDocument> _redoStack = [];
   int _selectedPageIndex = 0;
   Timer? _debounceTimer;
+  bool _hasPersistedCollection = false;
+  List<AlbumPhoto>? _deferredEmptyPhotos;
+  bool _isDisposed = false;
+  StreamSubscription<AlbumCollection?>? _collectionSubscription;
+  StreamSubscription<List<AlbumPhoto>>? _photosSubscription;
 
   AlbumStudioController({
     required this.collectionId,
     required AlbumStudioDocument initialDocument,
+    AlbumCollection? initialCollection,
+    List<AlbumPhoto> initialPhotos = const [],
     this.repository,
     Future<void> Function(AlbumStudioDocument)? onPersist,
     this.debounceDuration = const Duration(milliseconds: 600),
   })  : _document = initialDocument,
+        _collection = initialCollection,
+        _photos = List<AlbumPhoto>.unmodifiable(initialPhotos),
+        _photoById = _buildPhotoLookup(initialPhotos),
         onPersist = onPersist ??
             (repository != null
                 ? ((doc) => repository.saveStudioDocument(collectionId, doc))
-                : null);
+                : null) {
+    _bindRepositoryStreams();
+  }
+
+  static Map<String, AlbumPhoto> _buildPhotoLookup(List<AlbumPhoto> photos) {
+    return Map<String, AlbumPhoto>.unmodifiable({
+      for (final photo in photos) photo.id: photo,
+    });
+  }
+
+  AlbumCollection? get collection => _collection;
+
+  List<AlbumPhoto> get photos => _photos;
+
+  Map<String, AlbumPhoto> get photoById => _photoById;
+
+  List<BookSpreadData> get overviewSpreads =>
+      _document.buildSpreads(includeBlankTrailing: true);
+
+  List<BookSpreadData> get flipbookSpreads =>
+      _document.buildSpreads(includeBlankTrailing: false);
 
   AlbumStudioDocument get document => _document;
 
@@ -601,10 +635,115 @@ class AlbumStudioController extends ChangeNotifier {
     ];
   }
 
+  void _bindRepositoryStreams() {
+    final repo = repository;
+    if (repo == null) return;
+    _collectionSubscription =
+        repo.watchCollectionById(collectionId).listen(_handleCollectionChanged);
+    _photosSubscription =
+        repo.watchPhotosForCollection(collectionId).listen(_handlePhotosChanged);
+  }
+
+  void _handleCollectionChanged(AlbumCollection? nextCollection) {
+    if (_isDisposed || nextCollection == null) return;
+    final wasPersisted = _hasPersistedCollection;
+    _hasPersistedCollection = true;
+    final collectionChanged = _collection != nextCollection;
+    _collection = nextCollection;
+    if (!wasPersisted && _deferredEmptyPhotos != null) {
+      final deferred = _deferredEmptyPhotos!;
+      _deferredEmptyPhotos = null;
+      _handlePhotosChanged(
+        deferred,
+        notifyIfCollectionChanged: collectionChanged,
+      );
+      return;
+    }
+    if (collectionChanged) {
+      notifyListeners();
+    }
+  }
+
+  void _handlePhotosChanged(
+    List<AlbumPhoto> nextPhotos, {
+    bool notifyIfCollectionChanged = false,
+  }) {
+    if (_isDisposed) return;
+    if (!_hasPersistedCollection && nextPhotos.isEmpty && _photos.isNotEmpty) {
+      _deferredEmptyPhotos = const [];
+      if (notifyIfCollectionChanged) {
+        notifyListeners();
+      }
+      return;
+    }
+    _deferredEmptyPhotos = null;
+
+    final photosChanged = !listEquals(_photos, nextPhotos);
+    if (photosChanged) {
+      _photos = List<AlbumPhoto>.unmodifiable(nextPhotos);
+      _photoById = _buildPhotoLookup(_photos);
+    }
+
+    final photoIds =
+        nextPhotos.map((photo) => photo.id).toList(growable: false);
+    final reconciledDoc = _document.reconcileWithPhotoIds(photoIds);
+    final docChanged = reconciledDoc != _document;
+    final reconciledUndo =
+        _reconcileHistoryStack(_undoStack, photoIds, reconciledDoc);
+    final reconciledRedo =
+        _reconcileHistoryStack(_redoStack, photoIds, reconciledDoc);
+    final historyChanged = !listEquals(_undoStack, reconciledUndo) ||
+        !listEquals(_redoStack, reconciledRedo);
+
+    if (historyChanged) {
+      _undoStack
+        ..clear()
+        ..addAll(reconciledUndo);
+      _redoStack
+        ..clear()
+        ..addAll(reconciledRedo);
+    }
+
+    if (docChanged) {
+      _document = reconciledDoc;
+      if (_selectedPageIndex >= _document.pages.length &&
+          _document.pages.isNotEmpty) {
+        _selectedPageIndex = _document.pages.length - 1;
+      }
+      _schedulePersist();
+    }
+
+    if (photosChanged ||
+        docChanged ||
+        historyChanged ||
+        notifyIfCollectionChanged) {
+      notifyListeners();
+    }
+  }
+
+  List<AlbumStudioDocument> _reconcileHistoryStack(
+    List<AlbumStudioDocument> stack,
+    List<String> photoIds,
+    AlbumStudioDocument currentDoc,
+  ) {
+    final reconciled = <AlbumStudioDocument>[];
+    for (final snapshot in stack) {
+      final updated = snapshot.reconcileWithPhotoIds(photoIds);
+      if (reconciled.isEmpty || reconciled.last != updated) {
+        reconciled.add(updated);
+      }
+    }
+    while (reconciled.isNotEmpty && reconciled.last == currentDoc) {
+      reconciled.removeLast();
+    }
+    return reconciled;
+  }
+
   void _schedulePersist() {
-    if (onPersist == null) return;
+    if (_isDisposed || onPersist == null) return;
     _debounceTimer?.cancel();
     _debounceTimer = Timer(debounceDuration, () {
+      if (_isDisposed) return;
       _executePersist();
     });
   }
@@ -632,6 +771,11 @@ class AlbumStudioController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    _collectionSubscription?.cancel();
+    _collectionSubscription = null;
+    _photosSubscription?.cancel();
+    _photosSubscription = null;
     if (_debounceTimer != null) {
       _executePersist();
     }
