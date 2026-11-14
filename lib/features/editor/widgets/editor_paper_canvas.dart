@@ -60,7 +60,6 @@ class EditorPaperCanvas extends StatelessWidget {
   final ValueChanged<int>? onPageChanged;
   final void Function(int sheetIndex)? onDeleteEphemera;
   final DeskMediaHandlers deskMedia;
-  final void Function(String mediaId, String newCaption)? onMediaCaptionChanged;
 
   /// The autosave status the header band mirrors while the app bar is away.
   final ValueListenable<AutosaveStatus>? saveStatus;
@@ -84,7 +83,6 @@ class EditorPaperCanvas extends StatelessWidget {
     this.onPageChanged,
     this.onDeleteEphemera,
     this.deskMedia = const DeskMediaHandlers(),
-    this.onMediaCaptionChanged,
     this.saveStatus,
     this.onTapDeskOffSheet,
   });
@@ -305,10 +303,6 @@ class EditorPaperCanvas extends StatelessWidget {
                           isPaperDark: themeConfig.isPaperDark,
                           chrome: chrome,
                           handlers: deskMedia,
-                          onCaptionChanged: (mediaId, newCaption) {
-                            coordinator.updateCaption(mediaId, newCaption);
-                            onMediaCaptionChanged?.call(mediaId, newCaption);
-                          },
                         ),
                       ),
   

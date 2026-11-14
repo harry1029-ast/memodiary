@@ -36,9 +36,8 @@ class EditorDeskMediaArea extends StatelessWidget {
   final bool isPaperDark;
   final EditorChromeController chrome;
 
-  /// Collect, mount, erase, unmount and Brush Reveal plumbing.
+  /// Collect, mount, erase, unmount, caption and Brush Reveal plumbing.
   final DeskMediaHandlers handlers;
-  final void Function(String mediaId, String newCaption)? onCaptionChanged;
 
   static const Duration kStepAsideDuration = Duration(milliseconds: 250);
 
@@ -55,7 +54,6 @@ class EditorDeskMediaArea extends StatelessWidget {
     this.isPaperDark = false,
     required this.chrome,
     this.handlers = const DeskMediaHandlers(),
-    this.onCaptionChanged,
   });
 
   void _openLightbox(BuildContext context, List<SheetMediaItem> items, SheetMediaItem item) {
@@ -65,7 +63,7 @@ class EditorDeskMediaArea extends StatelessWidget {
       items: items,
       initialIndex: items.indexOf(item),
       mediaSandboxService: mediaSandboxService,
-      onCaptionChanged: onCaptionChanged,
+      onCaptionChanged: handlers.onCaptionChanged,
     );
   }
 
@@ -77,7 +75,7 @@ class EditorDeskMediaArea extends StatelessWidget {
       mediaSandboxService: mediaSandboxService,
       isPaperDark: isPaperDark,
       onUnmount: handlers.onUnmount,
-      onCaptionChanged: onCaptionChanged,
+      onCaptionChanged: handlers.onCaptionChanged,
       onDeskInteraction: handlers.onDeskInteraction,
     );
   }
