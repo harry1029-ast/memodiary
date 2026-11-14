@@ -14,15 +14,10 @@ import '../widgets/photo_annotation_sheet.dart';
 import '../widgets/studio_drawers/add_elements_drawer.dart';
 import '../widgets/studio_drawers/background_style_drawer.dart';
 import '../widgets/studio_drawers/layout_picker_drawer.dart';
+import '../widgets/studio_drawers/page_editor_sheets.dart';
 import '../widgets/studio_drawers/removed_photos_drawer.dart';
 
-/// Active bottom drawer tab in [AlbumPageEditorScreen].
-enum StudioDrawerTab {
-  removed,
-  add,
-  background,
-  layout,
-}
+export '../widgets/studio_drawers/page_editor_sheets.dart' show StudioDrawerTab;
 
 /// Interactive single-page scrapbook canvas editor (matching Journi Images 3–9).
 ///
@@ -74,17 +69,23 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
     });
   }
 
-  Map<String, AlbumPhoto> _buildPhotoLookup() {
-    return {
-      for (final photo in widget.photos) photo.id: photo,
-    };
-  }
+  AlbumCollection _liveCollection() =>
+      widget.controller.collection ?? widget.collection;
 
-  String _resolveDefaultDateLabel(AlbumPageModel page) {
+  Map<String, AlbumPhoto> _livePhotoById() =>
+      (widget.controller.collection != null ||
+              widget.controller.photos.isNotEmpty)
+          ? widget.controller.photoById
+          : {for (final photo in widget.photos) photo.id: photo};
+
+  String _resolveDefaultDateLabel(
+    AlbumPageModel page,
+    AlbumCollection collection,
+  ) {
     if (page.dateHeaderText != null && page.dateHeaderText!.trim().isNotEmpty) {
       return page.dateHeaderText!.trim();
     }
-    final date = widget.collection.startDate ?? widget.collection.createdAt;
+    final date = collection.startDate ?? collection.createdAt;
     return DateFormat('yyyy.MM.dd').format(date);
   }
 
@@ -101,76 +102,10 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
   }
 
   Future<void> _handleEditDateHeader(AlbumPageModel page) async {
-    final tokens = context.inkTokens;
-    final textController = TextEditingController(
-      text: page.dateHeaderText ?? '',
-    );
-
-    final updated = await showModalBottomSheet<String>(
+    final updated = await showPageDateHeaderSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: tokens.xuanPureLeaf,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (modalContext) {
-        final bottomInset = MediaQuery.of(modalContext).viewInsets.bottom;
-        return Padding(
-          padding: EdgeInsets.fromLTRB(20, 18, 20, bottomInset + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '编辑书页日期标题',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const Key('page_date_header_input'),
-                controller: textController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: '例如：2026.10.02 · 西湖秋日',
-                  filled: true,
-                  fillColor: tokens.agedFiber,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(modalContext).pop(),
-                    child: Text('取消', style: TextStyle(color: tokens.danmo)),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    key: const Key('page_date_header_submit'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: tokens.jiaomo,
-                      foregroundColor: tokens.xuanPureLeaf,
-                    ),
-                    onPressed: () =>
-                        Navigator.of(modalContext).pop(textController.text),
-                    child: const Text('保存'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+      initialText: page.dateHeaderText,
     );
-
     if (updated == null) return;
     widget.controller.updateDateHeaderText(
       pageId: page.id,
@@ -181,11 +116,12 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
-    final photoById = _buildPhotoLookup();
 
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) {
+        final collection = _liveCollection();
+        final photoById = _livePhotoById();
         final pages = widget.controller.pages;
         final currentIndex = widget.controller.selectedPageIndex;
         final activePage = widget.controller.selectedPage;
@@ -351,7 +287,7 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
                             PhotoAnnotationSheet.show(
                               context,
                               photo: photo,
-                              collection: widget.collection,
+                              collection: collection,
                               repository: widget.repository,
                               mediaService: widget.mediaService,
                             );
@@ -385,10 +321,14 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
 
               // 2. Expandable Studio Bottom Drawer
               if (_activeDrawerTab != null)
-                _buildActiveDrawer(activePage, photoById),
+                _buildActiveDrawer(activePage, photoById, collection),
 
               // 3. Bottom Studio Tool Dock
-              _buildBottomStudioDock(tokens),
+              StudioBottomDock(
+                removedCount: widget.controller.removedPhotoIds.length,
+                activeTab: _activeDrawerTab,
+                onToggleTab: _toggleDrawer,
+              ),
             ],
           ),
         );
@@ -423,6 +363,7 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
   Widget _buildActiveDrawer(
     AlbumPageModel activePage,
     Map<String, AlbumPhoto> photoById,
+    AlbumCollection collection,
   ) {
     switch (_activeDrawerTab!) {
       case StudioDrawerTab.removed:
@@ -436,7 +377,7 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
 
       case StudioDrawerTab.add:
         return AddElementsDrawer(
-          defaultDateLabel: _resolveDefaultDateLabel(activePage),
+          defaultDateLabel: _resolveDefaultDateLabel(activePage, collection),
           existingOverlayCount: activePage.overlays.length,
           onAddOverlay: (overlay) {
             widget.controller.addOverlay(
@@ -474,129 +415,5 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
           onClose: () => setState(() => _activeDrawerTab = null),
         );
     }
-  }
-
-  Widget _buildBottomStudioDock(InkDiaryTokens tokens) {
-    final removedCount = widget.controller.removedPhotoIds.length;
-
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: tokens.xuanPureLeaf,
-          border: Border(
-            top: BorderSide(color: tokens.deckleBorder, width: 0.9),
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _DockTabItem(
-                tabKey: const Key('studio_tab_removed'),
-                icon: Icons.inventory_2_outlined,
-                label:
-                    '${AlbumStudioStrings.collectionBoxDockTab} ($removedCount)',
-                badgeCount: removedCount,
-                isSelected: _activeDrawerTab == StudioDrawerTab.removed,
-                tokens: tokens,
-                onTap: () => _toggleDrawer(StudioDrawerTab.removed),
-              ),
-            ),
-            Expanded(
-              child: _DockTabItem(
-                tabKey: const Key('studio_tab_add'),
-                icon: Icons.add_circle_outline,
-                label: 'Add',
-                isSelected: _activeDrawerTab == StudioDrawerTab.add,
-                tokens: tokens,
-                onTap: () => _toggleDrawer(StudioDrawerTab.add),
-              ),
-            ),
-            Expanded(
-              child: _DockTabItem(
-                tabKey: const Key('studio_tab_background'),
-                icon: Icons.palette_outlined,
-                label: 'Background',
-                isSelected: _activeDrawerTab == StudioDrawerTab.background,
-                tokens: tokens,
-                onTap: () => _toggleDrawer(StudioDrawerTab.background),
-              ),
-            ),
-            Expanded(
-              child: _DockTabItem(
-                tabKey: const Key('studio_tab_layout'),
-                icon: Icons.dashboard_customize_outlined,
-                label: 'Layout',
-                isSelected: _activeDrawerTab == StudioDrawerTab.layout,
-                tokens: tokens,
-                onTap: () => _toggleDrawer(StudioDrawerTab.layout),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DockTabItem extends StatelessWidget {
-  final Key tabKey;
-  final IconData icon;
-  final String label;
-  final int badgeCount;
-  final bool isSelected;
-  final InkDiaryTokens tokens;
-  final VoidCallback onTap;
-
-  const _DockTabItem({
-    required this.tabKey,
-    required this.icon,
-    required this.label,
-    this.badgeCount = 0,
-    required this.isSelected,
-    required this.tokens,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final fgColor = isSelected ? tokens.cinnabar : tokens.nongmo;
-
-    return Semantics(
-      button: true,
-      selected: isSelected,
-      label: label,
-      child: InkWell(
-        key: tabKey,
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          decoration: BoxDecoration(
-            color: isSelected ? tokens.cinnabarWash : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 20, color: fgColor),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: fgColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

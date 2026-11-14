@@ -22,6 +22,7 @@ class AlbumFlipbookScreen extends StatefulWidget {
   final List<AlbumPhoto> photos;
   final MediaSandboxService mediaService;
   final AlbumRepository? repository;
+  final AlbumStudioController? controller;
   final AlbumStudioDocument? document;
   final Future<Uint8List> Function(Uint8List)? imageTranscoder;
   final Future<String> Function(Uint8List bytes, String fileName)?
@@ -37,6 +38,7 @@ class AlbumFlipbookScreen extends StatefulWidget {
     required this.photos,
     required this.mediaService,
     this.repository,
+    this.controller,
     AlbumStudioDocument? document,
     AlbumStudioDocument? studioDocument,
     this.imageTranscoder,
@@ -50,9 +52,8 @@ class AlbumFlipbookScreen extends StatefulWidget {
 
 class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
   late final PageController _pageController;
-  late AlbumStudioDocument _studioDocument;
-  late List<BookSpreadData> _spreads;
-  late final Map<String, AlbumPhoto> _photoById;
+  late final AlbumStudioController _controller;
+  late final bool _ownsController;
   int _currentIndex = 0;
   bool _isFullscreen = false;
 
@@ -60,25 +61,53 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
   void initState() {
     super.initState();
     _pageController = PageController();
-    _photoById = <String, AlbumPhoto>{
-      for (final photo in widget.photos) photo.id: photo,
-    };
-    _initDocument();
-  }
-
-  void _initDocument() {
-    _studioDocument = widget.document ??
-        AlbumLayoutEngine.resolveOrCompileDocument(
-          collection: widget.collection,
-          photos: widget.photos,
-        );
-    _spreads = _studioDocument.buildSpreads(includeBlankTrailing: false);
+    final externalController = widget.controller;
+    if (externalController != null) {
+      _controller = externalController;
+      _ownsController = false;
+    } else {
+      _ownsController = true;
+      final initialDoc = widget.document ??
+          AlbumLayoutEngine.resolveOrCompileDocument(
+            collection: widget.collection,
+            photos: widget.photos,
+            autoPopulate: true,
+          );
+      _controller = AlbumStudioController(
+        collectionId: widget.collection.id,
+        initialDocument: initialDoc,
+        initialCollection: widget.collection,
+        initialPhotos: widget.photos,
+        repository: widget.repository,
+      );
+    }
   }
 
   @override
   void dispose() {
+    if (_ownsController) {
+      _controller.dispose();
+    }
     _pageController.dispose();
     super.dispose();
+  }
+
+  AlbumCollection _liveCollection() =>
+      _controller.collection ?? widget.collection;
+
+  bool _hasLiveSession() =>
+      _controller.collection != null || _controller.photos.isNotEmpty;
+
+  List<AlbumPhoto> _livePhotos() =>
+      _hasLiveSession() ? _controller.photos : widget.photos;
+
+  Map<String, AlbumPhoto> _livePhotoById() {
+    if (_hasLiveSession()) {
+      return _controller.photoById;
+    }
+    return {
+      for (final photo in widget.photos) photo.id: photo,
+    };
   }
 
   void _toggleFullscreen() {
@@ -103,7 +132,8 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
   }
 
   void _goToNextPage() {
-    if (_currentIndex >= _spreads.length - 1) return;
+    final totalPages = _controller.flipbookSpreads.length;
+    if (_currentIndex >= totalPages - 1) return;
     _pageController.nextPage(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
@@ -113,9 +143,9 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
   void _openPdfExportSheet() {
     AlbumPdfPreviewSheet.show(
       context,
-      collection: widget.collection,
-      photos: widget.photos,
-      studioDocument: _studioDocument,
+      collection: _liveCollection(),
+      photos: _livePhotos(),
+      studioDocument: _controller.document,
       mediaService: widget.mediaService,
       imageTranscoder: widget.imageTranscoder,
       customSaveHandler: widget.customPdfSaveHandler,
@@ -123,129 +153,154 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
     );
   }
 
-  Future<void> _handleOpenStudioEditor([int pageIndex = 0]) async {
+  Future<void> _handleOpenStudioEditor() async {
     final repo = widget.repository;
     if (repo == null) return;
-    final controller = AlbumStudioController(
-      collectionId: widget.collection.id,
-      initialDocument: _studioDocument,
-      repository: repo,
-    );
-    controller.selectPage(pageIndex);
+    final spreads = _controller.flipbookSpreads;
+    final targetPageIndex = spreads.isEmpty
+        ? 0
+        : (() {
+            final spread = spreads[_currentIndex.clamp(0, spreads.length - 1)];
+            return spread.leftPageIndex ?? spread.rightPageIndex ?? 0;
+          })();
+    _controller.selectPage(targetPageIndex);
 
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => AlbumPageEditorScreen(
-          controller: controller,
-          collection: widget.collection,
-          photos: widget.photos,
+          controller: _controller,
+          collection: _liveCollection(),
+          photos: _livePhotos(),
           repository: repo,
           mediaService: widget.mediaService,
-          initialPageIndex: pageIndex,
+          initialPageIndex: targetPageIndex,
         ),
       ),
     );
-
-    if (mounted) {
-      setState(() {
-        _studioDocument = controller.document;
-        _spreads = _studioDocument.buildSpreads(includeBlankTrailing: false);
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
-    final totalPages = _spreads.length;
-    final currentPageNumber = _currentIndex + 1;
 
-    return Scaffold(
-      backgroundColor: tokens.xuanGround,
-      appBar: _isFullscreen
-          ? null
-          : AppBar(
-              key: const Key('flipbook_app_bar'),
-              title: Text(
-                widget.collection.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              actions: [
-                if (widget.repository != null)
-                  IconButton(
-                    key: const Key('flipbook_edit_button'),
-                    icon: Icon(
-                      Icons.edit_outlined,
-                      size: 20,
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        final collection = _liveCollection();
+        final photoById = _livePhotoById();
+        final spreads = _controller.flipbookSpreads;
+        final totalPages = spreads.length;
+        final safeIndex =
+            totalPages == 0 ? 0 : _currentIndex.clamp(0, totalPages - 1);
+        final currentPageNumber = totalPages == 0 ? 0 : safeIndex + 1;
+
+        if (totalPages > 0 && safeIndex != _currentIndex) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            final latestTotal = _controller.flipbookSpreads.length;
+            if (latestTotal == 0) return;
+            final clamped = _currentIndex.clamp(0, latestTotal - 1);
+            if (clamped != _currentIndex) {
+              setState(() => _currentIndex = clamped);
+              if (_pageController.hasClients) {
+                _pageController.jumpToPage(clamped);
+              }
+            }
+          });
+        }
+
+        return Scaffold(
+          backgroundColor: tokens.xuanGround,
+          appBar: _isFullscreen
+              ? null
+              : AppBar(
+                  key: const Key('flipbook_app_bar'),
+                  title: Text(
+                    collection.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
                       color: tokens.jiaomo,
                     ),
-                    tooltip: '编辑画册排版',
-                    onPressed: _handleOpenStudioEditor,
                   ),
-                IconButton(
-                  key: const Key('flipbook_export_pdf_button'),
-                  icon: Icon(
-                    Icons.picture_as_pdf_outlined,
-                    size: 20,
-                    color: tokens.cinnabar,
-                  ),
-                  tooltip: '导出画册 PDF',
-                  onPressed: _openPdfExportSheet,
+                  actions: [
+                    if (widget.repository != null)
+                      IconButton(
+                        key: const Key('flipbook_edit_button'),
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          size: 20,
+                          color: tokens.jiaomo,
+                        ),
+                        tooltip: '编辑画册排版',
+                        onPressed: _handleOpenStudioEditor,
+                      ),
+                    IconButton(
+                      key: const Key('flipbook_export_pdf_button'),
+                      icon: Icon(
+                        Icons.picture_as_pdf_outlined,
+                        size: 20,
+                        color: tokens.cinnabar,
+                      ),
+                      tooltip: '导出画册 PDF',
+                      onPressed: _openPdfExportSheet,
+                    ),
+                  ],
                 ),
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    key: const Key('flipbook_fullscreen_toggle'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _toggleFullscreen,
+                    child: PageView.builder(
+                      key: const Key('flipbook_page_view'),
+                      controller: _pageController,
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: totalPages,
+                      onPageChanged: _handlePageChanged,
+                      itemBuilder: (context, index) {
+                        final spread = spreads[index];
+                        return Center(
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              child: BookSpreadTile(
+                                key: Key('album_spread_page_$index'),
+                                spreadIndex: index,
+                                collection: collection,
+                                spreadData: spread,
+                                photoById: photoById,
+                                mediaService: widget.mediaService,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                if (!_isFullscreen)
+                  _buildBottomControlBar(
+                    tokens,
+                    currentPageNumber,
+                    totalPages,
+                  ),
               ],
             ),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: GestureDetector(
-                key: const Key('flipbook_fullscreen_toggle'),
-                behavior: HitTestBehavior.opaque,
-                onTap: _toggleFullscreen,
-                child: PageView.builder(
-                  key: const Key('flipbook_page_view'),
-                  controller: _pageController,
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: totalPages,
-                  onPageChanged: _handlePageChanged,
-                  itemBuilder: (context, index) {
-                    final spread = _spreads[index];
-                    return Center(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          child: BookSpreadTile(
-                            key: Key('album_spread_page_$index'),
-                            spreadIndex: index,
-                            collection: widget.collection,
-                            spreadData: spread,
-                            photoById: _photoById,
-                            mediaService: widget.mediaService,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            if (!_isFullscreen)
-              _buildBottomControlBar(tokens, currentPageNumber, totalPages),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

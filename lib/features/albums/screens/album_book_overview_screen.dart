@@ -7,6 +7,7 @@ import '../data/album_repository.dart';
 import '../services/album_studio_controller.dart';
 import '../widgets/album_pdf_preview_sheet.dart';
 import '../widgets/book_spread_tile.dart';
+import '../widgets/studio_drawers/book_overview_sheets.dart';
 import '../widgets/studio_drawers/themes_and_style_sheet.dart';
 import 'album_flipbook_screen.dart';
 import 'album_page_editor_screen.dart';
@@ -57,12 +58,15 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
   Future<void> _initController() async {
     final doc = await widget.repository.loadOrSynthesizeStudioDocument(
       widget.collection.id,
+      autoPopulate: false,
     );
     if (!mounted) return;
     setState(() {
       _controller = AlbumStudioController(
         collectionId: widget.collection.id,
         initialDocument: doc,
+        initialCollection: widget.collection,
+        initialPhotos: widget.photos,
         repository: widget.repository,
       );
       _isLoading = false;
@@ -77,7 +81,19 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
     super.dispose();
   }
 
-  Map<String, AlbumPhoto> _buildPhotoLookup() {
+  AlbumCollection _liveCollection(AlbumStudioController ctrl) =>
+      ctrl.collection ?? widget.collection;
+
+  bool _hasLivePhotos(AlbumStudioController ctrl) =>
+      ctrl.collection != null || ctrl.photos.isNotEmpty;
+
+  List<AlbumPhoto> _livePhotos(AlbumStudioController ctrl) =>
+      _hasLivePhotos(ctrl) ? ctrl.photos : widget.photos;
+
+  Map<String, AlbumPhoto> _livePhotoById(AlbumStudioController ctrl) {
+    if (_hasLivePhotos(ctrl)) {
+      return ctrl.photoById;
+    }
     return {
       for (final photo in widget.photos) photo.id: photo,
     };
@@ -98,8 +114,8 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
       MaterialPageRoute<void>(
         builder: (context) => AlbumPageEditorScreen(
           controller: ctrl,
-          collection: widget.collection,
-          photos: widget.photos,
+          collection: _liveCollection(ctrl),
+          photos: _livePhotos(ctrl),
           repository: widget.repository,
           mediaService: widget.mediaService,
           initialPageIndex: pageIndex,
@@ -111,193 +127,19 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
   void _handleOpenAddSheet() {
     final ctrl = _controller;
     if (ctrl == null) return;
-    final tokens = context.inkTokens;
-
-    showModalBottomSheet<void>(
+    showBookOverviewAddSheet(
       context: context,
-      backgroundColor: tokens.xuanPureLeaf,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  key: const Key('overview_add_blank_page'),
-                  leading: Icon(
-                    Icons.note_add_outlined,
-                    color: tokens.cinnabar,
-                  ),
-                  title: Text(
-                    '新增空白书页 · Add Blank Page',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontWeight: FontWeight.w600,
-                      color: tokens.jiaomo,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '在画册末尾添入一页宣纸留白，自由排入照片与贴纸',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 12,
-                      color: tokens.danmo,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    ctrl.addBlankPage();
-                  },
-                ),
-                if (widget.onImportMorePhotos != null)
-                  ListTile(
-                    key: const Key('overview_import_photos'),
-                    leading: Icon(
-                      Icons.add_photo_alternate_outlined,
-                      color: tokens.nongmo,
-                    ),
-                    title: Text(
-                      '导入更多照片 · Import Photos',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontWeight: FontWeight.w600,
-                        color: tokens.jiaomo,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.of(sheetContext).pop();
-                      widget.onImportMorePhotos!();
-                    },
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
+      controller: ctrl,
+      onImportMorePhotos: widget.onImportMorePhotos,
     );
   }
 
   void _handleOpenArrangeSheet() {
     final ctrl = _controller;
     if (ctrl == null) return;
-    final tokens = context.inkTokens;
-
-    showModalBottomSheet<void>(
+    showBookOverviewArrangeSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: tokens.xuanPureLeaf,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
-      builder: (sheetContext) {
-        return ListenableBuilder(
-          listenable: ctrl,
-          builder: (context, _) {
-            final pages = ctrl.pages;
-            return SizedBox(
-              key: const Key('book_overview_arrange_sheet'),
-              height: MediaQuery.of(context).size.height * 0.65,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.swap_vert, color: tokens.cinnabar, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '调整书页顺序 · Arrange Pages',
-                            style: TextStyle(
-                              fontFamily: InkDiaryTheme.fontNotoSerif,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: tokens.jiaomo,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.close, color: tokens.danmo),
-                          onPressed: () => Navigator.of(sheetContext).pop(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: ReorderableListView.builder(
-                        itemCount: pages.length,
-                        onReorderItem: (oldIndex, newIndex) {
-                          ctrl.reorderPages(oldIndex, newIndex);
-                        },
-                        itemBuilder: (context, index) {
-                          final page = pages[index];
-                          return ListTile(
-                            key: ValueKey('arrange_page_${page.id}'),
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 8),
-                            leading: CircleAvatar(
-                              radius: 15,
-                              backgroundColor: tokens.agedFiber,
-                              child: Text(
-                                '${page.pageNumber}',
-                                style: TextStyle(
-                                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                                  fontSize: 12,
-                                  color: tokens.jiaomo,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              '第 ${page.pageNumber} 页 (${page.photoSlots.length} 张影像)',
-                              style: TextStyle(
-                                fontFamily: InkDiaryTheme.fontNotoSerif,
-                                fontSize: 14,
-                                color: tokens.jiaomo,
-                              ),
-                            ),
-                            subtitle: Text(
-                              '版式: ${page.layoutTemplateId}',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: tokens.danmo,
-                              ),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (pages.length > 1)
-                                  IconButton(
-                                    key: Key('arrange_delete_page_$index'),
-                                    icon: Icon(
-                                      Icons.delete_outline,
-                                      size: 19,
-                                      color: tokens.cinnabar,
-                                    ),
-                                    tooltip: '删除此页 (照片将移入收集箱)',
-                                    onPressed: () => ctrl.removePage(page.id),
-                                  ),
-                                Icon(
-                                  Icons.drag_handle,
-                                  color: tokens.qingmo,
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      controller: ctrl,
     );
   }
 
@@ -323,8 +165,8 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
 
     await AlbumPdfPreviewSheet.show(
       context,
-      collection: widget.collection,
-      photos: widget.photos,
+      collection: _liveCollection(ctrl),
+      photos: _livePhotos(ctrl),
       studioDocument: ctrl.document,
       mediaService: widget.mediaService,
     );
@@ -343,13 +185,15 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
     }
 
     final ctrl = _controller!;
-    final photoById = _buildPhotoLookup();
 
     return ListenableBuilder(
       listenable: ctrl,
       builder: (context, _) {
+        final collection = _liveCollection(ctrl);
+        final photos = _livePhotos(ctrl);
+        final photoById = _livePhotoById(ctrl);
         final pages = ctrl.pages;
-        final spreads = ctrl.document.buildSpreads(includeBlankTrailing: true);
+        final spreads = ctrl.overviewSpreads;
         final removedCount = ctrl.removedPhotoIds.length;
 
         return Scaffold(
@@ -367,7 +211,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.collection.title,
+                  collection.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -423,19 +267,19 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                   color: tokens.nongmo,
                 ),
                 tooltip: '沉浸翻阅模式',
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => AlbumFlipbookScreen(
-                        collection: widget.collection,
-                        photos: widget.photos,
-                        mediaService: widget.mediaService,
-                        studioDocument: ctrl.document,
-                        repository: widget.repository,
-                      ),
-                    ),
-                  );
-                },
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (context) => AlbumFlipbookScreen(
+                            controller: ctrl,
+                            collection: collection,
+                            photos: photos,
+                            mediaService: widget.mediaService,
+                            repository: widget.repository,
+                          ),
+                        ),
+                      );
+                    },
               ),
             ],
           ),
@@ -450,7 +294,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                   final pair = spreads[spreadIdx];
                   return BookSpreadTile(
                     spreadIndex: spreadIdx,
-                    collection: widget.collection,
+                    collection: collection,
                     spreadData: pair,
                     photoById: photoById,
                     mediaService: widget.mediaService,

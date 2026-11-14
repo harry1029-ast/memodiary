@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/albums/models/album_studio_models.dart';
+import 'package:memodiary/features/albums/screens/album_book_overview_screen.dart';
 import 'package:memodiary/features/albums/screens/album_flipbook_screen.dart';
 import 'package:memodiary/features/albums/screens/album_page_editor_screen.dart';
 import 'package:memodiary/features/albums/screens/album_workspace_screen.dart';
+import 'package:memodiary/features/albums/services/album_studio_controller.dart';
 import 'album_test_harness.dart';
 
 void main() {
@@ -205,6 +207,166 @@ void main() {
     expect(find.byType(AlbumFlipbookScreen), findsOneWidget);
 
     await tearDownAlbumScreen(tester);
+  });
+
+  testWidgets(
+      'Overview -> Flipbook -> Page Editor shares one controller, opens active spread page, and propagates edits back',
+      (tester) async {
+    await harness.repository.createCollection(
+      id: 'col-shared-roundtrip',
+      title: '灵隐问道',
+      destinationTag: '杭州',
+    );
+    final photoIds = <String>[];
+    for (var i = 0; i < 3; i++) {
+      final src = harness.createSourcePhoto('lingyin_$i.png');
+      final photo = await harness.repository.ingestAndAddPhoto(
+        collectionId: 'col-shared-roundtrip',
+        sourceFile: src,
+      );
+      photoIds.add(photo.id);
+    }
+
+    final seedDoc = AlbumStudioDocument(
+      pages: [
+        for (var i = 0; i < 3; i++)
+          AlbumPageModel(
+            id: 'page_${i + 1}',
+            pageNumber: i + 1,
+            layoutTemplateId: 'solo_full_bleed',
+            photoSlots: [
+              PhotoSlotAssignment(slotIndex: 0, photoId: photoIds[i]),
+            ],
+          ),
+      ],
+    );
+    await harness.repository.saveStudioDocument('col-shared-roundtrip', seedDoc);
+
+    final collection =
+        (await harness.repository.getCollectionById('col-shared-roundtrip'))!;
+    final photos =
+        await harness.repository.getPhotosForCollection('col-shared-roundtrip');
+
+    await pumpAlbumScreen(
+      tester,
+      AlbumBookOverviewScreen(
+        collection: collection,
+        photos: photos,
+        repository: harness.repository,
+        mediaService: harness.mediaService,
+      ),
+      viewportSize: const Size(800, 1400),
+    );
+    await tester.pumpAndSettle();
+
+    // Open Flipbook from Book Overview
+    await tester.tap(find.byKey(const Key('book_overview_flipbook_button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlbumFlipbookScreen), findsOneWidget);
+    expect(find.text('第 1 / 2 页'), findsOneWidget);
+
+    // Step to Spread 2 (Page 2 left, Page 3 right)
+    await tester.tap(find.byKey(const Key('flipbook_next_page_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('第 2 / 2 页'), findsOneWidget);
+
+    // Tap Edit -> opens Page Editor at Spread 2's first editable page (Page 2 / 3)
+    await tester.tap(find.byKey(const Key('flipbook_edit_button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlbumPageEditorScreen), findsOneWidget);
+    expect(find.text('Page 2 / 3'), findsOneWidget);
+
+    // Add a seal stamp overlay to Page 2 and set photo on Page 2 as collection cover
+    await tester.tap(find.byKey(const Key('studio_tab_add')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('studio_add_seal_stamp')));
+    await tester.pumpAndSettle();
+
+    // Return to Flipbook -> Page 2 displays the new overlay immediately
+    await tester.tap(find.byKey(const Key('page_editor_confirm_button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlbumFlipbookScreen), findsOneWidget);
+    expect(find.text('拾光'), findsWidgets);
+
+    // Pop Flipbook back to Book Overview -> Book Overview shares the same session
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(AlbumBookOverviewScreen), findsOneWidget);
+    expect(find.text('拾光'), findsWidgets);
+
+    await tearDownAlbumScreen(tester);
+  });
+
+  testWidgets(
+      'AlbumFlipbookScreen clamps spread index when spreads shrink and does not dispose external controller',
+      (tester) async {
+    await harness.repository.createCollection(
+      id: 'col-flip-clamp',
+      title: '飞来峰',
+      destinationTag: '杭州',
+    );
+    final photoIds = <String>[];
+    for (var i = 0; i < 3; i++) {
+      final src = harness.createSourcePhoto('flf_$i.png');
+      final photo = await harness.repository.ingestAndAddPhoto(
+        collectionId: 'col-flip-clamp',
+        sourceFile: src,
+      );
+      photoIds.add(photo.id);
+    }
+
+    final doc = AlbumStudioDocument(
+      pages: [
+        for (var i = 0; i < 3; i++)
+          AlbumPageModel(
+            id: 'clamp_page_${i + 1}',
+            pageNumber: i + 1,
+            layoutTemplateId: 'solo_full_bleed',
+            photoSlots: [
+              PhotoSlotAssignment(slotIndex: 0, photoId: photoIds[i]),
+            ],
+          ),
+      ],
+    );
+    final collection =
+        (await harness.repository.getCollectionById('col-flip-clamp'))!;
+    final photos =
+        await harness.repository.getPhotosForCollection('col-flip-clamp');
+    final externalController = AlbumStudioController(
+      collectionId: 'col-flip-clamp',
+      initialDocument: doc,
+      initialCollection: collection,
+      initialPhotos: photos,
+      repository: harness.repository,
+    );
+
+    await pumpAlbumScreen(
+      tester,
+      AlbumFlipbookScreen(
+        controller: externalController,
+        collection: collection,
+        photos: const [],
+        repository: harness.repository,
+        mediaService: harness.mediaService,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('flipbook_next_page_button')));
+    await tester.pumpAndSettle();
+    expect(find.text('第 2 / 2 页'), findsOneWidget);
+
+    // Shrink document from 3 pages (2 spreads) down to 1 page (1 spread)
+    externalController.removePage('clamp_page_3');
+    externalController.removePage('clamp_page_2');
+    await tester.pumpAndSettle();
+    expect(find.text('第 1 / 1 页'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    externalController.addBlankPage();
+    expect(externalController.pages.length, 2);
+    externalController.dispose();
+    await tester.pump(const Duration(seconds: 1));
   });
 }
 

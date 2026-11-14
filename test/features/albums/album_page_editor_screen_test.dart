@@ -418,4 +418,85 @@ void main() {
       await tearDownAlbumScreen(tester);
     },
   );
+
+  testWidgets(
+      'AlbumPageEditorScreen reflects live PhotoAnnotationSheet edits, cover seal, and deletion immediately',
+      (tester) async {
+    final (controller, photoIds) = await createControllerWithPhotos(2);
+    final collection =
+        (await harness.repository.getCollectionById('col-editor-test'))!;
+    final photos =
+        await harness.repository.getPhotosForCollection('col-editor-test');
+
+    await pumpAlbumScreen(
+      tester,
+      AlbumPageEditorScreen(
+        controller: controller,
+        collection: collection,
+        photos: photos,
+        repository: harness.repository,
+        mediaService: harness.mediaService,
+        initialPageIndex: 0,
+      ),
+      viewportSize: const Size(800, 2000),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('interactive_photo_slot_0')), findsOneWidget);
+    expect(find.byKey(const Key('interactive_photo_slot_1')), findsOneWidget);
+
+    // Open PhotoAnnotationSheet on slot 0
+    await tester.tap(find.byKey(const Key('interactive_photo_slot_0')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('slot_annotate_button_0')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('annotation_location_field')),
+      '断桥残雪',
+    );
+    await tester.enterText(
+      find.byKey(const Key('annotation_caption_field')),
+      '冬日晴雪',
+    );
+    final setCoverBtn = find.byKey(const Key('annotation_set_cover'));
+    await tester.ensureVisible(setCoverBtn);
+    await tester.tap(setCoverBtn);
+    await tester.pumpAndSettle();
+    expect(find.text('当前封面'), findsOneWidget);
+
+    final saveBtn = find.byKey(const Key('annotation_save'));
+    await tester.ensureVisible(saveBtn);
+    await tester.tap(saveBtn);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(controller.collection?.routeSummary, '断桥残雪');
+    expect(controller.photoById[photoIds[0]]?.caption, '冬日晴雪');
+
+    // Re-open PhotoAnnotationSheet on slot 0 (still selected): must reflect live photo & live collection cover
+    await tester.tap(find.byKey(const Key('slot_annotate_button_0')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('断桥残雪'), findsOneWidget);
+    expect(find.text('冬日晴雪'), findsOneWidget);
+    expect(find.text('当前封面'), findsOneWidget);
+
+    // Delete photo 0 via PhotoAnnotationSheet -> canvas adapts from 2 slots to 1
+    await tester.tap(find.byKey(const Key('annotation_delete')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('annotation_delete_confirm')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    expect(controller.selectedPage?.photoSlots.length, 1);
+    expect(controller.selectedPage?.photoSlots.first.photoId, photoIds[1]);
+    expect(controller.selectedPage?.layoutTemplateId, 'solo_full_bleed');
+    expect(find.byKey(const Key('interactive_photo_slot_0')), findsOneWidget);
+    expect(find.byKey(const Key('interactive_photo_slot_1')), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
+    await tester.pump(const Duration(seconds: 1));
+  });
 }

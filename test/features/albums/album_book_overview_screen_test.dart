@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/albums/screens/album_book_overview_screen.dart';
 import 'package:memodiary/features/albums/screens/album_page_editor_screen.dart';
 import 'package:memodiary/features/albums/screens/album_workspace_screen.dart';
+import 'package:memodiary/features/albums/services/album_studio_controller.dart';
 import 'package:memodiary/features/albums/widgets/studio_drawers/themes_and_style_sheet.dart';
 import 'album_test_harness.dart';
 
@@ -242,5 +243,134 @@ void main() {
     );
 
     await tearDownAlbumScreen(tester);
+  });
+
+  testWidgets(
+      'AlbumBookOverviewScreen reacts to live photo imports, updates Page Editor tray, and preserves external controller on dispose',
+      (tester) async {
+    await harness.repository.createCollection(
+      id: 'col-studio-live',
+      title: '黄山云海集',
+      destinationTag: '黄山',
+    );
+    for (var i = 0; i < 2; i++) {
+      final src = harness.createSourcePhoto('huangshan_$i.png');
+      await harness.repository.ingestAndAddPhoto(
+        collectionId: 'col-studio-live',
+        sourceFile: src,
+      );
+    }
+
+    final collection =
+        (await harness.repository.getCollectionById('col-studio-live'))!;
+    final initialPhotos =
+        await harness.repository.getPhotosForCollection('col-studio-live');
+    late final String importedPhotoId;
+    Future<void>? importFuture;
+
+    await pumpAlbumScreen(
+      tester,
+      AlbumBookOverviewScreen(
+        collection: collection,
+        photos: initialPhotos,
+        repository: harness.repository,
+        mediaService: harness.mediaService,
+        onImportMorePhotos: () {
+          importFuture = () async {
+            final extraSrc = harness.createSourcePhoto('huangshan_extra.png');
+            final imported = await harness.repository.ingestAndAddPhoto(
+              collectionId: 'col-studio-live',
+              sourceFile: extraSrc,
+            );
+            importedPhotoId = imported.id;
+          }();
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('收集箱 2 张'), findsOneWidget);
+
+    // Trigger '+ Add -> Import Photos'
+    await tester.tap(find.byKey(const Key('book_overview_add_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('overview_import_photos')));
+    await tester.pumpAndSettle();
+    await importFuture;
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+
+    // Overview header immediately reflects the newly imported photo
+    expect(find.textContaining('收集箱 3 张'), findsOneWidget);
+
+    // Open Page 1 in AlbumPageEditorScreen; place the newly imported photo onto Page 1
+    await tester.tap(find.byKey(const Key('spread_page_tile_0')));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlbumPageEditorScreen), findsOneWidget);
+    final importedTrayItem =
+        find.byKey(Key('removed_tray_item_$importedPhotoId'));
+    expect(importedTrayItem, findsOneWidget);
+    await tester.tap(importedTrayItem);
+    await tester.pumpAndSettle();
+
+    // Verify Page 1 renders the newly imported photo (not missing-photo placeholder)
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('interactive_photo_slot_0')),
+        matching: find.byIcon(Icons.add_photo_alternate_outlined),
+      ),
+      findsNothing,
+    );
+
+    // Confirm and exit Page Editor, then close Overview to persist layout
+    await tester.tap(find.byKey(const Key('page_editor_confirm_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('book_overview_close_button')));
+    await tester.pumpAndSettle();
+
+    final persistedDoc = await harness.repository
+        .loadOrSynthesizeStudioDocument('col-studio-live');
+    expect(
+      persistedDoc.pages.first.photoSlots.map((slot) => slot.photoId),
+      contains(importedPhotoId),
+    );
+
+    await tearDownAlbumScreen(tester);
+
+    // Passing an external controller must not dispose it when Overview unmounts,
+    // and Overview must read live collection/photos from controller even if widget.photos is empty.
+    final externalController = AlbumStudioController(
+      collectionId: 'col-studio-live',
+      initialDocument: persistedDoc,
+      initialCollection: collection,
+      initialPhotos:
+          await harness.repository.getPhotosForCollection('col-studio-live'),
+      repository: harness.repository,
+    );
+    await pumpAlbumScreen(
+      tester,
+      AlbumBookOverviewScreen(
+        collection: collection,
+        photos: const [],
+        repository: harness.repository,
+        mediaService: harness.mediaService,
+        controller: externalController,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('收集箱 2 张'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('spread_page_tile_0')),
+        matching: find.byIcon(Icons.add_photo_alternate_outlined),
+      ),
+      findsNothing,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    externalController.addBlankPage();
+    expect(externalController.pages.length, 2);
+    externalController.dispose();
+    await tester.pump(const Duration(seconds: 1));
   });
 }
