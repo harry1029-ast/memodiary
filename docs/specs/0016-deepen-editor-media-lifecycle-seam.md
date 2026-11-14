@@ -1,7 +1,7 @@
 ---
 id: SPEC-016
 title: Deepen the Staging Handscroll & Tucked Prints Media Lifecycle Seam
-status: ready-for-agent
+status: completed
 created_at: 2026-11-14T18:46:00+08:00
 adr: ADR-0009, ADR-0010
 ---
