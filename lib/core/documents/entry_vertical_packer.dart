@@ -57,10 +57,6 @@ class VerticalTextColumn extends VerticalColumnItem {
     this.isQuote = false,
   });
 
-  /// Bare [VerticalRenderToken]s in top-to-bottom column order.
-  List<VerticalRenderToken> get tokens =>
-      styledTokens.map((styled) => styled.token).toList(growable: false);
-
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

@@ -49,15 +49,10 @@ class FolioVerticalPaginator {
       switch (columnItem) {
         case VerticalMediaColumn mediaColumn:
           flushLeaf();
-          final caption = mediaColumn.media.caption.trim();
           outLeaves.add(
-            FolioTippedInEphemeraLeaf(
-              leafIndex: 0,
-              totalLeaves: 0,
-              mediaType: mediaColumn.isVideo ? 'video' : 'image',
-              sandboxedRelativePath: mediaColumn.media.path,
-              caption: caption.isNotEmpty ? caption : null,
-              aspectRatio: mediaColumn.media.explicitAspectRatio ?? 1.0,
+            FolioTippedInEphemeraLeaf.fromMediaEmbed(
+              media: mediaColumn.media,
+              isVideo: mediaColumn.isVideo,
               title: title,
               lunarDate: lunarDate,
             ),

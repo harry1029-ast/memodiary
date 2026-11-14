@@ -75,6 +75,39 @@ void main() {
       );
     });
 
+    test('fallback plainText strips only one document-terminating newline while retaining blank lines', () {
+      final deltaBlocks = EntryContentDecoder.decodeOps(
+        ops: const [
+          {'insert': 'hello\n'},
+        ],
+      );
+      final singleLineFallback = EntryContentDecoder.decode(
+        contentDeltaJson: '{corrupt',
+        fallbackPlainText: 'hello\n',
+      );
+      expect(singleLineFallback, equals(deltaBlocks));
+      expect(singleLineFallback, hasLength(1));
+
+      final blankMiddleFallback = EntryContentDecoder.decode(
+        contentDeltaJson: '',
+        fallbackPlainText: 'first\n\nsecond\n',
+      );
+      expect(blankMiddleFallback, equals(const [
+        EntryTextBlock(runs: [EntryInlineRun(text: 'first')]),
+        EntryTextBlock(runs: []),
+        EntryTextBlock(runs: [EntryInlineRun(text: 'second')]),
+      ]));
+
+      final trailingBlankFallback = EntryContentDecoder.decode(
+        contentDeltaJson: '',
+        fallbackPlainText: 'hello\n\n',
+      );
+      expect(trailingBlankFallback, equals(const [
+        EntryTextBlock(runs: [EntryInlineRun(text: 'hello')]),
+        EntryTextBlock(runs: []),
+      ]));
+    });
+
     test('binds trailing-newline block attributes and resets ordered list counters', () {
       final blocks = EntryContentDecoder.decodeOps(
         ops: const [

@@ -307,8 +307,14 @@ class EntryContentDecoder {
 
   static List<EntryContentBlock> _decodeFallbackPlainText(String plainText) {
     if (plainText.trim().isEmpty) return const [];
+    final lines = plainText.split('\n');
+    // Quill documents terminate with a single trailing '\n'; drop at most one
+    // trailing empty segment so 'hello\n' matches [{'insert': 'hello\n'}].
+    if (lines.isNotEmpty && lines.last.isEmpty) {
+      lines.removeLast();
+    }
     final blocks = <EntryContentBlock>[];
-    for (final rawLine in plainText.split('\n')) {
+    for (final rawLine in lines) {
       final line = rawLine.trimRight();
       if (line.isEmpty) {
         blocks.add(const EntryTextBlock(runs: []));

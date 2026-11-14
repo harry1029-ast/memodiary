@@ -266,17 +266,14 @@ class FolioPaginationEngine {
       switch (block) {
         case EntryMediaBlock mediaBlock:
           flushRows();
-          final caption = mediaBlock.media.caption.trim();
-          outLeaves.add(FolioTippedInEphemeraLeaf(
-            leafIndex: 0,
-            totalLeaves: 0,
-            mediaType: mediaBlock.isVideo ? 'video' : 'image',
-            sandboxedRelativePath: mediaBlock.media.path,
-            caption: caption.isNotEmpty ? caption : null,
-            aspectRatio: mediaBlock.media.explicitAspectRatio ?? 1.0,
-            title: title,
-            lunarDate: lunarDate,
-          ));
+          outLeaves.add(
+            FolioTippedInEphemeraLeaf.fromMediaEmbed(
+              media: mediaBlock.media,
+              isVideo: mediaBlock.isVideo,
+              title: title,
+              lunarDate: lunarDate,
+            ),
+          );
         case EntryTextBlock textBlock:
           final paragraphRows = _tokenizeHorizontalParagraph(textBlock);
           for (final row in paragraphRows) {

@@ -70,5 +70,15 @@ void main() {
         equals(const MediaEmbedData(path: '{corrupt}')),
       );
     });
+
+    test('thumbnailPath derives _thumb.webp only when isVideo is true and path ends with .mp4', () {
+      const mp4 = MediaEmbedData(path: 'media/clip.mp4');
+      expect(mp4.thumbnailPath(isVideo: true), equals('media/clip_thumb.webp'));
+      expect(mp4.thumbnailPath(), equals('media/clip.mp4'));
+
+      const webp = MediaEmbedData(path: 'media/photo.webp');
+      expect(webp.thumbnailPath(isVideo: true), equals('media/photo.webp'));
+      expect(webp.thumbnailPath(), equals('media/photo.webp'));
+    });
   });
 }

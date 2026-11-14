@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../../core/documents/entry_content_decoder.dart';
 import '../../../core/documents/entry_vertical_packer.dart';
+import '../../../core/documents/media_embed_data.dart';
 import '../../../core/documents/vertical_typography_mapper.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
@@ -399,7 +400,7 @@ class PdfVerticalScrollBuilder {
           ));
         case VerticalMediaColumn mediaCol:
           final img = await _loadTranscodedImage(
-            mediaCol.media.path,
+            mediaCol.media,
             mediaService,
             isVideo: mediaCol.isVideo,
           );
@@ -416,14 +417,12 @@ class PdfVerticalScrollBuilder {
   }
 
   static Future<pw.MemoryImage?> _loadTranscodedImage(
-    String path,
+    MediaEmbedData media,
     MediaSandboxService mediaService, {
     bool isVideo = false,
   }) async {
     try {
-      final resolvedPath = (isVideo && path.endsWith('.mp4'))
-          ? '${path.substring(0, path.length - 4)}_thumb.webp'
-          : path;
+      final resolvedPath = media.thumbnailPath(isVideo: isVideo);
       final file = MediaSandboxService.isStrictlyRelative(resolvedPath)
           ? await mediaService.getFileFromRelativePath(resolvedPath)
           : null;

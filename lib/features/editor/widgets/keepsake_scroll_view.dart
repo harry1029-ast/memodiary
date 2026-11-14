@@ -141,7 +141,6 @@ class KeepsakeScrollView extends StatelessWidget {
     switch (item) {
       case VerticalTextColumn textItem:
         return KeepsakeColumn(
-          tokens: textItem.tokens,
           styledTokens: textItem.styledTokens,
           ruleTint: style.tokens.ruleTint,
           inkColor: _inkColor,

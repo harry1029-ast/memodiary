@@ -51,6 +51,15 @@ class MediaEmbedData {
 
   double? get explicitAspectRatio => aspectRatio.ratio;
 
+  /// Returns the companion `_thumb.webp` path for `.mp4` videos when
+  /// [isVideo] is true; otherwise returns [path] unchanged.
+  String thumbnailPath({bool isVideo = false}) {
+    if (isVideo && path.endsWith('.mp4')) {
+      return '${path.substring(0, path.length - 4)}_thumb.webp';
+    }
+    return path;
+  }
+
   static MediaEmbedData fromRaw(dynamic raw) {
     if (raw == null) return const MediaEmbedData(path: '');
     if (raw is Map) {

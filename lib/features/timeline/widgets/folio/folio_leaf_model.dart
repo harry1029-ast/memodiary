@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/documents/media_embed_data.dart';
 import '../../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../../scenery/models/shanshui_atmosphere.dart';
 import '../../../templates/models/template_style.dart';
@@ -216,6 +217,26 @@ class FolioTippedInEphemeraLeaf extends FolioLeaf {
     this.sealStyle = SealCarvingStyle.zhuwen,
     this.isConcludingLeaf = false,
   });
+
+  /// Builds an unindexed ephemera leaf from a canonical [MediaEmbedData].
+  factory FolioTippedInEphemeraLeaf.fromMediaEmbed({
+    required MediaEmbedData media,
+    required bool isVideo,
+    required String title,
+    required String lunarDate,
+  }) {
+    final trimmedCaption = media.caption.trim();
+    return FolioTippedInEphemeraLeaf(
+      leafIndex: 0,
+      totalLeaves: 0,
+      mediaType: isVideo ? 'video' : 'image',
+      sandboxedRelativePath: media.path,
+      caption: trimmedCaption.isNotEmpty ? trimmedCaption : null,
+      aspectRatio: media.explicitAspectRatio ?? 1.0,
+      title: title,
+      lunarDate: lunarDate,
+    );
+  }
 }
 
 /// Single horizontal row in a horizontal ruled content leaf.

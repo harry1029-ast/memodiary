@@ -9,8 +9,7 @@ import '../../../templates/models/template_style.dart';
 /// Faithfully lays out classical CJK vertical glyphs, ideographic corner stops,
 /// rotated horizontal fallback punctuation, and dual-subcolumn Interlinear Sub-Notes (双行夹注).
 class KeepsakeColumn extends StatelessWidget {
-  final List<VerticalRenderToken> tokens;
-  final List<VerticalStyledToken>? styledTokens;
+  final List<VerticalStyledToken> styledTokens;
   final RuleInkTint ruleTint;
   final Color inkColor;
   final String fontFamily;
@@ -22,8 +21,7 @@ class KeepsakeColumn extends StatelessWidget {
 
   const KeepsakeColumn({
     super.key,
-    required this.tokens,
-    this.styledTokens,
+    required this.styledTokens,
     this.ruleTint = RuleInkTint.vermilion,
     required this.inkColor,
     this.fontFamily = InkDiaryTheme.fontKaiti,
@@ -44,9 +42,6 @@ class KeepsakeColumn extends StatelessWidget {
       alpha: ruleTint == RuleInkTint.charcoal ? 0.20 : 0.35,
     );
 
-    final resolvedTokens = styledTokens ??
-        tokens.map((token) => VerticalStyledToken(token: token)).toList(growable: false);
-
     return Semantics(
       container: true,
       label: _buildSemanticsLabel(),
@@ -63,7 +58,7 @@ class KeepsakeColumn extends StatelessWidget {
         child: Column(
           mainAxisAlignment: isTitle ? MainAxisAlignment.center : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,
-          children: resolvedTokens
+          children: styledTokens
               .map((styledToken) => _buildTokenCell(styledToken, effectiveFontSize))
               .toList(),
         ),
@@ -73,7 +68,8 @@ class KeepsakeColumn extends StatelessWidget {
 
   String _buildSemanticsLabel() {
     final buffer = StringBuffer();
-    for (final token in tokens) {
+    for (final styledToken in styledTokens) {
+      final token = styledToken.token;
       if (token is VerticalGlyphToken) {
         buffer.write(token.glyph);
       } else if (token is VerticalInterlinearPairToken) {

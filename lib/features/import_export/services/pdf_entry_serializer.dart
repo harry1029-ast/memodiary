@@ -349,9 +349,7 @@ class PdfEntrySerializer {
     MediaSandboxService mediaService,
     PdfFontResolver fontResolver,
   ) async {
-    final thumbPath = media.path.endsWith('.mp4')
-        ? '${media.path.substring(0, media.path.length - 4)}_thumb.webp'
-        : media.path;
+    final thumbPath = media.thumbnailPath(isVideo: true);
     final memoryImage = await _loadMemoryImage(thumbPath, mediaService);
 
     final videoWidget = pw.Container(

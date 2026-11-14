@@ -5,6 +5,9 @@ import 'package:memodiary/core/documents/media_embed_data.dart';
 import 'package:memodiary/core/documents/vertical_typography_mapper.dart';
 
 void main() {
+  List<VerticalRenderToken> bareTokens(VerticalTextColumn column) =>
+      column.styledTokens.map((styled) => styled.token).toList(growable: false);
+
   group('EntryVerticalPacker', () {
     test('emits unsplit title column and skips blank/whitespace-only paragraphs', () {
       final columns = EntryVerticalPacker.pack(
@@ -22,12 +25,12 @@ void main() {
       expect(titleCol.isTitle, isTrue);
       expect(titleCol.isHeader, isFalse);
       expect(titleCol.isQuote, isFalse);
-      expect(titleCol.tokens, hasLength(7)); // Unsplit even though maxTokensPerColumn == 3
+      expect(bareTokens(titleCol), hasLength(7)); // Unsplit even though maxTokensPerColumn == 3
 
       final bodyCol = columns[1] as VerticalTextColumn;
       expect(bodyCol.isTitle, isFalse);
       expect(
-        bodyCol.tokens,
+        bareTokens(bodyCol),
         equals(const [VerticalGlyphToken('明'), VerticalGlyphToken('月')]),
       );
     });
@@ -52,7 +55,7 @@ void main() {
       final column = columns.single as VerticalTextColumn;
       expect(column.isHeader, isTrue);
       expect(column.isQuote, isFalse);
-      expect(column.tokens, equals(const [
+      expect(bareTokens(column), equals(const [
         VerticalGlyphToken('素'),
         VerticalGlyphToken('笺'),
         VerticalGlyphToken('朱'),
@@ -99,11 +102,11 @@ void main() {
 
       final quoteCol1 = columns[0] as VerticalTextColumn;
       expect(quoteCol1.isQuote, isTrue);
-      expect(quoteCol1.tokens, equals(const [VerticalGlyphToken('风'), VerticalGlyphToken('急')]));
+      expect(bareTokens(quoteCol1), equals(const [VerticalGlyphToken('风'), VerticalGlyphToken('急')]));
 
       final quoteCol2 = columns[1] as VerticalTextColumn;
       expect(quoteCol2.isQuote, isTrue);
-      expect(quoteCol2.tokens, equals(const [VerticalGlyphToken('天'), VerticalGlyphToken('高')]));
+      expect(bareTokens(quoteCol2), equals(const [VerticalGlyphToken('天'), VerticalGlyphToken('高')]));
 
       final checkedCol = columns[2] as VerticalTextColumn;
       expect(checkedCol.styledTokens.every((styled) => styled.isTodo && styled.isChecked), isTrue);
@@ -139,11 +142,11 @@ void main() {
         final col = columns[index] as VerticalTextColumn;
         expect(col.isHeader, isTrue);
       }
-      expect((columns[0] as VerticalTextColumn).tokens, hasLength(6));
-      expect((columns[1] as VerticalTextColumn).tokens, hasLength(6));
-      expect((columns[2] as VerticalTextColumn).tokens, hasLength(2));
+      expect(bareTokens(columns[0] as VerticalTextColumn), hasLength(6));
+      expect(bareTokens(columns[1] as VerticalTextColumn), hasLength(6));
+      expect(bareTokens(columns[2] as VerticalTextColumn), hasLength(2));
       expect((columns[3] as VerticalTextColumn).isHeader, isTrue);
-      expect((columns[3] as VerticalTextColumn).tokens, hasLength(2));
+      expect(bareTokens(columns[3] as VerticalTextColumn), hasLength(2));
 
       expect(
         () => EntryVerticalPacker.pack(blocks: const [], maxTokensPerColumn: 0),
