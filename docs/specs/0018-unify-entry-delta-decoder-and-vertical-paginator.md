@@ -1,7 +1,7 @@
 ---
 id: SPEC-018
 title: "Unify the Keepsake Scroll View, Thread-Bound Folio & PDF Delta Decoder"
-status: ready-for-agent
+status: completed
 created_at: 2026-11-14
 adr: ADR-0005, ADR-0006, ADR-0007
 ---
