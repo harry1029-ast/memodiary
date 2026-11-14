@@ -387,5 +387,60 @@ void main() {
       );
       expect(folioLeaves.whereType<FolioTippedInEphemeraLeaf>(), isEmpty);
     });
+
+    testWidgets('deleting legacy EphemeraSheet removes sheet, SQLite row, video and thumbnail files, and settles viewport', (tester) async {
+      final legacySandbox = SyncTestMediaSandboxService(
+        tempDir: tempDirectory,
+        autoCreateMissingOnLookup: false,
+      );
+      final videoFile = File('${tempDirectory.path}/media/legacy_ephemera_vid.mp4')
+        ..parent.createSync(recursive: true)
+        ..writeAsBytesSync(kValidMp4FtypBytes);
+      final thumbFile = File('${tempDirectory.path}/media/legacy_ephemera_vid_thumb.webp')
+        ..writeAsBytesSync(kValid1x1PngBytes);
+
+      final legacyDelta = Delta()
+        ..insert('松风煮茗记。\n')
+        ..insert({'video': 'media/legacy_ephemera_vid.mp4'})
+        ..insert('\n');
+
+      await database.entriesDao.updateEntryContent(
+        'ephemera_folio_entry',
+        jsonEncode(legacyDelta.toJson()),
+        '松风煮茗记。',
+      );
+      await database.mediaOcrDao.attachMediaToEntry(
+        id: 'legacy_vid_att',
+        entryId: 'ephemera_folio_entry',
+        relativePath: 'media/legacy_ephemera_vid.mp4',
+        mediaType: 'video',
+        thumbnailPath: 'media/legacy_ephemera_vid_thumb.webp',
+      );
+
+      await pumpEntryEditorScreen(
+        tester,
+        database: database,
+        mediaSandboxService: legacySandbox,
+        entryId: 'ephemera_folio_entry',
+      );
+
+      expect(find.text('第 1 / 2 页'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('editor_page_corner_next')));
+      await tester.pumpAndSettle();
+      expect(find.text('第 2 / 2 页'), findsOneWidget);
+      expect(find.byType(StationeryEphemeraSheet), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('editor_remove_ephemera_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('第 1 / 1 页'), findsOneWidget);
+      expect(find.byType(StationeryEphemeraSheet), findsNothing);
+      expect(await database.mediaOcrDao.getMediaForEntry('ephemera_folio_entry'), isEmpty);
+      expect(videoFile.existsSync(), isFalse);
+      expect(thumbFile.existsSync(), isFalse);
+
+      final savedEntry = await database.entriesDao.getEntryById('ephemera_folio_entry');
+      expect(savedEntry!.contentDelta, isNot(contains('legacy_ephemera_vid.mp4')));
+    });
   });
 }

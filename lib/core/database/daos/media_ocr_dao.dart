@@ -75,18 +75,33 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
-  /// Deletes media attachment records matching both [entryId] and [relativePath].
-  Future<int> deleteMediaForEntryByPath({
+  /// Deletes media attachment records matching both [entryId] and [relativePath]
+  /// inside a transaction and returns any non-empty companion `thumbnailPath`s.
+  Future<List<String>> deleteMediaForEntryByPath({
     required String entryId,
     required String relativePath,
   }) {
-    return (delete(mediaAttachments)
-          ..where(
-            (attachment) =>
-                attachment.entryId.equals(entryId) &
-                attachment.relativePath.equals(relativePath),
-          ))
-        .go();
+    return transaction(() async {
+      final rows = await (select(mediaAttachments)
+            ..where(
+              (attachment) =>
+                  attachment.entryId.equals(entryId) &
+                  attachment.relativePath.equals(relativePath),
+            ))
+          .get();
+      final thumbnails = <String>{};
+      for (final row in rows) {
+        addNormalizedMediaPath(thumbnails, row.thumbnailPath);
+      }
+      await (delete(mediaAttachments)
+            ..where(
+              (attachment) =>
+                  attachment.entryId.equals(entryId) &
+                  attachment.relativePath.equals(relativePath),
+            ))
+          .go();
+      return thumbnails.toList();
+    });
   }
 
   /// Retrieves all video media attachments associated with [entryId].
@@ -410,19 +425,7 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
   /// Counts all unindexed images (`ocr_text IS NULL`) across active entries and albums.
   Future<int> countUnindexedImages() async {
     final row = await customSelect(
-      '''
-      SELECT (
-        SELECT COUNT(*)
-        FROM media_attachments ma
-        INNER JOIN entries e ON e.id = ma.entry_id
-        WHERE ma.media_type = 'image' AND ma.ocr_text IS NULL AND e.is_deleted = 0
-      ) + (
-        SELECT COUNT(*)
-        FROM album_photos ap
-        INNER JOIN album_collections ac ON ac.id = ap.collection_id
-        WHERE ap.ocr_text IS NULL
-      ) AS cnt
-      ''',
+      buildCountUnindexedImagesSql(),
       readsFrom: {mediaAttachments, entries, albumPhotos, albumCollections},
     ).getSingle();
 

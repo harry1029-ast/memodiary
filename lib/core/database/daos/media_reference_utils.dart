@@ -120,3 +120,21 @@ String buildUnindexedImagesSql({required bool sinceFilter}) {
     ORDER BY created_at ASC, id ASC
   ''';
 }
+
+/// Builds the SQL query counting unindexed images (`ocr_text IS NULL`) across
+/// active entries and album collections.
+String buildCountUnindexedImagesSql() {
+  return '''
+    SELECT (
+      SELECT COUNT(*)
+      FROM media_attachments ma
+      INNER JOIN entries e ON e.id = ma.entry_id
+      WHERE ma.media_type = 'image' AND ma.ocr_text IS NULL AND e.is_deleted = 0
+    ) + (
+      SELECT COUNT(*)
+      FROM album_photos ap
+      INNER JOIN album_collections ac ON ac.id = ap.collection_id
+      WHERE ap.ocr_text IS NULL
+    ) AS cnt
+  ''';
+}

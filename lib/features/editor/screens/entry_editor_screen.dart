@@ -311,6 +311,12 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     );
   }
 
+  Future<void> _handleDeleteEphemera(int sheetIndex) async {
+    final deletion = _mediaBinding?.deleteLegacyEphemera(sheetIndex);
+    _paginationHandler?.syncViewportToActiveSheet();
+    await deletion;
+  }
+
   Future<void> _handleSaveAndExit() async {
     HapticFeedback.lightImpact();
     final stagedCount = _coordinator.stagedItems.length;
@@ -409,7 +415,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onPreviousSheet: () => _paginationHandler!.goToSheet(currentSheetIndex - 1),
                 onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
                 onPageChanged: _paginationHandler!.handlePageChanged,
-                onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
+                onDeleteEphemera: _handleDeleteEphemera,
                 deskMedia: EditorMediaFeedback.handlersFor(
                   context,
                   _mediaBinding!,
