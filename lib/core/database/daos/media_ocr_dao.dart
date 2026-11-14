@@ -5,6 +5,7 @@ import '../tables/album_photos.dart';
 import '../tables/entries.dart';
 import '../tables/media_attachments.dart';
 import 'fts_query_utils.dart';
+import 'media_ocr_query_utils.dart';
 import 'media_reference_utils.dart';
 
 export 'media_attachment_draft.dart';
@@ -82,24 +83,17 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
     required String relativePath,
   }) {
     return transaction(() async {
-      final rows = await (select(mediaAttachments)
+      final deletedRows = await (delete(mediaAttachments)
             ..where(
               (attachment) =>
                   attachment.entryId.equals(entryId) &
                   attachment.relativePath.equals(relativePath),
             ))
-          .get();
+          .goAndReturn();
       final thumbnails = <String>{};
-      for (final row in rows) {
+      for (final row in deletedRows) {
         addNormalizedMediaPath(thumbnails, row.thumbnailPath);
       }
-      await (delete(mediaAttachments)
-            ..where(
-              (attachment) =>
-                  attachment.entryId.equals(entryId) &
-                  attachment.relativePath.equals(relativePath),
-            ))
-          .go();
       return thumbnails.toList();
     });
   }
