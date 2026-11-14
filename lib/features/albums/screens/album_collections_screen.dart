@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/database/app_database.dart';
@@ -49,8 +48,8 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
           database: widget.database,
           mediaService: widget.mediaService,
         );
-    _collectionsStream = widget.database.albumsDao.watchAllCollections();
-    _photoCountsStream = widget.database.albumsDao.watchPhotoCounts();
+    _collectionsStream = _repository.watchAllCollections();
+    _photoCountsStream = _repository.watchPhotoCounts();
   }
 
   Future<void> _handleCreateCollection() async {
@@ -74,22 +73,20 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
     );
     if (formResult == null || !mounted) return;
 
-    await widget.database.albumsDao.updateCollection(
-      AlbumCollectionsCompanion(
-        id: Value(collection.id),
-        title: Value(formResult.title),
-        description: Value(formResult.description),
-        destinationTag: Value(formResult.destinationTag),
-        routeSummary: Value(formResult.routeSummary),
-        startDate: Value(formResult.startDate),
-        endDate: Value(formResult.endDate),
-      ),
+    await _repository.updateCollectionMetadata(
+      id: collection.id,
+      title: formResult.title,
+      description: formResult.description,
+      destinationTag: formResult.destinationTag,
+      routeSummary: formResult.routeSummary,
+      startDate: formResult.startDate,
+      endDate: formResult.endDate,
     );
   }
 
   Future<void> _handleSelectCover(AlbumCollection collection) async {
     final photos =
-        await widget.database.albumsDao.getPhotosForCollection(collection.id);
+        await _repository.getPhotosForCollection(collection.id);
     if (!mounted) return;
 
     if (photos.isEmpty) {
@@ -167,8 +164,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
     );
 
     if (selectedPhotoId != null && mounted) {
-      await widget.database.albumsDao
-          .setCollectionCover(collection.id, selectedPhotoId);
+      await _repository.setCollectionCover(collection.id, selectedPhotoId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('已更新影集封面')),

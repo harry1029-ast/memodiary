@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/features/albums/screens/album_flipbook_screen.dart';
 import 'package:memodiary/features/albums/screens/album_workspace_screen.dart';
 import 'album_test_harness.dart';
 
@@ -154,5 +155,39 @@ void main() {
 
       await tearDownAlbumScreen(tester);
     });
+
+    testWidgets(
+      'passes active resolved repository to AlbumFlipbookScreen when repository prop is omitted',
+      (tester) async {
+        final collection = await harness.repository.createCollection(
+          title: '西湖夜游',
+        );
+        final src = harness.createSourcePhoto('night.png');
+        await harness.repository.ingestAndAddPhoto(
+          collectionId: collection.id,
+          sourceFile: src,
+        );
+
+        await pumpAlbumScreen(
+          tester,
+          AlbumWorkspaceScreen(
+            collectionId: collection.id,
+            database: harness.database,
+            mediaService: harness.mediaService,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('workspace_open_flipbook_button')));
+        await tester.pumpAndSettle();
+
+        final flipbook = tester.widget<AlbumFlipbookScreen>(
+          find.byType(AlbumFlipbookScreen),
+        );
+        expect(flipbook.repository, isNotNull);
+
+        await tearDownAlbumScreen(tester);
+      },
+    );
   });
 }

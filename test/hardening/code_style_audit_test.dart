@@ -326,5 +326,38 @@ void main() {
             'Make it required, or null-check it. Found:\n${violations.join('\n')}',
       );
     });
+
+    test('lib/features/albums seals AlbumsDao strictly behind album_repository.dart', () {
+      expect(albumsDir.existsSync(), isTrue);
+
+      final daoReferenceRegex = RegExp(r'(\.albumsDao\b|\bAlbumsDao\b)');
+      final dartFiles = albumsDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
+
+      final violations = <String>[];
+      for (final file in dartFiles) {
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        if (relPath == 'lib/features/albums/data/album_repository.dart') {
+          continue;
+        }
+        final lines = file.readAsLinesSync();
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+          final line = lines[lineIndex];
+          if (daoReferenceRegex.hasMatch(line)) {
+            violations.add('$relPath:${lineIndex + 1}: ${line.trim()}');
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'All SQLite reads, streams, and writes in lib/features/albums/ must route '
+            'through AlbumRepository (ADR-0010 / SPEC-017). Found direct AlbumsDao '
+            'references:\n${violations.join('\n')}',
+      );
+    });
   });
 }

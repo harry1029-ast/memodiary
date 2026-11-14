@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/database/app_database.dart';
@@ -73,8 +72,8 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
           repository: _repository,
           mediaService: _media,
         );
-    _collectionStream = _db.albumsDao.watchCollectionById(widget.collectionId);
-    _photosStream = _db.albumsDao.watchPhotosForCollection(widget.collectionId);
+    _collectionStream = _repository.watchCollectionById(widget.collectionId);
+    _photosStream = _repository.watchPhotosForCollection(widget.collectionId);
   }
 
   Future<void> _handleEditMetadata(AlbumCollection collection) async {
@@ -84,16 +83,14 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
     );
     if (formResult == null || !mounted) return;
 
-    await _db.albumsDao.updateCollection(
-      AlbumCollectionsCompanion(
-        id: Value(collection.id),
-        title: Value(formResult.title),
-        description: Value(formResult.description),
-        destinationTag: Value(formResult.destinationTag),
-        routeSummary: Value(formResult.routeSummary),
-        startDate: Value(formResult.startDate),
-        endDate: Value(formResult.endDate),
-      ),
+    await _repository.updateCollectionMetadata(
+      id: collection.id,
+      title: formResult.title,
+      description: formResult.description,
+      destinationTag: formResult.destinationTag,
+      routeSummary: formResult.routeSummary,
+      startDate: formResult.startDate,
+      endDate: formResult.endDate,
     );
   }
 
@@ -181,24 +178,10 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
     final movedPhoto = reordered.removeAt(oldIndex);
     reordered.insert(newIndex, movedPhoto);
 
-    final preSynthesized =
-        await _repository.synthesizeRouteSummary(widget.collectionId);
-    final currentRoute = collection.routeSummary?.trim();
-    final isAutoRoute = currentRoute == null ||
-        currentRoute.isEmpty ||
-        currentRoute == preSynthesized;
-
-    await _db.albumsDao.reorderPhotos(
+    await _repository.reorderPhotosAndSyncRoute(
       widget.collectionId,
       reordered.map((photo) => photo.id).toList(),
     );
-
-    if (isAutoRoute) {
-      await _repository.synthesizeRouteSummary(
-        widget.collectionId,
-        persistToCollection: true,
-      );
-    }
   }
 
   void _handleOpenFlipbook(
@@ -211,7 +194,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
           collection: collection,
           photos: photos,
           mediaService: _media,
-          repository: widget.repository,
+          repository: _repository,
         ),
       ),
     );

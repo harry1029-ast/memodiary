@@ -495,5 +495,209 @@ void main() {
         expect(col!.coverImagePath, equals(p2.relativeImagePath));
       },
     );
+
+    test(
+      'exposes sealed streams, queries, metadata updates, cover assignment, collection reordering, and batch photo inserts',
+      () async {
+        final allCollectionsFuture = repository.watchAllCollections().firstWhere(
+              (list) => list.length == 2 && list.first.id == 'col_sealed_b',
+            );
+        final countsFuture = repository
+            .watchPhotoCounts()
+            .firstWhere((counts) => counts['col_sealed_a'] == 2);
+
+        await repository.createCollection(
+          id: 'col_sealed_a',
+          title: 'Initial A',
+        );
+        await repository.createCollection(
+          id: 'col_sealed_b',
+          title: 'Initial B',
+        );
+
+        final watchedColFuture = repository
+            .watchCollectionById('col_sealed_a')
+            .firstWhere((col) => col?.title == 'Updated A');
+        final watchedPhotosFuture = repository
+            .watchPhotosForCollection('col_sealed_a')
+            .firstWhere((photos) => photos.length == 2);
+
+        await repository.reorderCollections(['col_sealed_b', 'col_sealed_a']);
+        final reorderedCollections = await allCollectionsFuture;
+        expect(
+          reorderedCollections.map((col) => col.id).toList(),
+          equals(['col_sealed_b', 'col_sealed_a']),
+        );
+
+        await repository.updateCollectionMetadata(
+          id: 'col_sealed_a',
+          title: 'Updated A',
+          description: 'Lakeside notes',
+          destinationTag: 'Hangzhou',
+          routeSummary: 'Manual Route',
+          startDate: DateTime(2026, 7, 1),
+          endDate: DateTime(2026, 7, 3),
+        );
+        final updatedCol = await watchedColFuture;
+        expect(updatedCol!.description, equals('Lakeside notes'));
+        expect(updatedCol.destinationTag, equals('Hangzhou'));
+        expect(updatedCol.routeSummary, equals('Manual Route'));
+
+        final fetchedCol = await repository.getCollectionById('col_sealed_a');
+        expect(fetchedCol?.title, equals('Updated A'));
+
+        final batchResult = await repository.addPhotosBatch('col_sealed_a', [
+          AlbumPhotosCompanion.insert(
+            id: 'batch_p1',
+            collectionId: 'col_sealed_a',
+            relativeImagePath: 'media/batch_p1.webp',
+            relativeThumbnailPath: 'media/batch_p1_thumb.webp',
+            sortOrder: const Value(0),
+          ),
+          AlbumPhotosCompanion.insert(
+            id: 'batch_p2',
+            collectionId: 'col_sealed_a',
+            relativeImagePath: 'media/batch_p2.webp',
+            relativeThumbnailPath: 'media/batch_p2_thumb.webp',
+            sortOrder: const Value(1),
+          ),
+        ]);
+        expect(batchResult.map((photo) => photo.id), equals(['batch_p1', 'batch_p2']));
+
+        final counts = await countsFuture;
+        expect(counts['col_sealed_a'], equals(2));
+
+        final watchedPhotos = await watchedPhotosFuture;
+        expect(watchedPhotos.length, equals(2));
+
+        final queriedPhotos =
+            await repository.getPhotosForCollection('col_sealed_a');
+        expect(queriedPhotos.map((photo) => photo.id), equals(['batch_p1', 'batch_p2']));
+
+        final queriedPhoto2 = await repository.getPhotoById('batch_p2');
+        expect(queriedPhoto2?.relativeImagePath, equals('media/batch_p2.webp'));
+
+        await repository.setCollectionCover('col_sealed_a', 'batch_p2');
+        final colAfterCover = await repository.getCollectionById('col_sealed_a');
+        expect(colAfterCover!.coverImagePath, equals('media/batch_p2.webp'));
+      },
+    );
+
+    test(
+      'reorderPhotosAndSyncRoute and deletePhoto auto-sync routeSummary while preserving manual overrides',
+      () async {
+        await repository.createCollection(
+          id: 'col_auto_route',
+          title: 'Auto Route Sync',
+        );
+        final p1 = await repository.ingestAndAddPhoto(
+          id: 'route_p1',
+          collectionId: 'col_auto_route',
+          sourceFile: createSourcePhotoFile('route_1.jpg'),
+          locationTag: '杭州',
+        );
+        final p2 = await repository.ingestAndAddPhoto(
+          id: 'route_p2',
+          collectionId: 'col_auto_route',
+          sourceFile: createSourcePhotoFile('route_2.jpg'),
+          locationTag: '乌镇',
+        );
+        final p3 = await repository.ingestAndAddPhoto(
+          id: 'route_p3',
+          collectionId: 'col_auto_route',
+          sourceFile: createSourcePhotoFile('route_3.jpg'),
+          locationTag: '苏州',
+        );
+
+        // 1. Reorder while routeSummary is still empty -> auto-synthesizes new order
+        await repository.reorderPhotosAndSyncRoute(
+          'col_auto_route',
+          [p3.id, p1.id, p2.id],
+        );
+        var col = await repository.getCollectionById('col_auto_route');
+        expect(col!.routeSummary, equals('苏州 → 杭州 → 乌镇'));
+
+        // 2. Delete middle waypoint photo -> re-synthesizes remaining waypoints
+        await repository.deletePhoto(p1.id);
+        col = await repository.getCollectionById('col_auto_route');
+        expect(col!.routeSummary, equals('苏州 → 乌镇'));
+
+        // 3. Delete remaining waypoint photos -> clears auto-route to null
+        await repository.deletePhoto(p3.id);
+        col = await repository.getCollectionById('col_auto_route');
+        expect(col!.routeSummary, equals('乌镇'));
+        await repository.deletePhoto(p2.id);
+        col = await repository.getCollectionById('col_auto_route');
+        expect(col!.routeSummary, isNull);
+
+        // 4. Manual route override is preserved across reorder and delete
+        final p4 = await repository.ingestAndAddPhoto(
+          id: 'route_p4',
+          collectionId: 'col_auto_route',
+          sourceFile: createSourcePhotoFile('route_4.jpg'),
+          locationTag: '南京',
+        );
+        final p5 = await repository.ingestAndAddPhoto(
+          id: 'route_p5',
+          collectionId: 'col_auto_route',
+          sourceFile: createSourcePhotoFile('route_5.jpg'),
+          locationTag: '扬州',
+        );
+        await repository.updateCollectionMetadata(
+          id: 'col_auto_route',
+          title: 'Auto Route Sync',
+          routeSummary: '江南私家线路',
+        );
+
+        await repository.reorderPhotosAndSyncRoute(
+          'col_auto_route',
+          [p5.id, p4.id],
+        );
+        col = await repository.getCollectionById('col_auto_route');
+        expect(col!.routeSummary, equals('江南私家线路'));
+
+        await repository.deletePhoto(p4.id);
+        col = await repository.getCollectionById('col_auto_route');
+        expect(col!.routeSummary, equals('江南私家线路'));
+      },
+    );
+
+    test(
+      'loadOrSynthesizeStudioDocument defaults to autoPopulate: false and supports autoPopulate: true',
+      () async {
+        await repository.createCollection(
+          id: 'col_studio_opts',
+          title: 'Studio Options',
+        );
+        await repository.addPhoto(
+          id: 'opt_p1',
+          collectionId: 'col_studio_opts',
+          relativeImagePath: 'media/opt_1.webp',
+          relativeThumbnailPath: 'media/opt_1_thumb.webp',
+          sortOrder: 0,
+        );
+        await repository.addPhoto(
+          id: 'opt_p2',
+          collectionId: 'col_studio_opts',
+          relativeImagePath: 'media/opt_2.webp',
+          relativeThumbnailPath: 'media/opt_2_thumb.webp',
+          sortOrder: 1,
+        );
+
+        final blankDoc = await repository.loadOrSynthesizeStudioDocument(
+          'col_studio_opts',
+        );
+        expect(blankDoc.pages.length, equals(1));
+        expect(blankDoc.pages.first.photoSlots, isEmpty);
+        expect(blankDoc.removedPhotoIds, equals(['opt_p1', 'opt_p2']));
+
+        final populatedDoc = await repository.loadOrSynthesizeStudioDocument(
+          'col_studio_opts',
+          autoPopulate: true,
+        );
+        expect(populatedDoc.pages.first.photoSlots.length, equals(2));
+        expect(populatedDoc.removedPhotoIds, isEmpty);
+      },
+    );
   });
 }
