@@ -24,7 +24,6 @@ class MediaCollectResult {
     required this.rejectedByCapacity,
   });
 
-  bool get isEmpty => collectedCount == 0 && rejectedByCapacity == 0;
   bool get hasRejected => rejectedByCapacity > 0;
   bool get wasFull => collectedCount == 0 && rejectedByCapacity > 0;
 
@@ -90,7 +89,56 @@ class EditorMediaBinding {
   /// Compresses and sandboxes picked image files up to `coordinator.handscrollRoom`,
   /// inserts attachment rows atomically via [MediaOcrDao], stages items in input
   /// order, queues [BrushRevealQueue] animations, and saves the draft.
-  Future<MediaCollectResult> collectImages(List<XFile> picks) async {
+  Future<MediaCollectResult> collectImages(List<XFile> picks) {
+    return _collectMedia(
+      picks: picks,
+      sandboxPick: (picked, recordCreatedPath) async {
+        final relativePath = await mediaSandboxService.copyAndCompressImage(
+          File(picked.path),
+        );
+        recordCreatedPath(relativePath);
+        return SheetMediaItem(
+          id: _uuid.v4(),
+          mediaType: EphemeraMediaType.image,
+          relativePath: relativePath,
+        );
+      },
+    );
+  }
+
+  /// Sandboxes a short video (<=60s) and its companion poster thumbnail,
+  /// inserts its SQLite attachment row, stages it in the handscroll, queues
+  /// its Brush Reveal, and saves the draft.
+  Future<MediaCollectResult> collectVideo(XFile pick) {
+    return _collectMedia(
+      picks: [pick],
+      sandboxPick: (picked, recordCreatedPath) async {
+        final result = await mediaSandboxService.copyAndSandboxVideo(
+          File(picked.path),
+        );
+        recordCreatedPath(result.relativePath);
+        final String? thumbnailPath =
+            result.thumbnailPath.isNotEmpty ? result.thumbnailPath : null;
+        if (thumbnailPath != null) {
+          recordCreatedPath(thumbnailPath);
+        }
+        return SheetMediaItem(
+          id: _uuid.v4(),
+          mediaType: EphemeraMediaType.video,
+          relativePath: result.relativePath,
+          thumbnailPath: thumbnailPath,
+        );
+      },
+    );
+  }
+
+  Future<MediaCollectResult> _collectMedia({
+    required List<XFile> picks,
+    required Future<SheetMediaItem> Function(
+      XFile picked,
+      void Function(String path) recordCreatedPath,
+    ) sandboxPick,
+  }) async {
     if (picks.isEmpty) {
       return const MediaCollectResult(collectedCount: 0, rejectedByCapacity: 0);
     }
@@ -110,17 +158,7 @@ class EditorMediaBinding {
 
     try {
       for (final picked in acceptedPicks) {
-        final relativePath = await mediaSandboxService.copyAndCompressImage(
-          File(picked.path),
-        );
-        createdPaths.add(relativePath);
-        collected.add(
-          SheetMediaItem(
-            id: _uuid.v4(),
-            mediaType: EphemeraMediaType.image,
-            relativePath: relativePath,
-          ),
-        );
+        collected.add(await sandboxPick(picked, createdPaths.add));
       }
 
       await mediaOcrDao.attachMediaBatch(
@@ -130,7 +168,8 @@ class EditorMediaBinding {
             MediaAttachmentDraft(
               id: item.id,
               relativePath: item.relativePath,
-              mediaType: EphemeraMediaType.image.embedKey,
+              mediaType: item.mediaType.embedKey,
+              thumbnailPath: item.thumbnailPath,
             ),
         ],
       );
@@ -152,61 +191,6 @@ class EditorMediaBinding {
       collectedCount: collected.length,
       rejectedByCapacity: rejectedByCapacity,
     );
-  }
-
-  /// Sandboxes a short video (<=60s) and its companion poster thumbnail,
-  /// inserts its SQLite attachment row, stages it in the handscroll, queues
-  /// its Brush Reveal, and saves the draft.
-  Future<MediaCollectResult> collectVideo(XFile pick) async {
-    if (coordinator.handscrollRoom <= 0) {
-      return const MediaCollectResult(collectedCount: 0, rejectedByCapacity: 1);
-    }
-
-    final createdPaths = <String>[];
-    late final SheetMediaItem item;
-
-    try {
-      final result = await mediaSandboxService.copyAndSandboxVideo(
-        File(pick.path),
-      );
-      createdPaths.add(result.relativePath);
-      final String? thumbnailPath =
-          result.thumbnailPath.isNotEmpty ? result.thumbnailPath : null;
-      if (thumbnailPath != null) {
-        createdPaths.add(thumbnailPath);
-      }
-
-      final mediaId = _uuid.v4();
-      await mediaOcrDao.attachMediaBatch(
-        entryId: entryId,
-        attachments: [
-          MediaAttachmentDraft(
-            id: mediaId,
-            relativePath: result.relativePath,
-            mediaType: EphemeraMediaType.video.embedKey,
-            thumbnailPath: thumbnailPath,
-          ),
-        ],
-      );
-      item = SheetMediaItem(
-        id: mediaId,
-        mediaType: EphemeraMediaType.video,
-        relativePath: result.relativePath,
-        thumbnailPath: thumbnailPath,
-      );
-    } catch (_) {
-      if (createdPaths.isNotEmpty) {
-        await mediaSandboxService.deleteMediaPaths(createdPaths);
-      }
-      rethrow;
-    }
-
-    if (coordinator.collectMedia(item)) {
-      brushReveals.enqueue(item.id);
-    }
-    onStateChanged();
-    await autosaveManager.saveDraft();
-    return const MediaCollectResult(collectedCount: 1, rejectedByCapacity: 0);
   }
 
   /// Mounts the staged item [mediaId] onto the active Stationery Sheet and
