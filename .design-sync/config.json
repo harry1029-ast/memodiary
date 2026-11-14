@@ -1,0 +1,9 @@
+{
+  "projectId": "b0bbfa2d-34a4-43b3-8363-eebc724b69a4",
+  "pkg": "memodiary",
+  "shape": "package",
+  "offScript": true,
+  "globalName": "MemoDiaryDS",
+  "buildCmd": "node .design-sync/build-tokens.mjs",
+  "readmeHeader": ".design-sync/conventions.md"
+}

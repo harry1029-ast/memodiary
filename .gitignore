@@ -190,3 +190,6 @@ exports/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# design-sync build output
+ds-bundle/
