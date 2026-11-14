@@ -1,9 +1,12 @@
-import 'folio_content_parser.dart';
+import '../../../../core/documents/entry_content_decoder.dart';
+import '../../../../core/documents/entry_vertical_packer.dart';
+import '../../../../core/documents/vertical_typography_mapper.dart';
+import '../../../templates/models/template_style.dart';
 import 'folio_leaf_model.dart';
 import 'folio_reading_perspective.dart';
-import '../../../../core/documents/vertical_typography_mapper.dart';
 
-/// Helper for packing content blocks into right-to-left vertical folio leaves.
+/// Helper for packing canonical [EntryContentBlock]s into right-to-left
+/// vertical folio leaves via [EntryVerticalPacker].
 class FolioVerticalPaginator {
   const FolioVerticalPaginator._();
 
@@ -12,26 +15,23 @@ class FolioVerticalPaginator {
 
   /// Paginates [blocks] into vertical content body and ephemera leaves.
   static void paginateVerticalLeaves({
-    required List<FolioContentBlock> blocks,
+    required List<EntryContentBlock> blocks,
     required FolioRulingLayout layout,
     required String title,
     required String lunarDate,
     required List<FolioLeaf> outLeaves,
   }) {
-    var currentColumns = <FolioVerticalColumn>[];
-    var currentColumnCells = <FolioVerticalCell>[];
+    final packedColumns = EntryVerticalPacker.pack(
+      blocks: blocks,
+      maxTokensPerColumn: kVerticalRowsPerColumn,
+    );
 
-    void flushColumn() {
-      if (currentColumnCells.isNotEmpty) {
-        currentColumns.add(FolioVerticalColumn(cells: List.of(currentColumnCells)));
-        currentColumnCells = <FolioVerticalCell>[];
-      }
-    }
+    var currentColumns = <FolioVerticalColumn>[];
 
     void flushLeaf() {
-      flushColumn();
-      if (currentColumns.isNotEmpty) {
-        outLeaves.add(FolioContentBodyLeaf(
+      if (currentColumns.isEmpty) return;
+      outLeaves.add(
+        FolioContentBodyLeaf(
           leafIndex: 0,
           totalLeaves: 0,
           pageIndexInContent: 0,
@@ -40,84 +40,63 @@ class FolioVerticalPaginator {
           verticalColumns: List.of(currentColumns),
           title: title,
           lunarDate: lunarDate,
-        ));
-        currentColumns = <FolioVerticalColumn>[];
-      }
+        ),
+      );
+      currentColumns = <FolioVerticalColumn>[];
     }
 
-    for (final block in blocks) {
-      if (block is FolioMediaBlock) {
-        flushLeaf();
-        outLeaves.add(FolioTippedInEphemeraLeaf(
-          leafIndex: 0,
-          totalLeaves: 0,
-          mediaType: block.mediaType,
-          sandboxedRelativePath: block.relativePath,
-          caption: block.caption,
-          title: title,
-          lunarDate: lunarDate,
-        ));
-        continue;
-      }
-
-      if (block is FolioTextBlock) {
-        if (currentColumnCells.isNotEmpty) {
-          flushColumn();
-          if (currentColumns.length >= kVerticalColumnsPerLeaf) flushLeaf();
-        }
-
-        for (final segment in block.segments) {
-          if (segment.isJiazhuNote) {
-            final chars = segment.text.trim().runes.map((rune) => String.fromCharCode(rune)).toList();
-            for (int index = 0; index < chars.length; index += 2) {
-              final c1 = chars[index];
-              final c2 = (index + 1 < chars.length) ? chars[index + 1] : ' ';
-              currentColumnCells.add(FolioVerticalCell(
-                mainChar: c1,
-                secondChar: c2,
-                isJiazhuPair: true,
-              ));
-              if (currentColumnCells.length >= kVerticalRowsPerColumn) {
-                flushColumn();
-                if (currentColumns.length >= kVerticalColumnsPerLeaf) flushLeaf();
-              }
-            }
-          } else {
-            final tokens = VerticalTypographyMapper.tokenize(segment.text);
-            for (final token in tokens) {
-              if (token is VerticalInterlinearPairToken) {
-                currentColumnCells.add(FolioVerticalCell(
-                  mainChar: token.rightChar,
-                  secondChar: token.leftChar,
-                  isJiazhuPair: true,
-                ));
-              } else if (token is VerticalGlyphToken) {
-                if (token.glyph == '\n') {
-                  flushColumn();
-                  if (currentColumns.length >= kVerticalColumnsPerLeaf) flushLeaf();
-                  continue;
-                }
-                currentColumnCells.add(FolioVerticalCell(
-                  mainChar: token.glyph,
-                  isTodo: segment.isTodo,
-                  isChecked: segment.isChecked,
-                  isCornerPunctuation: token.isCornerPunctuation,
-                  requiresQuarterTurnRotation: token.requiresQuarterTurnRotation,
-                  color: segment.color,
-                ));
-              }
-
-              if (currentColumnCells.length >= kVerticalRowsPerColumn) {
-                flushColumn();
-                if (currentColumns.length >= kVerticalColumnsPerLeaf) flushLeaf();
-              }
-            }
+    for (final columnItem in packedColumns) {
+      switch (columnItem) {
+        case VerticalMediaColumn mediaColumn:
+          flushLeaf();
+          final caption = mediaColumn.media.caption.trim();
+          outLeaves.add(
+            FolioTippedInEphemeraLeaf(
+              leafIndex: 0,
+              totalLeaves: 0,
+              mediaType: mediaColumn.isVideo ? 'video' : 'image',
+              sandboxedRelativePath: mediaColumn.media.path,
+              caption: caption.isNotEmpty ? caption : null,
+              aspectRatio: mediaColumn.media.explicitAspectRatio ?? 1.0,
+              title: title,
+              lunarDate: lunarDate,
+            ),
+          );
+        case VerticalTextColumn textColumn:
+          currentColumns.add(
+            FolioVerticalColumn(
+              cells: textColumn.styledTokens
+                  .map(_toFolioVerticalCell)
+                  .toList(growable: false),
+            ),
+          );
+          if (currentColumns.length >= kVerticalColumnsPerLeaf) {
+            flushLeaf();
           }
-        }
       }
     }
 
     flushLeaf();
   }
-}
 
+  static FolioVerticalCell _toFolioVerticalCell(VerticalStyledToken styled) {
+    final cellColor = TemplateStyle.tryParseHexColor(styled.colorHex);
+    final token = styled.token;
+    return switch (token) {
+      VerticalInterlinearPairToken pair => FolioVerticalCell(
+          mainChar: pair.rightChar,
+          secondChar: pair.leftChar,
+          isJiazhuPair: true,
+          color: cellColor,
+        ),
+      VerticalGlyphToken glyphToken => FolioVerticalCell(
+          mainChar: glyphToken.glyph,
+          isTodo: styled.isTodo,
+          isChecked: styled.isChecked,
+          isCornerPunctuation: glyphToken.isCornerPunctuation,
+          requiresQuarterTurnRotation: glyphToken.requiresQuarterTurnRotation,
+          color: cellColor,
+        ),
+    };
+  }
+}

@@ -7,7 +7,7 @@ import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/features/intro/widgets/book_3d_stage.dart';
 import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
-import 'package:memodiary/features/timeline/widgets/folio/folio_content_parser.dart';
+import 'package:memodiary/features/timeline/widgets/folio/folio_metadata_formatter.dart';
 
 void main() {
   late AppDatabase db;
@@ -128,7 +128,7 @@ void main() {
       );
 
       // The Folio's fallback for the same day: 岁次 plus the stem-branch year.
-      expect(FolioContentParser.formatFullLunarDate(outOfRange), '岁次庚子');
+      expect(FolioMetadataFormatter.formatFullLunarDate(outOfRange), '岁次庚子');
       expect(find.text('次'), findsOneWidget);
       final lunarColumn = find
           .ancestor(of: find.text('次'), matching: find.byType(Column))

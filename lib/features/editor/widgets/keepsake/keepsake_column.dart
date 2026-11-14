@@ -1,14 +1,16 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../../core/documents/entry_vertical_packer.dart';
+import '../../../../core/documents/vertical_typography_mapper.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
 import '../../../templates/models/template_style.dart';
-import '../../../../core/documents/vertical_typography_mapper.dart';
 
 /// Renders a single vertical calligraphy column bounded by silk rule tints (朱丝栏/乌丝栏).
 /// Faithfully lays out classical CJK vertical glyphs, ideographic corner stops,
 /// rotated horizontal fallback punctuation, and dual-subcolumn Interlinear Sub-Notes (双行夹注).
 class KeepsakeColumn extends StatelessWidget {
   final List<VerticalRenderToken> tokens;
+  final List<VerticalStyledToken>? styledTokens;
   final RuleInkTint ruleTint;
   final Color inkColor;
   final String fontFamily;
@@ -21,6 +23,7 @@ class KeepsakeColumn extends StatelessWidget {
   const KeepsakeColumn({
     super.key,
     required this.tokens,
+    this.styledTokens,
     this.ruleTint = RuleInkTint.vermilion,
     required this.inkColor,
     this.fontFamily = InkDiaryTheme.fontKaiti,
@@ -41,6 +44,9 @@ class KeepsakeColumn extends StatelessWidget {
       alpha: ruleTint == RuleInkTint.charcoal ? 0.20 : 0.35,
     );
 
+    final resolvedTokens = styledTokens ??
+        tokens.map((token) => VerticalStyledToken(token: token)).toList(growable: false);
+
     return Semantics(
       container: true,
       label: _buildSemanticsLabel(),
@@ -57,8 +63,8 @@ class KeepsakeColumn extends StatelessWidget {
         child: Column(
           mainAxisAlignment: isTitle ? MainAxisAlignment.center : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,
-          children: tokens
-              .map((token) => _buildTokenCell(token, effectiveFontSize))
+          children: resolvedTokens
+              .map((styledToken) => _buildTokenCell(styledToken, effectiveFontSize))
               .toList(),
         ),
       ),
@@ -78,12 +84,17 @@ class KeepsakeColumn extends StatelessWidget {
     return buffer.toString();
   }
 
-  Widget _buildTokenCell(VerticalRenderToken token, double baseSize) {
+  Widget _buildTokenCell(VerticalStyledToken styledToken, double baseSize) {
+    final token = styledToken.token;
     if (token is VerticalInterlinearPairToken) {
       return _buildInterlinearPairCell(token, baseSize);
     }
     if (token is VerticalGlyphToken) {
-      return _buildGlyphCell(token, baseSize);
+      return _buildGlyphCell(
+        token,
+        baseSize,
+        overrideColor: TemplateStyle.tryParseHexColor(styledToken.colorHex),
+      );
     }
     return const SizedBox.shrink();
   }
@@ -131,13 +142,17 @@ class KeepsakeColumn extends StatelessWidget {
     );
   }
 
-  Widget _buildGlyphCell(VerticalGlyphToken token, double baseSize) {
+  Widget _buildGlyphCell(
+    VerticalGlyphToken token,
+    double baseSize, {
+    Color? overrideColor,
+  }) {
     final glyph = token.glyph;
     if (glyph == ' ' || glyph == '\u3000') {
       return SizedBox(height: baseSize * 0.8);
     }
 
-    final textColor = isQuote ? inkColor.withValues(alpha: 0.8) : inkColor;
+    final textColor = overrideColor ?? (isQuote ? inkColor.withValues(alpha: 0.8) : inkColor);
     final textStyle = TextStyle(
       fontFamily: fontFamily,
       fontSize: baseSize,

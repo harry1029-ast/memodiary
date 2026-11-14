@@ -416,20 +416,24 @@ class TemplateStyle {
     );
   }
 
+  /// Parses 6-char or 8-char hex strings with optional '#' prefix into [Color],
+  /// returning `null` if [hexString] is null, empty, or malformed.
+  static Color? tryParseHexColor(String? hexString) {
+    if (hexString == null) return null;
+    String clean = hexString.replaceAll('#', '').trim();
+    if (clean.length == 6) {
+      clean = 'FF$clean';
+    }
+    if (clean.length == 8) {
+      final parsed = int.tryParse(clean, radix: 16);
+      if (parsed != null) return Color(parsed);
+    }
+    return null;
+  }
+
   /// Parses 6-char or 8-char hex strings with '#' prefix into Flutter [Color]
   static Color parseHexColor(String hexString, {Color fallback = Colors.white}) {
-    try {
-      String clean = hexString.replaceAll('#', '').trim();
-      if (clean.length == 6) {
-        clean = 'FF$clean';
-      }
-      if (clean.length == 8) {
-        return Color(int.parse(clean, radix: 16));
-      }
-      return fallback;
-    } catch (_) {
-      return fallback;
-    }
+    return tryParseHexColor(hexString) ?? fallback;
   }
 
   /// Formats a [Color] into a 6-character uppercase `#RRGGBB` string.

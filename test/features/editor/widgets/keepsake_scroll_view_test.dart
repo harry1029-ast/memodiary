@@ -272,5 +272,62 @@ void main() {
       final noteTextWidget = textWidgets.firstWhere((widget) => widget.data == '冽');
       expect(noteTextWidget.style?.color, equals(const Color(0xFFF0ECE3).withValues(alpha: 0.75)));
     });
+
+    testWidgets('preserves trailing-newline header/blockquote styling and keeps mixed inline spans in one column', (tester) async {
+      final deltaOps = [
+        {'insert': '秋日偶书'},
+        {'insert': '\n', 'attributes': {'header': 1}},
+        {'insert': '山色空蒙'},
+        {'insert': '\n', 'attributes': {'blockquote': true}},
+        {'insert': '今日'},
+        {
+          'insert': '晴朗',
+          'attributes': {'bold': true, 'italic': true, 'color': '#B83B2E'},
+        },
+        {'insert': '宜出行\n'},
+      ];
+      final styledEntry = Entry(
+        id: 'entry_styled_001',
+        notebookId: 'nb_001',
+        templateId: 'test_tpl',
+        title: '秋兴',
+        contentDelta: jsonEncode(deltaOps),
+        plainText: '秋日偶书\n山色空蒙\n今日晴朗宜出行',
+        entryDate: DateTime(2026, 11, 2),
+        mood: 4,
+        weather: '晴',
+        isWeeklyReview: false,
+        weekNumber: null,
+        isLocked: false,
+        legacyMountsPending: false,
+        unlockAt: null,
+        createdAt: DateTime(2026, 11, 2),
+        updatedAt: DateTime(2026, 11, 2),
+        isDeleted: false,
+      );
+
+      await tester.pumpWidget(createSubject(entry: styledEntry, style: mockStyle));
+      await tester.pumpAndSettle();
+
+      final columns = tester.widgetList<KeepsakeColumn>(find.byType(KeepsakeColumn)).toList();
+      // 1 title column + 1 header column + 1 blockquote column + 1 combined body column = 4
+      expect(columns, hasLength(4));
+
+      expect(columns[0].isTitle, isTrue);
+      expect(columns[1].isHeader, isTrue);
+      expect(columns[1].isQuote, isFalse);
+      expect(columns[2].isQuote, isTrue);
+      expect(columns[2].isHeader, isFalse);
+      expect(columns[3].isHeader, isFalse);
+      expect(columns[3].isQuote, isFalse);
+
+      final coloredText = tester.widget<Text>(
+        find.descendant(
+          of: find.byType(KeepsakeColumn).at(3),
+          matching: find.text('晴'),
+        ),
+      );
+      expect(coloredText.style?.color, equals(const Color(0xFFB83B2E)));
+    });
   });
 }

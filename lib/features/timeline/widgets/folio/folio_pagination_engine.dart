@@ -1,10 +1,11 @@
 import '../../../../core/database/app_database.dart';
+import '../../../../core/documents/entry_content_decoder.dart';
 import '../../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../../scenery/services/shanshui_atmosphere_resolver.dart';
 import '../../../templates/models/template_style.dart';
 import '../../services/folio_media_pairing.dart';
-import 'folio_content_parser.dart';
 import 'folio_leaf_model.dart';
+import 'folio_metadata_formatter.dart';
 import 'folio_reading_perspective.dart';
 import 'folio_vertical_paginator.dart';
 
@@ -27,9 +28,9 @@ class FolioPaginationEngine {
     SealCarvingStyle? sealStyle,
   }) {
     final entryDate = entry.entryDate;
-    final lunarDateStr = FolioContentParser.formatFullLunarDate(entryDate);
-    final gregorianDateStr = FolioContentParser.formatGregorianDate(entryDate);
-    final effectiveSeal = FolioContentParser.normalizeSealText(sealText ?? '心迹安放');
+    final lunarDateStr = FolioMetadataFormatter.formatFullLunarDate(entryDate);
+    final gregorianDateStr = FolioMetadataFormatter.formatGregorianDate(entryDate);
+    final effectiveSeal = FolioMetadataFormatter.normalizeSealText(sealText ?? '心迹安放');
     final effectiveSealStyle =
         sealStyle ?? perspective.resolveSealStyle(templateStyle: templateStyle);
 
@@ -50,20 +51,25 @@ class FolioPaginationEngine {
     final heroPhotoPath = coverMounts.isEmpty ? null : coverMounts.first.relativePath;
     final heroMediaType = coverMounts.isEmpty ? null : coverMounts.first.mediaType;
 
-    final parsedBlocks = FolioContentParser.parseContentBlocks(
+    final parsedBlocks = EntryContentDecoder.decode(
       contentDeltaJson: entry.contentDelta,
       fallbackPlainText: entry.plainText,
-      attachments: attachments,
     );
 
-    final openingReflection = FolioContentParser.extractOpeningReflection(
+    final openingReflection = FolioMetadataFormatter.extractOpeningReflection(
       plainText: entry.plainText,
       title: entry.title,
     );
 
     final wordCount = entry.plainText.trim().runes.length;
     final hasMountedMedia = mountPlan.hasMounts;
-    final isZeroWordDraft = wordCount == 0 && parsedBlocks.isEmpty && !hasMountedMedia;
+    final hasRenderableContent = parsedBlocks.any(
+      (block) =>
+          block is EntryMediaBlock ||
+          (block is EntryTextBlock && !block.isBlank),
+    );
+    final isZeroWordDraft =
+        wordCount == 0 && !hasRenderableContent && !hasMountedMedia;
 
     if (isZeroWordDraft) {
       return [
@@ -232,7 +238,7 @@ class FolioPaginationEngine {
   // --- Horizontal Pagination ---
 
   static void _paginateHorizontalLeaves({
-    required List<FolioContentBlock> blocks,
+    required List<EntryContentBlock> blocks,
     required FolioRulingLayout layout,
     required String title,
     required String lunarDate,
@@ -257,35 +263,45 @@ class FolioPaginationEngine {
     }
 
     for (final block in blocks) {
-      if (block is FolioMediaBlock) {
-        flushRows();
-        outLeaves.add(FolioTippedInEphemeraLeaf(
-          leafIndex: 0,
-          totalLeaves: 0,
-          mediaType: block.mediaType,
-          sandboxedRelativePath: block.relativePath,
-          caption: block.caption,
-          title: title,
-          lunarDate: lunarDate,
-        ));
-        continue;
-      }
-
-      if (block is FolioTextBlock) {
-        final paragraphRows = _tokenizeHorizontalParagraph(block);
-        for (final row in paragraphRows) {
-          currentRows.add(row);
-          if (currentRows.length >= kHorizontalMaxRowsPerLeaf) {
-            flushRows();
+      switch (block) {
+        case EntryMediaBlock mediaBlock:
+          flushRows();
+          final caption = mediaBlock.media.caption.trim();
+          outLeaves.add(FolioTippedInEphemeraLeaf(
+            leafIndex: 0,
+            totalLeaves: 0,
+            mediaType: mediaBlock.isVideo ? 'video' : 'image',
+            sandboxedRelativePath: mediaBlock.media.path,
+            caption: caption.isNotEmpty ? caption : null,
+            aspectRatio: mediaBlock.media.explicitAspectRatio ?? 1.0,
+            title: title,
+            lunarDate: lunarDate,
+          ));
+        case EntryTextBlock textBlock:
+          final paragraphRows = _tokenizeHorizontalParagraph(textBlock);
+          for (final row in paragraphRows) {
+            currentRows.add(row);
+            if (currentRows.length >= kHorizontalMaxRowsPerLeaf) {
+              flushRows();
+            }
           }
-        }
       }
     }
 
     flushRows();
   }
 
-  static List<FolioHorizontalRow> _tokenizeHorizontalParagraph(FolioTextBlock block) {
+  static List<FolioHorizontalRow> _tokenizeHorizontalParagraph(
+    EntryTextBlock block,
+  ) {
+    if (block.runs.isEmpty) {
+      return const [FolioHorizontalRow(segments: [])];
+    }
+
+    final isTodo = block.kind == EntryBlockKind.checkedList ||
+        block.kind == EntryBlockKind.uncheckedList;
+    final isChecked = block.kind == EntryBlockKind.checkedList;
+
     final rows = <FolioHorizontalRow>[];
     var currentRowSegments = <FolioHorizontalSegment>[];
     int currentLen = 0;
@@ -298,24 +314,46 @@ class FolioPaginationEngine {
       }
     }
 
-    for (final segment in block.segments) {
-      if (segment.isJiazhuNote) {
-        final noteLen = segment.text.length + 2;
-        if (currentLen + noteLen > kHorizontalCharsPerRow && currentRowSegments.isNotEmpty) {
+    for (final run in block.runs) {
+      final color = TemplateStyle.tryParseHexColor(run.colorHex);
+      if (run.isInterlinearNote) {
+        final noteLen = run.text.length + 2;
+        if (currentLen + noteLen > kHorizontalCharsPerRow &&
+            currentRowSegments.isNotEmpty) {
           flushCurrentRow();
         }
-        currentRowSegments.add(segment);
+        currentRowSegments.add(
+          FolioHorizontalSegment(
+            text: run.text,
+            isJiazhuNote: true,
+            color: color,
+          ),
+        );
         currentLen += noteLen;
       } else {
-        final chars = segment.text.runes.map((rune) => String.fromCharCode(rune)).toList();
+        final chars = run.text.runes
+            .map((rune) => String.fromCharCode(rune))
+            .toList(growable: false);
         final buffer = StringBuffer();
+
+        void flushBuffer() {
+          if (buffer.isEmpty) return;
+          currentRowSegments.add(
+            FolioHorizontalSegment(
+              text: buffer.toString(),
+              isTodo: isTodo,
+              isChecked: isChecked,
+              isBold: run.isBold,
+              isItalic: run.isItalic,
+              color: color,
+            ),
+          );
+          buffer.clear();
+        }
 
         for (final character in chars) {
           if (character == '\n') {
-            if (buffer.isNotEmpty) {
-              currentRowSegments.add(segment.copyWith(text: buffer.toString()));
-              buffer.clear();
-            }
+            flushBuffer();
             flushCurrentRow();
             continue;
           }
@@ -324,15 +362,12 @@ class FolioPaginationEngine {
           currentLen++;
 
           if (currentLen >= kHorizontalCharsPerRow) {
-            currentRowSegments.add(segment.copyWith(text: buffer.toString()));
-            buffer.clear();
+            flushBuffer();
             flushCurrentRow();
           }
         }
 
-        if (buffer.isNotEmpty) {
-          currentRowSegments.add(segment.copyWith(text: buffer.toString()));
-        }
+        flushBuffer();
       }
     }
 

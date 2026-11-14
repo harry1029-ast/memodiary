@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/scenery/models/shanshui_atmosphere.dart';
-import 'package:memodiary/features/timeline/widgets/folio/folio_content_parser.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_desk_chrome.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_frontispiece_page.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_leaf_model.dart';
+import 'package:memodiary/features/timeline/widgets/folio/folio_metadata_formatter.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_reading_perspective.dart';
 
 void main() {
@@ -81,7 +81,7 @@ void main() {
     });
 
     test('BUG 3: Plain text without jiazhu must not steal first line as 眉批夹注', () {
-      final reflection = FolioContentParser.extractOpeningReflection(
+      final reflection = FolioMetadataFormatter.extractOpeningReflection(
         plainText: 'test\n\nabcdefg',
         title: null,
       );

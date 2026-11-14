@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/documents/media_embed_data.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
-import 'package:memodiary/features/timeline/widgets/folio/folio_content_parser.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_leaf_model.dart';
+import 'package:memodiary/features/timeline/widgets/folio/folio_metadata_formatter.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_pagination_engine.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_reading_perspective.dart';
 
@@ -42,43 +43,43 @@ void main() {
     );
   }
 
-  group('FolioContentParser & Utility Tests', () {
+  group('FolioMetadataFormatter & Utility Tests', () {
     test('normalizes seal text to 4 characters', () {
-      expect(FolioContentParser.normalizeSealText('心迹'), equals('心迹印印'));
-      expect(FolioContentParser.normalizeSealText('拾光存'), equals('拾光存印'));
-      expect(FolioContentParser.normalizeSealText('心迹安放'), equals('心迹安放'));
-      expect(FolioContentParser.normalizeSealText(''), equals('心迹安放'));
-      expect(FolioContentParser.normalizeSealText('   '), equals('心迹安放'));
+      expect(FolioMetadataFormatter.normalizeSealText('心迹'), equals('心迹印印'));
+      expect(FolioMetadataFormatter.normalizeSealText('拾光存'), equals('拾光存印'));
+      expect(FolioMetadataFormatter.normalizeSealText('心迹安放'), equals('心迹安放'));
+      expect(FolioMetadataFormatter.normalizeSealText(''), equals('心迹安放'));
+      expect(FolioMetadataFormatter.normalizeSealText('   '), equals('心迹安放'));
     });
 
     test('formats classical lunar and Gregorian dates', () {
       expect(
-        FolioContentParser.formatFullLunarDate(testDate),
+        FolioMetadataFormatter.formatFullLunarDate(testDate),
         equals('岁次丙午 · 十月十五'),
       );
       // Before the lunar new year (2026-02-17) the year is still 乙巳.
       expect(
-        FolioContentParser.formatFullLunarDate(DateTime(2026, 2, 10)),
+        FolioMetadataFormatter.formatFullLunarDate(DateTime(2026, 2, 10)),
         equals('岁次乙巳 · 腊月廿三'),
       );
       // Outside the lunar data range only the stem-branch year is shown.
       expect(
-        FolioContentParser.formatFullLunarDate(DateTime(1899, 6, 1)),
+        FolioMetadataFormatter.formatFullLunarDate(DateTime(1899, 6, 1)),
         equals('岁次己亥'),
       );
 
-      final gregorian = FolioContentParser.formatGregorianDate(testDate);
+      final gregorian = FolioMetadataFormatter.formatGregorianDate(testDate);
       expect(gregorian, contains('2026.11.23'));
       expect(gregorian, contains('亥时一刻'));
     });
 
     test('extracts opening reflection only from explicit {夹注:...}', () {
-      final reflection1 = FolioContentParser.extractOpeningReflection(
+      final reflection1 = FolioMetadataFormatter.extractOpeningReflection(
         plainText: '晚来天欲雪{夹注:孤灯疾书见闻}，室内小炉温茶。',
       );
       expect(reflection1, equals('眉批夹注：孤灯疾书见闻'));
 
-      final reflection2 = FolioContentParser.extractOpeningReflection(
+      final reflection2 = FolioMetadataFormatter.extractOpeningReflection(
         plainText: '暮秋听雨小记\n窗外梧桐叶落声渐密。',
         title: '暮秋听雨小记',
       );
@@ -248,6 +249,127 @@ void main() {
 
       final lastBody = leaves.last as FolioContentBodyLeaf;
       expect(lastBody.sealText, equals('心迹安放'));
+    });
+
+    test('vertical Folio orders {夹注:...} right-sub-column-first with vertical CJK punctuation and cell styling', () {
+      final delta = jsonEncode([
+        {'insert': '甲{夹注:「一二三」}乙\n'},
+        {'insert': '朱笔', 'attributes': {'color': '#B83B2E'}},
+        {'insert': '\n', 'attributes': {'list': 'checked'}},
+      ]);
+      final entry = createTestEntry(
+        contentDelta: delta,
+        plainText: '甲{夹注:「一二三」}乙\n朱笔',
+      );
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        perspective: ReadingPerspective.vermilionVertical,
+      );
+
+      final body = leaves[1] as FolioContentBodyLeaf;
+      final columns = body.verticalColumns!;
+      expect(columns, hasLength(2));
+
+      final firstCells = columns[0].cells;
+      expect(firstCells[0].mainChar, equals('甲'));
+      final jiazhuCells = firstCells.where((cell) => cell.isJiazhuPair).toList();
+      expect(jiazhuCells, hasLength(3));
+      expect(jiazhuCells[0].mainChar, equals('﹁'));
+      expect(jiazhuCells[0].secondChar, equals('三'));
+      expect(jiazhuCells[1].mainChar, equals('一'));
+      expect(jiazhuCells[1].secondChar, equals('﹂'));
+      expect(jiazhuCells[2].mainChar, equals('二'));
+      expect(jiazhuCells[2].secondChar, equals(''));
+      expect(firstCells.last.mainChar, equals('乙'));
+
+      final secondCells = columns[1].cells;
+      expect(secondCells, hasLength(2));
+      expect(secondCells[0].mainChar, equals('朱'));
+      expect(secondCells[0].isTodo, isTrue);
+      expect(secondCells[0].isChecked, isTrue);
+      expect(secondCells[0].color, equals(const Color(0xFFB83B2E)));
+    });
+
+    test('resolves JSON MediaEmbedData path, caption, and aspect ratio on Tipped-In Ephemera Leaves', () {
+      final delta = jsonEncode([
+        {'insert': '前文。\n'},
+        {
+          'insert': {
+            'image': jsonEncode({
+              'path': 'media/west_lake.webp',
+              'caption': '西湖晴岚',
+              'aspect': '4:3',
+            }),
+          },
+        },
+        {
+          'insert': {
+            'video': {
+              'path': 'media/rain_clip.mp4',
+              'caption': '夜雨声',
+              'aspect': '1:1',
+            },
+          },
+        },
+        {'insert': '后文。\n'},
+      ]);
+      final entry = createTestEntry(
+        contentDelta: delta,
+        plainText: '前文。\n后文。',
+      );
+
+      for (final perspective in [
+        ReadingPerspective.faithfulOriginal,
+        ReadingPerspective.vermilionVertical,
+      ]) {
+        final leaves = FolioPaginationEngine.paginate(
+          entry: entry,
+          perspective: perspective,
+        );
+
+        final ephemeraLeaves = leaves.whereType<FolioTippedInEphemeraLeaf>().toList();
+        expect(ephemeraLeaves, hasLength(2));
+
+        expect(ephemeraLeaves[0].mediaType, equals('image'));
+        expect(ephemeraLeaves[0].sandboxedRelativePath, equals('media/west_lake.webp'));
+        expect(ephemeraLeaves[0].caption, equals('西湖晴岚'));
+        expect(ephemeraLeaves[0].aspectRatio, closeTo(MediaAspectRatio.standard43.ratio!, 0.0001));
+
+        expect(ephemeraLeaves[1].mediaType, equals('video'));
+        expect(ephemeraLeaves[1].sandboxedRelativePath, equals('media/rain_clip.mp4'));
+        expect(ephemeraLeaves[1].caption, equals('夜雨声'));
+        expect(ephemeraLeaves[1].aspectRatio, equals(1.0));
+      }
+    });
+
+    test('horizontal Folio preserves blank lines, leading indentation, inline formatting, and trailing-newline todos', () {
+      final delta = jsonEncode([
+        {'insert': '　　第一段\n\n'},
+        {'insert': '朱砂', 'attributes': {'bold': true, 'italic': true, 'color': '#B83B2E'}},
+        {'insert': '\n', 'attributes': {'list': 'checked'}},
+      ]);
+      final entry = createTestEntry(
+        contentDelta: delta,
+        plainText: '　　第一段\n\n朱砂',
+      );
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        perspective: ReadingPerspective.faithfulOriginal,
+      );
+
+      final body = leaves[1] as FolioContentBodyLeaf;
+      final rows = body.horizontalRows!;
+      expect(rows, hasLength(3));
+      expect(rows[0].segments.single.text, equals('　　第一段'));
+      expect(rows[1].isEmpty, isTrue);
+      expect(rows[2].segments.single.text, equals('朱砂'));
+      expect(rows[2].segments.single.isBold, isTrue);
+      expect(rows[2].segments.single.isItalic, isTrue);
+      expect(rows[2].segments.single.color, equals(const Color(0xFFB83B2E)));
+      expect(rows[2].segments.single.isTodo, isTrue);
+      expect(rows[2].segments.single.isChecked, isTrue);
     });
   });
 

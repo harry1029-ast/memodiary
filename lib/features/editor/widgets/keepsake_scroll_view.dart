@@ -1,47 +1,16 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/documents/entry_content_decoder.dart';
+import '../../../core/documents/entry_vertical_packer.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../import_export/models/pdf_layout_mode.dart';
 import '../../import_export/widgets/pdf_preview_screen.dart';
 import '../../templates/models/template_style.dart';
 import '../../templates/widgets/template_canvas_painter.dart';
-import '../../../core/documents/media_embed_data.dart';
-import '../../../core/documents/vertical_typography_mapper.dart';
 import 'keepsake/keepsake_colophon.dart';
 import 'keepsake/keepsake_column.dart';
 import 'keepsake/keepsake_media_card.dart';
-
-sealed class _KeepsakeItem {}
-
-class _KeepsakeTextItem extends _KeepsakeItem {
-  final List<VerticalRenderToken> tokens;
-  final bool isTitle;
-  final bool isHeader;
-  final bool isQuote;
-
-  _KeepsakeTextItem({
-    required this.tokens,
-    this.isTitle = false,
-    this.isHeader = false,
-    this.isQuote = false,
-  });
-}
-
-class _KeepsakeMediaItem extends _KeepsakeItem {
-  final bool isVideo;
-  final String path;
-  final String? caption;
-  final String? aspect;
-
-  _KeepsakeMediaItem({
-    required this.isVideo,
-    required this.path,
-    this.caption,
-    this.aspect,
-  });
-}
 
 /// Fullscreen read-only Keepsake Scroll View (卷轴赏鉴) rendering diary entries
 /// in classical right-to-left vertical columns with authentic typography,
@@ -168,11 +137,12 @@ class KeepsakeScrollView extends StatelessWidget {
     );
   }
 
-  Widget _renderItem(_KeepsakeItem item) {
+  Widget _renderItem(VerticalColumnItem item) {
     switch (item) {
-      case _KeepsakeTextItem textItem:
+      case VerticalTextColumn textItem:
         return KeepsakeColumn(
           tokens: textItem.tokens,
+          styledTokens: textItem.styledTokens,
           ruleTint: style.tokens.ruleTint,
           inkColor: _inkColor,
           fontFamily: style.fontFamily ?? InkDiaryTheme.fontKaiti,
@@ -182,12 +152,12 @@ class KeepsakeScrollView extends StatelessWidget {
           isQuote: textItem.isQuote,
         );
 
-      case _KeepsakeMediaItem mediaItem:
+      case VerticalMediaColumn mediaItem:
         return KeepsakeMediaCard(
-          path: mediaItem.path,
+          path: mediaItem.media.path,
           isVideo: mediaItem.isVideo,
-          caption: mediaItem.caption,
-          aspect: mediaItem.aspect,
+          caption: mediaItem.media.caption,
+          aspect: mediaItem.media.aspect,
           mediaService: mediaService,
           style: style,
           inkColor: _inkColor,
@@ -195,129 +165,19 @@ class KeepsakeScrollView extends StatelessWidget {
     }
   }
 
-  List<_KeepsakeItem> _buildKeepsakeItems(double availableHeight) {
-    final items = <_KeepsakeItem>[];
-
-    // Compute character capacity per vertical column based on available viewport height
-    final double cellPitch = 24.0;
+  List<VerticalColumnItem> _buildKeepsakeItems(double availableHeight) {
+    const double cellPitch = 24.0;
     final int maxCharsPerCol = ((availableHeight - 64.0) / cellPitch).floor().clamp(6, 40);
 
-    // 1. Entry Title Column (if provided)
-    if (entry.title != null && entry.title!.trim().isNotEmpty) {
-      final titleTokens = VerticalTypographyMapper.tokenize(entry.title!.trim());
-      items.add(
-        _KeepsakeTextItem(
-          tokens: titleTokens,
-          isTitle: true,
-        ),
-      );
-    }
+    final blocks = EntryContentDecoder.decode(
+      contentDeltaJson: entry.contentDelta,
+      fallbackPlainText: entry.plainText,
+    );
 
-    // 2. Parse Quill Delta or fallback plain text
-    List<dynamic>? ops;
-    if (entry.contentDelta.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(entry.contentDelta);
-        if (decoded is List) {
-          ops = decoded;
-        } else if (decoded is Map && decoded['ops'] is List) {
-          ops = decoded['ops'] as List;
-        }
-      } catch (_) {
-        ops = null;
-      }
-    }
-
-    if (ops == null || ops.isEmpty) {
-      // Fallback: partition plain text
-      final lines = entry.plainText.split('\n');
-      for (final line in lines) {
-        final trimmed = line.trimRight();
-        if (trimmed.isEmpty) continue;
-        final tokens = VerticalTypographyMapper.tokenize(trimmed);
-        _partitionTokensIntoColumns(tokens, maxCharsPerCol, items);
-      }
-      return items;
-    }
-
-    for (final op in ops) {
-      if (op is! Map) continue;
-      final insert = op['insert'];
-      final attributes = (op['attributes'] as Map?) ?? const {};
-
-      // 2a. Image embed
-      if (insert is Map && insert.containsKey('image')) {
-        final rawSource = insert['image']?.toString() ?? '';
-        final embedData = MediaEmbedData.fromRaw(rawSource);
-        items.add(
-          _KeepsakeMediaItem(
-            isVideo: false,
-            path: embedData.path.isNotEmpty ? embedData.path : rawSource,
-            caption: embedData.caption,
-            aspect: embedData.aspect,
-          ),
-        );
-        continue;
-      }
-
-      // 2b. Video embed
-      if (insert is Map && insert.containsKey('video')) {
-        final rawSource = insert['video']?.toString() ?? '';
-        final embedData = MediaEmbedData.fromRaw(rawSource);
-        items.add(
-          _KeepsakeMediaItem(
-            isVideo: true,
-            path: embedData.path.isNotEmpty ? embedData.path : rawSource,
-            caption: embedData.caption,
-            aspect: embedData.aspect,
-          ),
-        );
-        continue;
-      }
-
-      // 2c. Text string
-      if (insert is String) {
-        final isHeader = attributes['header'] != null;
-        final isQuote = attributes['blockquote'] == true;
-        final paragraphs = insert.split('\n');
-
-        for (final para in paragraphs) {
-          final trimmed = para.trim();
-          if (trimmed.isEmpty) continue;
-          final tokens = VerticalTypographyMapper.tokenize(trimmed);
-          _partitionTokensIntoColumns(
-            tokens,
-            maxCharsPerCol,
-            items,
-            isHeader: isHeader,
-            isQuote: isQuote,
-          );
-        }
-      }
-    }
-
-    return items;
-  }
-
-  void _partitionTokensIntoColumns(
-    List<VerticalRenderToken> tokens,
-    int maxPerCol,
-    List<_KeepsakeItem> out, {
-    bool isHeader = false,
-    bool isQuote = false,
-  }) {
-    if (tokens.isEmpty) return;
-
-    for (int index = 0; index < tokens.length; index += maxPerCol) {
-      final end = (index + maxPerCol < tokens.length) ? index + maxPerCol : tokens.length;
-      final chunk = tokens.sublist(index, end);
-      out.add(
-        _KeepsakeTextItem(
-          tokens: chunk,
-          isHeader: isHeader,
-          isQuote: isQuote,
-        ),
-      );
-    }
+    return EntryVerticalPacker.pack(
+      blocks: blocks,
+      maxTokensPerColumn: maxCharsPerCol,
+      entryTitle: entry.title,
+    );
   }
 }
