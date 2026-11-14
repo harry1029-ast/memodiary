@@ -1,8 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
@@ -11,12 +9,10 @@ import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../domain/stationery_sheet_descriptor.dart';
-import '../models/thought_spark.dart';
 import '../services/editor_pagination_coordinator.dart';
-import '../services/thought_spark_service.dart';
 
 /// Modular helpers for sandboxed media ingestion (photos and short videos)
-/// and rotating Thought Spark prompt ingestion inside the diary editor.
+/// inside the diary editor.
 class EditorMediaActions {
   const EditorMediaActions._();
 
@@ -241,50 +237,5 @@ class EditorMediaActions {
           );
       }
     }
-  }
-
-  /// Shuffles the active Thought Spark prompt and presents the SnackBar trigger.
-  static ThoughtSpark handleShuffleSpark({
-    required BuildContext context,
-    required ThoughtSparkService thoughtSparkService,
-    required void Function(String prompt) onAdoptPrompt,
-  }) {
-    HapticFeedback.selectionClick();
-    final nextSpark = thoughtSparkService.nextSpark();
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            '“${nextSpark.localizedPrompt}”',
-            style: const TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
-          ),
-          action: SnackBarAction(
-            label: '由此题落墨',
-            onPressed: () => onAdoptPrompt(nextSpark.localizedPrompt),
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    return nextSpark;
-  }
-
-  /// Inserts a Thought Spark prompt blockquote into the Quill document.
-  static void handleInsertPrompt({
-    required QuillController? controller,
-    required String prompt,
-    EditorAutosaveManager? autosaveManager,
-    VoidCallback? onStateChanged,
-  }) {
-    if (controller == null) return;
-    final index = controller.selection.baseOffset.clamp(
-      0,
-      controller.document.length - 1,
-    );
-    controller.document.insert(index, '【灵感拾遗】$prompt\n');
-    controller.formatText(index, prompt.length + 6, Attribute.blockQuote);
-    autosaveManager?.saveDraft(force: true);
-    onStateChanged?.call();
   }
 }

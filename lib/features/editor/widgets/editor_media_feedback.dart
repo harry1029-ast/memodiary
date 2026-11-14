@@ -44,6 +44,7 @@ class EditorMediaFeedback {
         onDeskInteraction?.call();
         binding.unmountMedia(mediaId);
       },
+      onCaptionChanged: binding.updateCaption,
       mountRefusals: binding.mountRefusals,
       brushReveals: binding.brushReveals,
     );

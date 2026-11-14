@@ -19,6 +19,9 @@ class DeskMediaHandlers {
   /// Unmounts an item from its sheet back into the Staging Handscroll.
   final ValueChanged<String>? onUnmount;
 
+  /// Updates the diarist's caption for a staged or mounted media item.
+  final void Function(String mediaId, String newCaption)? onCaptionChanged;
+
   /// Ticks when a mount onto the active sheet is refused, shaking its Tucked Prints.
   final ValueListenable<int>? mountRefusals;
 
@@ -35,6 +38,7 @@ class DeskMediaHandlers {
     this.onMount,
     this.onErase,
     this.onUnmount,
+    this.onCaptionChanged,
     this.mountRefusals,
     this.brushReveals,
     this.onDeskInteraction,

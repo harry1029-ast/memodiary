@@ -22,7 +22,6 @@ import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/editor_app_bar_slide.dart';
 import '../widgets/editor_paper_canvas.dart';
-import '../widgets/editor_media_actions.dart';
 import '../widgets/editor_media_feedback.dart';
 import '../widgets/editor_overlay_actions.dart';
 import '../widgets/editor_top_app_bar.dart';
@@ -281,7 +280,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   void _handleShuffleSpark() {
-    EditorMediaActions.handleShuffleSpark(
+    EditorOverlayActions.handleShuffleSpark(
       context: context,
       thoughtSparkService: _thoughtSparkService,
       onAdoptPrompt: _handleInsertPrompt,
@@ -290,7 +289,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   void _handleInsertPrompt(String prompt) {
     final active = _paginationHandler?.ensureActiveTextSheet() ?? _activeController;
-    EditorMediaActions.handleInsertPrompt(
+    EditorOverlayActions.handleInsertPrompt(
       controller: active,
       prompt: prompt,
       autosaveManager: _autosaveManager,
@@ -403,7 +402,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                   onCollect: () => _collectMedia(isVideo: false),
                   onDeskInteraction: _focusGuard.release,
                 ),
-                onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 saveStatus: _autosaveManager!.statusNotifier,
                 onTapDeskOffSheet: _focusGuard.endWriting,
               ),

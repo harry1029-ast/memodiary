@@ -148,8 +148,9 @@ class EditorMediaBinding {
     await mediaSandboxService.deleteMedia(item.relativePath);
   }
 
-  /// Persists an edited caption for [mediaId].
+  /// Updates the in-memory and persisted caption for [mediaId].
   Future<void> updateCaption(String mediaId, String newCaption) async {
+    if (coordinator.updateCaption(mediaId, newCaption)) onStateChanged();
     await database.mediaOcrDao.updateMediaCaption(mediaId, caption: newCaption);
   }
 

@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/controllers/editor_chrome_controller.dart';
+import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
+import 'package:memodiary/features/editor/models/desk_media_handlers.dart';
 import 'package:memodiary/features/editor/widgets/editor_desk_media_area.dart';
 import '../../../helpers/editor_test_harness.dart';
 
@@ -23,6 +25,9 @@ void main() {
     bool isWorkstationCollapsed = false,
     bool isKeyboardVisible = false,
     bool isWritingDockVisible = true,
+    List<SheetMediaItem> mountedItems = const [],
+    List<SheetMediaItem> stagedItems = const [],
+    DeskMediaHandlers handlers = const DeskMediaHandlers(),
   }) async {
     final chrome = EditorChromeController();
     addTearDown(chrome.dispose);
@@ -34,7 +39,7 @@ void main() {
       restingDeskHeight: 700.0,
       sheetHeight: 400.0,
       sealBlockHeight: 64.0,
-      isHandscrollEmpty: true,
+      isHandscrollEmpty: stagedItems.isEmpty,
       isLastSheet: false,
     );
     await tester.pumpWidget(MaterialApp(
@@ -45,11 +50,12 @@ void main() {
           height: 700.0,
           child: EditorDeskMediaArea(
             budget: budget,
-            mountedItems: const [],
-            stagedItems: const [],
+            mountedItems: mountedItems,
+            stagedItems: stagedItems,
             mediaSandboxService: SyncTestMediaSandboxService(tempDir: tempDirectory),
             activeSheetNumber: 1,
             chrome: chrome,
+            handlers: handlers,
           ),
         ),
       ),
@@ -92,6 +98,54 @@ void main() {
 
       await pumpArea(tester, isWritingDockVisible: false, isKeyboardVisible: true);
       expect(dockRestoreTab, findsNothing);
+    });
+
+    testWidgets('forwards DeskMediaHandlers.onCaptionChanged to staged and mounted lightboxes', (tester) async {
+      final captionUpdates = <(String, String)>[];
+      const stagedItem = SheetMediaItem(
+        id: 'staged_1',
+        mediaType: EphemeraMediaType.image,
+        relativePath: 'media/staged_1.webp',
+      );
+      const mountedItem = SheetMediaItem(
+        id: 'mounted_1',
+        mediaType: EphemeraMediaType.image,
+        relativePath: 'media/mounted_1.webp',
+      );
+
+      await pumpArea(
+        tester,
+        mountedItems: const [mountedItem],
+        stagedItems: const [stagedItem],
+        handlers: DeskMediaHandlers(
+          onCaptionChanged: (mediaId, newCaption) => captionUpdates.add((mediaId, newCaption)),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('handscroll_item_staged_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lightbox_caption_edit_button')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('lightbox_caption_input')), '暮春西湖');
+      await tester.tap(find.byKey(const Key('lightbox_caption_save_button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('fullscreen_lightbox_close_button')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('tucked_prints')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('tucked_overlay_print_mounted_1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('lightbox_caption_edit_button')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('lightbox_caption_input')), '断桥残雪');
+      await tester.tap(find.byKey(const Key('lightbox_caption_save_button')));
+      await tester.pumpAndSettle();
+
+      expect(captionUpdates, equals([
+        ('staged_1', '暮春西湖'),
+        ('mounted_1', '断桥残雪'),
+      ]));
     });
   });
 }
