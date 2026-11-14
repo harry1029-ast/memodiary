@@ -149,10 +149,7 @@ void main() {
       const grandfatheredFilesExceeding450Loc = <String>{
         'lib/core/theme/ink_diary_theme.dart',
         'lib/features/albums/models/album_studio_models.dart',
-        'lib/features/albums/screens/album_book_overview_screen.dart',
-        'lib/features/albums/screens/album_page_editor_screen.dart',
         'lib/features/albums/screens/album_workspace_screen.dart',
-        'lib/features/albums/services/album_studio_controller.dart',
         'lib/features/albums/services/album_studio_pdf_renderer.dart',
         'lib/features/albums/services/album_theme_catalog.dart',
         'lib/features/albums/widgets/page_background_painter.dart',

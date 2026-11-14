@@ -92,24 +92,6 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
     super.dispose();
   }
 
-  AlbumCollection _liveCollection() =>
-      _controller.collection ?? widget.collection;
-
-  bool _hasLiveSession() =>
-      _controller.collection != null || _controller.photos.isNotEmpty;
-
-  List<AlbumPhoto> _livePhotos() =>
-      _hasLiveSession() ? _controller.photos : widget.photos;
-
-  Map<String, AlbumPhoto> _livePhotoById() {
-    if (_hasLiveSession()) {
-      return _controller.photoById;
-    }
-    return {
-      for (final photo in widget.photos) photo.id: photo,
-    };
-  }
-
   void _toggleFullscreen() {
     setState(() {
       _isFullscreen = !_isFullscreen;
@@ -143,8 +125,8 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
   void _openPdfExportSheet() {
     AlbumPdfPreviewSheet.show(
       context,
-      collection: _liveCollection(),
-      photos: _livePhotos(),
+      collection: _controller.resolveCollection(widget.collection),
+      photos: _controller.resolvePhotos(widget.photos),
       studioDocument: _controller.document,
       mediaService: widget.mediaService,
       imageTranscoder: widget.imageTranscoder,
@@ -169,8 +151,8 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
       MaterialPageRoute<void>(
         builder: (context) => AlbumPageEditorScreen(
           controller: _controller,
-          collection: _liveCollection(),
-          photos: _livePhotos(),
+          collection: _controller.resolveCollection(widget.collection),
+          photos: _controller.resolvePhotos(widget.photos),
           repository: repo,
           mediaService: widget.mediaService,
           initialPageIndex: targetPageIndex,
@@ -186,8 +168,8 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, _) {
-        final collection = _liveCollection();
-        final photoById = _livePhotoById();
+        final collection = _controller.resolveCollection(widget.collection);
+        final photoById = _controller.resolvePhotoById(widget.photos);
         final spreads = _controller.flipbookSpreads;
         final totalPages = spreads.length;
         final safeIndex =

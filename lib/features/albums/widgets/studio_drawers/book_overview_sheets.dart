@@ -28,6 +28,7 @@ void showBookOverviewAddSheet({
                 key: const Key('overview_add_blank_page'),
                 leading: Icon(
                   Icons.note_add_outlined,
+                  size: 22,
                   color: tokens.cinnabar,
                 ),
                 title: Text(
@@ -56,6 +57,7 @@ void showBookOverviewAddSheet({
                   key: const Key('overview_import_photos'),
                   leading: Icon(
                     Icons.add_photo_alternate_outlined,
+                    size: 22,
                     color: tokens.nongmo,
                   ),
                   title: Text(
@@ -123,7 +125,11 @@ void showBookOverviewArrangeSheet({
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.close, color: tokens.danmo),
+                        icon: Icon(
+                          Icons.close,
+                          size: 20,
+                          color: tokens.danmo,
+                        ),
                         onPressed: () => Navigator.of(sheetContext).pop(),
                       ),
                     ],
@@ -185,6 +191,7 @@ void showBookOverviewArrangeSheet({
                                 ),
                               Icon(
                                 Icons.drag_handle,
+                                size: 20,
                                 color: tokens.qingmo,
                               ),
                             ],

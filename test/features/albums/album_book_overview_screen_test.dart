@@ -367,10 +367,10 @@ void main() {
       findsNothing,
     );
 
-    await tester.pumpWidget(const SizedBox.shrink());
+    await tearDownAlbumScreen(tester);
     externalController.addBlankPage();
     expect(externalController.pages.length, 2);
     externalController.dispose();
-    await tester.pump(const Duration(seconds: 1));
+    await tearDownAlbumScreen(tester);
   });
 }

@@ -362,11 +362,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('第 1 / 1 页'), findsOneWidget);
 
-    await tester.pumpWidget(const SizedBox.shrink());
+    await tearDownAlbumScreen(tester);
     externalController.addBlankPage();
     expect(externalController.pages.length, 2);
     externalController.dispose();
-    await tester.pump(const Duration(seconds: 1));
+    await tearDownAlbumScreen(tester);
   });
 }
 

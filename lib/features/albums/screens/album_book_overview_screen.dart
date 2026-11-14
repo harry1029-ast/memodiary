@@ -81,24 +81,6 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
     super.dispose();
   }
 
-  AlbumCollection _liveCollection(AlbumStudioController ctrl) =>
-      ctrl.collection ?? widget.collection;
-
-  bool _hasLivePhotos(AlbumStudioController ctrl) =>
-      ctrl.collection != null || ctrl.photos.isNotEmpty;
-
-  List<AlbumPhoto> _livePhotos(AlbumStudioController ctrl) =>
-      _hasLivePhotos(ctrl) ? ctrl.photos : widget.photos;
-
-  Map<String, AlbumPhoto> _livePhotoById(AlbumStudioController ctrl) {
-    if (_hasLivePhotos(ctrl)) {
-      return ctrl.photoById;
-    }
-    return {
-      for (final photo in widget.photos) photo.id: photo,
-    };
-  }
-
   Future<void> _handleClose() async {
     await _controller?.saveToRepository();
     if (!mounted) return;
@@ -114,8 +96,8 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
       MaterialPageRoute<void>(
         builder: (context) => AlbumPageEditorScreen(
           controller: ctrl,
-          collection: _liveCollection(ctrl),
-          photos: _livePhotos(ctrl),
+          collection: ctrl.resolveCollection(widget.collection),
+          photos: ctrl.resolvePhotos(widget.photos),
           repository: widget.repository,
           mediaService: widget.mediaService,
           initialPageIndex: pageIndex,
@@ -165,8 +147,8 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
 
     await AlbumPdfPreviewSheet.show(
       context,
-      collection: _liveCollection(ctrl),
-      photos: _livePhotos(ctrl),
+      collection: ctrl.resolveCollection(widget.collection),
+      photos: ctrl.resolvePhotos(widget.photos),
       studioDocument: ctrl.document,
       mediaService: widget.mediaService,
     );
@@ -189,9 +171,9 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
     return ListenableBuilder(
       listenable: ctrl,
       builder: (context, _) {
-        final collection = _liveCollection(ctrl);
-        final photos = _livePhotos(ctrl);
-        final photoById = _livePhotoById(ctrl);
+        final collection = ctrl.resolveCollection(widget.collection);
+        final photos = ctrl.resolvePhotos(widget.photos);
+        final photoById = ctrl.resolvePhotoById(widget.photos);
         final pages = ctrl.pages;
         final spreads = ctrl.overviewSpreads;
         final removedCount = ctrl.removedPhotoIds.length;

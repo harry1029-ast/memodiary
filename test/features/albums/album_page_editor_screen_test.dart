@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/albums/models/album_studio_models.dart';
 import 'package:memodiary/features/albums/screens/album_page_editor_screen.dart';
 import 'package:memodiary/features/albums/services/album_layout_engine.dart';
@@ -7,6 +8,7 @@ import 'package:memodiary/features/albums/services/album_studio_controller.dart'
 import 'package:memodiary/features/albums/widgets/studio_drawers/add_elements_drawer.dart';
 import 'package:memodiary/features/albums/widgets/studio_drawers/background_style_drawer.dart';
 import 'package:memodiary/features/albums/widgets/studio_drawers/layout_picker_drawer.dart';
+import 'package:memodiary/features/albums/widgets/studio_drawers/page_editor_sheets.dart';
 import 'package:memodiary/features/albums/widgets/studio_drawers/removed_photos_drawer.dart';
 import 'album_test_harness.dart';
 
@@ -498,5 +500,42 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     controller.dispose();
     await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets(
+      'StudioBottomDock clamps text scaling at 1.3x and avoids overflow on narrow 320px viewports',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: InkDiaryTheme.light,
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+          child: Scaffold(
+            bottomNavigationBar: StudioBottomDock(
+              removedCount: 12,
+              activeTab: StudioDrawerTab.removed,
+              onToggleTab: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    final rowElement = tester.element(
+      find.descendant(
+        of: find.byType(StudioBottomDock),
+        matching: find.byType(Row),
+      ),
+    );
+    expect(MediaQuery.textScalerOf(rowElement).scale(10), closeTo(13.0, 0.01));
   });
 }

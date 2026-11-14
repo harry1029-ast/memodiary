@@ -114,50 +114,53 @@ class StudioBottomDock extends StatelessWidget {
             top: BorderSide(color: tokens.deckleBorder, width: 0.9),
           ),
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _DockTabItem(
-                tabKey: const Key('studio_tab_removed'),
-                icon: Icons.inventory_2_outlined,
-                label:
-                    '${AlbumStudioStrings.collectionBoxDockTab} ($removedCount)',
-                isSelected: activeTab == StudioDrawerTab.removed,
-                tokens: tokens,
-                onTap: () => onToggleTab(StudioDrawerTab.removed),
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: Row(
+            children: [
+              Expanded(
+                child: _DockTabItem(
+                  tabKey: const Key('studio_tab_removed'),
+                  icon: Icons.inventory_2_outlined,
+                  label:
+                      '${AlbumStudioStrings.collectionBoxDockTab} ($removedCount)',
+                  isSelected: activeTab == StudioDrawerTab.removed,
+                  tokens: tokens,
+                  onTap: () => onToggleTab(StudioDrawerTab.removed),
+                ),
               ),
-            ),
-            Expanded(
-              child: _DockTabItem(
-                tabKey: const Key('studio_tab_add'),
-                icon: Icons.add_circle_outline,
-                label: 'Add',
-                isSelected: activeTab == StudioDrawerTab.add,
-                tokens: tokens,
-                onTap: () => onToggleTab(StudioDrawerTab.add),
+              Expanded(
+                child: _DockTabItem(
+                  tabKey: const Key('studio_tab_add'),
+                  icon: Icons.add_circle_outline,
+                  label: 'Add',
+                  isSelected: activeTab == StudioDrawerTab.add,
+                  tokens: tokens,
+                  onTap: () => onToggleTab(StudioDrawerTab.add),
+                ),
               ),
-            ),
-            Expanded(
-              child: _DockTabItem(
-                tabKey: const Key('studio_tab_background'),
-                icon: Icons.palette_outlined,
-                label: 'Background',
-                isSelected: activeTab == StudioDrawerTab.background,
-                tokens: tokens,
-                onTap: () => onToggleTab(StudioDrawerTab.background),
+              Expanded(
+                child: _DockTabItem(
+                  tabKey: const Key('studio_tab_background'),
+                  icon: Icons.palette_outlined,
+                  label: 'Background',
+                  isSelected: activeTab == StudioDrawerTab.background,
+                  tokens: tokens,
+                  onTap: () => onToggleTab(StudioDrawerTab.background),
+                ),
               ),
-            ),
-            Expanded(
-              child: _DockTabItem(
-                tabKey: const Key('studio_tab_layout'),
-                icon: Icons.dashboard_customize_outlined,
-                label: 'Layout',
-                isSelected: activeTab == StudioDrawerTab.layout,
-                tokens: tokens,
-                onTap: () => onToggleTab(StudioDrawerTab.layout),
+              Expanded(
+                child: _DockTabItem(
+                  tabKey: const Key('studio_tab_layout'),
+                  icon: Icons.dashboard_customize_outlined,
+                  label: 'Layout',
+                  isSelected: activeTab == StudioDrawerTab.layout,
+                  tokens: tokens,
+                  onTap: () => onToggleTab(StudioDrawerTab.layout),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

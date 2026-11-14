@@ -912,5 +912,92 @@ void main() {
         expect(persistCount, equals(1));
       },
     );
+
+    test(
+      'resolveCollection, resolvePhotos, and resolvePhotoById select live session state or fallback',
+      () {
+        final initialDoc = AlbumStudioDocument(pages: const []);
+        final fallbackCollection = AlbumCollection(
+          id: 'col_fallback',
+          title: 'Fallback',
+          layoutPreset: 'classic_photobook',
+          themeId: 'shanshui_ink',
+          sortIndex: 0,
+          createdAt: DateTime(2026, 4, 1),
+          updatedAt: DateTime(2026, 4, 1),
+        );
+        final fallbackPhotos = [
+          AlbumPhoto(
+            id: 'fb_p1',
+            collectionId: 'col_fallback',
+            relativeImagePath: 'media/fb_p1.webp',
+            relativeThumbnailPath: 'media/fb_p1_thumb.webp',
+            sortOrder: 0,
+            aspectRatio: 1.0,
+            createdAt: DateTime(2026, 4, 1),
+          ),
+        ];
+
+        // 1. No live collection and no live photos -> uses fallback
+        final emptySessionController = AlbumStudioController(
+          collectionId: 'col_fallback',
+          initialDocument: initialDoc,
+        );
+        expect(
+          emptySessionController.resolveCollection(fallbackCollection),
+          equals(fallbackCollection),
+        );
+        expect(
+          emptySessionController.resolvePhotos(fallbackPhotos),
+          equals(fallbackPhotos),
+        );
+        expect(
+          emptySessionController.resolvePhotoById(fallbackPhotos).keys,
+          equals(['fb_p1']),
+        );
+
+        // 2. Live collection present even with empty live photos -> uses live empty list
+        final liveCollection = fallbackCollection.copyWith(title: 'Live');
+        final liveColController = AlbumStudioController(
+          collectionId: 'col_fallback',
+          initialDocument: initialDoc,
+          initialCollection: liveCollection,
+        );
+        expect(
+          liveColController.resolveCollection(fallbackCollection),
+          equals(liveCollection),
+        );
+        expect(liveColController.resolvePhotos(fallbackPhotos), isEmpty);
+        expect(liveColController.resolvePhotoById(fallbackPhotos), isEmpty);
+
+        // 3. Live photos present without live collection -> uses live photos & fallback collection
+        final livePhoto = AlbumPhoto(
+          id: 'live_p1',
+          collectionId: 'col_fallback',
+          relativeImagePath: 'media/live_p1.webp',
+          relativeThumbnailPath: 'media/live_p1_thumb.webp',
+          sortOrder: 0,
+          aspectRatio: 1.0,
+          createdAt: DateTime(2026, 4, 2),
+        );
+        final livePhotosController = AlbumStudioController(
+          collectionId: 'col_fallback',
+          initialDocument: initialDoc,
+          initialPhotos: [livePhoto],
+        );
+        expect(
+          livePhotosController.resolveCollection(fallbackCollection),
+          equals(fallbackCollection),
+        );
+        expect(
+          livePhotosController.resolvePhotos(fallbackPhotos),
+          equals([livePhoto]),
+        );
+        expect(
+          livePhotosController.resolvePhotoById(fallbackPhotos),
+          equals({'live_p1': livePhoto}),
+        );
+      },
+    );
   });
 }

@@ -69,15 +69,6 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
     });
   }
 
-  AlbumCollection _liveCollection() =>
-      widget.controller.collection ?? widget.collection;
-
-  Map<String, AlbumPhoto> _livePhotoById() =>
-      (widget.controller.collection != null ||
-              widget.controller.photos.isNotEmpty)
-          ? widget.controller.photoById
-          : {for (final photo in widget.photos) photo.id: photo};
-
   String _resolveDefaultDateLabel(
     AlbumPageModel page,
     AlbumCollection collection,
@@ -120,8 +111,9 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
     return ListenableBuilder(
       listenable: widget.controller,
       builder: (context, _) {
-        final collection = _liveCollection();
-        final photoById = _livePhotoById();
+        final collection =
+            widget.controller.resolveCollection(widget.collection);
+        final photoById = widget.controller.resolvePhotoById(widget.photos);
         final pages = widget.controller.pages;
         final currentIndex = widget.controller.selectedPageIndex;
         final activePage = widget.controller.selectedPage;
