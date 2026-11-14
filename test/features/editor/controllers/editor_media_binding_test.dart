@@ -30,7 +30,7 @@ class _FailingDeleteMediaOcrDao extends MediaOcrDao {
   _FailingDeleteMediaOcrDao(super.attachedDatabase);
 
   @override
-  Future<int> deleteMediaForEntryByPath({
+  Future<List<String>> deleteMediaForEntryByPath({
     required String entryId,
     required String relativePath,
   }) async {
@@ -503,6 +503,92 @@ void main() {
         throwsStateError,
       );
       expect(stagedPhoto.existsSync(), isTrue);
+    });
+  });
+
+  group('EditorMediaBinding.deleteLegacyEphemera', () {
+    test('removes EphemeraSheet, deletes SQLite row first, deletes video and thumbnail files, and forces draft save', () async {
+      final legacyDelta = Delta()
+        ..insert('首段正文。\n')
+        ..insert({'video': 'media/legacy_vid.mp4'})
+        ..insert('\n')
+        ..insert('末段结语。\n');
+      final legacyDeltaJson = jsonEncode(legacyDelta.toJson());
+      await database.entriesDao.updateEntryContent(entryId, legacyDeltaJson, '首段正文。\n末段结语。');
+      await database.mediaOcrDao.attachMediaToEntry(
+        id: 'legacy_vid_id',
+        entryId: entryId,
+        relativePath: 'media/legacy_vid.mp4',
+        mediaType: 'video',
+        thumbnailPath: 'media/legacy_vid_thumb.webp',
+      );
+      final vidFile = File('${tempDirectory.path}/media/legacy_vid.mp4')
+        ..parent.createSync(recursive: true)
+        ..writeAsBytesSync(kValidMp4FtypBytes);
+      final thumbFile = File('${tempDirectory.path}/media/legacy_vid_thumb.webp')
+        ..writeAsBytesSync(kValid1x1PngBytes);
+
+      final attachments = await database.mediaOcrDao.getMediaForEntry(entryId);
+      coordinator.initializeFromDelta(legacyDeltaJson, attachments: attachments);
+      expect(coordinator.sheets, hasLength(3));
+      expect(coordinator.sheets[1], isA<EphemeraSheet>());
+      stateChangedCount = 0;
+
+      await binding.deleteLegacyEphemera(1);
+
+      expect(stateChangedCount, 1);
+      expect(coordinator.sheets, hasLength(2));
+      expect(coordinator.sheets[0], isA<OpeningSheet>());
+      expect(coordinator.sheets[1], isA<ContinuationSheet>());
+      expect(coordinator.sheets[0].sheetIndex, 0);
+      expect(coordinator.sheets[1].sheetIndex, 1);
+      expect(await database.mediaOcrDao.getMediaAttachmentById('legacy_vid_id'), isNull);
+      expect(vidFile.existsSync(), isFalse);
+      expect(thumbFile.existsSync(), isFalse);
+      expect(autosaveManager.statusNotifier.value, AutosaveStatus.saved);
+      final savedEntry = await database.entriesDao.getEntryById(entryId);
+      expect(savedEntry!.contentDelta, isNot(contains('legacy_vid.mp4')));
+    });
+
+    test('ignores out-of-range indices and non-EphemeraSheet targets', () async {
+      await binding.deleteLegacyEphemera(0); // OpeningSheet
+      await binding.deleteLegacyEphemera(-1);
+      await binding.deleteLegacyEphemera(99);
+
+      expect(stateChangedCount, 0);
+      expect(coordinator.sheets, hasLength(1));
+    });
+
+    test('preserves sandbox files when SQLite deletion throws (ADR-0010)', () async {
+      final legacyDeltaJson = jsonEncode(
+        (Delta()
+              ..insert('正文\n')
+              ..insert({'image': 'media/legacy_img.webp'})
+              ..insert('\n'))
+            .toJson(),
+      );
+      await database.entriesDao.updateEntryContent(entryId, legacyDeltaJson, '正文');
+      await database.mediaOcrDao.attachMediaToEntry(
+        id: 'legacy_img_id',
+        entryId: entryId,
+        relativePath: 'media/legacy_img.webp',
+      );
+      final imgFile = File('${tempDirectory.path}/media/legacy_img.webp')
+        ..parent.createSync(recursive: true)
+        ..writeAsBytesSync(kValid1x1PngBytes);
+      final attachments = await database.mediaOcrDao.getMediaForEntry(entryId);
+      coordinator.initializeFromDelta(legacyDeltaJson, attachments: attachments);
+
+      final failingBinding = createBinding(
+        mediaOcrDao: _FailingDeleteMediaOcrDao(database),
+      );
+      addTearDown(failingBinding.dispose);
+
+      await expectLater(
+        () => failingBinding.deleteLegacyEphemera(1),
+        throwsStateError,
+      );
+      expect(imgFile.existsSync(), isTrue);
     });
   });
 }

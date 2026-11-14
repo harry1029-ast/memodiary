@@ -279,14 +279,46 @@ class EditorMediaBinding {
     _eraseTimers.remove(mediaId)?.cancel();
     final item = _pendingErasures.remove(mediaId);
     if (item == null) return;
-    await mediaOcrDao.deleteMediaForEntryByPath(
-      entryId: entryId,
-      relativePath: item.relativePath,
-    );
-    await mediaSandboxService.deleteMediaPaths([
+    await _deleteSqlAndSandboxFiles(
       item.relativePath,
-      if (item.thumbnailPath != null) item.thumbnailPath!,
-    ]);
+      knownThumbnailPath: item.thumbnailPath,
+    );
+  }
+
+  /// Removes a legacy full-sheet [EphemeraSheet] at [sheetIndex], deletes its
+  /// SQLite `mediaAttachments` records first (collecting any companion
+  /// `thumbnailPath`), deletes primary and thumbnail sandbox files, and forces
+  /// a draft save.
+  Future<void> deleteLegacyEphemera(int sheetIndex) async {
+    if (_isDisposed) return;
+    if (sheetIndex < 0 || sheetIndex >= coordinator.sheets.length) return;
+    final targetSheet = coordinator.sheets[sheetIndex];
+    if (targetSheet is! EphemeraSheet) return;
+    final relativePath = targetSheet.sandboxedRelativePath;
+
+    coordinator.removeEphemeraSheet(sheetIndex);
+    onStateChanged();
+
+    if (relativePath.isNotEmpty) {
+      await _deleteSqlAndSandboxFiles(relativePath);
+    }
+    await autosaveManager.saveDraft(force: true);
+  }
+
+  Future<void> _deleteSqlAndSandboxFiles(
+    String relativePath, {
+    String? knownThumbnailPath,
+  }) async {
+    final dbThumbnails = await mediaOcrDao.deleteMediaForEntryByPath(
+      entryId: entryId,
+      relativePath: relativePath,
+    );
+    await mediaSandboxService.deleteMediaPaths({
+      relativePath,
+      if (knownThumbnailPath != null && knownThumbnailPath.isNotEmpty)
+        knownThumbnailPath,
+      ...dbThumbnails,
+    });
   }
 
   /// Updates the in-memory and persisted caption for [mediaId].
