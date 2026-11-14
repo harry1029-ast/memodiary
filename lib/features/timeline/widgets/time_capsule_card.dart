@@ -80,26 +80,35 @@ class TimeCapsuleCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      'TIME CAPSULE',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: tokens.cinnabar,
-                        letterSpacing: 1.0,
+                    // One text run, so the row has a single child that can
+                    // shrink: the subtitle ellipsizes first, then the label,
+                    // and the seal badge always keeps its place.
+                    Flexible(
+                      child: Text.rich(
+                        TextSpan(
+                          style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif),
+                          children: [
+                            TextSpan(
+                              text: 'TIME CAPSULE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: tokens.cinnabar,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            const WidgetSpan(child: SizedBox(width: 4)),
+                            TextSpan(
+                              text: '时光胶囊 · 封缄书',
+                              style: TextStyle(fontSize: 11, color: tokens.danmo),
+                            ),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '时光胶囊 · 封缄书',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 11,
-                        color: tokens.danmo,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     CinnabarSealBadge.compact(
                       text: '封存中',
                       size: 20,

@@ -100,7 +100,7 @@ void main() {
       expect(find.text('😄'), findsOneWidget); // Mood 5 emoji
 
       // Sealed Time Capsule is rendered with capsule banner and countdown
-      expect(find.text('TIME CAPSULE'), findsOneWidget);
+      expect(find.textContaining('TIME CAPSULE'), findsOneWidget);
       expect(find.text('Letter to my 2030 Self'), findsOneWidget);
       expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
       expect(find.textContaining('Unlocks in'), findsOneWidget);
