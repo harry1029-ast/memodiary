@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:memodiary/features/editor/services/vertical_typography_mapper.dart';
+import 'package:memodiary/core/documents/vertical_typography_mapper.dart';
 
 void main() {
   group('VerticalTypographyMapper Tests', () {
@@ -110,6 +110,24 @@ void main() {
       expect(emptyTokens, isEmpty);
     });
 
+    test('tokenizeInterlinear splits right-sub-column-first with vertical punctuation mapping', () {
+      expect(
+        VerticalTypographyMapper.tokenizeInterlinear('月照花林'),
+        equals(const [
+          VerticalInterlinearPairToken(rightChar: '月', leftChar: '花'),
+          VerticalInterlinearPairToken(rightChar: '照', leftChar: '林'),
+        ]),
+      );
+      expect(
+        VerticalTypographyMapper.tokenizeInterlinear('「注」'),
+        equals(const [
+          VerticalInterlinearPairToken(rightChar: '﹁', leftChar: '﹂'),
+          VerticalInterlinearPairToken(rightChar: '注', leftChar: ''),
+        ]),
+      );
+      expect(VerticalTypographyMapper.tokenizeInterlinear(''), isEmpty);
+    });
+
     test('tokenize identifies ideographic corner stops and rotated vertical punctuation', () {
       final tokens = VerticalTypographyMapper.tokenize('明月。春风，细雨、寒江—夜泊～MemoDiary');
 
@@ -139,4 +157,3 @@ void main() {
     });
   });
 }
-

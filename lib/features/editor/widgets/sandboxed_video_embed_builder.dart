@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import '../../../core/services/media_sandbox_service.dart';
-import '../models/media_embed_data.dart';
+import '../../../core/documents/media_embed_data.dart';
 import 'grid_snapped_embed_container.dart';
 import 'sandboxed_video_player.dart';
 

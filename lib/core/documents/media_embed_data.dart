@@ -63,12 +63,14 @@ class MediaEmbedData {
     final str = raw.toString().trim();
     if (str.startsWith('{') && str.endsWith('}')) {
       try {
-        final map = jsonDecode(str) as Map<String, dynamic>;
-        return MediaEmbedData(
-          path: map['path']?.toString() ?? '',
-          caption: map['caption']?.toString() ?? '',
-          aspect: map['aspect']?.toString() ?? 'auto',
-        );
+        final decoded = jsonDecode(str);
+        if (decoded is Map) {
+          return MediaEmbedData(
+            path: decoded['path']?.toString() ?? '',
+            caption: decoded['caption']?.toString() ?? '',
+            aspect: decoded['aspect']?.toString() ?? 'auto',
+          );
+        }
       } catch (_) {
         // Fall back to treating as path
       }
@@ -99,4 +101,20 @@ class MediaEmbedData {
       aspect: aspectRatio?.code ?? aspect ?? this.aspect,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MediaEmbedData &&
+          runtimeType == other.runtimeType &&
+          path == other.path &&
+          caption == other.caption &&
+          aspect == other.aspect;
+
+  @override
+  int get hashCode => Object.hash(path, caption, aspect);
+
+  @override
+  String toString() =>
+      'MediaEmbedData(path: $path, caption: $caption, aspect: $aspect)';
 }

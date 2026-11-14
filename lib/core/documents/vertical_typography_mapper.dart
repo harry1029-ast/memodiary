@@ -63,7 +63,8 @@ class VerticalInterlinearPairToken extends VerticalRenderToken {
 class VerticalTypographyMapper {
   const VerticalTypographyMapper._();
 
-  static final RegExp _interlinearRegex = RegExp(r'\{夹注:(.*?)\}');
+  /// Canonical pattern matching `{夹注:...}` Interlinear Sub-Note spans.
+  static final RegExp interlinearRegex = RegExp(r'\{夹注:(.*?)\}');
   static final RegExp _latinCharRegex = RegExp(r'[a-zA-Z0-9_\-.]');
 
   /// Ideographic stops placed in the upper-right quadrant of their character cell.
@@ -135,7 +136,7 @@ class VerticalTypographyMapper {
   /// Formats interlinear sub-notes {夹注:...} as inline bracketed notes 〖...〗.
   static String formatInterlinearAsInline(String text) {
     return text.replaceAllMapped(
-      _interlinearRegex,
+      interlinearRegex,
       (match) => '〖${match.group(1)}〗',
     );
   }
@@ -163,7 +164,7 @@ class VerticalTypographyMapper {
     final tokens = <VerticalRenderToken>[];
     int currentIndex = 0;
 
-    final matches = _interlinearRegex.allMatches(input);
+    final matches = interlinearRegex.allMatches(input);
     for (final match in matches) {
       if (match.start > currentIndex) {
         final textSlice = input.substring(currentIndex, match.start);
@@ -171,7 +172,7 @@ class VerticalTypographyMapper {
       }
 
       final noteContent = match.group(1) ?? '';
-      _tokenizeInterlinearNote(noteContent, tokens);
+      tokens.addAll(tokenizeInterlinear(noteContent));
 
       currentIndex = match.end;
     }
@@ -184,27 +185,29 @@ class VerticalTypographyMapper {
     return tokens;
   }
 
-  static void _tokenizeInterlinearNote(
-    String rawContent,
-    List<VerticalRenderToken> out,
-  ) {
-    if (rawContent.isEmpty) return;
+  /// Tokenizes the inner text of an interlinear sub-note (`{夹注:...}`) into
+  /// dual-subcolumn [VerticalInterlinearPairToken] rows ordered classical
+  /// right-sub-column top-to-bottom first, then left-sub-column top-to-bottom,
+  /// with horizontal CJK punctuation converted via [mapPunctuation].
+  static List<VerticalInterlinearPairToken> tokenizeInterlinear(String rawContent) {
+    if (rawContent.isEmpty) return const [];
     final content = mapPunctuation(rawContent);
-    final noteLength = content.length;
-    final rightCount = (noteLength + 1) ~/ 2;
-    final rightChars = content.substring(0, rightCount);
-    final leftChars = content.substring(rightCount);
+    final chars = content.runes.map(String.fromCharCode).toList(growable: false);
+    final rightCount = (chars.length + 1) ~/ 2;
+    final pairs = <VerticalInterlinearPairToken>[];
 
     for (int rowIndex = 0; rowIndex < rightCount; rowIndex++) {
-      final rightChar = rightChars[rowIndex];
-      final leftChar = rowIndex < leftChars.length ? leftChars[rowIndex] : '';
-      out.add(
+      final rightChar = chars[rowIndex];
+      final leftIndex = rightCount + rowIndex;
+      final leftChar = leftIndex < chars.length ? chars[leftIndex] : '';
+      pairs.add(
         VerticalInterlinearPairToken(
           rightChar: rightChar,
           leftChar: leftChar,
         ),
       );
     }
+    return pairs;
   }
 
   static void _tokenizeNormalText(

@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import '../../../core/database/app_database.dart';
-import '../../../core/utils/delta_ops_decoder.dart';
+import '../../../core/documents/delta_ops_decoder.dart';
 import '../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../editor/models/typography_settings.dart';
 import '../../editor/services/editor_delta_partitioner.dart';

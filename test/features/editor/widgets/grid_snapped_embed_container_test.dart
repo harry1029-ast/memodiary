@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:memodiary/features/editor/models/media_embed_data.dart';
+import 'package:memodiary/core/documents/media_embed_data.dart';
 import 'package:memodiary/features/editor/widgets/grid_snapped_embed_container.dart';
 
 void main() {

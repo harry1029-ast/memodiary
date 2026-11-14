@@ -2,7 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
-import 'package:memodiary/features/editor/models/media_embed_data.dart';
+import 'package:memodiary/core/documents/media_embed_data.dart';
 
 void main() {
   group('SheetRowCapacity follows the rows ruled in the Paper Heart', () {

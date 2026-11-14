@@ -4,7 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
-import '../../editor/services/vertical_typography_mapper.dart';
+import '../../../core/documents/vertical_typography_mapper.dart';
 import '../../settings/services/signature_seal_service.dart';
 import '../../templates/models/template_style.dart';
 import '../../timeline/services/folio_media_pairing.dart';

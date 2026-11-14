@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import '../controllers/stationery_quill_controller.dart';
-import '../models/media_embed_data.dart';
+import '../../../core/documents/media_embed_data.dart';
 import '../models/mount_marker.dart';
 import 'sheet_media_item.dart';
 

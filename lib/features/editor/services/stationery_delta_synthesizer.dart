@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
+import '../../../core/documents/delta_ops_decoder.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../models/mount_marker.dart';
 import 'sheet_mount_resolver.dart';
@@ -13,13 +14,12 @@ class StationeryDeltaSynthesizer {
 
   /// Decodes a raw continuous Quill Delta JSON string (or fallback plain text) into a [Delta].
   static Delta decode(String contentDeltaJson, {String? fallbackPlainText}) {
-    if (contentDeltaJson.trim().isNotEmpty) {
+    final ops = decodeDeltaOps(contentDeltaJson);
+    if (ops != null) {
       try {
-        final decoded = jsonDecode(contentDeltaJson);
-        final ops = decoded is List ? decoded : (decoded is Map ? decoded['ops'] : null);
-        return ops is List ? Delta.fromJson(ops) : (Delta()..insert('\n'));
+        return Delta.fromJson(ops);
       } catch (_) {
-        return Delta()..insert('\n');
+        // Ops that are not a valid Delta: fall back to plain text below.
       }
     }
     if (fallbackPlainText != null && fallbackPlainText.trim().isNotEmpty) {

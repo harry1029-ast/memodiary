@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/domain/stationery_sheet_descriptor.dart';
-import 'package:memodiary/features/editor/models/media_embed_data.dart';
+import 'package:memodiary/core/documents/media_embed_data.dart';
 import 'package:memodiary/features/editor/widgets/sandboxed_video_player.dart';
 import 'package:memodiary/features/editor/widgets/stationery_ephemera_sheet.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';

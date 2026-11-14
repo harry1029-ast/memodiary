@@ -1,8 +1,8 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/services/media_sandbox_service.dart';
-import '../../../core/utils/delta_ops_decoder.dart';
-import '../../editor/services/vertical_typography_mapper.dart';
+import '../../../core/documents/delta_ops_decoder.dart';
+import '../../../core/documents/vertical_typography_mapper.dart';
 import '../../templates/models/template_style.dart';
 import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';

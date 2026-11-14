@@ -1,7 +1,7 @@
 import 'folio_content_parser.dart';
 import 'folio_leaf_model.dart';
 import 'folio_reading_perspective.dart';
-import '../../../editor/services/vertical_typography_mapper.dart';
+import '../../../../core/documents/vertical_typography_mapper.dart';
 
 /// Helper for packing content blocks into right-to-left vertical folio leaves.
 class FolioVerticalPaginator {

@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
 import '../../../templates/models/template_style.dart';
-import '../../services/vertical_typography_mapper.dart';
+import '../../../../core/documents/vertical_typography_mapper.dart';
 
 /// Renders a single vertical calligraphy column bounded by silk rule tints (朱丝栏/乌丝栏).
 /// Faithfully lays out classical CJK vertical glyphs, ideographic corner stops,

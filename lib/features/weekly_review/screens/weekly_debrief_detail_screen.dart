@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/database/app_database.dart';
+import '../../../core/documents/delta_ops_decoder.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
@@ -82,10 +82,10 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
       }
 
       quill.Document doc;
-      if (_debrief.contentDelta.isNotEmpty) {
+      final ops = decodeDeltaOps(_debrief.contentDelta);
+      if (ops != null) {
         try {
-          final decoded = jsonDecode(_debrief.contentDelta) as List<dynamic>;
-          doc = quill.Document.fromJson(decoded);
+          doc = quill.Document.fromJson(ops);
         } catch (_) {
           doc = quill.Document()..insert(0, _debrief.plainText);
         }
