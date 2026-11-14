@@ -1,27 +1,62 @@
-import 'package:flutter/widgets.dart';
-import 'package:image_picker/image_picker.dart';
+import 'dart:async';
+import 'dart:io';
+import 'dart:math' as math;
 
-import '../../../core/database/app_database.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
+import 'package:uuid/uuid.dart';
+
+import '../../../core/database/daos/media_ocr_dao.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../services/editor_pagination_coordinator.dart';
-import '../widgets/editor_media_actions.dart';
 import 'brush_reveal_queue.dart';
 import 'editor_autosave_manager.dart';
 
-/// Binds the entry editor's media interactions (collect, mount, unmount, erase,
-/// caption) to the pagination coordinator, database and autosave pipeline,
-/// keeping `EntryEditorScreen` free of media plumbing.
+/// Immutable outcome of a headless image or video Collect operation.
+@immutable
+class MediaCollectResult {
+  final int collectedCount;
+  final int rejectedByCapacity;
+
+  const MediaCollectResult({
+    required this.collectedCount,
+    required this.rejectedByCapacity,
+  });
+
+  bool get hasRejected => rejectedByCapacity > 0;
+  bool get wasFull => collectedCount == 0 && rejectedByCapacity > 0;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MediaCollectResult &&
+          runtimeType == other.runtimeType &&
+          collectedCount == other.collectedCount &&
+          rejectedByCapacity == other.rejectedByCapacity;
+
+  @override
+  int get hashCode => Object.hash(collectedCount, rejectedByCapacity);
+
+  @override
+  String toString() =>
+      'MediaCollectResult(collectedCount: $collectedCount, rejectedByCapacity: $rejectedByCapacity)';
+}
+
+/// UI-free media lifecycle controller binding Collect, Mount, Unmount,
+/// timed Erase-with-Undo, and Caption updates over [MediaOcrDao] and
+/// [MediaSandboxService].
 class EditorMediaBinding {
-  final AppDatabase database;
+  final MediaOcrDao mediaOcrDao;
   final MediaSandboxService mediaSandboxService;
   final String entryId;
-  final ImagePicker imagePicker;
   final EditorPaginationCoordinator coordinator;
   final EditorAutosaveManager autosaveManager;
 
   /// Requests a rebuild of the hosting screen (only invoked while mounted).
   final VoidCallback onStateChanged;
+
+  final Uuid _uuid;
 
   /// How long an erased item can be restored before it is purged.
   static const Duration kEraseUndoWindow = Duration(seconds: 4);
@@ -36,47 +71,126 @@ class EditorMediaBinding {
   /// Erased items still inside their undo window, by attachment id.
   final Map<String, SheetMediaItem> _pendingErasures = <String, SheetMediaItem>{};
 
+  /// Active per-attachment purge timers while inside [kEraseUndoWindow].
+  final Map<String, Timer> _eraseTimers = <String, Timer>{};
+
+  bool _isDisposed = false;
+
   EditorMediaBinding({
-    required this.database,
+    required this.mediaOcrDao,
     required this.mediaSandboxService,
     required this.entryId,
-    required this.imagePicker,
     required this.coordinator,
     required this.autosaveManager,
     required this.onStateChanged,
-  });
+    Uuid? uuid,
+  }) : _uuid = uuid ?? const Uuid();
 
-  /// Picks a photo or video and Collects it into the Staging Handscroll.
-  Future<void> pickMedia(BuildContext context, {required bool isVideo}) async {
-    void onDone() {
-      if (context.mounted) onStateChanged();
+  /// Compresses and sandboxes picked image files up to `coordinator.handscrollRoom`,
+  /// inserts attachment rows atomically via [MediaOcrDao], stages items in input
+  /// order, queues [BrushRevealQueue] animations, and saves the draft.
+  Future<MediaCollectResult> collectImages(List<XFile> picks) {
+    return _collectMedia(
+      picks: picks,
+      sandboxPick: (picked, recordCreatedPath) async {
+        final relativePath = await mediaSandboxService.copyAndCompressImage(
+          File(picked.path),
+        );
+        recordCreatedPath(relativePath);
+        return SheetMediaItem(
+          id: _uuid.v4(),
+          mediaType: EphemeraMediaType.image,
+          relativePath: relativePath,
+        );
+      },
+    );
+  }
+
+  /// Sandboxes a short video (<=60s) and its companion poster thumbnail,
+  /// inserts its SQLite attachment row, stages it in the handscroll, queues
+  /// its Brush Reveal, and saves the draft.
+  Future<MediaCollectResult> collectVideo(XFile pick) {
+    return _collectMedia(
+      picks: [pick],
+      sandboxPick: (picked, recordCreatedPath) async {
+        final result = await mediaSandboxService.copyAndSandboxVideo(
+          File(picked.path),
+        );
+        recordCreatedPath(result.relativePath);
+        final String? thumbnailPath =
+            result.thumbnailPath.isNotEmpty ? result.thumbnailPath : null;
+        if (thumbnailPath != null) {
+          recordCreatedPath(thumbnailPath);
+        }
+        return SheetMediaItem(
+          id: _uuid.v4(),
+          mediaType: EphemeraMediaType.video,
+          relativePath: result.relativePath,
+          thumbnailPath: thumbnailPath,
+        );
+      },
+    );
+  }
+
+  Future<MediaCollectResult> _collectMedia({
+    required List<XFile> picks,
+    required Future<SheetMediaItem> Function(
+      XFile picked,
+      void Function(String path) recordCreatedPath,
+    ) sandboxPick,
+  }) async {
+    if (picks.isEmpty) {
+      return const MediaCollectResult(collectedCount: 0, rejectedByCapacity: 0);
     }
 
-    if (isVideo) {
-      await EditorMediaActions.handleVideoPick(
-        context: context,
-        imagePicker: imagePicker,
-        coordinator: coordinator,
-        mediaSandboxService: mediaSandboxService,
-        database: database,
-        entryId: entryId,
-        autosaveManager: autosaveManager,
-        onStateChanged: onDone,
-        onCollected: brushReveals.enqueue,
-      );
-    } else {
-      await EditorMediaActions.handleImagePick(
-        context: context,
-        imagePicker: imagePicker,
-        coordinator: coordinator,
-        mediaSandboxService: mediaSandboxService,
-        database: database,
-        entryId: entryId,
-        autosaveManager: autosaveManager,
-        onStateChanged: onDone,
-        onCollected: brushReveals.enqueue,
+    final room = coordinator.handscrollRoom;
+    if (room <= 0) {
+      return MediaCollectResult(
+        collectedCount: 0,
+        rejectedByCapacity: picks.length,
       );
     }
+
+    final acceptedPicks = picks.take(room);
+    final rejectedByCapacity = math.max(0, picks.length - room);
+    final createdPaths = <String>[];
+    final collected = <SheetMediaItem>[];
+
+    try {
+      for (final picked in acceptedPicks) {
+        collected.add(await sandboxPick(picked, createdPaths.add));
+      }
+
+      await mediaOcrDao.attachMediaBatch(
+        entryId: entryId,
+        attachments: [
+          for (final item in collected)
+            MediaAttachmentDraft(
+              id: item.id,
+              relativePath: item.relativePath,
+              mediaType: item.mediaType.embedKey,
+              thumbnailPath: item.thumbnailPath,
+            ),
+        ],
+      );
+    } catch (_) {
+      if (createdPaths.isNotEmpty) {
+        await mediaSandboxService.deleteMediaPaths(createdPaths);
+      }
+      rethrow;
+    }
+
+    for (final item in collected) {
+      if (coordinator.collectMedia(item)) {
+        brushReveals.enqueue(item.id);
+      }
+    }
+    onStateChanged();
+    await autosaveManager.saveDraft();
+    return MediaCollectResult(
+      collectedCount: collected.length,
+      rejectedByCapacity: rejectedByCapacity,
+    );
   }
 
   /// Mounts the staged item [mediaId] onto the active Stationery Sheet and
@@ -101,15 +215,20 @@ class EditorMediaBinding {
     await autosaveManager.saveDraft();
   }
 
-  /// Erases the staged item [mediaId] from the handscroll and returns whether
-  /// it was erased. It stays restorable through [undoErase] for
-  /// [kEraseUndoWindow]; [purgeErased] then deletes its `media_attachments` row
-  /// and sandboxed file (Bidirectional Media Lifecycle Parity).
+  /// Erases the staged item [mediaId] from the handscroll and starts an
+  /// internal [kEraseUndoWindow] purge timer. Calling [undoErase] before the
+  /// timer fires restores the item; otherwise [purgeErased] deletes its SQLite
+  /// row first and then removes both primary and thumbnail sandbox files.
   bool eraseStagedMedia(String mediaId) {
+    if (_isDisposed) return false;
     final removed = coordinator.removeStaged(mediaId);
     if (removed == null) return false;
     brushReveals.complete(mediaId);
     _pendingErasures[mediaId] = removed;
+    _eraseTimers.remove(mediaId)?.cancel();
+    _eraseTimers[mediaId] = Timer(kEraseUndoWindow, () {
+      unawaited(purgeErased(mediaId));
+    });
     onStateChanged();
     return true;
   }
@@ -127,8 +246,10 @@ class EditorMediaBinding {
     }
   }
 
-  /// Restores the erased item [mediaId] to the handscroll, if still pending.
+  /// Restores the erased item [mediaId] to the handscroll, cancelling its
+  /// pending purge timer if still inside [kEraseUndoWindow].
   void undoErase(String mediaId) {
+    _eraseTimers.remove(mediaId)?.cancel();
     final item = _pendingErasures.remove(mediaId);
     if (item == null) return;
     coordinator.restoreStaged(item);
@@ -139,25 +260,68 @@ class EditorMediaBinding {
   Future<void> purgeErased(String mediaId) => _purge(mediaId);
 
   Future<void> _purge(String mediaId) async {
+    _eraseTimers.remove(mediaId)?.cancel();
     final item = _pendingErasures.remove(mediaId);
     if (item == null) return;
-    await database.mediaOcrDao.deleteMediaForEntryByPath(
-      entryId: entryId,
-      relativePath: item.relativePath,
+    await _deleteSqlAndSandboxFiles(
+      item.relativePath,
+      knownThumbnailPath: item.thumbnailPath,
     );
-    await mediaSandboxService.deleteMedia(item.relativePath);
   }
 
-  /// Persists an edited caption for [mediaId].
+  /// Removes a legacy full-sheet [EphemeraSheet] at [sheetIndex], deletes its
+  /// SQLite `mediaAttachments` records first (collecting any companion
+  /// `thumbnailPath`), deletes primary and thumbnail sandbox files, and forces
+  /// a draft save.
+  Future<void> deleteLegacyEphemera(int sheetIndex) async {
+    if (_isDisposed) return;
+    if (sheetIndex < 0 || sheetIndex >= coordinator.sheets.length) return;
+    final targetSheet = coordinator.sheets[sheetIndex];
+    if (targetSheet is! EphemeraSheet) return;
+    final relativePath = targetSheet.sandboxedRelativePath;
+
+    coordinator.removeEphemeraSheet(sheetIndex);
+    onStateChanged();
+
+    if (relativePath.isNotEmpty) {
+      await _deleteSqlAndSandboxFiles(relativePath);
+    }
+    await autosaveManager.saveDraft(force: true);
+  }
+
+  Future<void> _deleteSqlAndSandboxFiles(
+    String relativePath, {
+    String? knownThumbnailPath,
+  }) async {
+    final dbThumbnails = await mediaOcrDao.deleteMediaForEntryByPath(
+      entryId: entryId,
+      relativePath: relativePath,
+    );
+    await mediaSandboxService.deleteMediaPaths({
+      relativePath,
+      if (knownThumbnailPath != null && knownThumbnailPath.isNotEmpty)
+        knownThumbnailPath,
+      ...dbThumbnails,
+    });
+  }
+
+  /// Updates the in-memory and persisted caption for [mediaId].
   Future<void> updateCaption(String mediaId, String newCaption) async {
-    await database.mediaOcrDao.updateMediaCaption(mediaId, caption: newCaption);
+    if (coordinator.updateCaption(mediaId, newCaption)) onStateChanged();
+    await mediaOcrDao.updateMediaCaption(mediaId, caption: newCaption);
   }
 
-  /// Purges erasures still inside their undo window, since the editor that
-  /// could restore them is going away.
+  /// Cancels active timers and purges erasures still inside their undo window,
+  /// since the editor that could restore them is going away.
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
+    for (final timer in _eraseTimers.values) {
+      timer.cancel();
+    }
+    _eraseTimers.clear();
     for (final mediaId in _pendingErasures.keys.toList()) {
-      _purge(mediaId);
+      unawaited(_purge(mediaId));
     }
     mountRefusals.dispose();
     brushReveals.dispose();

@@ -5,7 +5,10 @@ import '../tables/album_photos.dart';
 import '../tables/entries.dart';
 import '../tables/media_attachments.dart';
 import 'fts_query_utils.dart';
+import 'media_ocr_query_utils.dart';
 import 'media_reference_utils.dart';
+
+export 'media_attachment_draft.dart';
 
 part 'media_ocr_dao.g.dart';
 
@@ -37,6 +40,31 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Atomically inserts [attachments] for [entryId] inside a single transaction.
+  Future<void> attachMediaBatch({
+    required String entryId,
+    required List<MediaAttachmentDraft> attachments,
+  }) async {
+    if (attachments.isEmpty) return;
+    await attachedDatabase.transaction(() async {
+      await batch((batchExecutor) {
+        batchExecutor.insertAll(
+          mediaAttachments,
+          [
+            for (final item in attachments)
+              MediaAttachmentsCompanion.insert(
+                id: item.id,
+                entryId: entryId,
+                mediaType: item.mediaType,
+                relativePath: item.relativePath,
+                thumbnailPath: Value(item.thumbnailPath),
+              ),
+          ],
+        );
+      });
+    });
+  }
+
   /// Retrieves all media attachments of [entryId] in collect order (oldest first).
   Future<List<MediaAttachment>> getMediaForEntry(String entryId) {
     return (select(mediaAttachments)
@@ -48,18 +76,26 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
-  /// Deletes media attachment records matching both [entryId] and [relativePath].
-  Future<int> deleteMediaForEntryByPath({
+  /// Deletes media attachment records matching both [entryId] and [relativePath]
+  /// inside a transaction and returns any non-empty companion `thumbnailPath`s.
+  Future<List<String>> deleteMediaForEntryByPath({
     required String entryId,
     required String relativePath,
   }) {
-    return (delete(mediaAttachments)
-          ..where(
-            (attachment) =>
-                attachment.entryId.equals(entryId) &
-                attachment.relativePath.equals(relativePath),
-          ))
-        .go();
+    return transaction(() async {
+      final deletedRows = await (delete(mediaAttachments)
+            ..where(
+              (attachment) =>
+                  attachment.entryId.equals(entryId) &
+                  attachment.relativePath.equals(relativePath),
+            ))
+          .goAndReturn();
+      final thumbnails = <String>{};
+      for (final row in deletedRows) {
+        addNormalizedMediaPath(thumbnails, row.thumbnailPath);
+      }
+      return thumbnails.toList();
+    });
   }
 
   /// Retrieves all video media attachments associated with [entryId].
@@ -373,7 +409,7 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
   /// `ocr_text` is `NULL`, ordered chronologically (`created_at ASC`).
   Future<List<UnindexedImageItem>> getUnindexedImages() async {
     final rows = await customSelect(
-      _buildUnindexedImagesSql(sinceFilter: false),
+      buildUnindexedImagesSql(sinceFilter: false),
       readsFrom: {mediaAttachments, entries, albumPhotos, albumCollections},
     ).get();
 
@@ -383,19 +419,7 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
   /// Counts all unindexed images (`ocr_text IS NULL`) across active entries and albums.
   Future<int> countUnindexedImages() async {
     final row = await customSelect(
-      '''
-      SELECT (
-        SELECT COUNT(*)
-        FROM media_attachments ma
-        INNER JOIN entries e ON e.id = ma.entry_id
-        WHERE ma.media_type = 'image' AND ma.ocr_text IS NULL AND e.is_deleted = 0
-      ) + (
-        SELECT COUNT(*)
-        FROM album_photos ap
-        INNER JOIN album_collections ac ON ac.id = ap.collection_id
-        WHERE ap.ocr_text IS NULL
-      ) AS cnt
-      ''',
+      buildCountUnindexedImagesSql(),
       readsFrom: {mediaAttachments, entries, albumPhotos, albumCollections},
     ).getSingle();
 
@@ -406,39 +430,12 @@ class MediaOcrDao extends DatabaseAccessor<AppDatabase>
   /// created at or after [since], ordered chronologically (`created_at ASC`).
   Stream<List<UnindexedImageItem>> watchUnindexedImagesSince(DateTime since) {
     return customSelect(
-      _buildUnindexedImagesSql(sinceFilter: true),
+      buildUnindexedImagesSql(sinceFilter: true),
       variables: [
         Variable.withDateTime(since),
         Variable.withDateTime(since),
       ],
       readsFrom: {mediaAttachments, entries, albumPhotos, albumCollections},
     ).watch().map((rows) => rows.map(_mapUnindexedImageRow).toList());
-  }
-
-  static String _buildUnindexedImagesSql({required bool sinceFilter}) {
-    final mediaSince = sinceFilter ? 'AND ma.created_at >= ?' : '';
-    final albumSince = sinceFilter ? 'AND ap.created_at >= ?' : '';
-    return '''
-      SELECT ma.id AS id,
-             'entry_media' AS source_type,
-             ma.relative_path AS relative_path,
-             ma.created_at AS created_at
-      FROM media_attachments ma
-      INNER JOIN entries e ON e.id = ma.entry_id
-      WHERE ma.media_type = 'image'
-        AND ma.ocr_text IS NULL
-        AND e.is_deleted = 0
-        $mediaSince
-      UNION ALL
-      SELECT ap.id AS id,
-             'album_photo' AS source_type,
-             ap.relative_image_path AS relative_path,
-             ap.created_at AS created_at
-      FROM album_photos ap
-      INNER JOIN album_collections ac ON ac.id = ap.collection_id
-      WHERE ap.ocr_text IS NULL
-        $albumSince
-      ORDER BY created_at ASC, id ASC
-    ''';
   }
 }

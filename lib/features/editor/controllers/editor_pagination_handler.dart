@@ -2,7 +2,6 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
-import '../../../core/database/daos/media_ocr_dao.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../services/editor_pagination_coordinator.dart';
 import 'editor_autosave_manager.dart';
@@ -13,7 +12,6 @@ class EditorPaginationHandler {
   final EditorPaginationCoordinator coordinator;
   final PageController pageController;
   final EditorAutosaveManager autosaveManager;
-  final MediaOcrDao _mediaOcrDao;
   final VoidCallback onStateChanged;
 
   int currentSheetIndex = 0;
@@ -23,8 +21,7 @@ class EditorPaginationHandler {
     required this.pageController,
     required this.autosaveManager,
     required this.onStateChanged,
-    MediaOcrDao? mediaOcrDao,
-  }) : _mediaOcrDao = mediaOcrDao ?? autosaveManager.database.mediaOcrDao {
+  }) {
     _init();
   }
 
@@ -140,15 +137,9 @@ class EditorPaginationHandler {
     _carryFocusTo(coordinator.sheets[targetIndex]);
     coordinator.collapseEmptyContinuationSheets();
     onStateChanged();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (pageController.hasClients) {
-        pageController.animateToPage(
-          targetIndex.clamp(0, math.max(0, coordinator.totalSheets - 1)),
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-        );
-      }
-    });
+    _animatePageControllerTo(
+      targetIndex.clamp(0, math.max(0, coordinator.totalSheets - 1)),
+    );
   }
 
   void handlePageChanged(int newPageIndex) {
@@ -172,19 +163,18 @@ class EditorPaginationHandler {
     );
   }
 
-  Future<void> handleDeleteEphemera(int sheetIndex) async {
-    if (sheetIndex < 0 || sheetIndex >= coordinator.sheets.length) return;
-    final targetSheet = coordinator.sheets[sheetIndex];
-    final deletedRelativePath =
-        targetSheet is EphemeraSheet ? targetSheet.sandboxedRelativePath : null;
-
-    coordinator.removeEphemeraSheet(sheetIndex);
-
+  /// Synchronizes [currentSheetIndex] and [pageController] to the coordinator's
+  /// clamped `activeSheetIndex` after an external sheet mutation (e.g. sheet removal).
+  void syncViewportToActiveSheet() {
     final targetIndex = coordinator.activeSheetIndex
         .clamp(0, math.max(0, coordinator.totalSheets - 1))
         .toInt();
     currentSheetIndex = targetIndex;
     onStateChanged();
+    _animatePageControllerTo(targetIndex);
+  }
+
+  void _animatePageControllerTo(int targetIndex) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (pageController.hasClients) {
         pageController.animateToPage(
@@ -194,14 +184,6 @@ class EditorPaginationHandler {
         );
       }
     });
-
-    if (deletedRelativePath != null && deletedRelativePath.isNotEmpty) {
-      await _mediaOcrDao.deleteMediaForEntryByPath(
-        entryId: autosaveManager.entryId,
-        relativePath: deletedRelativePath,
-      );
-    }
-    await autosaveManager.saveDraft(force: true);
   }
 
   void dispose() {

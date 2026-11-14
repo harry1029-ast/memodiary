@@ -122,7 +122,21 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   void _collectMedia({required bool isVideo}) {
     _focusGuard.release();
     _chrome.expandWorkstation();
-    _mediaBinding!.pickMedia(context, isVideo: isVideo);
+    final binding = _mediaBinding;
+    if (binding == null) return;
+    if (isVideo) {
+      EditorMediaActions.handleVideoPick(
+        context: context,
+        imagePicker: _imagePicker,
+        binding: binding,
+      );
+    } else {
+      EditorMediaActions.handleImagePick(
+        context: context,
+        imagePicker: _imagePicker,
+        binding: binding,
+      );
+    }
   }
 
   Future<void> _loadEntryData() async {
@@ -183,10 +197,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           _autosaveManager = autosave;
           _paginationHandler = handler;
           _mediaBinding = EditorMediaBinding(
-            database: widget.database,
+            mediaOcrDao: widget.database.mediaOcrDao,
             mediaSandboxService: widget.mediaSandboxService,
             entryId: widget.entryId,
-            imagePicker: _imagePicker,
             coordinator: _coordinator,
             autosaveManager: autosave,
             onStateChanged: _rebuild,
@@ -281,7 +294,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   }
 
   void _handleShuffleSpark() {
-    EditorMediaActions.handleShuffleSpark(
+    EditorOverlayActions.handleShuffleSpark(
       context: context,
       thoughtSparkService: _thoughtSparkService,
       onAdoptPrompt: _handleInsertPrompt,
@@ -290,12 +303,18 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   void _handleInsertPrompt(String prompt) {
     final active = _paginationHandler?.ensureActiveTextSheet() ?? _activeController;
-    EditorMediaActions.handleInsertPrompt(
+    EditorOverlayActions.handleInsertPrompt(
       controller: active,
       prompt: prompt,
       autosaveManager: _autosaveManager,
       onStateChanged: () => setState(() {}),
     );
+  }
+
+  Future<void> _handleDeleteEphemera(int sheetIndex) async {
+    final deletion = _mediaBinding?.deleteLegacyEphemera(sheetIndex);
+    _paginationHandler?.syncViewportToActiveSheet();
+    await deletion;
   }
 
   Future<void> _handleSaveAndExit() async {
@@ -396,14 +415,13 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 onPreviousSheet: () => _paginationHandler!.goToSheet(currentSheetIndex - 1),
                 onNextSheet: () => _paginationHandler!.goToSheet(currentSheetIndex + 1),
                 onPageChanged: _paginationHandler!.handlePageChanged,
-                onDeleteEphemera: _paginationHandler!.handleDeleteEphemera,
+                onDeleteEphemera: _handleDeleteEphemera,
                 deskMedia: EditorMediaFeedback.handlersFor(
                   context,
                   _mediaBinding!,
                   onCollect: () => _collectMedia(isVideo: false),
                   onDeskInteraction: _focusGuard.release,
                 ),
-                onMediaCaptionChanged: _mediaBinding!.updateCaption,
                 saveStatus: _autosaveManager!.statusNotifier,
                 onTapDeskOffSheet: _focusGuard.endWriting,
               ),

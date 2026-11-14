@@ -296,6 +296,117 @@ void main() {
       expect((await db.mediaOcrDao.getAlbumPhotoById('p1'))?.id, 'p1');
       expect((await db.mediaOcrDao.getAlbumPhotoById('missing')), isNull);
     });
+
+    test('attachMediaBatch inserts multiple rows atomically and rolls back on failure', () async {
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'e_batch',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          contentDelta: '[{"insert":"Batch\\n"}]',
+          plainText: 'Batch',
+          entryDate: DateTime(2026, 11, 14),
+        ),
+      );
+
+      await db.mediaOcrDao.attachMediaBatch(
+        entryId: 'e_batch',
+        attachments: const [
+          MediaAttachmentDraft(
+            id: 'batch_1',
+            relativePath: 'media/batch_1.webp',
+          ),
+          MediaAttachmentDraft(
+            id: 'batch_2',
+            relativePath: 'media/batch_2.mp4',
+            mediaType: 'video',
+            thumbnailPath: 'media/batch_2_thumb.webp',
+          ),
+        ],
+      );
+
+      final inserted = await db.mediaOcrDao.getMediaForEntry('e_batch');
+      expect(inserted.map((row) => row.id), equals(['batch_1', 'batch_2']));
+      expect(inserted[1].thumbnailPath, equals('media/batch_2_thumb.webp'));
+
+      await expectLater(
+        () => db.mediaOcrDao.attachMediaBatch(
+          entryId: 'e_batch',
+          attachments: const [
+            MediaAttachmentDraft(
+              id: 'batch_3',
+              relativePath: 'media/batch_3.webp',
+            ),
+            MediaAttachmentDraft(
+              id: 'batch_1', // Duplicate PK triggers rollback of batch_3 too.
+              relativePath: 'media/dup.webp',
+            ),
+          ],
+        ),
+        throwsException,
+      );
+
+      final afterRollback = await db.mediaOcrDao.getMediaForEntry('e_batch');
+      expect(afterRollback.map((row) => row.id), equals(['batch_1', 'batch_2']));
+    });
+
+    test('deleteMediaForEntryByPath deletes matching rows and returns companion thumbnailPaths', () async {
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'e_del_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          contentDelta: '[{"insert":"One\\n"}]',
+          plainText: 'One',
+          entryDate: DateTime(2026, 11, 14),
+        ),
+      );
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'e_del_2',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          contentDelta: '[{"insert":"Two\\n"}]',
+          plainText: 'Two',
+          entryDate: DateTime(2026, 11, 14),
+        ),
+      );
+
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: 'm_vid_1',
+        entryId: 'e_del_1',
+        relativePath: 'media/ephemera_vid.mp4',
+        mediaType: 'video',
+        thumbnailPath: r'media\ephemera_vid_thumb.webp',
+      );
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: 'm_img_1',
+        entryId: 'e_del_1',
+        relativePath: 'media/ephemera_img.webp',
+      );
+      await db.mediaOcrDao.attachMediaToEntry(
+        id: 'm_other_entry',
+        entryId: 'e_del_2',
+        relativePath: 'media/ephemera_vid.mp4',
+        mediaType: 'video',
+        thumbnailPath: 'media/other_thumb.webp',
+      );
+
+      final vidThumbnails = await db.mediaOcrDao.deleteMediaForEntryByPath(
+        entryId: 'e_del_1',
+        relativePath: 'media/ephemera_vid.mp4',
+      );
+      expect(vidThumbnails, equals(['media/ephemera_vid_thumb.webp']));
+      expect(await db.mediaOcrDao.getMediaAttachmentById('m_vid_1'), isNull);
+      expect(await db.mediaOcrDao.getMediaAttachmentById('m_other_entry'), isNotNull);
+
+      final imgThumbnails = await db.mediaOcrDao.deleteMediaForEntryByPath(
+        entryId: 'e_del_1',
+        relativePath: 'media/ephemera_img.webp',
+      );
+      expect(imgThumbnails, isEmpty);
+      expect(await db.mediaOcrDao.getMediaAttachmentById('m_img_1'), isNull);
+    });
   });
 
   group('AlbumsDao', () {

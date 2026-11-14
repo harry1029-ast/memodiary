@@ -129,11 +129,15 @@ class StubEditorImagePicker extends ImagePicker {
 class SyncTestMediaSandboxService extends MediaSandboxService {
   final Directory tempDir;
   final bool autoCreateMissingOnLookup;
+  final bool generateVideoThumbnail;
+  final Duration? videoDuration;
   int _counter = 0;
 
   SyncTestMediaSandboxService({
     required this.tempDir,
     this.autoCreateMissingOnLookup = true,
+    this.generateVideoThumbnail = false,
+    this.videoDuration,
   }) : super(baseDirProvider: () async => tempDir);
 
   @override
@@ -158,6 +162,12 @@ class SyncTestMediaSandboxService extends MediaSandboxService {
     File sourceFile, {
     Duration maxDuration = const Duration(seconds: 60),
   }) async {
+    if (videoDuration != null && videoDuration! > maxDuration) {
+      throw VideoDurationExceededException(
+        durationSeconds: videoDuration!.inSeconds,
+        maxAllowedSeconds: maxDuration.inSeconds,
+      );
+    }
     final mediaDir = Directory('${tempDir.path}/media');
     if (!mediaDir.existsSync()) {
       mediaDir.createSync(recursive: true);
@@ -170,10 +180,15 @@ class SyncTestMediaSandboxService extends MediaSandboxService {
     } else {
       targetFile.writeAsBytesSync(kValidMp4FtypBytes);
     }
+    var thumbRelativePath = '';
+    if (generateVideoThumbnail) {
+      thumbRelativePath = 'media/video_${_counter}_test_thumb.webp';
+      File('${tempDir.path}/$thumbRelativePath').writeAsBytesSync(kValid1x1PngBytes);
+    }
     return VideoSandboxResult(
       relativePath: targetRelativePath,
-      thumbnailPath: '',
-      durationSeconds: 10,
+      thumbnailPath: thumbRelativePath,
+      durationSeconds: videoDuration?.inSeconds ?? 10,
     );
   }
 
