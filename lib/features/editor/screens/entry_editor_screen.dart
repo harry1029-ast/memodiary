@@ -22,6 +22,7 @@ import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
 import '../widgets/editor_app_bar_slide.dart';
 import '../widgets/editor_paper_canvas.dart';
+import '../widgets/editor_media_actions.dart';
 import '../widgets/editor_media_feedback.dart';
 import '../widgets/editor_overlay_actions.dart';
 import '../widgets/editor_top_app_bar.dart';
@@ -121,7 +122,21 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   void _collectMedia({required bool isVideo}) {
     _focusGuard.release();
     _chrome.expandWorkstation();
-    _mediaBinding!.pickMedia(context, isVideo: isVideo);
+    final binding = _mediaBinding;
+    if (binding == null) return;
+    if (isVideo) {
+      EditorMediaActions.handleVideoPick(
+        context: context,
+        imagePicker: _imagePicker,
+        binding: binding,
+      );
+    } else {
+      EditorMediaActions.handleImagePick(
+        context: context,
+        imagePicker: _imagePicker,
+        binding: binding,
+      );
+    }
   }
 
   Future<void> _loadEntryData() async {
@@ -182,10 +197,9 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
           _autosaveManager = autosave;
           _paginationHandler = handler;
           _mediaBinding = EditorMediaBinding(
-            database: widget.database,
+            mediaOcrDao: widget.database.mediaOcrDao,
             mediaSandboxService: widget.mediaSandboxService,
             entryId: widget.entryId,
-            imagePicker: _imagePicker,
             coordinator: _coordinator,
             autosaveManager: autosave,
             onStateChanged: _rebuild,

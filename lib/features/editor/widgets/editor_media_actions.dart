@@ -1,25 +1,30 @@
-import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:uuid/uuid.dart';
 
-import '../../../core/database/app_database.dart';
-import '../../../core/services/media_sandbox_service.dart';
+import '../../../core/services/media_sandbox_types.dart';
 import '../../../core/theme/ink_diary_theme.dart';
-import '../controllers/editor_autosave_manager.dart';
-import '../domain/stationery_sheet_descriptor.dart';
+import '../controllers/editor_media_binding.dart';
 import '../services/editor_pagination_coordinator.dart';
 
-/// Modular helpers for sandboxed media ingestion (photos and short videos)
-/// inside the diary editor.
+/// Thin UI source-sheet and [ImagePicker] adapter forwarding picked media into
+/// [EditorMediaBinding] and rendering capacity/error SnackBars.
 class EditorMediaActions {
   const EditorMediaActions._();
 
-  static void _showSnackBar(BuildContext context, String message) {
+  static void _showSnackBar(
+    BuildContext context,
+    String message, {
+    Color? backgroundColor,
+  }) {
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: backgroundColor,
+        ),
+      );
   }
 
   /// Refuses a collect with "画卷已满 15 影" when the Staging Handscroll is full.
@@ -28,29 +33,22 @@ class EditorMediaActions {
     EditorPaginationCoordinator coordinator,
   ) {
     if (coordinator.handscrollRoom > 0) return false;
-    _showSnackBar(context, '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影');
+    _showSnackBar(
+      context,
+      '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影',
+    );
     return true;
   }
 
-  /// Prompts the user to take one photo or pick several from the gallery,
-  /// compresses each to WebP, copies it into private sandbox storage, and
-  /// Collects it into the Staging Handscroll. A pick beyond the handscroll's
-  /// remaining room collects what fits and reports how many were left out.
-  static Future<void> handleImagePick({
-    required BuildContext context,
-    required ImagePicker imagePicker,
-    required EditorPaginationCoordinator coordinator,
-    required MediaSandboxService mediaSandboxService,
-    required AppDatabase database,
-    required String entryId,
-    EditorAutosaveManager? autosaveManager,
-    VoidCallback? onStateChanged,
-    ValueChanged<String>? onCollected,
-  }) async {
-    if (_refuseWhenHandscrollFull(context, coordinator)) return;
+  static Future<ImageSource?> _pickMediaSource(
+    BuildContext context, {
+    required IconData cameraIcon,
+    required String cameraLabel,
+    required IconData galleryIcon,
+    required String galleryLabel,
+  }) {
     final tokens = InkDiaryTheme.tokensOf(context);
-
-    final source = await showModalBottomSheet<ImageSource>(
+    return showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: tokens.xuanGround,
       shape: const RoundedRectangleBorder(
@@ -60,18 +58,24 @@ class EditorMediaActions {
         child: Wrap(
           children: [
             ListTile(
-              leading: Icon(Icons.camera_alt_outlined, size: 20, color: tokens.jiaomo),
+              leading: Icon(cameraIcon, size: 20, color: tokens.jiaomo),
               title: Text(
-                '即时拓影 · Take Photo',
-                style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
+                cameraLabel,
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  color: tokens.jiaomo,
+                ),
               ),
               onTap: () => Navigator.pop(modalContext, ImageSource.camera),
             ),
             ListTile(
-              leading: Icon(Icons.photo_library_outlined, size: 20, color: tokens.jiaomo),
+              leading: Icon(galleryIcon, size: 20, color: tokens.jiaomo),
               title: Text(
-                '相册选撷 · Photo Gallery',
-                style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
+                galleryLabel,
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  color: tokens.jiaomo,
+                ),
               ),
               onTap: () => Navigator.pop(modalContext, ImageSource.gallery),
             ),
@@ -79,7 +83,24 @@ class EditorMediaActions {
         ),
       ),
     );
+  }
 
+  /// Prompts the user to take one photo or pick several from the gallery and
+  /// delegates sandboxing, persistence, and staging to [binding].
+  static Future<void> handleImagePick({
+    required BuildContext context,
+    required ImagePicker imagePicker,
+    required EditorMediaBinding binding,
+  }) async {
+    if (_refuseWhenHandscrollFull(context, binding.coordinator)) return;
+
+    final source = await _pickMediaSource(
+      context,
+      cameraIcon: Icons.camera_alt_outlined,
+      cameraLabel: '即时拓影 · Take Photo',
+      galleryIcon: Icons.photo_library_outlined,
+      galleryLabel: '相册选撷 · Photo Gallery',
+    );
     if (source == null || !context.mounted) return;
 
     try {
@@ -92,98 +113,42 @@ class EditorMediaActions {
       }
       if (picks.isEmpty) return;
 
-      final room = coordinator.handscrollRoom;
-      final leftOut = math.max(0, picks.length - room);
-      final collected = <SheetMediaItem>[
-        for (final picked in picks.take(room))
-          SheetMediaItem(
-            id: const Uuid().v4(),
-            mediaType: EphemeraMediaType.image,
-            relativePath: await mediaSandboxService.copyAndCompressImage(File(picked.path)),
-          ),
-      ];
-
-      // One transaction for the whole pick, so a multi-pick is a single write.
-      await database.transaction(() async {
-        for (final item in collected) {
-          await database.mediaOcrDao.attachMediaToEntry(
-            id: item.id,
-            entryId: entryId,
-            relativePath: item.relativePath,
-            mediaType: EphemeraMediaType.image.embedKey,
-          );
-        }
-      });
-
-      // Collect in pick order so the Brush Reveals play one after another.
-      for (final item in collected) {
-        if (coordinator.collectMedia(item)) onCollected?.call(item.id);
-      }
-      onStateChanged?.call();
-      if (leftOut > 0 && context.mounted) {
+      final outcome = await binding.collectImages(picks);
+      if (!context.mounted) return;
+      if (outcome.wasFull) {
         _showSnackBar(
           context,
-          '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影 · $leftOut 影未入卷',
+          '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影',
+        );
+      } else if (outcome.hasRejected) {
+        _showSnackBar(
+          context,
+          '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影 · ${outcome.rejectedByCapacity} 影未入卷',
         );
       }
-      await autosaveManager?.saveDraft();
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(content: Text('Failed to insert photo: $error')),
-          );
+        _showSnackBar(context, 'Failed to insert photo: $error');
       }
     }
   }
 
-  /// Prompts the user to pick or record a video (camera or gallery, <= 60s),
-  /// sandboxes into private storage, and Collects it into the Staging Handscroll.
+  /// Prompts the user to pick or record a video (<= 60s) and delegates
+  /// sandboxing, persistence, and staging to [binding].
   static Future<void> handleVideoPick({
     required BuildContext context,
     required ImagePicker imagePicker,
-    required EditorPaginationCoordinator coordinator,
-    required MediaSandboxService mediaSandboxService,
-    required AppDatabase database,
-    required String entryId,
-    EditorAutosaveManager? autosaveManager,
-    VoidCallback? onStateChanged,
-    ValueChanged<String>? onCollected,
+    required EditorMediaBinding binding,
   }) async {
-    if (_refuseWhenHandscrollFull(context, coordinator)) return;
-    final tokens = InkDiaryTheme.tokensOf(context);
+    if (_refuseWhenHandscrollFull(context, binding.coordinator)) return;
 
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: tokens.xuanGround,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (modalContext) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: Icon(Icons.videocam_outlined, size: 20, color: tokens.jiaomo),
-              title: Text(
-                '录制短影 · Record Video (≤60s)',
-                style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
-              ),
-              onTap: () => Navigator.pop(modalContext, ImageSource.camera),
-            ),
-            ListTile(
-              leading: Icon(Icons.video_library_outlined, size: 20, color: tokens.jiaomo),
-              title: Text(
-                '相册选取短影 · Video Gallery (≤60s)',
-                style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: tokens.jiaomo),
-              ),
-              onTap: () => Navigator.pop(modalContext, ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
+    final source = await _pickMediaSource(
+      context,
+      cameraIcon: Icons.videocam_outlined,
+      cameraLabel: '录制短影 · Record Video (≤60s)',
+      galleryIcon: Icons.video_library_outlined,
+      galleryLabel: '相册选取短影 · Video Gallery (≤60s)',
     );
-
     if (source == null || !context.mounted) return;
 
     try {
@@ -193,48 +158,24 @@ class EditorMediaActions {
       );
       if (picked == null) return;
 
-      final result = await mediaSandboxService.copyAndSandboxVideo(
-        File(picked.path),
-      );
-
-      final mediaId = const Uuid().v4();
-      await database.mediaOcrDao.attachMediaToEntry(
-        id: mediaId,
-        entryId: entryId,
-        relativePath: result.relativePath,
-        mediaType: EphemeraMediaType.video.embedKey,
-        thumbnailPath: result.thumbnailPath,
-      );
-
-      final didCollect = coordinator.collectMedia(
-        SheetMediaItem(
-          id: mediaId,
-          mediaType: EphemeraMediaType.video,
-          relativePath: result.relativePath,
-          thumbnailPath: result.thumbnailPath,
-        ),
-      );
-      if (didCollect) onCollected?.call(mediaId);
-      onStateChanged?.call();
-      await autosaveManager?.saveDraft();
+      final outcome = await binding.collectVideo(picked);
+      if (context.mounted && outcome.wasFull) {
+        _showSnackBar(
+          context,
+          '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影',
+        );
+      }
     } on VideoDurationExceededException catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text(error.message),
-              backgroundColor: Colors.red.shade700,
-            ),
-          );
+        _showSnackBar(
+          context,
+          error.message,
+          backgroundColor: Colors.red.shade700,
+        );
       }
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(content: Text('Failed to insert video: $error')),
-          );
+        _showSnackBar(context, 'Failed to insert video: $error');
       }
     }
   }

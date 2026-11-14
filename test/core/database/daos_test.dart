@@ -296,6 +296,59 @@ void main() {
       expect((await db.mediaOcrDao.getAlbumPhotoById('p1'))?.id, 'p1');
       expect((await db.mediaOcrDao.getAlbumPhotoById('missing')), isNull);
     });
+
+    test('attachMediaBatch inserts multiple rows atomically and rolls back on failure', () async {
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'e_batch',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          contentDelta: '[{"insert":"Batch\\n"}]',
+          plainText: 'Batch',
+          entryDate: DateTime(2026, 11, 14),
+        ),
+      );
+
+      await db.mediaOcrDao.attachMediaBatch(
+        entryId: 'e_batch',
+        attachments: const [
+          MediaAttachmentDraft(
+            id: 'batch_1',
+            relativePath: 'media/batch_1.webp',
+          ),
+          MediaAttachmentDraft(
+            id: 'batch_2',
+            relativePath: 'media/batch_2.mp4',
+            mediaType: 'video',
+            thumbnailPath: 'media/batch_2_thumb.webp',
+          ),
+        ],
+      );
+
+      final inserted = await db.mediaOcrDao.getMediaForEntry('e_batch');
+      expect(inserted.map((row) => row.id), equals(['batch_1', 'batch_2']));
+      expect(inserted[1].thumbnailPath, equals('media/batch_2_thumb.webp'));
+
+      await expectLater(
+        () => db.mediaOcrDao.attachMediaBatch(
+          entryId: 'e_batch',
+          attachments: const [
+            MediaAttachmentDraft(
+              id: 'batch_3',
+              relativePath: 'media/batch_3.webp',
+            ),
+            MediaAttachmentDraft(
+              id: 'batch_1', // Duplicate PK triggers rollback of batch_3 too.
+              relativePath: 'media/dup.webp',
+            ),
+          ],
+        ),
+        throwsException,
+      );
+
+      final afterRollback = await db.mediaOcrDao.getMediaForEntry('e_batch');
+      expect(afterRollback.map((row) => row.id), equals(['batch_1', 'batch_2']));
+    });
   });
 
   group('AlbumsDao', () {

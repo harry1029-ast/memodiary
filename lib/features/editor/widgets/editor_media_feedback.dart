@@ -5,8 +5,8 @@ import '../domain/sheet_media_item.dart';
 import '../models/desk_media_handlers.dart';
 
 /// Presents the desk's media feedback (refused mounts, erase undo, overflow
-/// unmounts) for an [EditorMediaBinding], which owns the state and the purge
-/// but no UI.
+/// unmounts) for an [EditorMediaBinding], which owns the state and internal
+/// purge timer without UI coupling.
 class EditorMediaFeedback {
   const EditorMediaFeedback._();
 
@@ -36,9 +36,7 @@ class EditorMediaFeedback {
             persist: false,
             action: SnackBarAction(label: '撤销', onPressed: () => binding.undoErase(mediaId)),
           ),
-        ).closed.then((reason) {
-          if (reason != SnackBarClosedReason.action) binding.purgeErased(mediaId);
-        });
+        );
       },
       onUnmount: (mediaId) {
         onDeskInteraction?.call();
