@@ -1,499 +1,360 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import '../../../core/documents/entry_content_decoder.dart';
+import '../../../core/documents/media_embed_data.dart';
 import '../../../core/services/media_sandbox_service.dart';
-import '../../../core/documents/delta_ops_decoder.dart';
-import '../../../core/documents/vertical_typography_mapper.dart';
 import '../../templates/models/template_style.dart';
 import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
 
-class _InlineSpan {
-  final String text;
-  final bool isBold;
-  final bool isItalic;
-  final bool isUnderline;
-  final bool isStrike;
-  final PdfColor? color;
-
-  const _InlineSpan({
-    required this.text,
-    this.isBold = false,
-    this.isItalic = false,
-    this.isUnderline = false,
-    this.isStrike = false,
-    this.color,
-  });
-}
-
-enum _BlockType {
-  header1,
-  header2,
-  header3,
-  blockquote,
-  bulletList,
-  orderedList,
-  paragraph,
-}
-
-class _LineBlock {
-  final List<_InlineSpan> spans;
-  _BlockType type = _BlockType.paragraph;
-  int? listIndex;
-
-  _LineBlock({
-    required this.spans,
-  });
-}
-
-/// Converts Flutter Quill Delta JSON into a sequential list of flowable [pw.Widget] items
-/// for multi-page PDF generation. Resolves sandboxed WebP photos into PNG [pw.MemoryImage].
+/// Converts canonical diary content blocks into a sequential list of flowable
+/// [pw.Widget] items for multi-page horizontal PDF generation.
 class PdfEntrySerializer {
   const PdfEntrySerializer._();
 
-  /// Converts Delta JSON or fallback plain text into PDF widgets.
+  /// Converts persisted Quill Delta JSON (or [fallbackPlainText]) into PDF widgets.
   static Future<List<pw.Widget>> convertDeltaToWidgets({
     required String contentDeltaJson,
     required String fallbackPlainText,
     required MediaSandboxService mediaService,
     required TemplateStyle style,
     required PdfFontResolver fontResolver,
-  }) => convertOpsToWidgets(ops: decodeDeltaOps(contentDeltaJson), fallbackPlainText: fallbackPlainText,
-      mediaService: mediaService, style: style, fontResolver: fontResolver);
+  }) => _blocksToWidgets(
+        blocks: EntryContentDecoder.decode(
+          contentDeltaJson: contentDeltaJson,
+          fallbackPlainText: fallbackPlainText,
+        ),
+        mediaService: mediaService,
+        style: style,
+        fontResolver: fontResolver,
+      );
 
-  /// Converts decoded Delta [ops] (or [fallbackPlainText] when there are none)
-  /// into PDF widgets.
+  /// Converts pre-parsed Delta [ops] (or [fallbackPlainText] when empty) into PDF widgets.
   static Future<List<pw.Widget>> convertOpsToWidgets({
     required List<dynamic>? ops,
     required String fallbackPlainText,
     required MediaSandboxService mediaService,
     required TemplateStyle style,
     required PdfFontResolver fontResolver,
+  }) => _blocksToWidgets(
+        blocks: EntryContentDecoder.decodeOps(
+          ops: ops,
+          fallbackPlainText: fallbackPlainText,
+        ),
+        mediaService: mediaService,
+        style: style,
+        fontResolver: fontResolver,
+      );
+
+  static Future<List<pw.Widget>> _blocksToWidgets({
+    required List<EntryContentBlock> blocks,
+    required MediaSandboxService mediaService,
+    required TemplateStyle style,
+    required PdfFontResolver fontResolver,
   }) async {
     final widgets = <pw.Widget>[];
 
-    if (ops == null || ops.isEmpty) {
-      // Fallback: render plain text line by line
-      final lines = fallbackPlainText.split('\n');
-      for (final line in lines) {
-        final cleanLine = VerticalTypographyMapper.formatInterlinearAsInline(line);
-        final sanitized = fontResolver.sanitizeText(cleanLine.trimRight());
-        if (sanitized.isNotEmpty) {
+    for (final block in blocks) {
+      switch (block) {
+        case EntryMediaBlock mediaBlock:
           widgets.add(
-            pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(vertical: 3),
-              child: pw.Text(
-                sanitized,
-                style: pw.TextStyle(
-                  font: fontResolver.regularFont,
-                  fontSize: 11,
-                  lineSpacing: style.lineSpacing,
-                ),
-              ),
-            ),
+            mediaBlock.isVideo
+                ? await _buildVideoWidget(mediaBlock.media, mediaService, fontResolver)
+                : await _buildImageWidget(mediaBlock.media, mediaService, fontResolver),
           );
-        } else {
-          widgets.add(pw.SizedBox(height: 6));
-        }
-      }
-      return widgets;
-    }
-
-    // Process Delta operations into line blocks and image embeds
-    final lineBlocks = <_LineBlock>[];
-    var currentSpans = <_InlineSpan>[];
-    int orderedListCounter = 1;
-
-    for (final op in ops) {
-      if (op is! Map) continue;
-      final insert = op['insert'];
-      final attributes = (op['attributes'] as Map?) ?? const {};
-
-      // 1. Embedded Image Object
-      if (insert is Map && insert.containsKey('image')) {
-        // Flush any pending text before the image
-        if (currentSpans.isNotEmpty) {
-          lineBlocks.add(_LineBlock(spans: List.from(currentSpans)));
-          currentSpans.clear();
-        }
-
-        // Flush line blocks collected so far into widgets
-        _flushLineBlocks(lineBlocks, widgets, fontResolver, style);
-        lineBlocks.clear();
-
-        final imageSource = insert['image']?.toString() ?? '';
-        final imageWidget = await _buildImageWidget(
-          imageSource,
-          mediaService,
-          fontResolver,
-        );
-        widgets.add(imageWidget);
-        continue;
-      }
-
-      // 1b. Embedded Video Object (Graceful Poster Fallback)
-      if (insert is Map && insert.containsKey('video')) {
-        // Flush any pending text before the video
-        if (currentSpans.isNotEmpty) {
-          lineBlocks.add(_LineBlock(spans: List.from(currentSpans)));
-          currentSpans.clear();
-        }
-
-        // Flush line blocks collected so far into widgets
-        _flushLineBlocks(lineBlocks, widgets, fontResolver, style);
-        lineBlocks.clear();
-
-        final videoSource = insert['video']?.toString() ?? '';
-        final videoWidget = await _buildVideoWidget(
-          videoSource,
-          mediaService,
-          fontResolver,
-        );
-        widgets.add(videoWidget);
-        continue;
-      }
-
-      // 2. Text String
-      if (insert is String) {
-        final cleanInsert = VerticalTypographyMapper.formatInterlinearAsInline(insert);
-        final isBold = attributes['bold'] == true;
-        final isItalic = attributes['italic'] == true;
-        final isUnderline = attributes['underline'] == true;
-        final isStrike = attributes['strike'] == true;
-
-        PdfColor? textColor;
-        final colorVal = attributes['color']?.toString();
-        if (colorVal != null && colorVal.startsWith('#')) {
-          textColor = PdfColor.fromInt(
-            TemplateStyle.parseHexColor(colorVal).toARGB32(),
-          );
-        }
-
-        final segments = cleanInsert.split('\n');
-        for (int index = 0; index < segments.length; index++) {
-          final seg = segments[index];
-          if (seg.isNotEmpty) {
-            currentSpans.add(
-              _InlineSpan(
-                text: fontResolver.sanitizeText(seg),
-                isBold: isBold,
-                isItalic: isItalic,
-                isUnderline: isUnderline,
-                isStrike: isStrike,
-                color: textColor,
-              ),
-            );
-          }
-
-          if (index < segments.length - 1) {
-            // Newline encountered: determine block format
-            final block = _LineBlock(spans: List.from(currentSpans));
-            currentSpans.clear();
-
-            if (attributes['header'] == 1) {
-              block.type = _BlockType.header1;
-              orderedListCounter = 1;
-            } else if (attributes['header'] == 2) {
-              block.type = _BlockType.header2;
-              orderedListCounter = 1;
-            } else if (attributes['header'] == 3) {
-              block.type = _BlockType.header3;
-              orderedListCounter = 1;
-            } else if (attributes['blockquote'] == true) {
-              block.type = _BlockType.blockquote;
-              orderedListCounter = 1;
-            } else if (attributes['list'] == 'bullet') {
-              block.type = _BlockType.bulletList;
-              orderedListCounter = 1;
-            } else if (attributes['list'] == 'ordered') {
-              block.type = _BlockType.orderedList;
-              block.listIndex = orderedListCounter++;
-            } else {
-              block.type = _BlockType.paragraph;
-              orderedListCounter = 1;
-            }
-            lineBlocks.add(block);
-          }
-        }
+        case EntryTextBlock textBlock:
+          widgets.add(_buildTextBlockWidget(textBlock, fontResolver, style));
       }
     }
 
-    if (currentSpans.isNotEmpty) {
-      lineBlocks.add(_LineBlock(spans: currentSpans));
-    }
-
-    _flushLineBlocks(lineBlocks, widgets, fontResolver, style);
     return widgets;
   }
 
-  static void _flushLineBlocks(
-    List<_LineBlock> blocks,
-    List<pw.Widget> widgets,
+  static pw.Widget _buildTextBlockWidget(
+    EntryTextBlock block,
     PdfFontResolver fontResolver,
     TemplateStyle style,
   ) {
-    for (final block in blocks) {
-      if (block.spans.isEmpty) {
-        widgets.add(pw.SizedBox(height: 6));
-        continue;
-      }
+    if (block.runs.isEmpty) {
+      return pw.SizedBox(height: 6);
+    }
 
-      final textSpans = block.spans.map((span) {
-        pw.Font font;
-        if (span.isBold && span.isItalic) {
-          font = fontResolver.boldItalicFont;
-        } else if (span.isBold) {
-          font = fontResolver.boldFont;
-        } else if (span.isItalic) {
-          font = fontResolver.italicFont;
-        } else {
-          font = fontResolver.regularFont;
-        }
+    final isCheckedTodo = block.kind == EntryBlockKind.checkedList;
+    final defaultColor = isCheckedTodo ? PdfColors.grey600 : PdfColors.black;
+    final textSpans = _buildTextSpans(
+      runs: block.runs,
+      fontResolver: fontResolver,
+      defaultColor: defaultColor,
+      forceStrikeThrough: isCheckedTodo,
+    );
 
-        return pw.TextSpan(
-          text: span.text,
-          style: pw.TextStyle(
-            font: font,
-            color: span.color ?? PdfColors.black,
-            decoration: span.isUnderline
-                ? pw.TextDecoration.underline
-                : (span.isStrike ? pw.TextDecoration.lineThrough : null),
+    switch (block.kind) {
+      case EntryBlockKind.header1:
+        return _buildHeadingWidget(textSpans, fontResolver, fontSize: 20, top: 14, bottom: 8);
+      case EntryBlockKind.header2:
+        return _buildHeadingWidget(textSpans, fontResolver, fontSize: 16, top: 10, bottom: 6);
+      case EntryBlockKind.header3:
+        return _buildHeadingWidget(textSpans, fontResolver, fontSize: 13, top: 8, bottom: 4);
+      case EntryBlockKind.blockquote:
+        return pw.Container(
+          margin: const pw.EdgeInsets.symmetric(vertical: 6),
+          padding: const pw.EdgeInsets.only(left: 10, top: 4, bottom: 4),
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(
+              left: pw.BorderSide(color: PdfColors.grey600, width: 3.5),
+            ),
+          ),
+          child: pw.RichText(
+            text: pw.TextSpan(
+              children: textSpans,
+              style: pw.TextStyle(
+                font: fontResolver.italicFont,
+                fontSize: 11,
+                color: PdfColors.grey800,
+              ),
+            ),
           ),
         );
-      }).toList();
-
-      switch (block.type) {
-        case _BlockType.header1:
-          widgets.add(
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 14, bottom: 8),
-              child: pw.RichText(
-                text: pw.TextSpan(
-                  children: textSpans,
-                  style: pw.TextStyle(
-                    font: fontResolver.boldFont,
-                    fontSize: 20,
-                    color: PdfColors.black,
-                  ),
-                ),
+      case EntryBlockKind.bulletList:
+        return _buildListRow(
+          leading: pw.Container(
+            margin: const pw.EdgeInsets.only(top: 4, left: 4, right: 6),
+            width: 3.5,
+            height: 3.5,
+            decoration: const pw.BoxDecoration(
+              color: PdfColors.black,
+              shape: pw.BoxShape.circle,
+            ),
+          ),
+          textSpans: textSpans,
+        );
+      case EntryBlockKind.orderedList:
+        final ordinal = block.orderedIndex ?? 1;
+        return _buildListRow(
+          leading: pw.Text(
+            '$ordinal. ',
+            style: pw.TextStyle(
+              font: fontResolver.boldFont,
+              fontSize: 11,
+            ),
+          ),
+          textSpans: textSpans,
+        );
+      case EntryBlockKind.checkedList:
+      case EntryBlockKind.uncheckedList:
+        return _buildListRow(
+          leading: _buildCheckboxIndicator(isChecked: isCheckedTodo),
+          textSpans: textSpans,
+          baseTextColor: defaultColor,
+        );
+      case EntryBlockKind.paragraph:
+        return pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(vertical: 3),
+          child: pw.RichText(
+            text: pw.TextSpan(
+              children: textSpans,
+              style: pw.TextStyle(
+                font: fontResolver.regularFont,
+                fontSize: 11,
+                lineSpacing: style.lineSpacing,
               ),
             ),
-          );
-          break;
-
-        case _BlockType.header2:
-          widgets.add(
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 10, bottom: 6),
-              child: pw.RichText(
-                text: pw.TextSpan(
-                  children: textSpans,
-                  style: pw.TextStyle(
-                    font: fontResolver.boldFont,
-                    fontSize: 16,
-                    color: PdfColors.black,
-                  ),
-                ),
-              ),
-            ),
-          );
-          break;
-
-        case _BlockType.header3:
-          widgets.add(
-            pw.Padding(
-              padding: const pw.EdgeInsets.only(top: 8, bottom: 4),
-              child: pw.RichText(
-                text: pw.TextSpan(
-                  children: textSpans,
-                  style: pw.TextStyle(
-                    font: fontResolver.boldFont,
-                    fontSize: 13,
-                    color: PdfColors.black,
-                  ),
-                ),
-              ),
-            ),
-          );
-          break;
-
-        case _BlockType.blockquote:
-          widgets.add(
-            pw.Container(
-              margin: const pw.EdgeInsets.symmetric(vertical: 6),
-              padding: const pw.EdgeInsets.only(left: 10, top: 4, bottom: 4),
-              decoration: const pw.BoxDecoration(
-                border: pw.Border(
-                  left: pw.BorderSide(color: PdfColors.grey600, width: 3.5),
-                ),
-              ),
-              child: pw.RichText(
-                text: pw.TextSpan(
-                  children: textSpans,
-                  style: pw.TextStyle(
-                    font: fontResolver.italicFont,
-                    fontSize: 11,
-                    color: PdfColors.grey800,
-                  ),
-                ),
-              ),
-            ),
-          );
-          break;
-
-        case _BlockType.bulletList:
-          widgets.add(
-            pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(vertical: 2),
-              child: pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Container(
-                    margin: const pw.EdgeInsets.only(top: 4, left: 4, right: 6),
-                    width: 3.5,
-                    height: 3.5,
-                    decoration: const pw.BoxDecoration(
-                      color: PdfColors.black,
-                      shape: pw.BoxShape.circle,
-                    ),
-                  ),
-                  pw.Expanded(
-                    child: pw.RichText(
-                      text: pw.TextSpan(
-                        children: textSpans,
-                        style: pw.TextStyle(fontSize: 11),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-          break;
-
-        case _BlockType.orderedList:
-          final idx = block.listIndex ?? 1;
-          widgets.add(
-            pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(vertical: 2),
-              child: pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    '$idx. ',
-                    style: pw.TextStyle(
-                      font: fontResolver.boldFont,
-                      fontSize: 11,
-                    ),
-                  ),
-                  pw.Expanded(
-                    child: pw.RichText(
-                      text: pw.TextSpan(
-                        children: textSpans,
-                        style: pw.TextStyle(fontSize: 11),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-          break;
-
-        case _BlockType.paragraph:
-          widgets.add(
-            pw.Padding(
-              padding: const pw.EdgeInsets.symmetric(vertical: 3),
-              child: pw.RichText(
-                text: pw.TextSpan(
-                  children: textSpans,
-                  style: pw.TextStyle(
-                    font: fontResolver.regularFont,
-                    fontSize: 11,
-                    lineSpacing: style.lineSpacing,
-                  ),
-                ),
-              ),
-            ),
-          );
-          break;
-      }
+          ),
+        );
     }
   }
 
-  static Future<pw.Widget> _buildImageWidget(
-    String source,
-    MediaSandboxService mediaService,
-    PdfFontResolver fontResolver,
-  ) async {
-    try {
-      final file = await mediaService.getFileFromRelativePath(source);
-      if (await file.exists()) {
-        final rawBytes = await file.readAsBytes();
-        final pngBytes = await ImageFormatTranscoder.ensurePdfCompatibleBytes(rawBytes);
-        final memoryImage = pw.MemoryImage(pngBytes);
+  static List<pw.TextSpan> _buildTextSpans({
+    required List<EntryInlineRun> runs,
+    required PdfFontResolver fontResolver,
+    required PdfColor defaultColor,
+    bool forceStrikeThrough = false,
+  }) {
+    return runs.map((run) {
+      final rawText = run.isInterlinearNote ? '〖${run.text}〗' : run.text;
+      final sanitizedText = fontResolver.sanitizeText(rawText);
+      final parsedColor = TemplateStyle.tryParseHexColor(run.colorHex);
+      final spanColor = parsedColor != null
+          ? PdfColor.fromInt(parsedColor.toARGB32())
+          : defaultColor;
 
-        // Constrained image to prevent page break overflows (Watchpoint 2)
-        return pw.Container(
-          margin: const pw.EdgeInsets.symmetric(vertical: 8),
-          alignment: pw.Alignment.center,
-          constraints: const pw.BoxConstraints(maxHeight: 260.0),
-          child: pw.ClipRRect(
-            horizontalRadius: 6,
-            verticalRadius: 6,
-            child: pw.Image(
-              memoryImage,
-              fit: pw.BoxFit.contain,
-            ),
-          ),
-        );
-      }
-    } catch (_) {
-      // Fallback on decode/transcode failure
-    }
-
-    return pw.Container(
-      height: 40,
-      margin: const pw.EdgeInsets.symmetric(vertical: 6),
-      alignment: pw.Alignment.center,
-      decoration: pw.BoxDecoration(
-        color: PdfColors.grey200,
-        borderRadius: pw.BorderRadius.circular(6),
-        border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
-      ),
-      child: pw.Text(
-        '[Image: $source]',
+      return pw.TextSpan(
+        text: sanitizedText,
         style: pw.TextStyle(
-          font: fontResolver.italicFont,
-          fontSize: 9,
-          color: PdfColors.grey600,
+          font: _resolveRunFont(run, fontResolver),
+          color: spanColor,
+          decoration: _resolveDecoration(
+            isUnderline: run.isUnderline,
+            isStrike: run.isStrike || forceStrikeThrough,
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  static pw.Font _resolveRunFont(EntryInlineRun run, PdfFontResolver resolver) {
+    if (run.isBold && run.isItalic) return resolver.boldItalicFont;
+    if (run.isBold) return resolver.boldFont;
+    if (run.isItalic) return resolver.italicFont;
+    return resolver.regularFont;
+  }
+
+  static pw.TextDecoration? _resolveDecoration({
+    required bool isUnderline,
+    required bool isStrike,
+  }) {
+    final decorations = <pw.TextDecoration>[
+      if (isUnderline) pw.TextDecoration.underline,
+      if (isStrike) pw.TextDecoration.lineThrough,
+    ];
+    if (decorations.isEmpty) return null;
+    if (decorations.length == 1) return decorations.single;
+    return pw.TextDecoration.combine(decorations);
+  }
+
+  static pw.Widget _buildHeadingWidget(
+    List<pw.TextSpan> textSpans,
+    PdfFontResolver fontResolver, {
+    required double fontSize,
+    required double top,
+    required double bottom,
+  }) {
+    return pw.Padding(
+      padding: pw.EdgeInsets.only(top: top, bottom: bottom),
+      child: pw.RichText(
+        text: pw.TextSpan(
+          children: textSpans,
+          style: pw.TextStyle(
+            font: fontResolver.boldFont,
+            fontSize: fontSize,
+            color: PdfColors.black,
+          ),
         ),
       ),
     );
   }
 
-  static Future<pw.Widget> _buildVideoWidget(
-    String source,
-    MediaSandboxService mediaService,
-    PdfFontResolver fontResolver,
-  ) async {
-    pw.MemoryImage? memoryImage;
+  static pw.Widget _buildListRow({
+    required pw.Widget leading,
+    required List<pw.TextSpan> textSpans,
+    PdfColor baseTextColor = PdfColors.black,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          leading,
+          pw.Expanded(
+            child: pw.RichText(
+              text: pw.TextSpan(
+                children: textSpans,
+                style: pw.TextStyle(fontSize: 11, color: baseTextColor),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  static pw.Widget _buildCheckboxIndicator({required bool isChecked}) {
+    return pw.Container(
+      width: 9,
+      height: 9,
+      margin: const pw.EdgeInsets.only(top: 2.5, left: 2, right: 6),
+      decoration: pw.BoxDecoration(
+        color: isChecked ? PdfColors.grey800 : null,
+        border: pw.Border.all(color: PdfColors.grey800, width: 0.9),
+        borderRadius: pw.BorderRadius.circular(1.5),
+      ),
+      child: isChecked
+          ? pw.CustomPaint(
+              size: const PdfPoint(9, 9),
+              painter: (canvas, size) {
+                canvas
+                  ..setStrokeColor(PdfColors.white)
+                  ..setLineWidth(1.2)
+                  ..moveTo(1.8, 4.5)
+                  ..lineTo(3.8, 2.3)
+                  ..lineTo(7.3, 6.7)
+                  ..strokePath();
+              },
+            )
+          : null,
+    );
+  }
+
+  static Future<pw.MemoryImage?> _loadMemoryImage(
+    String relativePath,
+    MediaSandboxService mediaService,
+  ) async {
     try {
-      String thumbPath = source;
-      if (source.endsWith('.mp4')) {
-        thumbPath = '${source.substring(0, source.length - 4)}_thumb.webp';
+      if (!MediaSandboxService.isStrictlyRelative(relativePath)) {
+        return null;
       }
-      final file = await mediaService.getFileFromRelativePath(thumbPath);
+      final file = await mediaService.getFileFromRelativePath(relativePath);
       if (await file.exists()) {
         final rawBytes = await file.readAsBytes();
         final pngBytes = await ImageFormatTranscoder.ensurePdfCompatibleBytes(rawBytes);
-        memoryImage = pw.MemoryImage(pngBytes);
+        return pw.MemoryImage(pngBytes);
       }
     } catch (_) {
-      // Fallback if poster thumbnail is missing or fails to transcode
+      // Fallback on decode/transcode failure
     }
+    return null;
+  }
 
-    return pw.Container(
+  static pw.Widget _roundedImage(pw.MemoryImage memoryImage) {
+    return pw.ClipRRect(
+      horizontalRadius: 6,
+      verticalRadius: 6,
+      child: pw.Image(memoryImage, fit: pw.BoxFit.contain),
+    );
+  }
+
+  static Future<pw.Widget> _buildImageWidget(
+    MediaEmbedData media,
+    MediaSandboxService mediaService,
+    PdfFontResolver fontResolver,
+  ) async {
+    final memoryImage = await _loadMemoryImage(media.path, mediaService);
+    final mediaWidget = memoryImage != null
+        ? pw.Container(
+            margin: const pw.EdgeInsets.symmetric(vertical: 8),
+            alignment: pw.Alignment.center,
+            constraints: const pw.BoxConstraints(maxHeight: 260.0),
+            child: _roundedImage(memoryImage),
+          )
+        : pw.Container(
+            height: 40,
+            margin: const pw.EdgeInsets.symmetric(vertical: 6),
+            alignment: pw.Alignment.center,
+            decoration: pw.BoxDecoration(
+              color: PdfColors.grey200,
+              borderRadius: pw.BorderRadius.circular(6),
+              border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
+            ),
+            child: pw.Text(
+              '[Image: ${fontResolver.sanitizeText(media.path)}]',
+              style: pw.TextStyle(font: fontResolver.italicFont, fontSize: 9, color: PdfColors.grey600),
+            ),
+          );
+
+    return _wrapWithOptionalCaption(mediaWidget: mediaWidget, caption: media.caption, fontResolver: fontResolver);
+  }
+
+  static Future<pw.Widget> _buildVideoWidget(
+    MediaEmbedData media,
+    MediaSandboxService mediaService,
+    PdfFontResolver fontResolver,
+  ) async {
+    final thumbPath = media.path.endsWith('.mp4')
+        ? '${media.path.substring(0, media.path.length - 4)}_thumb.webp'
+        : media.path;
+    final memoryImage = await _loadMemoryImage(thumbPath, mediaService);
+
+    final videoWidget = pw.Container(
       margin: const pw.EdgeInsets.symmetric(vertical: 8),
       alignment: pw.Alignment.center,
       constraints: const pw.BoxConstraints(maxHeight: 220.0),
@@ -501,14 +362,7 @@ class PdfEntrySerializer {
         alignment: pw.Alignment.center,
         children: [
           if (memoryImage != null)
-            pw.ClipRRect(
-              horizontalRadius: 6,
-              verticalRadius: 6,
-              child: pw.Image(
-                memoryImage,
-                fit: pw.BoxFit.contain,
-              ),
-            )
+            _roundedImage(memoryImage)
           else
             pw.Container(
               height: 120,
@@ -520,11 +374,7 @@ class PdfEntrySerializer {
               alignment: pw.Alignment.center,
               child: pw.Text(
                 '[Video Attachment]',
-                style: pw.TextStyle(
-                  font: fontResolver.italicFont,
-                  fontSize: 10,
-                  color: PdfColors.grey300,
-                ),
+                style: pw.TextStyle(font: fontResolver.italicFont, fontSize: 10, color: PdfColors.grey300),
               ),
             ),
           pw.Positioned(
@@ -537,16 +387,39 @@ class PdfEntrySerializer {
               ),
               child: pw.Text(
                 'Video: Local playback only',
-                style: pw.TextStyle(
-                  font: fontResolver.regularFont,
-                  fontSize: 8,
-                  color: PdfColors.white,
-                ),
+                style: pw.TextStyle(font: fontResolver.regularFont, fontSize: 8, color: PdfColors.white),
               ),
             ),
           ),
         ],
       ),
+    );
+
+    return _wrapWithOptionalCaption(mediaWidget: videoWidget, caption: media.caption, fontResolver: fontResolver);
+  }
+
+  static pw.Widget _wrapWithOptionalCaption({
+    required pw.Widget mediaWidget,
+    required String caption,
+    required PdfFontResolver fontResolver,
+  }) {
+    final trimmedCaption = caption.trim();
+    if (trimmedCaption.isEmpty) return mediaWidget;
+
+    return pw.Column(
+      mainAxisSize: pw.MainAxisSize.min,
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        mediaWidget,
+        pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 6),
+          child: pw.Text(
+            fontResolver.sanitizeText(trimmedCaption),
+            textAlign: pw.TextAlign.center,
+            style: pw.TextStyle(font: fontResolver.italicFont, fontSize: 9, color: PdfColors.grey700),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -159,7 +159,6 @@ void main() {
         'lib/features/import_export/services/backup_crypto.dart',
         'lib/features/import_export/services/date_parser_engine.dart',
         'lib/features/import_export/services/offline_cjk_ttf_generator.dart',
-        'lib/features/import_export/services/pdf_entry_serializer.dart',
         'lib/features/import_export/widgets/backup_dialogs.dart',
         'lib/features/intro/widgets/book_3d_stage.dart',
         'lib/features/intro/widgets/living_ink_background_painter.dart',
@@ -354,6 +353,79 @@ void main() {
         reason: 'All SQLite reads, streams, and writes in lib/features/albums/ must route '
             'through AlbumRepository (ADR-0010 / SPEC-017). Found direct AlbumsDao '
             'references:\n${violations.join('\n')}',
+      );
+    });
+
+    test('lib/ defines {夹注: regex strictly inside lib/core/documents/', () {
+      final jiazhuRegexPattern = RegExp(r'\\\{夹注:');
+      final dartFiles = libDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
+
+      final violations = <String>[];
+      for (final file in dartFiles) {
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        if (relPath.startsWith('lib/core/documents/')) {
+          continue;
+        }
+        final lines = file.readAsLinesSync();
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+          final line = lines[lineIndex];
+          final trimmed = line.trim();
+          if (trimmed.startsWith('//') || trimmed.startsWith('*')) {
+            continue;
+          }
+          if (jiazhuRegexPattern.hasMatch(line)) {
+            violations.add('$relPath:${lineIndex + 1}: $trimmed');
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Interlinear {夹注:...} regex parsing must live solely in lib/core/documents/ '
+            '(SPEC-018). Found duplicate definitions:\n${violations.join('\n')}',
+      );
+    });
+
+    test('lib/ never calls jsonDecode directly on contentDelta outside lib/core/documents/', () {
+      final contentDeltaJsonDecodeRegex = RegExp(
+        r'jsonDecode\s*\([^)]*\b[A-Za-z0-9_.]*contentDelta[A-Za-z0-9_]*\b[^)]*\)',
+        dotAll: true,
+      );
+      final dartFiles = libDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
+
+      final violations = <String>[];
+      for (final file in dartFiles) {
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        if (relPath.startsWith('lib/core/documents/')) {
+          continue;
+        }
+        final lines = file.readAsLinesSync();
+        final nonCommentLines = lines
+            .map((line) {
+              final trimmed = line.trim();
+              return (trimmed.startsWith('//') || trimmed.startsWith('*')) ? '' : line;
+            })
+            .join('\n');
+
+        for (final match in contentDeltaJsonDecodeRegex.allMatches(nonCommentLines)) {
+          final lineNumber = nonCommentLines.substring(0, match.start).split('\n').length;
+          violations.add('$relPath:$lineNumber: ${lines[lineNumber - 1].trim()}');
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Quill contentDelta JSON must be decoded via core/documents (decodeDeltaOps / '
+            'EntryContentDecoder) per SPEC-018. Found direct jsonDecode calls:\n'
+            '${violations.join('\n')}',
       );
     });
   });

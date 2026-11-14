@@ -1,12 +1,12 @@
-import 'dart:convert';
 import 'dart:math' as math;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
-import '../../../core/services/media_sandbox_service.dart';
-import '../../../core/documents/media_embed_data.dart';
+import '../../../core/documents/entry_content_decoder.dart';
+import '../../../core/documents/entry_vertical_packer.dart';
 import '../../../core/documents/vertical_typography_mapper.dart';
+import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
 import '../../timeline/services/folio_media_pairing.dart';
 import 'image_format_transcoder.dart';
@@ -19,16 +19,20 @@ sealed class _PdfKeepsakeItem {
 }
 
 class _PdfKeepsakeColumnItem extends _PdfKeepsakeItem {
-  final List<VerticalRenderToken> tokens;
+  final List<VerticalStyledToken> styledTokens;
   final bool isTitle;
+  final bool isHeader;
+  final bool isQuote;
 
   _PdfKeepsakeColumnItem({
-    required this.tokens,
+    required this.styledTokens,
     this.isTitle = false,
+    this.isHeader = false,
+    this.isQuote = false,
   });
 
   @override
-  double get estimatedWidth => isTitle ? 32.0 : 26.0;
+  double get estimatedWidth => isTitle ? 32.0 : (isHeader ? 28.0 : 26.0);
 }
 
 class _PdfKeepsakeMediaItem extends _PdfKeepsakeItem {
@@ -77,6 +81,44 @@ class PdfVerticalScrollBuilder {
     final marginX = style.marginHorizontal.clamp(24.0, 48.0);
     const marginY = 32.0;
 
+    final pageWidgets = await buildPageWidgets(
+      entry: entry,
+      style: style,
+      mediaService: mediaService,
+      fontResolver: fontResolver,
+      sealText: sealText,
+      mountPlan: mountPlan,
+      pageFormat: pageFormat,
+    );
+
+    return pageWidgets
+        .map(
+          (pageWidget) => pw.Page(
+            pageTheme: pw.PageTheme(
+              pageFormat: landscapeFormat,
+              margin: pw.EdgeInsets.symmetric(horizontal: marginX, vertical: marginY),
+              buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, style),
+            ),
+            build: (context) => pageWidget,
+          ),
+        )
+        .toList();
+  }
+
+  /// Compiles entry content into per-page vertical scroll [pw.Widget] trees.
+  static Future<List<pw.Widget>> buildPageWidgets({
+    required Entry entry,
+    required TemplateStyle style,
+    required MediaSandboxService mediaService,
+    required PdfFontResolver fontResolver,
+    required String sealText,
+    FolioMountPlan mountPlan = const FolioMountPlan([]),
+    PdfPageFormat pageFormat = PdfPageFormat.a4,
+  }) async {
+    final landscapeFormat = pageFormat.landscape;
+    final marginX = style.marginHorizontal.clamp(24.0, 48.0);
+    const marginY = 32.0;
+
     final availableHeight = landscapeFormat.height - (marginY * 2);
     final availableWidth = landscapeFormat.width - (marginX * 2);
 
@@ -113,58 +155,56 @@ class PdfVerticalScrollBuilder {
       overlayCardsByPage.add(mounted.isEmpty
           ? const <pw.Widget>[]
           : await PdfPolaroidOverlayBuilder.buildOverlayCards(
-              attachments: mounted, mediaService: mediaService,
-              resolver: fontResolver, availableWidth: availableWidth,
-              availableHeight: availableHeight, isVertical: true,
+              attachments: mounted,
+              mediaService: mediaService,
+              resolver: fontResolver,
+              availableWidth: availableWidth,
+              availableHeight: availableHeight,
+              isVertical: true,
             ));
     }
 
-    // Build pw.Page for each slice (reversed to flow right-to-left in standard LTR coordinate space)
-    final pages = <pw.Page>[];
+    // Build widget for each slice (reversed to flow right-to-left in standard LTR coordinate space)
+    final widgets = <pw.Widget>[];
     for (int pageIndex = 0; pageIndex < pagesItems.length; pageIndex++) {
       final pageSlice = pagesItems[pageIndex];
-      pages.add(
-        pw.Page(
-          pageTheme: pw.PageTheme(
-            pageFormat: landscapeFormat,
-            margin: pw.EdgeInsets.symmetric(horizontal: marginX, vertical: marginY),
-            buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, style),
-          ),
-          build: (context) {
-            return pw.Stack(
-              children: [
-                pw.Container(
-                  height: availableHeight,
-                  child: pw.Row(
-                    crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                    children: pageSlice.reversed
-                        .map((item) => _renderPdfItem(item, style, fontResolver, availableHeight))
-                        .toList(),
-                  ),
-                ),
-                ...overlayCardsByPage[pageIndex],
-              ],
-            );
-          },
+      widgets.add(
+        pw.Stack(
+          children: [
+            pw.Container(
+              height: availableHeight,
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                children: pageSlice.reversed
+                    .map((item) => _renderPdfItem(item, style, fontResolver))
+                    .toList(),
+              ),
+            ),
+            ...overlayCardsByPage[pageIndex],
+          ],
         ),
       );
     }
 
-    return pages;
+    return widgets;
   }
 
   static pw.Widget _renderPdfItem(
     _PdfKeepsakeItem item,
     TemplateStyle style,
     PdfFontResolver resolver,
-    double maxHeight,
   ) {
     final ruleColor = PdfTemplateRenderer.pdfRuleColor(style.tokens.ruleTint);
 
     switch (item) {
       case _PdfKeepsakeColumnItem col:
-        final fontSize = col.isTitle ? 14.0 : 10.5;
-        final font = col.isTitle ? resolver.boldFont : resolver.regularFont;
+        final fontSize = col.isTitle
+            ? 14.0
+            : (col.isHeader ? 12.0 : (col.isQuote ? 10.0 : 10.5));
+        final font = (col.isTitle || col.isHeader)
+            ? resolver.boldFont
+            : (col.isQuote ? resolver.italicFont : resolver.regularFont);
+        final defaultColor = col.isQuote ? PdfColors.grey700 : PdfColors.black;
 
         return pw.Container(
           width: col.estimatedWidth,
@@ -179,46 +219,42 @@ class PdfVerticalScrollBuilder {
           child: pw.Column(
             mainAxisAlignment: col.isTitle ? pw.MainAxisAlignment.center : pw.MainAxisAlignment.start,
             crossAxisAlignment: pw.CrossAxisAlignment.center,
-            children: col.tokens.map((token) {
+            children: col.styledTokens.map((styledToken) {
+              final token = styledToken.token;
               if (token is VerticalInterlinearPairToken) {
-                final noteFontSize = (fontSize * 0.58).clamp(6.0, 9.0);
+                final noteStyle = pw.TextStyle(
+                  font: resolver.regularFont,
+                  fontSize: (fontSize * 0.58).clamp(6.0, 9.0),
+                  color: PdfColors.grey700,
+                );
                 return pw.Padding(
                   padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
                   child: pw.Row(
-                    children: [
-                      pw.Expanded(
-                        child: pw.Text(
-                          resolver.sanitizeText(token.leftChar),
-                          textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(
-                            font: resolver.regularFont,
-                            fontSize: noteFontSize,
-                            color: PdfColors.grey700,
+                    children: [token.leftChar, token.rightChar]
+                        .map(
+                          (charText) => pw.Expanded(
+                            child: pw.Text(
+                              resolver.sanitizeText(charText),
+                              textAlign: pw.TextAlign.center,
+                              style: noteStyle,
+                            ),
                           ),
-                        ),
-                      ),
-                      pw.Expanded(
-                        child: pw.Text(
-                          resolver.sanitizeText(token.rightChar),
-                          textAlign: pw.TextAlign.center,
-                          style: pw.TextStyle(
-                            font: resolver.regularFont,
-                            fontSize: noteFontSize,
-                            color: PdfColors.grey700,
-                          ),
-                        ),
-                      ),
-                    ],
+                        )
+                        .toList(),
                   ),
                 );
               }
 
               if (token is VerticalGlyphToken) {
                 final sanitized = resolver.sanitizeText(token.glyph);
+                final parsedColor = TemplateStyle.tryParseHexColor(styledToken.colorHex);
+                final glyphColor = parsedColor != null
+                    ? PdfColor.fromInt(parsedColor.toARGB32())
+                    : defaultColor;
                 final glyphStyle = pw.TextStyle(
                   font: font,
                   fontSize: fontSize,
-                  color: PdfColors.black,
+                  color: glyphColor,
                 );
 
                 if (token.isCornerPunctuation) {
@@ -294,17 +330,15 @@ class PdfVerticalScrollBuilder {
       case _PdfKeepsakeColophonItem colophon:
         final dateStr = DateFormat('yyyy年M月d日').format(colophon.entry.entryDate);
         const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
-        final dayStr = '星期${weekdays[colophon.entry.entryDate.weekday - 1]}';
-        final colophonText = '$dateStr $dayStr';
+        final colophonText = '$dateStr 星期${weekdays[colophon.entry.entryDate.weekday - 1]}';
+        final dateStyle = pw.TextStyle(font: resolver.regularFont, fontSize: 8.0, color: PdfColors.grey700);
 
         return pw.Container(
           width: colophon.estimatedWidth,
           margin: const pw.EdgeInsets.only(right: 6.0, left: 12.0),
           padding: const pw.EdgeInsets.symmetric(vertical: 12.0),
           decoration: pw.BoxDecoration(
-            border: pw.Border(
-              right: pw.BorderSide(color: ruleColor, width: 0.5),
-            ),
+            border: pw.Border(right: pw.BorderSide(color: ruleColor, width: 0.5)),
           ),
           child: pw.Column(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -312,19 +346,15 @@ class PdfVerticalScrollBuilder {
             children: [
               pw.Column(
                 mainAxisSize: pw.MainAxisSize.min,
-                children: colophonText.split('').map((character) {
-                  return pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
-                    child: pw.Text(
-                      resolver.sanitizeText(character),
-                      style: pw.TextStyle(
-                        font: resolver.regularFont,
-                        fontSize: 8.0,
-                        color: PdfColors.grey700,
+                children: colophonText
+                    .split('')
+                    .map(
+                      (character) => pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
+                        child: pw.Text(resolver.sanitizeText(character), style: dateStyle),
                       ),
-                    ),
-                  );
-                }).toList(),
+                    )
+                    .toList(),
               ),
               PdfTemplateRenderer.buildSignatureSeal(
                 style: style,
@@ -348,94 +378,54 @@ class PdfVerticalScrollBuilder {
     const double pitch = 14.0;
     final int maxCharsPerCol = ((availableHeight - 32.0) / pitch).floor().clamp(10, 36);
 
-    // 1. Title Column
-    if (entry.title != null && entry.title!.trim().isNotEmpty) {
-      final titleTokens = VerticalTypographyMapper.tokenize(entry.title!.trim());
-      items.add(_PdfKeepsakeColumnItem(tokens: titleTokens, isTitle: true));
-    }
+    final blocks = EntryContentDecoder.decode(
+      contentDeltaJson: entry.contentDelta,
+      fallbackPlainText: entry.plainText,
+    );
+    final packedColumns = EntryVerticalPacker.pack(
+      blocks: blocks,
+      maxTokensPerColumn: maxCharsPerCol,
+      entryTitle: entry.title,
+    );
 
-    // 2. Parse Delta ops or plain text
-    List<dynamic>? ops;
-    if (entry.contentDelta.trim().isNotEmpty) {
-      try {
-        final decoded = jsonDecode(entry.contentDelta);
-        if (decoded is List) {
-          ops = decoded;
-        } else if (decoded is Map && decoded['ops'] is List) {
-          ops = decoded['ops'] as List;
-        }
-      } catch (_) {
-        ops = null;
+    for (final packed in packedColumns) {
+      switch (packed) {
+        case VerticalTextColumn textCol:
+          items.add(_PdfKeepsakeColumnItem(
+            styledTokens: textCol.styledTokens,
+            isTitle: textCol.isTitle,
+            isHeader: textCol.isHeader,
+            isQuote: textCol.isQuote,
+          ));
+        case VerticalMediaColumn mediaCol:
+          final img = await _loadTranscodedImage(
+            mediaCol.media.path,
+            mediaService,
+            isVideo: mediaCol.isVideo,
+          );
+          items.add(_PdfKeepsakeMediaItem(
+            image: img,
+            caption: mediaCol.media.caption,
+            isVideo: mediaCol.isVideo,
+          ));
       }
     }
 
-    if (ops == null || ops.isEmpty) {
-      final lines = entry.plainText.split('\n');
-      for (final line in lines) {
-        final trimmed = line.trim();
-        if (trimmed.isEmpty) continue;
-        final tokens = VerticalTypographyMapper.tokenize(trimmed);
-        _partitionTokens(tokens, maxCharsPerCol, items);
-      }
-    } else {
-      for (final op in ops) {
-        if (op is! Map) continue;
-        final insert = op['insert'];
-
-        // Image embed
-        if (insert is Map && insert.containsKey('image')) {
-          final raw = insert['image']?.toString() ?? '';
-          final embed = MediaEmbedData.fromRaw(raw);
-          final path = embed.path.isNotEmpty ? embed.path : raw;
-          final img = await _loadTranscodedImage(path, mediaService);
-          items.add(_PdfKeepsakeMediaItem(image: img, caption: embed.caption));
-          continue;
-        }
-
-        // Video embed
-        if (insert is Map && insert.containsKey('video')) {
-          final raw = insert['video']?.toString() ?? '';
-          final embed = MediaEmbedData.fromRaw(raw);
-          final path = embed.path.isNotEmpty ? embed.path : raw;
-          final img = await _loadTranscodedImage(path, mediaService);
-          items.add(_PdfKeepsakeMediaItem(image: img, caption: embed.caption, isVideo: true));
-          continue;
-        }
-
-        // Text insert
-        if (insert is String) {
-          final paras = insert.split('\n');
-          for (final para in paras) {
-            final trimmed = para.trim();
-            if (trimmed.isEmpty) continue;
-            final tokens = VerticalTypographyMapper.tokenize(trimmed);
-            _partitionTokens(tokens, maxCharsPerCol, items);
-          }
-        }
-      }
-    }
-
-    // Terminal Colophon
     items.add(_PdfKeepsakeColophonItem(entry: entry, sealText: sealText));
     return items;
   }
 
-  static void _partitionTokens(
-    List<VerticalRenderToken> tokens, int maxPerCol, List<_PdfKeepsakeItem> out,
-  ) {
-    if (tokens.isEmpty) return;
-    for (int index = 0; index < tokens.length; index += maxPerCol) {
-      final end = (index + maxPerCol < tokens.length) ? index + maxPerCol : tokens.length;
-      out.add(_PdfKeepsakeColumnItem(tokens: tokens.sublist(index, end)));
-    }
-  }
-
   static Future<pw.MemoryImage?> _loadTranscodedImage(
-    String path, MediaSandboxService mediaService,
-  ) async {
+    String path,
+    MediaSandboxService mediaService, {
+    bool isVideo = false,
+  }) async {
     try {
-      final file = MediaSandboxService.isStrictlyRelative(path)
-          ? await mediaService.getFileFromRelativePath(path)
+      final resolvedPath = (isVideo && path.endsWith('.mp4'))
+          ? '${path.substring(0, path.length - 4)}_thumb.webp'
+          : path;
+      final file = MediaSandboxService.isStrictlyRelative(resolvedPath)
+          ? await mediaService.getFileFromRelativePath(resolvedPath)
           : null;
       if (file != null && await file.exists()) {
         final rawBytes = await file.readAsBytes();

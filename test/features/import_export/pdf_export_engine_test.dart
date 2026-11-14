@@ -10,7 +10,10 @@ import 'package:memodiary/features/import_export/models/pdf_layout_mode.dart';
 import 'package:memodiary/features/import_export/services/pdf_entry_serializer.dart';
 import 'package:memodiary/features/import_export/services/pdf_export_engine.dart';
 import 'package:memodiary/features/import_export/services/pdf_font_resolver.dart';
+import 'package:memodiary/features/import_export/services/pdf_vertical_scroll_builder.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -370,7 +373,149 @@ void main() {
         expect(recordingService.requestedPaths, isNot(contains('media/photo_staged.webp')));
       });
     }
+
+    test('verticalScroll PDF renders trailing-newline header/quote typography and keeps mixed inline spans in one column', () async {
+      final entry = Entry(
+        id: 'entry_vertical_styled',
+        notebookId: 'default',
+        templateId: 'template_lined_paper',
+        title: '秋兴',
+        contentDelta: jsonEncode([
+          {'insert': '秋日偶书'},
+          {'insert': '\n', 'attributes': {'header': 1}},
+          {'insert': '山色空蒙'},
+          {'insert': '\n', 'attributes': {'blockquote': true}},
+          {'insert': '今日'},
+          {
+            'insert': '晴朗',
+            'attributes': {'bold': true, 'italic': true, 'color': '#B83B2E'},
+          },
+          {'insert': '宜出行\n'},
+        ]),
+        plainText: '秋日偶书\n山色空蒙\n今日晴朗宜出行',
+        entryDate: DateTime(2026, 11, 6),
+        mood: 4,
+        weather: '晴',
+        isWeeklyReview: false,
+        weekNumber: null,
+        unlockAt: null,
+        isLocked: false,
+        legacyMountsPending: false,
+        createdAt: DateTime(2026, 11, 6),
+        updatedAt: DateTime(2026, 11, 6),
+        isDeleted: false,
+      );
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: Color(0xFFFBF8F1),
+        lineSpacing: 1.5,
+        marginHorizontal: 28.0,
+      );
+      final cjkResolver = PdfFontResolver.cjk();
+      final distinctFontResolver = PdfFontResolver(
+        regularFont: cjkResolver.regularFont,
+        boldFont: pw.Font.helveticaBold(),
+        italicFont: pw.Font.helveticaOblique(),
+        boldItalicFont: pw.Font.helveticaBoldOblique(),
+        isCjkCapable: true,
+      );
+
+      final pageWidgets = await PdfVerticalScrollBuilder.buildPageWidgets(
+        entry: entry,
+        style: style,
+        mediaService: mediaService,
+        fontResolver: distinctFontResolver,
+        sealText: '心迹安放',
+      );
+      expect(pageWidgets, hasLength(1));
+
+      final row = _findFirstRow(pageWidgets.first);
+      expect(row, isNotNull);
+
+      // Reversed RTL order: [colophon, bodyCol, quoteCol, headerCol, titleCol]
+      expect(row!.children, hasLength(5));
+
+      final titleTexts = _collectPdfTexts(row.children[4]);
+      final headerTexts = _collectPdfTexts(row.children[3]);
+      final quoteTexts = _collectPdfTexts(row.children[2]);
+      final bodyTexts = _collectPdfTexts(row.children[1]);
+
+      expect(titleTexts.map((textWidget) => textWidget.text.toPlainText()).join(), equals('秋兴'));
+      expect(headerTexts.map((textWidget) => textWidget.text.toPlainText()).join(), equals('秋日偶书'));
+      expect(quoteTexts.map((textWidget) => textWidget.text.toPlainText()).join(), equals('山色空蒙'));
+      expect(bodyTexts.map((textWidget) => textWidget.text.toPlainText()).join(), equals('今日晴朗宜出行'));
+
+      final headerStyle = headerTexts.first.text.style;
+      final quoteStyle = quoteTexts.first.text.style;
+      final bodyPlainStyle = bodyTexts.first.text.style;
+      final bodyColoredStyle = bodyTexts[2].text.style;
+
+      expect(headerStyle?.font, equals(distinctFontResolver.boldFont));
+      expect(headerStyle?.fontSize, greaterThan(bodyPlainStyle!.fontSize!));
+
+      expect(quoteStyle?.font, equals(distinctFontResolver.italicFont));
+      expect(quoteStyle?.fontSize, lessThan(bodyPlainStyle.fontSize!));
+      expect(quoteStyle?.color, isNot(equals(PdfColors.black)));
+
+      expect(bodyColoredStyle?.color, equals(const PdfColor.fromInt(0xFFB83B2E)));
+
+      // Also verify CJK PDF serialization succeeds cleanly
+      final cjkPages = await PdfVerticalScrollBuilder.buildVerticalScrollPages(
+        entry: entry,
+        style: style,
+        mediaService: mediaService,
+        fontResolver: cjkResolver,
+        sealText: '心迹安放',
+      );
+      final saveDoc = pw.Document();
+      for (final page in cjkPages) {
+        saveDoc.addPage(page);
+      }
+      final bytes = await saveDoc.save();
+      expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
   });
+}
+
+pw.Row? _findFirstRow(pw.Widget widget) {
+  if (widget is pw.Row) return widget;
+  if (widget is pw.Stack) {
+    for (final child in widget.children) {
+      final found = _findFirstRow(child);
+      if (found != null) return found;
+    }
+  } else if (widget is pw.Container && widget.child != null) {
+    return _findFirstRow(widget.child!);
+  } else if (widget is pw.Padding && widget.child != null) {
+    return _findFirstRow(widget.child!);
+  }
+  return null;
+}
+
+List<pw.Text> _collectPdfTexts(pw.Widget widget) {
+  final results = <pw.Text>[];
+  void visit(pw.Widget node) {
+    if (node is pw.Text) {
+      results.add(node);
+      return;
+    }
+    if (node is pw.Container && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.SingleChildWidget && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.Flex) {
+      for (final child in node.children) {
+        visit(child);
+      }
+    } else if (node is pw.Stack) {
+      for (final child in node.children) {
+        visit(child);
+      }
+    }
+  }
+
+  visit(widget);
+  return results;
 }
 
 /// Records which sandbox files an export asks for.
