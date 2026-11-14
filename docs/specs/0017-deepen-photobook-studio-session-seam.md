@@ -1,7 +1,7 @@
 ---
 id: SPEC-017
 title: "Deepen the Photobook Document Studio Session Seam"
-status: ready-for-agent
+status: completed
 created_at: 2026-11-14
 adr: ADR-0002, ADR-0010
 ---
