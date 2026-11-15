@@ -10,6 +10,8 @@ import 'package:memodiary/features/timeline/widgets/folio/folio_leaf_model.dart'
 import 'package:memodiary/features/timeline/widgets/folio/folio_reading_perspective.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_shanshui_art_painter.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_silk_ruling_painter.dart';
+import 'package:memodiary/features/timeline/widgets/folio/folio_substrate_painter.dart';
+import '../../../helpers/recording_canvas.dart';
 
 void main() {
   const dummyAtmosphere = ShanshuiAtmosphereState(
@@ -62,6 +64,107 @@ void main() {
       painter.paint(canvas, const Size(320, 448));
       final picture = recorder.endRecording();
       expect(picture, isNotNull);
+    });
+
+    test('faithfulHorizontal respects backgroundType and showLeftMarginRule across all template types', () {
+      const canvasSize = Size(320, 448);
+
+      // Lined: 13 horizontal lines + 1 vertical margin line at x = 24
+      final linedCanvas = RecordingCanvas();
+      FolioSilkRulingPainter(
+        layout: FolioRulingLayout.faithfulHorizontal,
+        backgroundType: TemplateBackgroundType.lined,
+        showLeftMarginRule: true,
+        ruleColor: const Color(0x52C04851),
+        frameColor: const Color(0xC7B83B2E),
+      ).paint(linedCanvas, canvasSize);
+      expect(linedCanvas.drawnRects, hasLength(2));
+      expect(
+        linedCanvas.drawnLines.where((line) => line.$1.dx == 24.0 && line.$2.dx == 24.0),
+        hasLength(1),
+      );
+      expect(
+        linedCanvas.drawnLines.where((line) => line.$1.dy == line.$2.dy),
+        hasLength(13),
+      );
+
+      // PaperTexture (Retro Kraft): 13 horizontal lines, NO vertical margin line
+      final kraftCanvas = RecordingCanvas();
+      FolioSilkRulingPainter(
+        layout: FolioRulingLayout.faithfulHorizontal,
+        backgroundType: TemplateBackgroundType.paperTexture,
+        showLeftMarginRule: false,
+        ruleColor: const Color(0x148D6E63),
+        frameColor: const Color(0xC7B83B2E),
+      ).paint(kraftCanvas, canvasSize);
+      expect(kraftCanvas.drawnRects, hasLength(2));
+      expect(
+        kraftCanvas.drawnLines.where((line) => line.$1.dx == line.$2.dx),
+        isEmpty,
+      );
+      expect(
+        kraftCanvas.drawnLines.where((line) => line.$1.dy == line.$2.dy),
+        hasLength(13),
+      );
+
+      // Color: Double Outer Border only, zero ruling lines
+      final colorCanvas = RecordingCanvas();
+      FolioSilkRulingPainter(
+        layout: FolioRulingLayout.faithfulHorizontal,
+        backgroundType: TemplateBackgroundType.color,
+        showLeftMarginRule: false,
+        ruleColor: const Color(0x477A8B99),
+        frameColor: const Color(0xC7B83B2E),
+      ).paint(colorCanvas, canvasSize);
+      expect(colorCanvas.drawnRects, hasLength(2));
+      expect(colorCanvas.drawnLines, isEmpty);
+
+      // Grid: 9 vertical + 13 horizontal lines, NO margin rule, NO fishtail mark
+      final gridCanvas = RecordingCanvas();
+      FolioSilkRulingPainter(
+        layout: FolioRulingLayout.faithfulHorizontal,
+        backgroundType: TemplateBackgroundType.grid,
+        showLeftMarginRule: false,
+        ruleColor: const Color(0x477A8B99),
+        frameColor: const Color(0xC7B83B2E),
+      ).paint(gridCanvas, canvasSize);
+      expect(gridCanvas.drawnRects, hasLength(2));
+      expect(gridCanvas.drawnPaths, isEmpty);
+      expect(
+        gridCanvas.drawnLines.where((line) => line.$1.dx == line.$2.dx),
+        hasLength(9),
+      );
+      expect(
+        gridCanvas.drawnLines.where((line) => line.$1.dy == line.$2.dy),
+        hasLength(13),
+      );
+
+      // DotGrid: 9 * 13 = 117 dots, zero lines
+      final dotCanvas = RecordingCanvas();
+      FolioSilkRulingPainter(
+        layout: FolioRulingLayout.faithfulHorizontal,
+        backgroundType: TemplateBackgroundType.dotGrid,
+        showLeftMarginRule: false,
+        ruleColor: const Color(0x477A8B99),
+        frameColor: const Color(0xC7B83B2E),
+      ).paint(dotCanvas, canvasSize);
+      expect(dotCanvas.drawnRects, hasLength(2));
+      expect(dotCanvas.drawnLines, isEmpty);
+      expect(dotCanvas.drawnCircles, hasLength(117));
+    });
+
+    test('FolioSubstratePainter renders kraft vignette and brown fibers when showKraftTexture is true', () {
+      final kraftCanvas = RecordingCanvas();
+      FolioSubstratePainter(
+        showGoldFlecks: false,
+        isDark: false,
+        showKraftTexture: true,
+        drawGutterShadow: false,
+      ).paint(kraftCanvas, const Size(360, 560));
+
+      expect(kraftCanvas.drawnRects, hasLength(1));
+      expect(kraftCanvas.drawnLines, isNotEmpty);
+      expect(kraftCanvas.drawnCircles, isEmpty);
     });
   });
 
@@ -288,6 +391,105 @@ void main() {
       expect(find.text('乌丝栏 · 横排'), findsOneWidget);
       expect(find.text('六桥烟柳'), findsOneWidget);
       expect(find.textContaining('苏堤春晓'), findsOneWidget);
+    });
+
+    testWidgets('applies margin clearance for lined/obsidian and symmetric 20px insets + matching labels across template types', (tester) async {
+      final bodyLeaf = FolioContentBodyLeaf(
+        leafIndex: 1,
+        totalLeaves: 2,
+        pageIndexInContent: 1,
+        totalContentPages: 1,
+        layout: FolioRulingLayout.faithfulHorizontal,
+        title: '清秋记',
+        lunarDate: '丙午年九月廿八',
+        horizontalRows: const [
+          FolioHorizontalRow(
+            segments: [
+              FolioHorizontalSegment(text: '首行正文不越红线。'),
+            ],
+          ),
+        ],
+      );
+
+      final paperHeartFinder = find.byWidgetPredicate(
+        (widget) => widget is SizedBox && widget.width == 320 && widget.height == 448,
+      );
+
+      Future<void> pumpBodyLeaf(FolioSubstrateTheme theme) => tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: FolioContentLeafPage(
+                  leaf: bodyLeaf,
+                  theme: theme,
+                ),
+              ),
+            ),
+          );
+
+      // 1. Lined (with margin rule -> 32px left clearance)
+      await pumpBodyLeaf(FolioSubstrateTheme.xuan);
+      expect(find.text('乌丝栏 · 横排'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('首行正文不越红线。')).dx - tester.getTopLeft(paperHeartFinder).dx,
+        equals(32.0),
+      );
+
+      // 2. Obsidian Night (with margin rule -> 32px left clearance)
+      await pumpBodyLeaf(FolioSubstrateTheme.obsidian);
+      expect(find.text('乌丝栏 · 横排'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('首行正文不越红线。')).dx - tester.getTopLeft(paperHeartFinder).dx,
+        equals(32.0),
+      );
+
+      // 3. Other template background types in faithfulOriginal (20px symmetric padding + matching label)
+      final expectedCases = <(TemplateBackgroundType, String)>[
+        (TemplateBackgroundType.paperTexture, '牛皮纸 · 横排'),
+        (TemplateBackgroundType.color, '素笺 · 横排'),
+        (TemplateBackgroundType.grid, '方格 · 横排'),
+        (TemplateBackgroundType.dotGrid, '点阵 · 横排'),
+      ];
+
+      for (final (bgType, expectedLabel) in expectedCases) {
+        final theme = ReadingPerspective.faithfulOriginal.resolveTheme(
+          templateStyle: TemplateStyle(
+            type: bgType,
+            backgroundColor: const Color(0xFFEFE6D5),
+            lineSpacing: 1.6,
+            marginHorizontal: 20.0,
+          ),
+        );
+        await pumpBodyLeaf(theme);
+        expect(find.text(expectedLabel), findsOneWidget);
+        expect(
+          tester.getTopLeft(find.text('首行正文不越红线。')).dx - tester.getTopLeft(paperHeartFinder).dx,
+          equals(20.0),
+        );
+      }
+
+      // 4. Locks horizontal text scale to 1.0 under large OS textScaler so rows match pagination width
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+            child: Scaffold(
+              body: FolioContentLeafPage(
+                leaf: bodyLeaf,
+                theme: FolioSubstrateTheme.xuan,
+              ),
+            ),
+          ),
+        ),
+      );
+      final richTextWidget = tester.widget<RichText>(
+        find.descendant(
+          of: paperHeartFinder,
+          matching: find.byWidgetPredicate(
+            (widget) => widget is RichText && widget.text.toPlainText().contains('首行正文不越红线。'),
+          ),
+        ),
+      );
+      expect(richTextWidget.textScaler, equals(TextScaler.noScaling));
     });
 
     testWidgets('renders vertical columns with dual-char jiazhu and rotated marks', (tester) async {

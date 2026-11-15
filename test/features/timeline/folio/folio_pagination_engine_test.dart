@@ -128,6 +128,61 @@ void main() {
       final sealStyle = ReadingPerspective.faithfulOriginal.resolveSealStyle(templateStyle: customStyle);
       expect(sealStyle, equals(SealCarvingStyle.baiwen));
     });
+
+    test('faithfulOriginal resolves template backgroundType, margin rule, kraft texture, and body padding', () {
+      final retroKraft = TemplateStyle.fromTemplate(
+        Template(
+          id: 'template_retro_kraft',
+          name: 'Retro Kraft Scrapbook',
+          backgroundType: 'paper_texture',
+          backgroundValue: '#EFE6D5',
+          fontFamily: 'System',
+          lineSpacing: 1.6,
+          marginHorizontal: 20.0,
+          isCustom: false,
+        ),
+      );
+
+      final kraftTheme = ReadingPerspective.faithfulOriginal.resolveTheme(templateStyle: retroKraft);
+      expect(kraftTheme.backgroundType, equals(TemplateBackgroundType.paperTexture));
+      expect(kraftTheme.showLeftMarginRule, isFalse);
+      expect(kraftTheme.showKraftTexture, isTrue);
+      expect(kraftTheme.ruleColor, equals(const Color(0x148D6E63)));
+      expect(kraftTheme.horizontalBodyPadding, equals(const EdgeInsets.fromLTRB(20.0, 0, 20.0, 0)));
+      expect(kraftTheme.horizontalUsableWidth, equals(280.0));
+
+      final linedTheme = ReadingPerspective.faithfulOriginal.resolveTheme(
+        templateStyle: const TemplateStyle(
+          type: TemplateBackgroundType.lined,
+          backgroundColor: Color(0xFFFDFBF7),
+          lineSpacing: 1.8,
+          marginHorizontal: 24.0,
+        ),
+      );
+      expect(linedTheme.backgroundType, equals(TemplateBackgroundType.lined));
+      expect(linedTheme.showLeftMarginRule, isTrue);
+      expect(linedTheme.showKraftTexture, isFalse);
+      expect(linedTheme.horizontalBodyPadding, equals(const EdgeInsets.fromLTRB(32.0, 0, 20.0, 0)));
+      expect(linedTheme.horizontalUsableWidth, equals(268.0));
+
+      final gridObsidianTheme = ReadingPerspective.faithfulOriginal.resolveTheme(
+        templateStyle: const TemplateStyle(
+          type: TemplateBackgroundType.grid,
+          backgroundColor: Color(0xFF1E2022),
+          lineSpacing: 1.5,
+          marginHorizontal: 16.0,
+          tokens: StationeryVisualTokens(substrate: PaperSubstrate.obsidian),
+        ),
+      );
+      expect(gridObsidianTheme.backgroundType, equals(TemplateBackgroundType.grid));
+      expect(gridObsidianTheme.showLeftMarginRule, isFalse);
+      expect(gridObsidianTheme.isDark, isTrue);
+
+      final nightTheme = ReadingPerspective.obsidianNight.resolveTheme();
+      expect(nightTheme.backgroundType, equals(TemplateBackgroundType.lined));
+      expect(nightTheme.showLeftMarginRule, isTrue);
+      expect(nightTheme.horizontalBodyPadding, equals(const EdgeInsets.fromLTRB(32.0, 0, 20.0, 0)));
+    });
   });
 
   group('FolioPaginationEngine Pagination Tests', () {
@@ -370,6 +425,108 @@ void main() {
       expect(rows[2].segments.single.color, equals(const Color(0xFFB83B2E)));
       expect(rows[2].segments.single.isTodo, isTrue);
       expect(rows[2].segments.single.isChecked, isTrue);
+    });
+
+    test('horizontal Folio wraps lines to active Paper Heart usable width (lined 268px vs retro kraft 280px)', () {
+      const sample17 = '一二三四五六七八九十甲乙丙丁戊己庚';
+      final entry = createTestEntry(
+        contentDelta: jsonEncode([
+          {'insert': '$sample17\n'},
+        ]),
+        plainText: sample17,
+      );
+
+      final linedLeaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        perspective: ReadingPerspective.faithfulOriginal,
+        templateStyle: const TemplateStyle(
+          type: TemplateBackgroundType.lined,
+          backgroundColor: Color(0xFFFDFBF7),
+          lineSpacing: 1.8,
+          marginHorizontal: 24.0,
+        ),
+      );
+      final linedBody = linedLeaves[1] as FolioContentBodyLeaf;
+      expect(linedBody.horizontalRows!.length, equals(2));
+      expect(linedBody.horizontalRows![0].segments.single.text.length, lessThan(17));
+      expect(
+        linedBody.horizontalRows!.map((row) => row.segments.map((segment) => segment.text).join()).join(),
+        equals(sample17),
+      );
+
+      final kraftLeaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        perspective: ReadingPerspective.faithfulOriginal,
+        templateStyle: const TemplateStyle(
+          type: TemplateBackgroundType.paperTexture,
+          backgroundColor: Color(0xFFEFE6D5),
+          lineSpacing: 1.6,
+          marginHorizontal: 20.0,
+        ),
+      );
+      final kraftBody = kraftLeaves[1] as FolioContentBodyLeaf;
+      expect(kraftBody.horizontalRows!.length, equals(1));
+      expect(kraftBody.horizontalRows![0].segments.single.text, equals(sample17));
+    });
+
+    test('horizontal Folio wraps {夹注:...} inline notes when adding note exceeds usable width', () {
+      const textWithNote = '一二三四五六七八九十甲乙丙{夹注:测试夹注}丁';
+      final entry = createTestEntry(
+        contentDelta: jsonEncode([
+          {'insert': '$textWithNote\n'},
+        ]),
+        plainText: textWithNote,
+      );
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        perspective: ReadingPerspective.faithfulOriginal,
+        templateStyle: const TemplateStyle(
+          type: TemplateBackgroundType.lined,
+          backgroundColor: Color(0xFFFDFBF7),
+          lineSpacing: 1.8,
+          marginHorizontal: 24.0,
+        ),
+      );
+
+      final body = leaves[1] as FolioContentBodyLeaf;
+      expect(body.horizontalRows!.length, equals(2));
+      expect(
+        body.horizontalRows!.any(
+          (row) => row.segments.any((segment) => segment.isJiazhuNote && segment.text == '测试夹注'),
+        ),
+        isTrue,
+      );
+    });
+
+    test('horizontal Folio wraps mixed CJK, ASCII, and bold segments within usable width', () {
+      final delta = jsonEncode([
+        {'insert': 'Hello世界12345'},
+        {'insert': 'Bold文字ABCDE', 'attributes': {'bold': true}},
+        {'insert': '\n'},
+      ]);
+      final entry = createTestEntry(
+        contentDelta: delta,
+        plainText: 'Hello世界12345Bold文字ABCDE',
+      );
+
+      final leaves = FolioPaginationEngine.paginate(
+        entry: entry,
+        perspective: ReadingPerspective.faithfulOriginal,
+        templateStyle: const TemplateStyle(
+          type: TemplateBackgroundType.lined,
+          backgroundColor: Color(0xFFFDFBF7),
+          lineSpacing: 1.8,
+          marginHorizontal: 24.0,
+        ),
+      );
+
+      final body = leaves[1] as FolioContentBodyLeaf;
+      expect(body.horizontalRows!.length, equals(2));
+      expect(
+        body.horizontalRows!.map((row) => row.segments.map((segment) => segment.text).join()).join(),
+        equals('Hello世界12345Bold文字ABCDE'),
+      );
     });
   });
 

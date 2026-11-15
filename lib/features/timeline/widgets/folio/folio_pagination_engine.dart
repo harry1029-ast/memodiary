@@ -4,6 +4,7 @@ import '../../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../../scenery/services/shanshui_atmosphere_resolver.dart';
 import '../../../templates/models/template_style.dart';
 import '../../services/folio_media_pairing.dart';
+import 'folio_horizontal_paginator.dart';
 import 'folio_leaf_model.dart';
 import 'folio_metadata_formatter.dart';
 import 'folio_reading_perspective.dart';
@@ -13,9 +14,6 @@ import 'folio_vertical_paginator.dart';
 /// [FolioLeaf] items for the Thread-Bound Folio stage.
 class FolioPaginationEngine {
   const FolioPaginationEngine._();
-
-  static const int kHorizontalMaxRowsPerLeaf = 14;
-  static const int kHorizontalCharsPerRow = 17;
 
   /// Paginates an [Entry] into a sequence of [FolioLeaf] objects according to
   /// the specified [perspective] and [templateStyle].
@@ -94,6 +92,7 @@ class FolioPaginationEngine {
       ];
     }
 
+    final effectiveTheme = perspective.resolveTheme(templateStyle: templateStyle);
     final rulingLayout = perspective.rulingLayout;
     final contentLeaves = <FolioLeaf>[];
 
@@ -106,9 +105,10 @@ class FolioPaginationEngine {
         outLeaves: contentLeaves,
       );
     } else {
-      _paginateHorizontalLeaves(
+      FolioHorizontalPaginator.paginateHorizontalLeaves(
         blocks: parsedBlocks,
         layout: rulingLayout,
+        theme: effectiveTheme,
         title: entry.title?.trim().isNotEmpty == true ? entry.title!.trim() : '无题',
         lunarDate: lunarDateStr,
         outLeaves: contentLeaves,
@@ -233,142 +233,5 @@ class FolioPaginationEngine {
       overlayXRatio: attachment.overlayXRatio,
       overlayYRatio: attachment.overlayYRatio,
     );
-  }
-
-  // --- Horizontal Pagination ---
-
-  static void _paginateHorizontalLeaves({
-    required List<EntryContentBlock> blocks,
-    required FolioRulingLayout layout,
-    required String title,
-    required String lunarDate,
-    required List<FolioLeaf> outLeaves,
-  }) {
-    var currentRows = <FolioHorizontalRow>[];
-
-    void flushRows() {
-      if (currentRows.isNotEmpty) {
-        outLeaves.add(FolioContentBodyLeaf(
-          leafIndex: 0,
-          totalLeaves: 0,
-          pageIndexInContent: 0,
-          totalContentPages: 0,
-          layout: layout,
-          horizontalRows: List.of(currentRows),
-          title: title,
-          lunarDate: lunarDate,
-        ));
-        currentRows = <FolioHorizontalRow>[];
-      }
-    }
-
-    for (final block in blocks) {
-      switch (block) {
-        case EntryMediaBlock mediaBlock:
-          flushRows();
-          outLeaves.add(
-            FolioTippedInEphemeraLeaf.fromMediaEmbed(
-              media: mediaBlock.media,
-              isVideo: mediaBlock.isVideo,
-              title: title,
-              lunarDate: lunarDate,
-            ),
-          );
-        case EntryTextBlock textBlock:
-          final paragraphRows = _tokenizeHorizontalParagraph(textBlock);
-          for (final row in paragraphRows) {
-            currentRows.add(row);
-            if (currentRows.length >= kHorizontalMaxRowsPerLeaf) {
-              flushRows();
-            }
-          }
-      }
-    }
-
-    flushRows();
-  }
-
-  static List<FolioHorizontalRow> _tokenizeHorizontalParagraph(
-    EntryTextBlock block,
-  ) {
-    if (block.runs.isEmpty) {
-      return const [FolioHorizontalRow(segments: [])];
-    }
-
-    final isTodo = block.kind == EntryBlockKind.checkedList ||
-        block.kind == EntryBlockKind.uncheckedList;
-    final isChecked = block.kind == EntryBlockKind.checkedList;
-
-    final rows = <FolioHorizontalRow>[];
-    var currentRowSegments = <FolioHorizontalSegment>[];
-    int currentLen = 0;
-
-    void flushCurrentRow() {
-      if (currentRowSegments.isNotEmpty) {
-        rows.add(FolioHorizontalRow(segments: List.of(currentRowSegments)));
-        currentRowSegments = <FolioHorizontalSegment>[];
-        currentLen = 0;
-      }
-    }
-
-    for (final run in block.runs) {
-      final color = TemplateStyle.tryParseHexColor(run.colorHex);
-      if (run.isInterlinearNote) {
-        final noteLen = run.text.length + 2;
-        if (currentLen + noteLen > kHorizontalCharsPerRow &&
-            currentRowSegments.isNotEmpty) {
-          flushCurrentRow();
-        }
-        currentRowSegments.add(
-          FolioHorizontalSegment(
-            text: run.text,
-            isJiazhuNote: true,
-            color: color,
-          ),
-        );
-        currentLen += noteLen;
-      } else {
-        final chars = run.text.runes
-            .map((rune) => String.fromCharCode(rune))
-            .toList(growable: false);
-        final buffer = StringBuffer();
-
-        void flushBuffer() {
-          if (buffer.isEmpty) return;
-          currentRowSegments.add(
-            FolioHorizontalSegment(
-              text: buffer.toString(),
-              isTodo: isTodo,
-              isChecked: isChecked,
-              isBold: run.isBold,
-              isItalic: run.isItalic,
-              color: color,
-            ),
-          );
-          buffer.clear();
-        }
-
-        for (final character in chars) {
-          if (character == '\n') {
-            flushBuffer();
-            flushCurrentRow();
-            continue;
-          }
-
-          buffer.write(character);
-          currentLen++;
-
-          if (currentLen >= kHorizontalCharsPerRow) {
-            flushBuffer();
-            flushCurrentRow();
-          }
-        }
-
-        flushBuffer();
-      }
-    }
-
-    flushCurrentRow();
-    return rows;
   }
 }

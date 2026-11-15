@@ -32,7 +32,7 @@ class FolioBodyCalligraphyView extends StatelessWidget {
         return SizedBox(
           height: 32.0,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            padding: theme.horizontalBodyPadding,
             child: Align(
               alignment: Alignment.centerLeft,
               child: row == null || row.isEmpty
@@ -40,25 +40,32 @@ class FolioBodyCalligraphyView extends StatelessWidget {
                   : Text.rich(
                       maxLines: 1,
                       overflow: TextOverflow.clip,
+                      textScaler: TextScaler.noScaling,
                       TextSpan(
                         children: row.segments.map((segment) {
                           if (segment.isJiazhuNote) {
                             return WidgetSpan(
                               alignment: PlaceholderAlignment.middle,
                               child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 2),
-                                padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 0.5),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: FolioSubstrateTheme.jiazhuNoteHorizontalMargin,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: FolioSubstrateTheme.jiazhuNoteHorizontalPadding,
+                                  vertical: 0.5,
+                                ),
                                 decoration: BoxDecoration(
                                   color: jiazhuColor.withValues(alpha: 0.08),
-                                  border: Border.all(color: jiazhuColor.withValues(alpha: 0.35), width: 0.7),
+                                  border: Border.all(
+                                    color: jiazhuColor.withValues(alpha: 0.35),
+                                    width: FolioSubstrateTheme.jiazhuNoteBorderWidth,
+                                  ),
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                                 child: Text(
                                   segment.text,
-                                  style: TextStyle(
-                                    fontSize: 10.5,
-                                    height: 1.1,
-                                    fontFamily: theme.fontFamily,
+                                  textScaler: TextScaler.noScaling,
+                                  style: theme.horizontalJiazhuTextStyle(
                                     color: segment.color ?? theme.inkPrimary,
                                   ),
                                 ),
@@ -67,15 +74,16 @@ class FolioBodyCalligraphyView extends StatelessWidget {
                           }
                           return TextSpan(
                             text: segment.text,
-                            style: TextStyle(
-                              fontSize: 15.0,
-                              height: 1.2,
-                              letterSpacing: 1.1,
-                              fontWeight: segment.isBold ? FontWeight.bold : FontWeight.normal,
-                              fontStyle: segment.isItalic ? FontStyle.italic : FontStyle.normal,
-                              decoration: (segment.isTodo && segment.isChecked) ? TextDecoration.lineThrough : null,
-                              color: segment.color ?? ((segment.isTodo && segment.isChecked) ? theme.inkSecondary : theme.inkPrimary),
-                              fontFamily: theme.fontFamily,
+                            style: theme.horizontalTextStyle(
+                              isBold: segment.isBold,
+                              isItalic: segment.isItalic,
+                              decoration: (segment.isTodo && segment.isChecked)
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              color: segment.color ??
+                                  ((segment.isTodo && segment.isChecked)
+                                      ? theme.inkSecondary
+                                      : theme.inkPrimary),
                             ),
                           );
                         }).toList(),

@@ -34,6 +34,7 @@ class FolioLeafScaffold extends StatelessWidget {
                 showGoldFlecks: theme.showGoldFlecks,
                 isDark: theme.isDark,
                 drawGutterShadow: false,
+                showKraftTexture: theme.showKraftTexture,
               ),
             ),
           ),

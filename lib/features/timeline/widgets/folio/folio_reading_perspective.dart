@@ -54,29 +54,44 @@ enum ReadingPerspective {
           return FolioSubstrateTheme.xuan;
         }
         final substrate = templateStyle.tokens.substrate;
-        if (substrate == PaperSubstrate.obsidian) {
-          return FolioSubstrateTheme.obsidian.copyWith(
-            fontFamily: templateStyle.fontFamily,
-          );
-        }
-        if (substrate == PaperSubstrate.coldGold) {
-          return FolioSubstrateTheme.coldGold.copyWith(
-            fontFamily: templateStyle.fontFamily,
-          );
-        }
+        final backgroundType = templateStyle.type;
+        final showLeftMarginRule = backgroundType == TemplateBackgroundType.lined;
+        final showKraftTexture =
+            backgroundType == TemplateBackgroundType.paperTexture ||
+                substrate == PaperSubstrate.kraft;
         final isDark = substrate.brightness == Brightness.dark;
-        return FolioSubstrateTheme(
-          label: substrate.label,
-          pageBg: templateStyle.backgroundColor,
-          pageBackBg: Color.lerp(templateStyle.backgroundColor, isDark ? Colors.white : Colors.black, 0.04) ??
-              templateStyle.backgroundColor,
-          inkPrimary: isDark ? const Color(0xFFE6E1D8) : const Color(0xFF231F1C),
-          inkSecondary: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF70675E),
-          ruleColor: templateStyle.tokens.ruleTint.color,
-          frameColor: templateStyle.tokens.ruleTint.color.withValues(alpha: 0.85),
-          showGoldFlecks: substrate == PaperSubstrate.coldGold,
-          isDark: isDark,
+        final kraftRuleColor =
+            (!isDark && backgroundType == TemplateBackgroundType.paperTexture)
+                ? const Color(0x148D6E63)
+                : null;
+
+        final baseTheme = switch (substrate) {
+          PaperSubstrate.obsidian => FolioSubstrateTheme.obsidian,
+          PaperSubstrate.coldGold => FolioSubstrateTheme.coldGold,
+          _ => FolioSubstrateTheme(
+              label: substrate.label,
+              pageBg: templateStyle.backgroundColor,
+              pageBackBg: Color.lerp(
+                    templateStyle.backgroundColor,
+                    isDark ? Colors.white : Colors.black,
+                    0.04,
+                  ) ??
+                  templateStyle.backgroundColor,
+              inkPrimary: isDark ? const Color(0xFFE6E1D8) : const Color(0xFF231F1C),
+              inkSecondary: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF70675E),
+              ruleColor: templateStyle.tokens.ruleTint.color,
+              frameColor: templateStyle.tokens.ruleTint.color.withValues(alpha: 0.85),
+              showGoldFlecks: false,
+              isDark: isDark,
+            ),
+        };
+
+        return baseTheme.copyWith(
           fontFamily: templateStyle.fontFamily,
+          backgroundType: backgroundType,
+          showLeftMarginRule: showLeftMarginRule,
+          showKraftTexture: showKraftTexture,
+          ruleColor: kraftRuleColor,
         );
     }
   }
@@ -111,6 +126,13 @@ enum FolioRulingLayout {
 
 /// Visual color and texture theme for a physical folio substrate leaf.
 class FolioSubstrateTheme {
+  static const double paperHeartWidth = 320.0;
+  static const double jiazhuNoteHorizontalMargin = 2.0;
+  static const double jiazhuNoteHorizontalPadding = 3.0;
+  static const double jiazhuNoteBorderWidth = 0.7;
+  static const double jiazhuNoteChromeWidth =
+      2 * (jiazhuNoteHorizontalMargin + jiazhuNoteHorizontalPadding + jiazhuNoteBorderWidth) + 0.6;
+
   final String label;
   final Color pageBg;
   final Color pageBackBg;
@@ -121,6 +143,9 @@ class FolioSubstrateTheme {
   final bool showGoldFlecks;
   final bool isDark;
   final String? fontFamily;
+  final TemplateBackgroundType backgroundType;
+  final bool showLeftMarginRule;
+  final bool showKraftTexture;
 
   const FolioSubstrateTheme({
     required this.label,
@@ -133,7 +158,48 @@ class FolioSubstrateTheme {
     required this.showGoldFlecks,
     required this.isDark,
     this.fontFamily,
+    this.backgroundType = TemplateBackgroundType.lined,
+    this.showLeftMarginRule = true,
+    this.showKraftTexture = false,
   });
+
+  /// Horizontal text padding inside the 320px Paper Heart for horizontal layouts.
+  EdgeInsets get horizontalBodyPadding => showLeftMarginRule
+      ? const EdgeInsets.fromLTRB(32.0, 0, 20.0, 0)
+      : const EdgeInsets.fromLTRB(20.0, 0, 20.0, 0);
+
+  /// Usable text width inside the 320px Paper Heart after horizontal insets.
+  double get horizontalUsableWidth =>
+      paperHeartWidth - horizontalBodyPadding.left - horizontalBodyPadding.right;
+
+  /// Canonical horizontal body [TextStyle] shared by pagination measurement and rendering.
+  TextStyle horizontalTextStyle({
+    bool isBold = false,
+    bool isItalic = false,
+    TextDecoration? decoration,
+    Color? color,
+  }) {
+    return TextStyle(
+      fontSize: 15.0,
+      height: 1.2,
+      letterSpacing: 1.1,
+      fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      fontStyle: isItalic ? FontStyle.italic : FontStyle.normal,
+      decoration: decoration,
+      color: color ?? inkPrimary,
+      fontFamily: fontFamily,
+    );
+  }
+
+  /// Canonical horizontal inline interlinear sub-note (`双行夹注`) [TextStyle].
+  TextStyle horizontalJiazhuTextStyle({Color? color}) {
+    return TextStyle(
+      fontSize: 10.5,
+      height: 1.1,
+      fontFamily: fontFamily,
+      color: color ?? inkPrimary,
+    );
+  }
 
   /// Classical Raw Xuan paper substrate (`生宣纸`).
   static const FolioSubstrateTheme xuan = FolioSubstrateTheme(
@@ -185,6 +251,9 @@ class FolioSubstrateTheme {
     bool? showGoldFlecks,
     bool? isDark,
     String? fontFamily,
+    TemplateBackgroundType? backgroundType,
+    bool? showLeftMarginRule,
+    bool? showKraftTexture,
   }) {
     return FolioSubstrateTheme(
       label: label ?? this.label,
@@ -197,6 +266,9 @@ class FolioSubstrateTheme {
       showGoldFlecks: showGoldFlecks ?? this.showGoldFlecks,
       isDark: isDark ?? this.isDark,
       fontFamily: fontFamily ?? this.fontFamily,
+      backgroundType: backgroundType ?? this.backgroundType,
+      showLeftMarginRule: showLeftMarginRule ?? this.showLeftMarginRule,
+      showKraftTexture: showKraftTexture ?? this.showKraftTexture,
     );
   }
 }

@@ -69,9 +69,11 @@ class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
                       child: CustomPaint(
                         painter: FolioSilkRulingPainter(
                           layout: _resolveRulingLayout(),
+                          backgroundType: widget.theme.backgroundType,
                           ruleColor: widget.theme.ruleColor,
                           frameColor: widget.theme.frameColor,
                           isDark: widget.theme.isDark,
+                          showLeftMarginRule: widget.theme.showLeftMarginRule,
                         ),
                       ),
                     ),
@@ -117,7 +119,13 @@ class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
       FolioContentBodyLeaf bodyLeaf => switch (bodyLeaf.layout) {
           FolioRulingLayout.vermilionVertical => '朱丝栏 · 竖排',
           FolioRulingLayout.genkoVertical => '原稿用紙 · 竖排',
-          FolioRulingLayout.faithfulHorizontal => '乌丝栏 · 横排',
+          FolioRulingLayout.faithfulHorizontal => switch (widget.theme.backgroundType) {
+              TemplateBackgroundType.lined => '乌丝栏 · 横排',
+              TemplateBackgroundType.paperTexture => '牛皮纸 · 横排',
+              TemplateBackgroundType.color => '素笺 · 横排',
+              TemplateBackgroundType.grid => '方格 · 横排',
+              TemplateBackgroundType.dotGrid => '点阵 · 横排',
+            },
         },
       FolioTippedInEphemeraLeaf ephemeraLeaf =>
         ephemeraLeaf.mediaType == 'video' ? '动态拓片 · 影印' : '珍藏拓影 · 插页',

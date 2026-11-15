@@ -193,6 +193,7 @@ class Folio3DStageState extends State<Folio3DStage>
               painter: FolioSubstratePainter(
                 showGoldFlecks: false, isDark: widget.theme.isDark,
                 enableShimmer: false, drawGutterShadow: false,
+                showKraftTexture: widget.theme.showKraftTexture,
               ),
             ),
           ),
