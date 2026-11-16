@@ -9,10 +9,13 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/dictation_service.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/features/editor/ink_choreography/ink_choreography_config.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/services/audio_sanctum_service.dart';
 import 'package:memodiary/features/editor/services/editor_settings_service.dart';
 import 'package:memodiary/features/editor/services/thought_spark_service.dart';
+
+import 'mock_secure_storage.dart';
 
 /// Valid 1x1 transparent PNG payload (67 bytes) for deterministic image decoding in tests.
 const List<int> kValid1x1PngBytes = <int>[
@@ -217,17 +220,41 @@ class FakeAudioSanctumService extends ChangeNotifier implements AudioSanctumServ
   @override
   bool get isPlaying => _isPlaying;
 
+  /// Brush-stroke rustles requested with brush sound on.
+  int brushStrokesPlayed = 0;
+
   void setPlaying(bool playing) {
     _isPlaying = playing;
     notifyListeners();
   }
 
   @override
+  Future<void> playBrushStroke({required bool soundEnabled}) async {
+    if (soundEnabled) brushStrokesPlayed++;
+  }
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// An in-memory [EditorSettingsService] whose Ink Choreography delivery mode
+/// is seeded to [inkDeliveryMode]: `off` by default, so suites that type into
+/// sheets and `pumpAndSettle` never wait on stroke animation.
+Future<EditorSettingsService> seededEditorSettings({
+  InkDeliveryMode inkDeliveryMode = InkDeliveryMode.off,
+  MockSecureStorage? storage,
+}) async {
+  final settings = EditorSettingsService(storage: storage ?? MockSecureStorage());
+  await settings.setInkDeliveryMode(inkDeliveryMode);
+  return settings;
 }
 
 /// Reusable harness helper that mounts [EntryEditorScreen] with optional viewport overrides
 /// and settles initial asynchronous entry loading.
+///
+/// Ink Choreography is seeded `off` in the editor's settings (also in a
+/// caller-supplied [editorSettings]) unless [inkDeliveryMode] opts in to a
+/// mode; pass null to leave a caller-supplied store exactly as it is.
 Future<void> pumpEntryEditorScreen(
   WidgetTester tester, {
   required AppDatabase database,
@@ -238,6 +265,7 @@ Future<void> pumpEntryEditorScreen(
   ThoughtSparkService? thoughtSparkService,
   AudioSanctumService? audioSanctumService,
   EditorSettingsService? editorSettings,
+  InkDeliveryMode? inkDeliveryMode = InkDeliveryMode.off,
   Size? viewportSize,
   ThemeData? theme,
   bool launchFromRoute = false,
@@ -252,6 +280,14 @@ Future<void> pumpEntryEditorScreen(
     });
   }
 
+  final EditorSettingsService resolvedSettings;
+  if (editorSettings == null) {
+    resolvedSettings = await seededEditorSettings(inkDeliveryMode: inkDeliveryMode ?? InkDeliveryMode.off);
+  } else {
+    resolvedSettings = editorSettings;
+    if (inkDeliveryMode != null) await resolvedSettings.setInkDeliveryMode(inkDeliveryMode);
+  }
+
   EntryEditorScreen buildEditor() => EntryEditorScreen(
         database: database,
         mediaSandboxService: mediaSandboxService,
@@ -260,7 +296,7 @@ Future<void> pumpEntryEditorScreen(
         dictationService: dictationService,
         thoughtSparkService: thoughtSparkService,
         audioSanctumService: audioSanctumService,
-        editorSettings: editorSettings,
+        editorSettings: resolvedSettings,
       );
 
   await tester.pumpWidget(

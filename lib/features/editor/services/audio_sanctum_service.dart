@@ -43,6 +43,9 @@ enum ScholarTactileChime {
   ceramicBrushTap,
   guqinPluck,
   brassLockClick,
+
+  /// The soft rustle of bristles on Xuan paper, once per Ink Choreography stroke.
+  brushStroke,
 }
 
 /// Synthesizes 16-bit mono PCM WAV audio buffers in memory with zero external
@@ -77,11 +80,24 @@ class ProceduralAudioSynthesizer {
       case ScholarTactileChime.brassLockClick:
         durationMs = 120;
         break;
+      case ScholarTactileChime.brushStroke:
+        durationMs = 140;
+        break;
     }
 
     final totalSamples = (sampleRate * durationMs) ~/ 1000;
     final pcmSamples = Int16List(totalSamples);
     final rng = Random(chime.index + 42);
+
+    // Band-pass biquad for the brush stroke (centre 920 Hz, Q 1.3, 0 dB peak).
+    const bandCentreHz = 920.0;
+    const bandQ = 1.3;
+    const bandOmega = 2 * pi * bandCentreHz / sampleRate;
+    final bandAlpha = sin(bandOmega) / (2 * bandQ);
+    final bandGain = bandAlpha / (1 + bandAlpha);
+    final bandFeedback1 = -2 * cos(bandOmega) / (1 + bandAlpha);
+    final bandFeedback2 = (1 - bandAlpha) / (1 + bandAlpha);
+    double bandIn1 = 0.0, bandIn2 = 0.0, bandOut1 = 0.0, bandOut2 = 0.0;
 
     for (int i = 0; i < totalSamples; i++) {
       final t = i / sampleRate;
@@ -116,6 +132,17 @@ class ProceduralAudioSynthesizer {
               ? (rng.nextDouble() * 2 - 1) * exp(-(t - 0.045) * 80.0)
               : 0.0;
           sample = (click1 + click2) * 0.55;
+          break;
+
+        case ScholarTactileChime.brushStroke:
+          // White noise under a sine swell, then band-passed.
+          final swell = sin(pi * i / totalSamples);
+          final noise = (rng.nextDouble() * 2.0 - 1.0) * swell * 0.34;
+          sample = bandGain * (noise - bandIn2) - bandFeedback1 * bandOut1 - bandFeedback2 * bandOut2;
+          bandIn2 = bandIn1;
+          bandIn1 = noise;
+          bandOut2 = bandOut1;
+          bandOut1 = sample;
           break;
       }
 
@@ -251,9 +278,17 @@ class ProceduralAudioSynthesizer {
 
 /// Service managing offline background soundscape playback in the Writing Sanctum.
 class AudioSanctumService extends ChangeNotifier {
+  /// Brush strokes closer together than this share one rustle.
+  static const Duration brushStrokeMinInterval = Duration(milliseconds: 110);
+
   final AudioPlayer? _audioPlayer;
   final bool _enablePlatformAudio;
+  final AudioPlayer Function() _brushStrokePlayerFactory;
+  final DateTime Function() _clock;
   AudioPlayer? _lazyPlayer;
+  AudioPlayer? _brushStrokePlayer;
+  BytesSource? _brushStrokeSource;
+  DateTime? _lastBrushStrokeAt;
   SoundscapePreset? _activePreset;
   bool _isPlaying = false;
   double _volume = 0.5;
@@ -262,8 +297,12 @@ class AudioSanctumService extends ChangeNotifier {
   AudioSanctumService({
     AudioPlayer? audioPlayer,
     bool enablePlatformAudio = true,
+    AudioPlayer Function()? brushStrokePlayerFactory,
+    DateTime Function()? clock,
   })  : _audioPlayer = audioPlayer,
-        _enablePlatformAudio = enablePlatformAudio;
+        _enablePlatformAudio = enablePlatformAudio,
+        _brushStrokePlayerFactory = brushStrokePlayerFactory ?? AudioPlayer.new,
+        _clock = clock ?? DateTime.now;
 
   AudioPlayer? _getOrCreatePlayer() {
     if (!_enablePlatformAudio) return null;
@@ -348,12 +387,35 @@ class AudioSanctumService extends ChangeNotifier {
     }
   }
 
+  /// Plays the brush-on-paper rustle for one Ink Choreography stroke start.
+  ///
+  /// Strokes arrive every ~100-250ms for as long as a sheet is being written,
+  /// so this keeps one cached buffer and one dedicated player instead of
+  /// [playChime]'s player per call, and plays at most once per
+  /// [brushStrokeMinInterval]. Silent when [soundEnabled] is false, the
+  /// volume is muted, or platform audio is disabled.
+  Future<void> playBrushStroke({required bool soundEnabled}) async {
+    if (_isDisposed || !soundEnabled || !_enablePlatformAudio || _volume <= 0.0) return;
+    final now = _clock();
+    final lastPlayedAt = _lastBrushStrokeAt;
+    if (lastPlayedAt != null && now.difference(lastPlayedAt) < brushStrokeMinInterval) return;
+    _lastBrushStrokeAt = now;
+    try {
+      final player = _brushStrokePlayer ??= _brushStrokePlayerFactory();
+      final source = _brushStrokeSource ??=
+          BytesSource(ProceduralAudioSynthesizer.generateChimeBuffer(ScholarTactileChime.brushStroke));
+      await player.play(source, volume: (_volume * 0.6).clamp(0.0, 1.0));
+    } catch (_) {
+      // Absorb audio engine missing errors in headless/test environments
+    }
+  }
+
   @override
   void dispose() {
     if (_isDisposed) return;
     _isDisposed = true;
-    final player = _lazyPlayer ?? _audioPlayer;
-    if (player != null) {
+    for (final player in [_lazyPlayer ?? _audioPlayer, _brushStrokePlayer]) {
+      if (player == null) continue;
       try {
         player.stop();
         player.dispose();
