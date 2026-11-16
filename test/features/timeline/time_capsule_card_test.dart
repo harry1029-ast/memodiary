@@ -4,9 +4,13 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
+import 'package:memodiary/features/timeline/widgets/folded_xuan_slip.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
 
-TimelineEntryItem _sealedCapsule({String? title}) {
+TimelineEntryItem _sealedCapsule({
+  String? title,
+  String plainText = 'Super secret sealed capsule content',
+}) {
   final now = DateTime.now();
   return TimelineEntryItem(
     entry: Entry(
@@ -15,7 +19,7 @@ TimelineEntryItem _sealedCapsule({String? title}) {
       templateId: 'template_minimalist_white',
       title: title,
       contentDelta: '[]',
-      plainText: 'sealed',
+      plainText: plainText,
       entryDate: now,
       isWeeklyReview: false,
       unlockAt: now.add(const Duration(days: 361)),
@@ -36,6 +40,7 @@ Future<void> pumpTimeCapsuleCard(
   double textScale = 1.0,
   ThemeData? theme,
   String? title,
+  VoidCallback? onTap,
 }) async {
   tester.view.physicalSize = Size(width, 780);
   tester.view.devicePixelRatio = 1.0;
@@ -54,6 +59,7 @@ Future<void> pumpTimeCapsuleCard(
           child: TimeCapsuleCard(
             item: _sealedCapsule(title: title),
             customMargin: EdgeInsets.zero,
+            onTap: onTap,
           ),
         ),
       ),
@@ -91,6 +97,72 @@ void main() {
       final card = tester.getRect(find.byType(TimeCapsuleCard));
       final badge = tester.getRect(find.byType(CinnabarSealBadge));
       expect(badge.right, lessThanOrEqualTo(card.right));
+    });
+
+    testWidgets('uses FoldedXuanSlip surface in Light and Dark themes and hides plainText', (tester) async {
+      await pumpTimeCapsuleCard(
+        tester,
+        width: 360,
+        theme: InkDiaryTheme.light,
+        title: '丙午岁末封缄',
+      );
+
+      expect(find.byType(FoldedXuanSlip), findsOneWidget);
+      expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+      expect(find.text('封存中'), findsOneWidget);
+      expect(find.textContaining('Unlocks in'), findsOneWidget);
+      expect(find.textContaining('Super secret sealed capsule content'), findsNothing);
+
+      // Light theme slip color
+      expect(
+        find.descendant(
+          of: find.byType(FoldedXuanSlip),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Material && widget.color == const Color(0xFFFAF6EE),
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      // Dark theme slip color
+      await pumpTimeCapsuleCard(
+        tester,
+        width: 360,
+        theme: InkDiaryTheme.dark,
+        title: '丙午岁末封缄',
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(FoldedXuanSlip),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Material && widget.color == const Color(0xFF242320),
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('opens sealed dialog on tap when onTap is omitted and invokes custom onTap when provided', (tester) async {
+      await pumpTimeCapsuleCard(tester, width: 360, title: 'To Future Me');
+
+      await tester.tap(find.byType(TimeCapsuleCard));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Time Capsule Sealed'), findsOneWidget);
+      await tester.tap(find.text('Keep Waiting'));
+      await tester.pumpAndSettle();
+      expect(find.text('Time Capsule Sealed'), findsNothing);
+
+      var customTapped = false;
+      await pumpTimeCapsuleCard(
+        tester,
+        width: 360,
+        title: 'To Future Me',
+        onTap: () => customTapped = true,
+      );
+      await tester.tap(find.byType(TimeCapsuleCard));
+      expect(customTapped, isTrue);
     });
   });
 }

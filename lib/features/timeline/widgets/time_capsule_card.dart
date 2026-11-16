@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
-import 'package:memodiary/core/theme/widgets/xuan_paper_card.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
+import 'package:memodiary/features/timeline/widgets/folded_xuan_slip.dart';
 
 /// Sealed countdown card for Time Capsule entries where DateTime.now() < unlockAt.
-/// Styled according to the Ink & Paper Journal aesthetic (*“时光胶囊 · 封缄书”*).
+/// Styled on the folded Xuan-paper slip (*折笺影札*) with a two-tier header alignment.
 /// Strictly conceals plain-text snippets, content delta, and images until unlock date.
 class TimeCapsuleCard extends StatelessWidget {
   final TimelineEntryItem item;
@@ -23,6 +23,7 @@ class TimeCapsuleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
+    final palette = FoldedXuanSlipPalette.of(context);
     final unlockDate = item.entry.unlockAt;
     String unlockDateStr;
     try {
@@ -39,117 +40,131 @@ class TimeCapsuleCard extends StatelessWidget {
     final remainingDays = unlockDate != null
         ? unlockDate.difference(now).inDays.clamp(0, 9999)
         : 0;
+    final trimmedTitle = item.entry.title?.trim() ?? '';
 
-    return XuanPaperCard(
+    return FoldedXuanSlip(
       margin: customMargin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(14),
-      backgroundColor: tokens.agedFiber.withValues(alpha: 0.5),
       onTap: () {
-        if (onTap != null) {
-          onTap!();
+        final callback = onTap;
+        if (callback != null) {
+          callback();
         } else {
           _showSealedDialog(context, unlockDateStr);
         }
       },
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Padlock in cinnabar wash container
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: tokens.cinnabarWash,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: tokens.cinnabar.withValues(alpha: 0.3),
-                width: 1,
+          // Tier 1: Full-width Capsule Header (Padlock + Label/Title on left, Seal on right)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: tokens.cinnabarWash,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: tokens.cinnabar.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(
+                  Icons.lock_rounded,
+                  size: 18,
+                  color: tokens.cinnabar,
+                ),
               ),
-            ),
-            child: Icon(
-              Icons.lock_rounded,
-              size: 20,
-              color: tokens.cinnabar,
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Titles & Countdown Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // One text run, so the row has a single child that can
-                    // shrink: the subtitle ellipsizes first, then the label,
-                    // and the seal badge always keeps its place.
-                    Flexible(
-                      child: Text.rich(
-                        TextSpan(
-                          style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif),
-                          children: [
-                            TextSpan(
-                              text: 'TIME CAPSULE',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: tokens.cinnabar,
-                                letterSpacing: 1.0,
-                              ),
+                    Text.rich(
+                      TextSpan(
+                        style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif),
+                        children: [
+                          TextSpan(
+                            text: 'TIME CAPSULE',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: tokens.cinnabar,
+                              letterSpacing: 1.0,
                             ),
-                            const WidgetSpan(child: SizedBox(width: 4)),
-                            TextSpan(
-                              text: '时光胶囊 · 封缄书',
-                              style: TextStyle(fontSize: 11, color: tokens.danmo),
-                            ),
-                          ],
+                          ),
+                          const WidgetSpan(child: SizedBox(width: 4)),
+                          TextSpan(
+                            text: '时光胶囊 · 封缄书',
+                            style: TextStyle(fontSize: 11, color: tokens.danmo),
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (trimmedTitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        trimmedTitle,
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.bold,
+                          color: tokens.jiaomo,
+                          letterSpacing: 0.3,
+                          height: 1.3,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    CinnabarSealBadge.compact(
-                      text: '封存中',
-                      size: 20,
-                      isWashVariant: false,
-                    ),
+                    ],
                   ],
                 ),
-                if (item.entry.title != null && item.entry.title!.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    item.entry.title!,
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.jiaomo,
-                      letterSpacing: 0.5,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                const SizedBox(height: 3),
-                Text(
+              ),
+              const SizedBox(width: 8),
+              MediaQuery.withClampedTextScaling(
+                maxScaleFactor: 1.25,
+                child: CinnabarSealBadge.compact(
+                  text: '封存中',
+                  size: 22,
+                  isWashVariant: false,
+                ),
+              ),
+            ],
+          ),
+
+          Container(
+            height: 1.0,
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            color: palette.dividerColor,
+          ),
+
+          // Tier 2: Sealed Countdown Row (Never renders plainText)
+          Row(
+            children: [
+              Expanded(
+                child: Text(
                   '封存至 $unlockDateStr · Unlocks in $remainingDays days (距启缄尚有 $remainingDays 天)',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 11,
+                    fontSize: 11.5,
                     color: tokens.danmo,
+                    height: 1.4,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
-          ),
-
-          Icon(
-            Icons.visibility_off_outlined,
-            size: 18,
-            color: tokens.qingmo,
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.visibility_off_outlined,
+                size: 16,
+                color: tokens.qingmo,
+              ),
+            ],
           ),
         ],
       ),
@@ -158,14 +173,14 @@ class TimeCapsuleCard extends StatelessWidget {
 
   void _showSealedDialog(BuildContext context, String unlockDateStr) {
     final tokens = context.inkTokens;
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
             Icon(Icons.lock_rounded, color: tokens.cinnabar, size: 20),
             const SizedBox(width: 8),
-            const Text('Time Capsule Sealed'),
+            const Flexible(child: Text('Time Capsule Sealed')),
           ],
         ),
         content: Text(
@@ -178,7 +193,7 @@ class TimeCapsuleCard extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Keep Waiting'),
           ),
         ],
