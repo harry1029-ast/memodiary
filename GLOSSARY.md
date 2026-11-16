@@ -8,9 +8,9 @@ Personal offline-first diary and travel keepsake application with classical Chin
 The animated Chinese ink-wash landscape header card displayed on the Personal Diary timeline, rendering mountains, waters, pavilions, and dynamic seasonal/weather atmospheres.
 _Avoid_: Weather banner, thought spark card, landscape widget
 
-**Thought Spark Dock**:
-The semi-transparent Xuan-paper bottom overlay docked on the Shanshui Scenery Card, presenting the rotating reflective writing prompt and the "由此题落墨" action.
-_Avoid_: Prompt banner, inspiration card
+**Bamboo Blind Pull-Cord**:
+The hanging braided silk cord and tassel (竹帘流苏拉绳) on the Shanshui Scenery Card that unrolls the slatted bamboo blind (湘妃竹帘) to collapse the scenery window into a slim bamboo-slat bar.
+_Avoid_: Collapse chevron, window toggle, curtain button
 
 **Contemplation View**:
 The full-screen interactive modal displaying the complete 3:2 living Shanshui painting with touch ripples, calligraphy colophon, and atmospheric controls.
@@ -175,3 +175,19 @@ _Avoid_: Date stamp, calendar badge, lunar chip
 **Weather Charm / Mood Charm**:
 The vertical calligraphy tags (天时笺 / 心绪笺) hanging in the Journal Letterhead that show and set the entry's weather and mood.
 _Avoid_: Weather chip, mood chip, metadata tag
+
+**Window Sill Ledge**:
+The carved wooden sill and brass-bracketed ledge (窗台案沿) separating the upper Shanshui Scenery Card window from the lower Chronicle Desk, bearing the four study ornaments (案沿清供: pine bonsai, brush stand, brass candlestick, and celadon incense burner).
+_Avoid_: Divider bar, desk lip, ornament shelf
+
+**Chronicle Desk**:
+The lower timeline workspace surface (案头卷匣) housing the Date Index Tray, Charm Filter, and the vertical timeline spine of diary entries.
+_Avoid_: Bottom container, entry list box, timeline background
+
+**Date Index Tray**:
+The three-row chronological filter and sorter header (案头岁时检目) docked at the top of the Chronicle Desk, filtering entries by Year (纪年), Month (月令), and progressively disclosed Ten-Day Period (三旬: 上旬, 中旬, 下旬).
+_Avoid_: Date navbar, calendar filter bar, date chips
+
+**Wet-Mounted Thumbnail**:
+The silk-brocade bordered media preview (册页平裱) with mitered corner seams displayed inside a timeline entry card.
+_Avoid_: Photo thumbnail, Polaroid preview, image box
