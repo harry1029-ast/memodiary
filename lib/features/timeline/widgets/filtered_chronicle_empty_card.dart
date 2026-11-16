@@ -57,7 +57,7 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '可切换上方纪年、月令或三旬，或一键恢复全卷',
+            '可调整上方岁时检目或笺签筛选，或一键恢复全卷',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,

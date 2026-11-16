@@ -8,24 +8,28 @@ import '../shapes/classical_chinese_borders.dart';
 /// and smooth paper relief shadows, styled after classic literati book slips and signage.
 class BegoniaPlaqueButton extends StatelessWidget {
   final String label;
+  final String? semanticLabel;
   final Widget? leading;
   final Widget? trailing;
   final VoidCallback? onTap;
   final double cutSize;
   final EdgeInsetsGeometry padding;
   final bool isAccent;
+  final bool ensureMinTapTarget;
   final Color? backgroundColor;
   final Color? textColor;
 
   const BegoniaPlaqueButton({
     super.key,
     required this.label,
+    this.semanticLabel,
     this.leading,
     this.trailing,
     this.onTap,
     this.cutSize = 6.0,
     this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     this.isAccent = false,
+    this.ensureMinTapTarget = false,
     this.backgroundColor,
     this.textColor,
   });
@@ -85,7 +89,7 @@ class BegoniaPlaqueButton extends StatelessWidget {
             ? Colors.white
             : (isDark ? tokens.jiaomo : const Color(0xFF8F2419)));
 
-    Widget content = Row(
+    final Widget content = Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -93,13 +97,17 @@ class BegoniaPlaqueButton extends StatelessWidget {
           leading!,
           const SizedBox(width: 4),
         ],
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: effectiveTextColor,
-            letterSpacing: 0.4,
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: effectiveTextColor,
+              letterSpacing: 0.4,
+            ),
           ),
         ),
         if (trailing != null) ...[
@@ -109,29 +117,65 @@ class BegoniaPlaqueButton extends StatelessWidget {
       ],
     );
 
-    return Container(
-      decoration: ShapeDecoration(
-        shape: border,
-        gradient: backgroundColor == null ? gradient : null,
-        color: backgroundColor,
-        shadows: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.35)
-                : const Color(0xFF2A2216).withValues(alpha: 0.08),
-            blurRadius: 4,
-            offset: const Offset(0, 1.5),
+    final decoration = ShapeDecoration(
+      shape: border,
+      gradient: backgroundColor == null ? gradient : null,
+      color: backgroundColor,
+      shadows: [
+        BoxShadow(
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.35)
+              : const Color(0xFF2A2216).withValues(alpha: 0.08),
+          blurRadius: 4,
+          offset: const Offset(0, 1.5),
+        ),
+      ],
+    );
+
+    if (ensureMinTapTarget) {
+      return Semantics(
+        button: true,
+        label: semanticLabel ?? label,
+        child: ExcludeSemantics(
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: onTap,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                child: Center(
+                  widthFactor: 1.0,
+                  heightFactor: 1.0,
+                  child: Container(
+                    decoration: decoration,
+                    padding: padding,
+                    child: content,
+                  ),
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          customBorder: border,
-          onTap: onTap,
-          child: Padding(
-            padding: padding,
-            child: content,
+        ),
+      );
+    }
+
+    return Semantics(
+      button: true,
+      label: semanticLabel ?? label,
+      child: ExcludeSemantics(
+        child: Container(
+          decoration: decoration,
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              customBorder: border,
+              onTap: onTap,
+              child: Padding(
+                padding: padding,
+                child: content,
+              ),
+            ),
           ),
         ),
       ),

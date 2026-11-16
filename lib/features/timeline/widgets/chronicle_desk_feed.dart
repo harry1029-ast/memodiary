@@ -33,7 +33,6 @@ class ChronicleDeskScrollBody extends StatelessWidget {
   final TimelineFilterState filters;
   final TimelineDateFacetSummary facetSummary;
   final int totalFilteredCount;
-  final String activeVolumeTitle;
   final List<Entry> entries;
   final Map<String, MediaAttachment> mediaMap;
   final MediaSandboxService mediaService;
@@ -41,7 +40,7 @@ class ChronicleDeskScrollBody extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final ValueChanged<SceneryRealmPreference> onRealmPreferenceChanged;
   final VoidCallback onToggleCandle;
-  final VoidCallback onOpenNotebooks;
+  final VoidCallback onOpenCharmFilter;
   final ValueChanged<int?> onSelectYear;
   final ValueChanged<int> onSelectMonth;
   final ValueChanged<TimelineXun> onSelectXun;
@@ -64,7 +63,6 @@ class ChronicleDeskScrollBody extends StatelessWidget {
     required this.filters,
     required this.facetSummary,
     required this.totalFilteredCount,
-    required this.activeVolumeTitle,
     required this.entries,
     required this.mediaMap,
     required this.mediaService,
@@ -72,7 +70,7 @@ class ChronicleDeskScrollBody extends StatelessWidget {
     required this.onRefresh,
     required this.onRealmPreferenceChanged,
     required this.onToggleCandle,
-    required this.onOpenNotebooks,
+    required this.onOpenCharmFilter,
     required this.onSelectYear,
     required this.onSelectMonth,
     required this.onSelectXun,
@@ -124,12 +122,11 @@ class ChronicleDeskScrollBody extends StatelessWidget {
                       filters: filters,
                       facetSummary: facetSummary,
                       totalFilteredCount: totalFilteredCount,
-                      activeVolumeTitle: activeVolumeTitle,
                       xunExpandFactor: xunExpandAnimation.value,
                       textScaleFactor: textScale,
                       hasEntriesBelow: entries.isNotEmpty,
                       isDarkTheme: isDarkTheme,
-                      onOpenNotebooks: onOpenNotebooks,
+                      onOpenCharmFilter: onOpenCharmFilter,
                       onSelectYear: onSelectYear,
                       onSelectMonth: onSelectMonth,
                       onSelectXun: onSelectXun,

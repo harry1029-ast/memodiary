@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:memodiary/features/editor/widgets/journal_letterhead_models.dart';
 
 /// Traditional Chinese ten-day period (*三旬*) within a selected month.
 enum TimelineXun {
@@ -151,6 +152,42 @@ class TimelineFilterState {
           ? TimelineSortOrder.oldestFirst
           : TimelineSortOrder.newestFirst,
     );
+  }
+
+  /// Clears all charm/tag filters while preserving date index and [sortOrder].
+  TimelineFilterState resetCharms() {
+    return copyWith(
+      clearMood: true,
+      clearWeather: true,
+      hasMediaOnly: false,
+      weeklyReviewOnly: false,
+    );
+  }
+
+  /// Summarizes active charm/tag selections for the `Chronicle Desk` Begonia plaque,
+  /// returning `'全部笺签'` when no charm filters are set.
+  String charmSummaryLabel() {
+    if (!hasActiveCharmFilters) return '全部笺签';
+    final parts = <String>[];
+    if (mood != null) {
+      for (final option in JournalLetterheadUtils.moodOptions) {
+        if (option.value == mood) {
+          parts.add(option.label);
+          break;
+        }
+      }
+    }
+    if (weather != null && weather!.isNotEmpty) {
+      for (final option in JournalLetterheadUtils.weatherOptions) {
+        if (option.value == weather) {
+          parts.add(option.label);
+          break;
+        }
+      }
+    }
+    if (hasMediaOnly) parts.add('含图影');
+    if (weeklyReviewOnly) parts.add('周志复盘');
+    return parts.isEmpty ? '全部笺签' : parts.join(' · ');
   }
 
   /// Clears all date and charm filters while preserving [sortOrder].

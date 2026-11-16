@@ -13,12 +13,11 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
   final TimelineFilterState filters;
   final TimelineDateFacetSummary facetSummary;
   final int totalFilteredCount;
-  final String activeVolumeTitle;
   final double xunExpandFactor;
   final double textScaleFactor;
   final bool hasEntriesBelow;
   final bool isDarkTheme;
-  final VoidCallback onOpenNotebooks;
+  final VoidCallback onOpenCharmFilter;
   final ValueChanged<int?> onSelectYear;
   final ValueChanged<int> onSelectMonth;
   final ValueChanged<TimelineXun> onSelectXun;
@@ -28,19 +27,18 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.filters,
     required this.facetSummary,
     required this.totalFilteredCount,
-    required this.activeVolumeTitle,
     required this.xunExpandFactor,
     required this.textScaleFactor,
     required this.hasEntriesBelow,
     required this.isDarkTheme,
-    required this.onOpenNotebooks,
+    required this.onOpenCharmFilter,
     required this.onSelectYear,
     required this.onSelectMonth,
     required this.onSelectXun,
     required this.onToggleSort,
   });
 
-  double get _baseHeight => 150.0 + (textScaleFactor - 1.0) * 58.0;
+  double get _baseHeight => 164.0 + (textScaleFactor - 1.0) * 58.0;
   double get _xunAdditionalHeight =>
       (39.0 + (textScaleFactor - 1.0) * 14.0) * xunExpandFactor.clamp(0.0, 1.0);
 
@@ -58,6 +56,9 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final palette = ChronicleDeskPalette.of(context);
     final tokens = context.inkTokens;
+    final hasActiveCharms = filters.hasActiveCharmFilters;
+    final charmSummary = filters.charmSummaryLabel();
+    final isNarrowViewport = MediaQuery.sizeOf(context).width <= 340;
 
     return Container(
       decoration: BoxDecoration(
@@ -159,24 +160,40 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      BegoniaPlaqueButton(
-                        key: const Key('timeline_notebook_selector_button'),
-                        label: activeVolumeTitle,
-                        leading: Icon(
-                          Icons.auto_stories_outlined,
-                          size: 13,
-                          color: tokens.cinnabar,
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: isNarrowViewport ? 136 : 180,
                         ),
-                        trailing: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          size: 15,
-                          color: tokens.danmo,
+                        child: BegoniaPlaqueButton(
+                          key: const Key('timeline_charm_filter_button'),
+                          label: charmSummary,
+                          semanticLabel: hasActiveCharms
+                              ? '笺签筛选，当前已选：$charmSummary'
+                              : '笺签筛选，当前全部笺签',
+                          isAccent: hasActiveCharms,
+                          ensureMinTapTarget: true,
+                          leading: Icon(
+                            hasActiveCharms
+                                ? Icons.local_offer_rounded
+                                : Icons.local_offer_outlined,
+                            size: 13,
+                            color: hasActiveCharms
+                                ? Colors.white
+                                : tokens.cinnabar,
+                          ),
+                          trailing: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 15,
+                            color: hasActiveCharms
+                                ? Colors.white
+                                : tokens.danmo,
+                          ),
+                          onTap: onOpenCharmFilter,
                         ),
-                        onTap: onOpenNotebooks,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   DateIndexTray(
                     filters: filters,
                     facetSummary: facetSummary,
@@ -207,7 +224,6 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
         !facetSummary.activeMonths
             .containsAll(oldDelegate.facetSummary.activeMonths) ||
         totalFilteredCount != oldDelegate.totalFilteredCount ||
-        activeVolumeTitle != oldDelegate.activeVolumeTitle ||
         xunExpandFactor != oldDelegate.xunExpandFactor ||
         textScaleFactor != oldDelegate.textScaleFactor ||
         hasEntriesBelow != oldDelegate.hasEntriesBelow ||

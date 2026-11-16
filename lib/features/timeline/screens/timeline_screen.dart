@@ -11,8 +11,8 @@ import 'package:memodiary/core/theme/widgets/scroll_roller_fab.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
+import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_desk_feed.dart';
-import 'package:memodiary/features/timeline/widgets/notebook_selector_sheet.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_app_bar.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_empty_states.dart';
 import '../../editor/services/audio_sanctum_service.dart';
@@ -330,14 +330,11 @@ class _TimelineScreenState extends State<TimelineScreen>
     });
   }
 
-  void _handleOpenNotebooks() {
-    NotebookSelectorSheet.show(
+  void _handleOpenCharmFilter() {
+    ChronicleCharmFilterSheet.show(
       context: context,
-      database: widget.database,
-      currentNotebookId: _activeNotebook?.id ?? '',
-      onNotebookSelected: (selected) {
-        setState(() => _activeNotebook = selected);
-      },
+      initialFilters: _filters,
+      onFiltersChanged: _applyFilterUpdate,
     );
   }
 
@@ -391,7 +388,6 @@ class _TimelineScreenState extends State<TimelineScreen>
                   filters: _filters,
                   facetSummary: _facetSummary,
                   totalFilteredCount: _totalFilteredCount,
-                  activeVolumeTitle: _activeNotebook?.title ?? '默认册卷',
                   entries: _entries,
                   mediaMap: _mediaMap,
                   mediaService: widget.mediaService,
@@ -403,7 +399,7 @@ class _TimelineScreenState extends State<TimelineScreen>
                   onToggleCandle: () {
                     setState(() => _isCandleLit = !_isCandleLit);
                   },
-                  onOpenNotebooks: _handleOpenNotebooks,
+                  onOpenCharmFilter: _handleOpenCharmFilter,
                   onSelectYear: (year) => _applyFilterUpdate(
                     _filters.selectYear(year),
                   ),

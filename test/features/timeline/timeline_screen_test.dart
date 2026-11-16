@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
+import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
-import 'package:memodiary/features/timeline/widgets/notebook_selector_sheet.dart';
 import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
 
@@ -325,17 +326,199 @@ void main() {
       expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
     });
 
-    testWidgets('Active volume BegoniaPlaque button opens NotebookSelectorSheet', (tester) async {
-      await pumpTimelineScreen(tester);
+    testWidgets(
+      'Charm filter BegoniaPlaqueButton opens ChronicleCharmFilterSheet, filters timeline, updates month dots, and clears via empty state',
+      (tester) async {
+        final seeded = [
+          (
+            id: 'charm_joy_media_nov',
+            title: 'Joyful Photo Nov',
+            date: DateTime(2026, 11, 10, 9, 0),
+            mood: 5,
+            weather: 'sunny',
+            weekly: false,
+            hasMedia: true,
+          ),
+          (
+            id: 'charm_rainy_weekly_oct',
+            title: 'Rainy Weekly Oct',
+            date: DateTime(2026, 10, 15, 18, 0),
+            mood: 3,
+            weather: 'rainy',
+            weekly: true,
+            hasMedia: false,
+          ),
+          (
+            id: 'charm_joy_text_aug',
+            title: 'Joyful Text Aug',
+            date: DateTime(2026, 8, 5, 12, 0),
+            mood: 5,
+            weather: 'cloudy',
+            weekly: false,
+            hasMedia: false,
+          ),
+        ];
 
-      final notebookBtn = find.byKey(const Key('timeline_notebook_selector_button'));
-      expect(notebookBtn, findsOneWidget);
+        for (final item in seeded) {
+          await db.entriesDao.createEntry(
+            EntriesCompanion.insert(
+              id: item.id,
+              notebookId: 'notebook_default',
+              templateId: 'template_minimalist_white',
+              title: Value(item.title),
+              contentDelta: jsonEncode([
+                {'insert': 'Body for ${item.title}\n'},
+              ]),
+              plainText: 'Body for ${item.title}',
+              entryDate: item.date,
+              mood: Value(item.mood),
+              weather: Value(item.weather),
+              isWeeklyReview: Value(item.weekly),
+            ),
+          );
+          if (item.hasMedia) {
+            await db.mediaOcrDao.attachMediaToEntry(
+              id: 'media_${item.id}',
+              entryId: item.id,
+              relativePath: 'media/${item.id}.webp',
+            );
+          }
+        }
 
-      await tester.tap(notebookBtn);
-      await tester.pumpAndSettle();
+        await pumpTimelineScreen(tester);
 
-      expect(find.byType(NotebookSelectorSheet), findsOneWidget);
-    });
+        // Legacy notebook selector button is replaced by charm filter plaque
+        expect(
+          find.byKey(const Key('timeline_notebook_selector_button')),
+          findsNothing,
+        );
+        final charmBtnFinder = find.byKey(const Key('timeline_charm_filter_button'));
+        expect(charmBtnFinder, findsOneWidget);
+        expect(find.text('全部笺签'), findsOneWidget);
+        expect(tester.widget<BegoniaPlaqueButton>(charmBtnFinder).isAccent, isFalse);
+
+        final buttonSize = tester.getSize(charmBtnFinder);
+        expect(buttonSize.width, greaterThanOrEqualTo(44.0));
+        expect(buttonSize.height, greaterThanOrEqualTo(44.0));
+
+        // Open ChronicleCharmFilterSheet
+        await tester.tap(charmBtnFinder);
+        await tester.pumpAndSettle();
+        expect(find.byType(ChronicleCharmFilterSheet), findsOneWidget);
+
+        // Select 欢欣 + 含图影
+        await tester.ensureVisible(find.byKey(const Key('charm_filter_mood_5')));
+        await tester.tap(find.byKey(const Key('charm_filter_mood_5')));
+        await tester.pumpAndSettle();
+
+        await tester.ensureVisible(find.byKey(const Key('charm_filter_media_toggle')));
+        await tester.tap(find.byKey(const Key('charm_filter_media_toggle')));
+        await tester.pumpAndSettle();
+
+        // Dismiss sheet
+        await tester.tap(find.byKey(const Key('charm_filter_close_button')));
+        await tester.pumpAndSettle();
+
+        // Begonia plaque shows active summary & cinnabar accent styling
+        expect(find.text('欢欣 · 含图影'), findsOneWidget);
+        expect(tester.widget<BegoniaPlaqueButton>(charmBtnFinder).isAccent, isTrue);
+        expect(find.text('共 1 卷'), findsOneWidget);
+        expect(find.text('Joyful Photo Nov'), findsOneWidget);
+        expect(find.text('Rainy Weekly Oct'), findsNothing);
+        expect(find.text('Joyful Text Aug'), findsNothing);
+
+        // Month presence dots synchronize with active charm filter (Nov has dot, Oct & Aug do not)
+        await tester.ensureVisible(find.byKey(const Key('timeline_month_chip_11')));
+        expect(find.byKey(const Key('timeline_month_dot_11')), findsOneWidget);
+        expect(find.byKey(const Key('timeline_month_dot_10')), findsNothing);
+        expect(find.byKey(const Key('timeline_month_dot_8')), findsNothing);
+
+        // Combine with empty month (10月) -> filtered empty card appears
+        await tester.ensureVisible(find.byKey(const Key('timeline_month_chip_10')));
+        await tester.tap(find.byKey(const Key('timeline_month_chip_10')));
+        await tester.pumpAndSettle();
+        expect(find.text('共 0 卷'), findsOneWidget);
+        expect(find.text('此岁时检目下暂无案头卷宗'), findsOneWidget);
+
+        // Tap 清除筛选 -> resets BOTH Date Index Tray AND Charm & Tag Filter
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('timeline_clear_filters_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('全部笺签'), findsOneWidget);
+        expect(tester.widget<BegoniaPlaqueButton>(charmBtnFinder).isAccent, isFalse);
+        expect(find.text('共 3 卷'), findsOneWidget);
+        expect(find.text('上旬'), findsNothing);
+        expect(find.text('Rainy Weekly Oct'), findsOneWidget);
+
+        // Also test Weather + Weekly Review filtering via sheet
+        await tester.tap(charmBtnFinder);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('charm_filter_weather_rainy')));
+        await tester.tap(find.byKey(const Key('charm_filter_weather_rainy')));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('charm_filter_weekly_toggle')));
+        await tester.tap(find.byKey(const Key('charm_filter_weekly_toggle')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('charm_filter_close_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('润雨 · 周志复盘'), findsOneWidget);
+        expect(find.text('共 1 卷'), findsOneWidget);
+        expect(find.text('Rainy Weekly Oct'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'ChronicleDeskHeader charm filter plaque never overflows on 320dp viewport at 1.6x text scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: const TextScaler.linear(1.6),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            ),
+            home: TimelineScreen(
+              database: db,
+              mediaService: mediaService,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('timeline_charm_filter_button')));
+        await tester.pumpAndSettle();
+
+        // Select all 4 charm filters to stress-test the summary plaque width
+        await tester.ensureVisible(find.byKey(const Key('charm_filter_mood_5')));
+        await tester.tap(find.byKey(const Key('charm_filter_mood_5')));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('charm_filter_weather_sunny')));
+        await tester.tap(find.byKey(const Key('charm_filter_weather_sunny')));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('charm_filter_media_toggle')));
+        await tester.tap(find.byKey(const Key('charm_filter_media_toggle')));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('charm_filter_weekly_toggle')));
+        await tester.tap(find.byKey(const Key('charm_filter_weekly_toggle')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('charm_filter_close_button')));
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('timeline_charm_filter_button')), findsOneWidget);
+      },
+    );
 
     testWidgets('removes OnThisDayBanner and poetic header while rendering WindowSillLedge and candlestick glow toggle', (tester) async {
       final lastYearToday = DateTime.now().subtract(const Duration(days: 365));

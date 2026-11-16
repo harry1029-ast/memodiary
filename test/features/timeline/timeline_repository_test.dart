@@ -465,6 +465,102 @@ void main() {
         currentYear: 2027,
       );
       expect(summary2026Media.activeMonths, equals({11}));
+
+      // Combined mood + weather facet summary filters activeMonths accurately
+      final summaryRainyMood4 = await db.entriesDao.getTimelineDateFacetSummary(
+        year: 2026,
+        mood: 4,
+        weather: 'rainy',
+        currentYear: 2027,
+      );
+      expect(summaryRainyMood4.activeMonths, equals({11}));
+
+      final summaryImpossible = await db.entriesDao.getTimelineDateFacetSummary(
+        mood: 1,
+        weather: 'sunny',
+        currentYear: 2027,
+      );
+      expect(summaryImpossible.activeMonths, isEmpty);
+    });
+
+    test('TimelineFilterState charmSummaryLabel and resetCharms handle single and combined charms', () {
+      const empty = TimelineFilterState(
+        year: 2026,
+        month: 11,
+        xun: TimelineXun.shang,
+        sortOrder: TimelineSortOrder.oldestFirst,
+      );
+      expect(empty.hasActiveCharmFilters, isFalse);
+      expect(empty.charmSummaryLabel(), equals('全部笺签'));
+
+      final moodAndMedia = empty.copyWith(mood: 5, hasMediaOnly: true);
+      expect(moodAndMedia.hasActiveCharmFilters, isTrue);
+      expect(moodAndMedia.charmSummaryLabel(), equals('欢欣 · 含图影'));
+
+      final allCharms = empty.copyWith(
+        mood: 3,
+        weather: 'rainy',
+        hasMediaOnly: true,
+        weeklyReviewOnly: true,
+      );
+      expect(
+        allCharms.charmSummaryLabel(),
+        equals('静穆 · 润雨 · 含图影 · 周志复盘'),
+      );
+
+      // resetCharms clears only charm attributes while preserving date & sort
+      final charmsReset = allCharms.resetCharms();
+      expect(charmsReset.hasActiveCharmFilters, isFalse);
+      expect(charmsReset.charmSummaryLabel(), equals('全部笺签'));
+      expect(charmsReset.year, equals(2026));
+      expect(charmsReset.month, equals(11));
+      expect(charmsReset.xun, equals(TimelineXun.shang));
+      expect(charmsReset.sortOrder, equals(TimelineSortOrder.oldestFirst));
+
+      // resetAll clears both date and charm filters while preserving sortOrder
+      final fullReset = allCharms.resetAll();
+      expect(fullReset.hasActiveFilters, isFalse);
+      expect(fullReset.year, isNull);
+      expect(fullReset.month, isNull);
+      expect(fullReset.xun, isNull);
+      expect(fullReset.sortOrder, equals(TimelineSortOrder.oldestFirst));
+    });
+
+    test('EntriesDao filters combined date + mood + weather + media + weeklyReview accurately', () async {
+      await seedFilterCorpus();
+
+      const combined = TimelineFilterState(
+        year: 2026,
+        month: 11,
+        xun: TimelineXun.zhong,
+        mood: 3,
+        weather: 'cloudy',
+        hasMediaOnly: true,
+        weeklyReviewOnly: true,
+      );
+      final matches = await db.entriesDao.getFilteredTimelineEntries(
+        filters: combined,
+      );
+      expect(matches.map((entry) => entry.id).toList(), equals(['e_2026_11_15']));
+      expect(
+        await db.entriesDao.countFilteredTimelineEntries(filters: combined),
+        equals(1),
+      );
+
+      const mismatch = TimelineFilterState(
+        year: 2026,
+        month: 11,
+        mood: 5,
+        weeklyReviewOnly: true,
+      );
+      expect(
+        await db.entriesDao.getFilteredTimelineEntries(filters: mismatch),
+        isEmpty,
+      );
+      expect(
+        await db.entriesDao.countFilteredTimelineEntries(filters: mismatch),
+        equals(0),
+      );
     });
   });
 }
