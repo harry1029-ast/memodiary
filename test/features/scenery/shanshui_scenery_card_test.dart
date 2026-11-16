@@ -21,6 +21,8 @@ void main() {
       ShanshuiAtmosphereState? realTimeAtmosphere,
       VoidCallback? onOpenContemplation,
       ValueChanged<SceneryRealmPreference>? onRealmPreferenceChanged,
+      bool? enableAmbientAnimation = false,
+      bool isVisible = true,
       double width = 400,
     }) {
       return MaterialApp(
@@ -32,13 +34,11 @@ void main() {
               child: ShanshuiSceneryCard(
                 atmosphere: atmosphere,
                 realTimeAtmosphere: realTimeAtmosphere,
-                activePrompt: '瓦檐下一滴落雨的声响。',
-                onRefreshPrompt: () {},
-                onWritePrompt: (_) {},
                 onOpenContemplation: onOpenContemplation ?? () {},
                 onRealmPreferenceChanged: onRealmPreferenceChanged,
                 settingsService: settingsService,
-                enableAmbientAnimation: false,
+                enableAmbientAnimation: enableAmbientAnimation,
+                isVisible: isVisible,
               ),
             ),
           ),
@@ -273,6 +273,288 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'renders unobstructed window frame and pull-cord clear of top overlay pills',
+      (tester) async {
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.fall,
+          timeOfDay: ShanshuiTimeOfDay.night,
+          weather: ShanshuiWeather.sunny,
+          isJournalInferred: false,
+        );
+
+        await tester.pumpWidget(buildTestHarness(atmosphere: atmosphere));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_window_frame')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_pull_cord_handle')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_pull_cord_tag')), findsOneWidget);
+        expect(find.textContaining('下拉垂帘'), findsOneWidget);
+        expect(find.byKey(const Key('thought_spark_dock')), findsNothing);
+        expect(find.byKey(const Key('thought_spark_reveal_button')), findsNothing);
+
+        final cordRect = tester.getRect(find.byKey(const Key('scenery_pull_cord_handle')));
+        final realmRect = tester.getRect(find.byKey(const Key('scenery_realm_badge')));
+        expect(cordRect.right, lessThanOrEqualTo(realmRect.left));
+      },
+    );
+
+    testWidgets(
+      'tapping pull-cord executes two-stage blind drop then shrinks into 44dp collapsed bamboo bar and persists state',
+      (tester) async {
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.fall,
+          timeOfDay: ShanshuiTimeOfDay.night,
+          weather: ShanshuiWeather.sunny,
+          isJournalInferred: false,
+        );
+
+        await tester.pumpWidget(buildTestHarness(atmosphere: atmosphere));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsNothing);
+
+        await tester.tap(find.byKey(const Key('scenery_pull_cord_handle')));
+        await tester.pump();
+        // Mid-stage 1 (~250ms): blind is unrolling, window height is still > 44dp
+        await tester.pump(const Duration(milliseconds: 250));
+        expect(find.byKey(const Key('scenery_bamboo_blind_curtain')), findsOneWidget);
+        expect(
+          tester.getSize(find.byKey(const Key('scenery_card_expanded'))).height,
+          greaterThan(100),
+        );
+
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_collapsed_blind_bar')), findsOneWidget);
+        expect(
+          tester.getSize(find.byKey(const Key('scenery_card_collapsed'))).height,
+          equals(44.0),
+        );
+        expect(find.textContaining('拽绳卷帘'), findsOneWidget);
+        expect(find.textContaining('竹帘低垂'), findsOneWidget);
+        expect(mockStorage.data['memodiary_scenery_card_collapsed'], equals('true'));
+
+        // Tapping the collapsed bar restores expanded state
+        await tester.tap(find.byKey(const Key('scenery_collapsed_blind_bar')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsNothing);
+        expect(mockStorage.data['memodiary_scenery_card_collapsed'], equals('false'));
+      },
+    );
+
+    testWidgets(
+      'tapping 44dp collapsed bamboo bar expands window first then rolls blind upward and persists state',
+      (tester) async {
+        mockStorage.data['memodiary_scenery_card_collapsed'] = 'true';
+
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+          isJournalInferred: false,
+        );
+
+        await tester.pumpWidget(buildTestHarness(atmosphere: atmosphere));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('scenery_collapsed_blind_bar')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 260));
+        expect(find.byKey(const Key('scenery_bamboo_blind_curtain')), findsOneWidget);
+
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsNothing);
+        expect(mockStorage.data['memodiary_scenery_card_collapsed'], equals('false'));
+      },
+    );
+
+    testWidgets(
+      'short drag on pull-cord (< 36dp) springs cord and blind back up without collapsing',
+      (tester) async {
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+        );
+
+        await tester.pumpWidget(buildTestHarness(atmosphere: atmosphere));
+        await tester.pumpAndSettle();
+
+        final cordCenter = tester.getCenter(find.byKey(const Key('scenery_pull_cord_handle')));
+        final gesture = await tester.startGesture(cordCenter);
+        await gesture.moveBy(const Offset(0, 20));
+        await tester.pump();
+
+        expect(find.textContaining('继续下拉'), findsOneWidget);
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsNothing);
+        expect(find.textContaining('下拉垂帘'), findsOneWidget);
+        expect(mockStorage.data['memodiary_scenery_card_collapsed'], isNot(equals('true')));
+      },
+    );
+
+    testWidgets(
+      'drag on pull-cord >= 36dp updates tag to 松手收窗 ✓ and collapses window on release',
+      (tester) async {
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.fall,
+          timeOfDay: ShanshuiTimeOfDay.night,
+          weather: ShanshuiWeather.sunny,
+        );
+
+        await tester.pumpWidget(buildTestHarness(atmosphere: atmosphere));
+        await tester.pumpAndSettle();
+
+        final cordCenter = tester.getCenter(find.byKey(const Key('scenery_pull_cord_handle')));
+        final gesture = await tester.startGesture(cordCenter);
+        await gesture.moveBy(const Offset(0, 44));
+        await tester.pump();
+
+        expect(find.text('松手收窗 ✓'), findsOneWidget);
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_card_expanded')), findsNothing);
+        expect(mockStorage.data['memodiary_scenery_card_collapsed'], equals('true'));
+      },
+    );
+
+    testWidgets(
+      'tapping realm badge on collapsed 44dp bar opens realm switcher without expanding window',
+      (tester) async {
+        mockStorage.data['memodiary_scenery_card_collapsed'] = 'true';
+
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+        );
+
+        await tester.pumpWidget(buildTestHarness(atmosphere: atmosphere));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('scenery_realm_badge')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_realm_option_indoor')), findsOneWidget);
+        await tester.tap(find.byKey(const Key('scenery_realm_option_indoor')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
+        expect(find.text('雅室'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping lower third of 16:9 canvas triggers onOpenContemplation without ThoughtSparkDock obstruction',
+      (tester) async {
+        bool contemplationOpened = false;
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.summer,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+        );
+
+        await tester.pumpWidget(
+          buildTestHarness(
+            atmosphere: atmosphere,
+            onOpenContemplation: () => contemplationOpened = true,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final targetRect = tester.getRect(
+          find.byKey(const Key('scenery_canvas_tap_target')),
+        );
+        final lowerThirdTapPoint = Offset(
+          targetRect.center.dx,
+          targetRect.bottom - 18,
+        );
+        await tester.tapAt(lowerThirdTapPoint);
+        await tester.pumpAndSettle();
+
+        expect(contemplationOpened, isTrue);
+      },
+    );
+
+    testWidgets(
+      'collapsed 44dp bar renders cleanly down to 320px width without overflow',
+      (tester) async {
+        mockStorage.data['memodiary_scenery_card_collapsed'] = 'true';
+
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.indoor,
+          season: ShanshuiSeason.winter,
+          timeOfDay: ShanshuiTimeOfDay.night,
+          weather: ShanshuiWeather.snowy,
+          isJournalInferred: true,
+        );
+
+        await tester.pumpWidget(
+          buildTestHarness(atmosphere: atmosphere, width: 320),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'pull-cord ambient idle sway runs when enableAmbientAnimation is true and suspends when isVisible is false',
+      (tester) async {
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+        );
+
+        await tester.pumpWidget(
+          buildTestHarness(
+            atmosphere: atmosphere,
+            enableAmbientAnimation: true,
+            isVisible: true,
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.byKey(const Key('scenery_pull_cord_handle')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        await tester.pumpWidget(
+          buildTestHarness(
+            atmosphere: atmosphere,
+            enableAmbientAnimation: true,
+            isVisible: false,
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
       },
     );
   });

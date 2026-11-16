@@ -10,7 +10,6 @@ import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.da
 import 'package:memodiary/features/timeline/widgets/notebook_selector_sheet.dart';
 import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
-import 'package:memodiary/features/scenery/widgets/thought_spark_dock.dart';
 
 void main() {
   late AppDatabase db;
@@ -219,50 +218,29 @@ void main() {
       expect(find.text('拾光日记'), findsOneWidget);
     });
 
-    testWidgets('ShanshuiSceneryCard renders in header, cycles prompts on refresh, and navigates to editor on 由此题落墨', (tester) async {
+    testWidgets('ShanshuiSceneryCard renders unobstructed in header without ThoughtSparkDock', (tester) async {
       await pumpTimelineScreen(tester);
 
       expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
-      expect(find.byType(ThoughtSparkDock), findsOneWidget);
-      expect(find.textContaining('灵感火花 · THOUGHT SPARK'), findsOneWidget);
-
-      // Refresh prompt
-      final initialPromptText = find.textContaining('瓦檐下一滴落雨的声响');
-      expect(initialPromptText, findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('thought_spark_refresh_button')));
-      await tester.pumpAndSettle();
-
-      expect(initialPromptText, findsNothing);
-      expect(find.textContaining('多看一眼天边的云霞'), findsOneWidget);
-
-      // Tap 由此题落墨
-      await tester.tap(find.byKey(const Key('thought_spark_write_button')));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(EntryEditorScreen), findsOneWidget);
-      final allEntries = await db.entriesDao.getAllActiveEntries();
-      expect(
-        allEntries.any((entry) => entry.plainText.contains('今天有没有一瞬间')),
-        isTrue,
-      );
+      expect(find.byKey(const Key('thought_spark_dock')), findsNothing);
+      expect(find.byKey(const Key('scenery_pull_cord_handle')), findsOneWidget);
     });
 
-    testWidgets('collapse button switches ShanshuiSceneryCard into 42px status strip and expand restores it', (tester) async {
+    testWidgets('pull-cord collapses ShanshuiSceneryCard into 44dp bamboo bar and tapping bar restores it', (tester) async {
       await pumpTimelineScreen(tester);
 
       expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
       expect(find.byKey(const Key('scenery_card_collapsed')), findsNothing);
 
-      // Tap collapse
-      await tester.tap(find.byKey(const Key('scenery_collapse_button')));
+      // Tap pull-cord
+      await tester.tap(find.byKey(const Key('scenery_pull_cord_handle')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
       expect(find.byKey(const Key('scenery_card_expanded')), findsNothing);
 
-      // Tap expand
-      await tester.tap(find.byKey(const Key('scenery_expand_button')));
+      // Tap collapsed bamboo bar to restore
+      await tester.tap(find.byKey(const Key('scenery_collapsed_blind_bar')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
@@ -337,28 +315,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
-    });
-
-    testWidgets('ThoughtSparkDock hide button collapses prompt to reveal full scenery and reveal restores it', (tester) async {
-      await pumpTimelineScreen(tester);
-
-      // Initially ThoughtSparkDock is visible
-      expect(find.byKey(const Key('thought_spark_dock')), findsOneWidget);
-      expect(find.byKey(const Key('thought_spark_hide_button')), findsOneWidget);
-
-      // Tap hide button
-      await tester.tap(find.byKey(const Key('thought_spark_hide_button')));
-      await tester.pumpAndSettle();
-
-      // ThoughtSparkDock is now hidden, revealing the full scenery canvas
-      expect(find.byKey(const Key('thought_spark_dock')), findsNothing);
-      expect(find.byKey(const Key('thought_spark_reveal_button')), findsOneWidget);
-
-      // Tap reveal button to restore prompt dock
-      await tester.tap(find.byKey(const Key('thought_spark_reveal_button')));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('thought_spark_dock')), findsOneWidget);
     });
 
     testWidgets('Active volume BegoniaPlaque button opens NotebookSelectorSheet', (tester) async {

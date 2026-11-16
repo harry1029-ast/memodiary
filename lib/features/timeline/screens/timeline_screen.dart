@@ -73,16 +73,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
   bool _isSceneryVisible = true;
   bool _isFabRolledUp = false;
 
-  // Thought Spark Inspiration Prompts
-  int _sparkIndex = 0;
-  static const List<String> _thoughtSparks = [
-    '记录下一件让你觉得微小却真切的幸福，或许只是瓦檐下一滴落雨的声响。',
-    '今天有没有一瞬间，让你想要停下来，多看一眼天边的云霞？',
-    '如果用一种节气或草木来形容此刻的心境，那会是什么？',
-    '最近读到或听到的一句话，哪一句久久停留在心头未曾散去？',
-    '今日研墨提笔，最想对自己道一声怎样的闲语或慰藉？',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -636,13 +626,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
               return ShanshuiSceneryCard(
                 atmosphere: activeAtmosphere,
                 realTimeAtmosphere: realTimeAtmosphere,
-                activePrompt: _thoughtSparks[_sparkIndex],
-                onRefreshPrompt: () {
-                  setState(() {
-                    _sparkIndex = (_sparkIndex + 1) % _thoughtSparks.length;
-                  });
-                },
-                onWritePrompt: (prompt) => _handleCreateEntry(prompt),
                 onRealmPreferenceChanged: (pref) {
                   setState(() => _realmPreference = pref);
                 },
