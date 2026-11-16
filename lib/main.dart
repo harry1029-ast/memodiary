@@ -13,12 +13,16 @@ import 'core/services/recycle_bin_service.dart';
 import 'core/theme/ink_diary_theme.dart';
 import 'core/theme/theme_settings_service.dart';
 import 'features/auth/app_lock_gate.dart';
+import 'features/editor/ink_choreography/arphic_license.dart';
+import 'features/editor/ink_choreography/hanzi_stroke_table.dart';
 import 'features/intro/screens/book_intro_screen.dart';
 import 'features/intro/services/book_intro_settings_service.dart';
 import 'features/timeline/screens/timeline_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  registerArphicLicense();
+  HanziStrokeTable.instance.load(); // fire-and-forget; fallback works meanwhile
 
   // 0. Ensure SQLCipher native libraries are properly loaded on Android
   if (Platform.isAndroid) {
