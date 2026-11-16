@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../templates/models/template_style.dart';
+import '../../models/stationery_sheet_configs.dart';
 import '../../models/typography_settings.dart';
 import '../../services/audio_sanctum_service.dart';
+import '../../ink_choreography/ink_choreography_controller.dart';
 import 'artifact_brush_mountain.dart';
 import 'artifact_fish_lock.dart';
 import 'artifact_guqin_zither.dart';
 import 'artifact_stationery_fan.dart';
-import 'artifact_twin_brushes.dart';
-import 'crimson_velvet_bed_painter.dart';
+import 'scholar_chest_velvet_tray.dart';
+import 'twin_brushes_sub_panel.dart';
 
-enum ScholarArtifactType {
-  twinBrushes,
-  stationeryFan,
-  brushMountain,
-  guqinZither,
-  fishLock,
-}
+export 'scholar_chest_velvet_tray.dart' show ScholarArtifactType;
 
 /// The unified Scholar's Stationery Chest (文房百宝匣 · 锦盒书案) modal drawer.
 /// Consolidates stationery templates, typography, soundscapes, and time capsules
@@ -26,8 +23,20 @@ class ScholarChestDrawer extends StatefulWidget {
   final String activeTemplateId;
   final TypographySettings typography;
   final AudioSanctumService audioSanctumService;
+
+  /// The editor's live Ink Choreography preferences; the drawer rebuilds
+  /// from it directly (Modal Route State Encapsulation).
+  final InkChoreographyController inkChoreography;
+
+  /// The active template's ink and paper, for the Trial Rice-Grid.
+  final Color inkColor;
+  final Color paperColor;
   final DateTime? unlockAt;
   final bool isCenterAligned;
+
+  /// Whether the active Stationery Sheet is an ephemera sheet, which has no
+  /// characters for 全页挥毫 to replay.
+  final bool isEphemeraSheetActive;
   final ScholarArtifactType? initialArtifact;
   final ValueChanged<Template> onSelectTemplate;
   final ValueChanged<TypographySettings> onTypographyChanged;
@@ -40,14 +49,21 @@ class ScholarChestDrawer extends StatefulWidget {
     required this.activeTemplateId,
     required this.typography,
     required this.audioSanctumService,
+    required this.inkChoreography,
+    this.inkColor = defaultInkColor,
+    this.paperColor = defaultPaperColor,
     this.unlockAt,
     this.isCenterAligned = false,
+    this.isEphemeraSheetActive = false,
     this.initialArtifact = ScholarArtifactType.stationeryFan,
     required this.onSelectTemplate,
     required this.onTypographyChanged,
     required this.onLockChanged,
     this.onToggleAlignment,
   });
+
+  static const Color defaultInkColor = Color(0xFF212121);
+  static const Color defaultPaperColor = Color(0xFFFBF8F1);
 
   /// Opens the Scholar's Stationery Chest modal bottom drawer.
   static Future<void> show({
@@ -56,8 +72,12 @@ class ScholarChestDrawer extends StatefulWidget {
     required String activeTemplateId,
     required TypographySettings typography,
     required AudioSanctumService audioSanctumService,
+    required InkChoreographyController inkChoreography,
+    Color inkColor = defaultInkColor,
+    Color paperColor = defaultPaperColor,
     DateTime? unlockAt,
     bool isCenterAligned = false,
+    bool isEphemeraSheetActive = false,
     ScholarArtifactType? initialArtifact = ScholarArtifactType.stationeryFan,
     required ValueChanged<Template> onSelectTemplate,
     required ValueChanged<TypographySettings> onTypographyChanged,
@@ -73,8 +93,12 @@ class ScholarChestDrawer extends StatefulWidget {
         activeTemplateId: activeTemplateId,
         typography: typography,
         audioSanctumService: audioSanctumService,
+        inkChoreography: inkChoreography,
+        inkColor: inkColor,
+        paperColor: paperColor,
         unlockAt: unlockAt,
         isCenterAligned: isCenterAligned,
+        isEphemeraSheetActive: isEphemeraSheetActive,
         initialArtifact: initialArtifact,
         onSelectTemplate: onSelectTemplate,
         onTypographyChanged: onTypographyChanged,
@@ -92,6 +116,8 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
   ScholarArtifactType? _activeArtifact;
   late String _activeTemplateId;
   late TypographySettings _currentTypography;
+  late Color _inkColor;
+  late Color _paperColor;
   DateTime? _unlockAt;
   late bool _isCenterAligned;
 
@@ -101,6 +127,8 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
     _activeArtifact = widget.initialArtifact;
     _activeTemplateId = widget.activeTemplateId;
     _currentTypography = widget.typography;
+    _inkColor = widget.inkColor;
+    _paperColor = widget.paperColor;
     _unlockAt = widget.unlockAt;
     _isCenterAligned = widget.isCenterAligned;
   }
@@ -184,21 +212,31 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
                   children: [
                     Text('▼', style: TextStyle(fontSize: 11, color: Color(0xFFE5C384))),
                     SizedBox(width: 8),
-                    Text(
-                      '文房百宝匣 · 锦盒书案',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFF2E5CE),
-                        letterSpacing: 1.0,
+                    Flexible(
+                      flex: 3,
+                      child: Text(
+                        '文房百宝匣 · 锦盒书案',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFFF2E5CE),
+                          letterSpacing: 1.0,
+                        ),
                       ),
                     ),
                     SizedBox(width: 8),
                     CircleAvatar(radius: 3.5, backgroundColor: Color(0xFFD93829)),
                     SizedBox(width: 6),
-                    Text(
-                      '下拉收拢 / 点器物设雅',
-                      style: TextStyle(fontSize: 11, color: Color(0xFFD4C5B0)),
+                    Flexible(
+                      flex: 2,
+                      child: Text(
+                        '下拉收拢 / 点器物设雅',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, color: Color(0xFFD4C5B0)),
+                      ),
                     ),
                   ],
                 ),
@@ -236,120 +274,14 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
             // 3. Recessed Crimson Velvet Tray Housing Artifacts (Bottom, docked)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: const Color(0xFFD4AF37).withValues(alpha: 0.28),
-                    width: 1.2,
-                  ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black87,
-                      blurRadius: 14,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: CustomPaint(
-                  painter: const CrimsonVelvetBedPainter(),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Top Groove: Twin Bamboo Brushes
-                        ArtifactTwinBrushes(
-                          isSelected: _activeArtifact ==
-                              ScholarArtifactType.twinBrushes,
-                          onTap: () => _selectArtifact(
-                            ScholarArtifactType.twinBrushes,
-                            ScholarTactileChime.ceramicBrushTap,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Classical Asymmetrical Curio Compartment
-                        SizedBox(
-                          height: 206,
-                          child: Row(
-                            children: [
-                              // Left Column (flex 38): Fan-Spread Stationery Sheets
-                              Expanded(
-                                flex: 38,
-                                child: ArtifactStationeryFan(
-                                  isSelected: _activeArtifact ==
-                                      ScholarArtifactType.stationeryFan,
-                                  onTap: () => _selectArtifact(
-                                    ScholarArtifactType.stationeryFan,
-                                    ScholarTactileChime.paperRustle,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-
-                              // Right Column (flex 62): Guqin + Brush Rest & Fish Lock
-                              Expanded(
-                                flex: 62,
-                                child: Column(
-                                  children: [
-                                    // Upper Groove: 7-String Guqin Zither
-                                    SizedBox(
-                                      height: 92,
-                                      child: ArtifactGuqinZither(
-                                        isSelected: _activeArtifact ==
-                                            ScholarArtifactType.guqinZither,
-                                        isPlaying: widget.audioSanctumService.isPlaying,
-                                        onTap: () => _selectArtifact(
-                                          ScholarArtifactType.guqinZither,
-                                          ScholarTactileChime.guqinPluck,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-
-                                    // Lower Row: Brush Rest (56%) + Fish Lock (44%)
-                                    Expanded(
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            flex: 56,
-                                            child: ArtifactBrushMountain(
-                                              isSelected: _activeArtifact ==
-                                                  ScholarArtifactType.brushMountain,
-                                              onTap: () => _selectArtifact(
-                                                ScholarArtifactType.brushMountain,
-                                                ScholarTactileChime.ceramicBrushTap,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            flex: 44,
-                                            child: ArtifactFishLock(
-                                              isSelected: _activeArtifact ==
-                                                  ScholarArtifactType.fishLock,
-                                              isLocked: _unlockAt != null &&
-                                                  _unlockAt!.isAfter(DateTime.now()),
-                                              onTap: () => _selectArtifact(
-                                                ScholarArtifactType.fishLock,
-                                                ScholarTactileChime.brassLockClick,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              child: ListenableBuilder(
+                listenable: widget.inkChoreography,
+                builder: (context, _) => ScholarChestVelvetTray(
+                  activeArtifact: _activeArtifact,
+                  inkDeliveryMode: widget.inkChoreography.config.deliveryMode,
+                  isSoundscapePlaying: widget.audioSanctumService.isPlaying,
+                  isLocked: _unlockAt != null && _unlockAt!.isAfter(DateTime.now()),
+                  onSelectArtifact: _selectArtifact,
                 ),
               ),
             ),
@@ -366,6 +298,13 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
 
       case ScholarArtifactType.twinBrushes:
         return TwinBrushesSubPanel(
+          controller: widget.inkChoreography,
+          audioSanctumService: widget.audioSanctumService,
+          inkColor: _inkColor,
+          paperColor: _paperColor,
+          fontFamily: _currentTypography.fontFamily,
+          isSheetReplayAvailable: !widget.isEphemeraSheetActive,
+          onSheetReplayRequested: () => Navigator.pop(context),
           onClose: () => setState(() => _activeArtifact = null),
         );
 
@@ -374,9 +313,15 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
           database: widget.database,
           activeTemplateId: _activeTemplateId,
           onSelectTemplate: (selectedTemplate) {
+            final sheetTheme = StationerySheetThemeConfig.fromTemplateStyle(
+              templateStyle: TemplateStyle.fromTemplate(selectedTemplate),
+              typography: TypographySettings.fromTemplate(selectedTemplate),
+            );
             setState(() {
               _activeTemplateId = selectedTemplate.id;
-              _currentTypography = TypographySettings.fromTemplate(selectedTemplate);
+              _currentTypography = sheetTheme.typography;
+              _inkColor = sheetTheme.inkColor;
+              _paperColor = sheetTheme.templateStyle.backgroundColor;
             });
             widget.onSelectTemplate(selectedTemplate);
           },

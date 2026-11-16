@@ -10,6 +10,7 @@ import '../../../core/theme/ink_diary_theme.dart';
 import '../../templates/models/template_style.dart';
 import '../controllers/editor_autosave_manager.dart';
 import '../controllers/editor_chrome_controller.dart';
+import '../controllers/editor_scholar_chest_binding.dart';
 import '../services/editor_settings_service.dart';
 import '../controllers/editor_media_binding.dart';
 import '../controllers/editor_pagination_handler.dart';
@@ -76,6 +77,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   bool _isLoading = true;
   late final EditorChromeController _chrome;
+  late final EditorScholarChestBinding _scholarChest;
 
   DateTime _entryDate = DateTime.now();
   int? _mood;
@@ -96,7 +98,10 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _thoughtSparkService = widget.thoughtSparkService ?? ThoughtSparkService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _imagePicker = widget.imagePicker ?? ImagePicker();
-    _chrome = EditorChromeController(settings: widget.editorSettings ?? EditorSettingsService());
+    final settings = widget.editorSettings ?? EditorSettingsService();
+    _chrome = EditorChromeController(settings: settings);
+    _scholarChest = EditorScholarChestBinding(
+        database: widget.database, entryId: widget.entryId, audioSanctumService: _audioSanctumService, settings: settings);
     _chrome.addListener(_rebuild);
     _chrome.restorePreferences();
     _loadEntryData();
@@ -105,6 +110,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   @override
   void dispose() {
     _chrome.dispose();
+    _scholarChest.dispose();
     _paginationHandler?.dispose();
     _mediaBinding?.dispose();
     _pageController.dispose();
@@ -241,42 +247,23 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     _autosaveManager?.markDirty();
   }
 
-  Future<void> _openScholarChest([
-    ScholarArtifactType initialArtifact = ScholarArtifactType.stationeryFan,
-  ]) async {
+  Future<void> _openScholarChest([ScholarArtifactType initialArtifact = ScholarArtifactType.stationeryFan]) async {
     final activeTemplate = _currentTemplate;
     if (activeTemplate == null) return;
-
-    await ScholarChestDrawer.show(
-      context: context,
-      database: widget.database,
-      activeTemplateId: activeTemplate.id,
+    await _scholarChest.open(
+      context,
+      template: activeTemplate,
       typography: _typography,
-      audioSanctumService: _audioSanctumService,
+      coordinator: _coordinator,
       unlockAt: _unlockAt,
       isCenterAligned: _isCenterAligned,
       initialArtifact: initialArtifact,
-      onSelectTemplate: (newTemplate) async {
-        setState(() {
-          _currentTemplate = newTemplate;
-          _typography = TypographySettings.fromTemplate(newTemplate);
-        });
-        _coordinator.updateTypography(
-          _typography,
-          newTemplateStyle: TemplateStyle.fromTemplate(newTemplate),
-        );
-        await widget.database.entriesDao
-            .updateEntryTemplate(widget.entryId, newTemplate.id);
-      },
-      onTypographyChanged: (newTypography) {
-        setState(() => _typography = newTypography);
-        _coordinator.updateTypography(newTypography);
-      },
-      onLockChanged: (newUnlockAt) async {
-        await widget.database.entriesDao
-            .updateEntryUnlockAt(widget.entryId, newUnlockAt);
-        if (mounted) setState(() => _unlockAt = newUnlockAt);
-      },
+      onTemplateChanged: (newTemplate) => setState(() {
+        _currentTemplate = newTemplate;
+        _typography = TypographySettings.fromTemplate(newTemplate);
+      }),
+      onTypographyChanged: (newTypography) => setState(() => _typography = newTypography),
+      onUnlockAtChanged: (newUnlockAt) => mounted ? setState(() => _unlockAt = newUnlockAt) : null,
       onToggleAlignment: _toggleCenterAlignment,
     );
   }

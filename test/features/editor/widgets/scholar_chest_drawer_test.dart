@@ -5,16 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/editor/ink_choreography/ink_choreography_config.dart';
+import 'package:memodiary/features/editor/ink_choreography/ink_choreography_controller.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/services/audio_sanctum_service.dart';
 import 'package:memodiary/features/editor/widgets/scholar_chest/scholar_chest_drawer.dart';
+
+import '../../../helpers/editor_test_harness.dart';
 
 void main() {
   late AppDatabase db;
   late MediaSandboxService mediaService;
   late Directory tempDir;
   late AudioSanctumService audioSanctumService;
+  late InkChoreographyController inkChoreography;
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -23,6 +28,7 @@ void main() {
       baseDirProvider: () async => tempDir,
     );
     audioSanctumService = AudioSanctumService(enablePlatformAudio: false);
+    inkChoreography = InkChoreographyController();
 
     // Seed test entry
     await db.entriesDao.createEntry(
@@ -39,6 +45,7 @@ void main() {
   });
 
   tearDown(() async {
+    inkChoreography.dispose();
     audioSanctumService.dispose();
     await db.close();
     if (await tempDir.exists()) {
@@ -60,6 +67,7 @@ void main() {
                     activeTemplateId: 'template_blank_white',
                     typography: const TypographySettings(fontSize: 16.0),
                     audioSanctumService: audioSanctumService,
+                    inkChoreography: inkChoreography,
                     onSelectTemplate: (template) {},
                     onTypographyChanged: (typography) {},
                     onLockChanged: (lock) {},
@@ -93,30 +101,6 @@ void main() {
       expect(find.byKey(const Key('scholar_chest_drawer')), findsNothing);
     });
 
-    testWidgets('Twin Bamboo Brushes displays poetic placeholder sub-panel', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ScholarChestDrawer(
-              database: db,
-              activeTemplateId: 'template_blank_white',
-              typography: const TypographySettings(fontSize: 16.0),
-              audioSanctumService: audioSanctumService,
-              initialArtifact: ScholarArtifactType.twinBrushes,
-              onSelectTemplate: (template) {},
-              onTypographyChanged: (typography) {},
-              onLockChanged: (lock) {},
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('chest_subpanel_twin_brushes')), findsOneWidget);
-      expect(find.text('笔锋运墨动效 · 敬请期待'), findsOneWidget);
-      expect(find.textContaining('双管并提'), findsOneWidget);
-    });
-
     testWidgets('Porcelain Brush Mountain adjusts typography and center alignment', (tester) async {
       TypographySettings? updatedTypography;
       bool alignmentToggled = false;
@@ -129,6 +113,7 @@ void main() {
               activeTemplateId: 'template_blank_white',
               typography: const TypographySettings(fontSize: 16.0, lineSpacing: 1.5),
               audioSanctumService: audioSanctumService,
+              inkChoreography: inkChoreography,
               initialArtifact: ScholarArtifactType.brushMountain,
               onSelectTemplate: (template) {},
               onTypographyChanged: (typography) => updatedTypography = typography,
@@ -166,6 +151,7 @@ void main() {
               activeTemplateId: 'template_blank_white',
               typography: const TypographySettings(fontSize: 16.0),
               audioSanctumService: audioSanctumService,
+              inkChoreography: inkChoreography,
               initialArtifact: ScholarArtifactType.guqinZither,
               onSelectTemplate: (template) {},
               onTypographyChanged: (typography) {},
@@ -204,6 +190,7 @@ void main() {
               activeTemplateId: 'template_blank_white',
               typography: const TypographySettings(fontSize: 16.0),
               audioSanctumService: audioSanctumService,
+              inkChoreography: inkChoreography,
               initialArtifact: ScholarArtifactType.fishLock,
               onSelectTemplate: (template) {},
               onTypographyChanged: (typography) {},
@@ -256,6 +243,37 @@ void main() {
       expect(find.byKey(const Key('workstation_restore_pill')), findsOneWidget);
     });
 
+    testWidgets('Twin Bamboo Brushes carries the restored Ink Choreography mode and settings round-trip',
+        (tester) async {
+      final settings = await seededEditorSettings(inkDeliveryMode: InkDeliveryMode.inkOnly);
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: mediaService,
+        entryId: 'test_chest_entry',
+        audioSanctumService: audioSanctumService,
+        editorSettings: settings,
+        inkDeliveryMode: null,
+      );
+
+      await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('双管 · 纯墨'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('chest_artifact_twin_brushes')));
+      await tester.pump(const Duration(milliseconds: 400));
+      final wolf = find.byKey(const Key('chest_ink_stiffness_pill_wolf'));
+      await tester.ensureVisible(wolf);
+      await tester.pump();
+      await tester.tap(wolf);
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(tester.getSemantics(wolf), isSemantics(isSelected: true));
+
+      // Let the Trial Rice-Grid finish before the editor is torn down.
+      await tester.pump(const Duration(seconds: 5));
+      expect((await settings.getInkChoreographyConfig()).bristleStiffness, BristleStiffness.wolf);
+    });
+
     testWidgets('displays soundscape pill when music is playing and opens Guqin zither', (tester) async {
       await audioSanctumService.play(SoundscapePreset.bambooBreeze);
 
@@ -294,6 +312,7 @@ void main() {
               activeTemplateId: 'template_blank_white',
               typography: const TypographySettings(fontSize: 16.0),
               audioSanctumService: audioSanctumService,
+              inkChoreography: inkChoreography,
               initialArtifact: ScholarArtifactType.stationeryFan,
               onSelectTemplate: (template) => selectedTemplate = template,
               onTypographyChanged: (typography) {},

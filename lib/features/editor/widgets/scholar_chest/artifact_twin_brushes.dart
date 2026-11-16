@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
+import '../../ink_choreography/ink_choreography_config.dart';
+import 'ink_choreography_labels.dart';
 
 /// Top horizontal groove artifact representing the twin calligraphy brushes (双管毛笔).
-/// Animates a gentle brush lift on tap and displays a poetic placeholder in the drawer sub-panel.
+/// Animates a gentle brush lift on tap and badges the live Ink Choreography mode.
 class ArtifactTwinBrushes extends StatefulWidget {
+  final InkDeliveryMode activeMode;
   final bool isSelected;
   final VoidCallback? onTap;
 
   const ArtifactTwinBrushes({
     super.key,
+    required this.activeMode,
     this.isSelected = false,
     this.onTap,
   });
@@ -59,7 +63,8 @@ class _ArtifactTwinBrushesState extends State<ArtifactTwinBrushes>
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '双管毛笔: 笔锋运墨动效 (敬请期待)',
+      label: '双管毛笔: 挥毫落墨 · ${widget.activeMode.title}',
+      excludeSemantics: true,
       selected: widget.isSelected,
       child: GestureDetector(
         key: const Key('chest_artifact_twin_brushes'),
@@ -121,7 +126,7 @@ class _ArtifactTwinBrushesState extends State<ArtifactTwinBrushes>
                           ),
                         ),
                         child: Text(
-                          '双管笔槽',
+                          widget.activeMode.badge,
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontKaiti,
                             fontSize: 10.5,
@@ -360,69 +365,3 @@ class TwinBambooBrushesPainter extends CustomPainter {
   bool shouldRepaint(covariant TwinBambooBrushesPainter oldDelegate) =>
       oldDelegate.hoverProgress != hoverProgress;
 }
-
-/// In-chest contextual sub-panel for the Twin Bamboo Brushes artifact
-class TwinBrushesSubPanel extends StatelessWidget {
-  final VoidCallback? onClose;
-
-  const TwinBrushesSubPanel({
-    super.key,
-    this.onClose,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const Key('chest_subpanel_twin_brushes'),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const SizedBox(width: 24),
-              const Icon(Icons.brush_outlined, size: 24, color: Color(0xFFFFDF85)),
-              if (onClose != null)
-                GestureDetector(
-                  key: const Key('chest_subpanel_close_button'),
-                  onTap: onClose,
-                  child: Semantics(
-                    button: true,
-                    label: '收拢面板',
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      color: Colors.transparent,
-                      child: const Icon(Icons.close, size: 16, color: Color(0xFFD4C5B0)),
-                    ),
-                  ),
-                )
-              else
-                const SizedBox(width: 24),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            '笔锋运墨动效 · 敬请期待',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFF3D99B),
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            '双管并提，疾涩相参，运笔入微之境将随墨潮而至。',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11.5,
-              color: Color(0xFFD4C5B0),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-

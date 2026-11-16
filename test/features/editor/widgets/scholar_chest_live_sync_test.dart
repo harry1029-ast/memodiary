@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/features/editor/ink_choreography/ink_choreography_controller.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
 import 'package:memodiary/features/editor/services/audio_sanctum_service.dart';
 import 'package:memodiary/features/editor/widgets/scholar_chest/scholar_chest_drawer.dart';
@@ -11,12 +12,14 @@ import 'package:memodiary/features/editor/widgets/scholar_chest/scholar_chest_dr
 void main() {
   late AppDatabase db;
   late AudioSanctumService audioSanctumService;
+  late InkChoreographyController inkChoreography;
   late Directory tempDir;
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     tempDir = await Directory.systemTemp.createTemp('scholar_chest_live_test_');
     audioSanctumService = AudioSanctumService(enablePlatformAudio: false);
+    inkChoreography = InkChoreographyController();
 
     await db.entriesDao.createEntry(
           EntriesCompanion.insert(
@@ -32,6 +35,7 @@ void main() {
   });
 
   tearDown(() async {
+    inkChoreography.dispose();
     audioSanctumService.dispose();
     await db.close();
     if (await tempDir.exists()) {
@@ -55,6 +59,7 @@ void main() {
                     activeTemplateId: activeTemplateId,
                     typography: const TypographySettings(fontSize: 16.0),
                     audioSanctumService: audioSanctumService,
+                    inkChoreography: inkChoreography,
                     initialArtifact: ScholarArtifactType.stationeryFan,
                     onSelectTemplate: (template) {
                       activeTemplateId = template.id;
@@ -114,6 +119,7 @@ void main() {
                     activeTemplateId: 'template_minimalist_white',
                     typography: typography,
                     audioSanctumService: audioSanctumService,
+                    inkChoreography: inkChoreography,
                     initialArtifact: ScholarArtifactType.brushMountain,
                     onSelectTemplate: (template) {},
                     onTypographyChanged: (newTypography) {

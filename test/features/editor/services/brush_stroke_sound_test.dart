@@ -5,34 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/services/audio_sanctum_service.dart';
 
-/// Records what the service asks its dedicated brush-stroke player to do.
-class _RecordingAudioPlayer implements AudioPlayer {
-  final List<Source> played = [];
-  double? lastVolume;
-  bool isDisposed = false;
-
-  @override
-  Future<void> play(
-    Source source, {
-    double? volume,
-    double? balance,
-    AudioContext? ctx,
-    Duration? position,
-    PlayerMode? mode,
-  }) async {
-    played.add(source);
-    lastVolume = volume;
-  }
-
-  @override
-  Future<void> stop() async {}
-
-  @override
-  Future<void> dispose() async => isDisposed = true;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+import '../../../helpers/recording_audio_player.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -120,7 +93,7 @@ void main() {
   });
 
   group('AudioSanctumService.playBrushStroke', () {
-    late _RecordingAudioPlayer player;
+    late RecordingAudioPlayer player;
     late int playersCreated;
     late DateTime now;
 
@@ -140,7 +113,7 @@ void main() {
     void advance(int milliseconds) => now = now.add(Duration(milliseconds: milliseconds));
 
     setUp(() {
-      player = _RecordingAudioPlayer();
+      player = RecordingAudioPlayer();
       playersCreated = 0;
       now = DateTime(2026, 11, 16, 9);
     });
