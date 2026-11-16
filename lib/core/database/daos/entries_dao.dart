@@ -1,9 +1,12 @@
 import 'dart:math';
 import 'package:drift/drift.dart';
+import '../../../features/timeline/models/timeline_filter_state.dart';
 import '../../../features/weekly_review/services/calendar_week_utils.dart';
 import '../app_database.dart';
 import '../tables/entries.dart';
 import '../tables/media_attachments.dart';
+import 'entries_retrospection_utils.dart';
+import 'entries_timeline_query_utils.dart';
 import 'fts_query_utils.dart';
 import 'media_reference_utils.dart';
 
@@ -142,13 +145,46 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   }
 
   /// Retrieves paginated timeline entries ordered reverse-chronologically.
-  Future<List<Entry>> getTimelineEntries({int limit = 20, int offset = 0}) {
-    return (select(entries)
-          ..where((entry) => entry.isDeleted.equals(false))
-          ..orderBy([(entry) => OrderingTerm.desc(entry.entryDate)])
-          ..limit(limit, offset: offset))
-        .get();
-  }
+  Future<List<Entry>> getTimelineEntries({int limit = 20, int offset = 0}) =>
+      getFilteredTimelineEntries(limit: limit, offset: offset);
+
+  /// Retrieves paginated timeline entries filtered and sorted by [filters].
+  Future<List<Entry>> getFilteredTimelineEntries({
+    TimelineFilterState filters = const TimelineFilterState(),
+    int limit = 20,
+    int offset = 0,
+  }) =>
+      queryFilteredTimelineEntries(
+        this,
+        filters: filters,
+        limit: limit,
+        offset: offset,
+      );
+
+  /// Counts all active entries matching [filters].
+  Future<int> countFilteredTimelineEntries({
+    TimelineFilterState filters = const TimelineFilterState(),
+  }) =>
+      countMatchingTimelineEntries(this, filters: filters);
+
+  /// Summarizes active years, populated months (`1..12`), and total entry count.
+  Future<TimelineDateFacetSummary> getTimelineDateFacetSummary({
+    int? year,
+    int? mood,
+    String? weather,
+    bool hasMediaOnly = false,
+    bool weeklyReviewOnly = false,
+    int? currentYear,
+  }) =>
+      queryTimelineDateFacetSummary(
+        this,
+        year: year,
+        mood: mood,
+        weather: weather,
+        hasMediaOnly: hasMediaOnly,
+        weeklyReviewOnly: weeklyReviewOnly,
+        currentYear: currentYear,
+      );
 
   /// Retrieves all non-deleted entries without pagination.
   Future<List<Entry>> getAllActiveEntries() {
@@ -371,31 +407,8 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   /// Fetches all active entries written on the same month and day in previous
   /// calendar years (`entryDate.year < date.year`), including Feb 29 memories
   /// on Feb 28 of non-leap years.
-  Future<List<Entry>> getEntriesOnThisDay(DateTime date) async {
-    final priorYearCutoff = DateTime(date.year, 1, 1);
-    final priorCandidates = await (select(entries)
-          ..where((entry) =>
-              entry.isDeleted.equals(false) &
-              entry.entryDate.isSmallerThanValue(priorYearCutoff))
-          ..orderBy([(entry) => OrderingTerm.desc(entry.entryDate)]))
-        .get();
-
-    final includeLeapFeb29OnFeb28 =
-        date.month == 2 && date.day == 28 && !isLeapYear(date.year);
-
-    return priorCandidates.where((entry) {
-      final entryDate = entry.entryDate;
-      if (entryDate.month == date.month && entryDate.day == date.day) {
-        return true;
-      }
-      if (includeLeapFeb29OnFeb28 &&
-          entryDate.month == 2 &&
-          entryDate.day == 29) {
-        return true;
-      }
-      return false;
-    }).toList();
-  }
+  Future<List<Entry>> getEntriesOnThisDay(DateTime date) =>
+      queryEntriesOnThisDay(this, date);
 
   /// Randomly draws a past active entry written at least [minDaysAgo] days prior
   /// to [referenceDate], excluding sealed time capsules.
@@ -403,21 +416,11 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
     int minDaysAgo = 90,
     DateTime? referenceDate,
     Random? random,
-  }) async {
-    final now = referenceDate ?? DateTime.now();
-    final cutoff = now.subtract(Duration(days: minDaysAgo));
-
-    final candidates = await (select(entries)
-          ..where((entry) =>
-              entry.isDeleted.equals(false) &
-              entry.entryDate.isSmallerOrEqualValue(cutoff) &
-              (entry.unlockAt.isNull() |
-                  entry.unlockAt.isSmallerOrEqualValue(now))))
-        .get();
-
-    if (candidates.isEmpty) return null;
-
-    final rng = random ?? Random();
-    return candidates[rng.nextInt(candidates.length)];
-  }
+  }) =>
+      queryRandomOldEntry(
+        this,
+        minDaysAgo: minDaysAgo,
+        referenceDate: referenceDate,
+        random: random,
+      );
 }

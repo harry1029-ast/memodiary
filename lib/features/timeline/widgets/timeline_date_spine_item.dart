@@ -41,6 +41,7 @@ class TimelineDateSpineItem extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
   final bool isHighlighted;
+  final bool connectFromTop;
   final VoidCallback? onTapBadge;
 
   const TimelineDateSpineItem({
@@ -50,6 +51,7 @@ class TimelineDateSpineItem extends StatelessWidget {
     this.isFirst = false,
     this.isLast = false,
     this.isHighlighted = false,
+    this.connectFromTop = false,
     this.onTapBadge,
   });
 
@@ -63,7 +65,7 @@ class TimelineDateSpineItem extends StatelessWidget {
         // 1. Continuous Vertical Axis Spine Line
         Positioned(
           left: 36,
-          top: isFirst ? 20 : 0,
+          top: (isFirst && !connectFromTop) ? 20 : 0,
           bottom: isLast ? 36 : 0,
           child: Container(
             width: 2.0,

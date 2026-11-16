@@ -93,11 +93,6 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Normal entry is rendered with snippet and badges
-      expect(find.text('Sunshine Walk'), findsOneWidget);
-      expect(find.text('Walking in the park with friends.'), findsOneWidget);
-      expect(find.text('😄'), findsOneWidget); // Mood 5 emoji
-
       // Sealed Time Capsule is rendered with capsule banner and countdown
       expect(find.textContaining('TIME CAPSULE'), findsOneWidget);
       expect(find.text('Letter to my 2030 Self'), findsOneWidget);
@@ -107,7 +102,18 @@ void main() {
       // Privacy invariant check: The sealed plain text snippet must NOT appear anywhere
       expect(find.text('Deep secret confidential thoughts.'), findsNothing);
 
-      // Tap on sealed Time Capsule opens explanation dialog
+      // Scroll down slightly so the second entry ("Sunshine Walk") enters the sliver viewport
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
+      await tester.pumpAndSettle();
+
+      // Normal entry is rendered with snippet and badges
+      expect(find.text('Sunshine Walk'), findsOneWidget);
+      expect(find.text('Walking in the park with friends.'), findsOneWidget);
+      expect(find.text('😄'), findsOneWidget); // Mood 5 emoji
+
+      // Scroll back up to tap sealed Time Capsule
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 180));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Letter to my 2030 Self'));
       await tester.pumpAndSettle();
 
@@ -305,13 +311,15 @@ void main() {
       expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
 
       // Scroll down past header
-      await tester.drag(find.byType(ListView), const Offset(0, -450));
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
       await tester.pumpAndSettle();
 
       expect(find.byType(ShanshuiSceneryCard), findsNothing);
+      // Pinned Chronicle Desk header & Date Index Tray remain visible
+      expect(find.byKey(const Key('timeline_date_index_tray')), findsOneWidget);
 
       // Scroll back up to the top
-      await tester.drag(find.byType(ListView), const Offset(0, 450));
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 600));
       await tester.pumpAndSettle();
 
       expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
@@ -327,6 +335,120 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(NotebookSelectorSheet), findsOneWidget);
+    });
+
+    testWidgets('removes OnThisDayBanner and poetic header while rendering WindowSillLedge and candlestick glow toggle', (tester) async {
+      final lastYearToday = DateTime.now().subtract(const Duration(days: 365));
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'past_year_entry',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('Last Year Memory'),
+          contentDelta: jsonEncode([{'insert': 'A year ago today.\n'}]),
+          plainText: 'A year ago today.',
+          entryDate: lastYearToday,
+        ),
+      );
+
+      await pumpTimelineScreen(tester);
+
+      // Legacy retrospection & poetic header are gone
+      expect(find.textContaining('岁时忆昔'), findsNothing);
+      expect(find.text('忆昔'), findsNothing);
+      expect(find.text('岁月微澜'), findsNothing);
+      expect(find.text('研墨静思'), findsNothing);
+
+      // Window Sill Ledge is present below scenery
+      expect(find.byKey(const Key('timeline_window_sill_ledge')), findsOneWidget);
+      expect(find.byKey(const Key('timeline_candlestick_button')), findsOneWidget);
+
+      // Candlelight glow starts lit and toggles off/on
+      expect(find.byKey(const Key('timeline_candle_glow_overlay')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('timeline_candlestick_button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('timeline_candle_glow_overlay')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('timeline_candlestick_button')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('timeline_candle_glow_overlay')), findsOneWidget);
+    });
+
+    testWidgets('DateIndexTray filters by year, auto-promotes year on month tap, expands 三旬, toggles sort, and recovers from filtered empty state', (tester) async {
+      final seeded = [
+        (id: 'e_2026_11_05', title: 'Early Nov Entry', date: DateTime(2026, 11, 5, 9, 0)),
+        (id: 'e_2026_11_15', title: 'Mid Nov Entry', date: DateTime(2026, 11, 15, 14, 0)),
+        (id: 'e_2026_11_25', title: 'Late Nov Entry', date: DateTime(2026, 11, 25, 20, 0)),
+        (id: 'e_2025_09_09', title: 'Autumn 2025 Entry', date: DateTime(2025, 9, 9, 18, 0)),
+      ];
+      for (final item in seeded) {
+        await db.entriesDao.createEntry(
+          EntriesCompanion.insert(
+            id: item.id,
+            notebookId: 'notebook_default',
+            templateId: 'template_minimalist_white',
+            title: Value(item.title),
+            contentDelta: jsonEncode([{'insert': 'Body for ${item.title}\n'}]),
+            plainText: 'Body for ${item.title}',
+            entryDate: item.date,
+          ),
+        );
+      }
+
+      await pumpTimelineScreen(tester);
+
+      // Default state: 全部, 最新 ↓, 三旬 collapsed, all 4 entries shown
+      expect(find.text('共 4 卷'), findsOneWidget);
+      expect(find.text('上旬'), findsNothing);
+      expect(find.text('Late Nov Entry'), findsOneWidget);
+
+      // Tap 11月 while year is 全部 -> auto-promotes year to 2026 and expands 三旬
+      await tester.ensureVisible(find.byKey(const Key('timeline_month_chip_11')));
+      await tester.tap(find.byKey(const Key('timeline_month_chip_11')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('共 3 卷'), findsOneWidget);
+      expect(find.text('上旬'), findsOneWidget);
+      expect(find.text('中旬'), findsOneWidget);
+      expect(find.text('下旬'), findsOneWidget);
+      expect(find.text('Autumn 2025 Entry'), findsNothing);
+
+      // Tap 上旬 -> only Early Nov Entry remains
+      await tester.tap(find.byKey(const Key('timeline_xun_chip_shang')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('共 1 卷'), findsOneWidget);
+      expect(find.text('Early Nov Entry'), findsOneWidget);
+      expect(find.text('Mid Nov Entry'), findsNothing);
+
+      // Tap an empty month (3月) -> shows filtered empty card (not 素宣待书)
+      await tester.ensureVisible(find.byKey(const Key('timeline_month_chip_3')));
+      await tester.tap(find.byKey(const Key('timeline_month_chip_3')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('共 0 卷'), findsOneWidget);
+      expect(find.text('此岁时检目下暂无案头卷宗'), findsOneWidget);
+      expect(find.text('素宣待书'), findsNothing);
+
+      // Scroll slightly so 清除筛选 sits clear of the bottom ScrollRollerFab, then tap
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('timeline_clear_filters_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('共 4 卷'), findsOneWidget);
+      expect(find.text('上旬'), findsNothing);
+      expect(find.text('Autumn 2025 Entry'), findsOneWidget);
+
+      // Toggle sort order -> oldestFirst puts Autumn 2025 Entry at the top
+      await tester.tap(find.byKey(const Key('timeline_sort_toggle_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('最早'), findsOneWidget);
+      final oldestTop = tester.getTopLeft(find.text('Autumn 2025 Entry')).dy;
+      final newestTop = tester.getTopLeft(find.text('Late Nov Entry')).dy;
+      expect(oldestTop, lessThan(newestTop));
     });
   });
 }
