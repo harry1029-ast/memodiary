@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/core/theme/widgets/min_tap_target.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead_models.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'chronicle_desk_palette.dart';
@@ -286,35 +287,22 @@ class _CharmSheetHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 6),
-        Semantics(
-          button: true,
+        MinTapTarget(
+          inkWellKey: const Key('charm_filter_reset_button'),
           enabled: hasActiveCharms,
-          label: '重置笺签筛选',
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              key: const Key('charm_filter_reset_button'),
-              onTap: onReset,
-              borderRadius: BorderRadius.circular(8),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Center(
-                    widthFactor: 1.0,
-                    child: Text(
-                      '重置笺签',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: hasActiveCharms
-                            ? palette.cinnabar
-                            : palette.textFaint,
-                      ),
-                    ),
-                  ),
-                ),
+          semanticLabel: '重置笺签筛选',
+          onTap: onReset,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              '重置笺签',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: hasActiveCharms
+                    ? palette.cinnabar
+                    : palette.textFaint,
               ),
             ),
           ),
@@ -374,34 +362,28 @@ class _CharmOptionChip extends StatelessWidget {
     final borderColor = isSelected ? palette.cinnabar : palette.deckleBorder;
     final textColor = isSelected ? palette.cinnabar : palette.textPrimary;
 
-    return Semantics(
-      button: true,
+    return MinTapTarget(
       selected: isSelected,
-      label: semanticLabel,
-      child: ExcludeSemantics(
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(10),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: borderColor,
-                    width: isSelected ? 1.5 : 1.0,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+      semanticLabel: semanticLabel,
+      excludeChildSemantics: true,
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: borderColor,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
                     if (leadingEmoji != null)
                       Text(leadingEmoji!, style: const TextStyle(fontSize: 15))
                     else if (leadingIcon != null)
@@ -431,11 +413,7 @@ class _CharmOptionChip extends StatelessWidget {
                         color: palette.cinnabar,
                       ),
                     ],
-                  ],
-                ),
-              ),
-            ),
-          ),
+          ],
         ),
       ),
     );

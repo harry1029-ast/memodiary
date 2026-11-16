@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../ink_diary_theme.dart';
 import '../shapes/classical_chinese_borders.dart';
+import 'min_tap_target.dart';
 
 /// Imperial Begonia Cut-Corner Plaque Button (海棠切角题签钮)
 ///
@@ -133,29 +134,15 @@ class BegoniaPlaqueButton extends StatelessWidget {
     );
 
     if (ensureMinTapTarget) {
-      return Semantics(
-        button: true,
-        label: semanticLabel ?? label,
-        child: ExcludeSemantics(
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: onTap,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                child: Center(
-                  widthFactor: 1.0,
-                  heightFactor: 1.0,
-                  child: Container(
-                    decoration: decoration,
-                    padding: padding,
-                    child: content,
-                  ),
-                ),
-              ),
-            ),
-          ),
+      return MinTapTarget(
+        semanticLabel: semanticLabel ?? label,
+        excludeChildSemantics: true,
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          decoration: decoration,
+          padding: padding,
+          child: content,
         ),
       );
     }

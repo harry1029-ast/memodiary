@@ -428,5 +428,47 @@ void main() {
             '${violations.join('\n')}',
       );
     });
+
+    test('lib/ routes FLUTTER_TEST animation checks through ambient_animation_utils.dart', () {
+      const grandfathered = {
+        'lib/core/utils/ambient_animation_utils.dart',
+        'lib/features/timeline/widgets/folio/folio_3d_stage.dart',
+        'lib/features/timeline/widgets/folio/folio_substrate_painter.dart',
+        'lib/features/import_export/services/date_parser_engine.dart',
+        'lib/features/search/widgets/ocr_highlight_overlay.dart',
+        'lib/features/search/screens/ocr_photo_viewer_screen.dart',
+      };
+      final dartFiles = libDir
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart') && !file.path.endsWith('.g.dart'));
+
+      final violations = <String>[];
+      for (final file in dartFiles) {
+        final relPath = file.path.replaceFirst('${rootDir.path}/', '');
+        if (grandfathered.contains(relPath)) {
+          continue;
+        }
+        final lines = file.readAsLinesSync();
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+          final line = lines[lineIndex];
+          final trimmed = line.trim();
+          if (trimmed.startsWith('//') || trimmed.startsWith('*')) {
+            continue;
+          }
+          if (line.contains('FLUTTER_TEST')) {
+            violations.add('$relPath:${lineIndex + 1}: $trimmed');
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason: 'Use shouldRunAmbientAnimation() from lib/core/utils/ambient_animation_utils.dart '
+            'instead of direct Platform.environment[\'FLUTTER_TEST\'] checks:\n'
+            '${violations.join('\n')}',
+      );
+    });
   });
 }

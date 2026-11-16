@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/core/theme/widgets/min_tap_target.dart';
 import 'chronicle_desk_palette.dart';
 
 ({Color bgColor, Color borderColor, Color textColor}) _resolveTrayChipColors({
@@ -15,49 +16,6 @@ import 'chronicle_desk_palette.dart';
         : Colors.transparent,
     textColor: isActive ? palette.cinnabar : palette.textMuted,
   );
-}
-
-class _TrayChipTapTarget extends StatelessWidget {
-  final Key? materialKey;
-  final String semanticLabel;
-  final bool? selected;
-  final VoidCallback onTap;
-  final bool stretchWidth;
-  final Widget child;
-
-  const _TrayChipTapTarget({
-    this.materialKey,
-    required this.semanticLabel,
-    this.selected,
-    required this.onTap,
-    this.stretchWidth = false,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: semanticLabel,
-      child: Material(
-        key: materialKey,
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-            child: Center(
-              widthFactor: stretchWidth ? null : 1.0,
-              heightFactor: 1.0,
-              child: child,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Year filter chip (`纪年`) used in Row 1 of [DateIndexTray].
@@ -81,7 +39,7 @@ class TrayFilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _resolveTrayChipColors(palette: palette, isActive: isActive);
 
-    return _TrayChipTapTarget(
+    return MinTapTarget(
       semanticLabel: semanticLabel,
       selected: isActive,
       onTap: onTap,
@@ -133,7 +91,7 @@ class TraySortToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TrayChipTapTarget(
+    return MinTapTarget(
       semanticLabel: isNewestFirst ? '切换排序，当前最新优先' : '切换排序，当前最早优先',
       onTap: onTap,
       child: Container(
@@ -195,7 +153,7 @@ class MonthIndexChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _resolveTrayChipColors(palette: palette, isActive: isActive);
 
-    return _TrayChipTapTarget(
+    return MinTapTarget(
       materialKey: containerKey,
       semanticLabel: '$month月${hasEntries ? '，有卷宗' : ''}',
       selected: isActive,
@@ -262,7 +220,7 @@ class XunSegmentChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = _resolveTrayChipColors(palette: palette, isActive: isActive);
 
-    return _TrayChipTapTarget(
+    return MinTapTarget(
       semanticLabel: '$label $rangeLabel',
       selected: isActive,
       onTap: onTap,
