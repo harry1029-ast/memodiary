@@ -69,7 +69,7 @@ The bottom modal drawer (`ScholarChestDrawer`) modeled after an antique Chinese 
 _Avoid_: Tools drawer, utility tray, stationery menu, bottom sheet modal
 
 **Stationery Artifact**:
-An interactive skeuomorphic vector control inside the Scholar's Stationery Chest representing a functional subsystem (Fanned Stationery, Porcelain Brush Mountain, Guqin Zither, Brass Fish Lock, and Twin Brushes placeholder).
+An interactive skeuomorphic control inside the Scholar's Stationery Chest representing a functional subsystem (Fanned Stationery, Porcelain Brush Mountain, Guqin Zither, Brass Fish Lock, and Twin Bamboo Brushes).
 _Avoid_: Drawer button, tool icon, chest item
 
 **Integer-Row Height Snapper**:
@@ -191,3 +191,19 @@ _Avoid_: Date navbar, calendar filter bar, date chips
 **Wet-Mounted Thumbnail**:
 The silk-brocade bordered media preview (册页平裱) with mitered corner seams displayed inside a timeline entry card.
 _Avoid_: Photo thumbnail, Polaroid preview, image box
+
+**Twin Bamboo Brushes**:
+The pair of spotted-bamboo calligraphy brushes (双管毛笔) resting in the top groove of the Scholar's Stationery Chest, governing the diarist's live writing choreography, bristle elasticity, and writing cadence.
+_Avoid_: Twin brushes placeholder, brush toggle, animation menu
+
+**Ink Choreography**:
+The live stroke-by-stroke wet-ink and brush writing animation (挥毫落墨) that draws newly written characters onto a Stationery Sheet before settling into dry printed ink. Distinct from Brush Reveal, which unveils collected photos and videos in the Staging Handscroll.
+_Avoid_: Brush Reveal, typing effect, text animation, stroke effect
+
+**Airborne Silk Trace**:
+The faint dashed ink filament and lifted brush arc (提笔游丝) connecting the final stroke of one character to the opening stroke of the next during continuous single-brush writing.
+_Avoid_: Transit line, cursor trail, jump path
+
+**Trial Rice-Grid**:
+The miniature rice-paper practice square (米字格试笔窗) inside the Twin Bamboo Brushes compartment of the Scholar's Stationery Chest for testing stroke choreography and bristle feel on sample characters.
+_Avoid_: Focus stage, magnifier box, preview widget
