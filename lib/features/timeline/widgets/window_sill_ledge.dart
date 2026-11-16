@@ -171,7 +171,7 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
             ),
           ),
 
-          // Left study ornaments: Pine Bonsai + Brush Stand
+          // Left study ornaments: Pine Bonsai + Brush Stand (enlarged ~1.45x, extending slightly onto sill frame)
           Positioned(
             left: 14,
             bottom: 9,
@@ -180,14 +180,14 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: const [
                   SizedBox(
-                    width: 34,
-                    height: 32,
+                    width: 50,
+                    height: 46,
                     child: CustomPaint(painter: PineBonsaiPainter()),
                   ),
                   SizedBox(width: 6),
                   SizedBox(
-                    width: 28,
-                    height: 30,
+                    width: 41,
+                    height: 44,
                     child: CustomPaint(painter: BrushStandPainter()),
                   ),
                 ],
@@ -195,7 +195,7 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
             ),
           ),
 
-          // Right study ornaments: Interactive Brass Candlestick (44x44) + Celadon Incense Burner
+          // Right study ornaments: Interactive Brass Candlestick (>=44x44) + Celadon Incense Burner
           Positioned(
             right: 12,
             bottom: 0,
@@ -213,25 +213,28 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
                       onTap: widget.onToggleCandle,
                       borderRadius: BorderRadius.circular(12),
                       child: SizedBox(
-                        width: 44,
+                        width: 48,
                         height: 44,
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 1),
-                            child: AnimatedBuilder(
-                              animation: _candleController,
-                              builder: (context, _) {
-                                return CustomPaint(
-                                  size: const Size(22, 34),
-                                  painter: BrassCandlestickPainter(
-                                    isLit: widget.isCandleLit,
-                                    flickerPhase: _candleController.value,
-                                  ),
-                                );
-                              },
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.bottomCenter,
+                          children: [
+                            Positioned(
+                              bottom: 9,
+                              child: AnimatedBuilder(
+                                animation: _candleController,
+                                builder: (context, _) {
+                                  return CustomPaint(
+                                    size: const Size(32, 50),
+                                    painter: BrassCandlestickPainter(
+                                      isLit: widget.isCandleLit,
+                                      flickerPhase: _candleController.value,
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     ),
@@ -245,7 +248,7 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
                       animation: _incenseController,
                       builder: (context, _) {
                         return CustomPaint(
-                          size: const Size(28, 28),
+                          size: const Size(40, 40),
                           painter: CeladonIncensePainter(
                             smokePhase: _incenseController.value,
                           ),

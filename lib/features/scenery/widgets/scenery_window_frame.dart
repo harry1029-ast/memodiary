@@ -1,6 +1,59 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../models/shanshui_atmosphere.dart';
+import 'scenery_hud_controller.dart';
+import 'shanshui_scenery_painting.dart';
+
+/// Base landscape layer + semantic tap target inside the expanded
+/// `Shanshui Scenery Card` window.
+class SceneryWindowCanvasLayer extends StatelessWidget {
+  final ShanshuiAtmosphereState atmosphere;
+  final double aspectRatio;
+  final bool? enableAmbientAnimation;
+  final bool isVisible;
+  final String semanticLabel;
+  final VoidCallback onTap;
+
+  const SceneryWindowCanvasLayer({
+    super.key,
+    required this.atmosphere,
+    required this.aspectRatio,
+    this.enableAmbientAnimation,
+    this.isVisible = true,
+    required this.semanticLabel,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ShanshuiSceneryPainting(
+          atmosphere: atmosphere,
+          aspectRatio: aspectRatio,
+          fullPoem: false,
+          showCalligraphy: false,
+          enableAmbientAnimation: enableAmbientAnimation,
+          isVisible: isVisible,
+        ),
+        Positioned.fill(
+          child: Semantics(
+            button: true,
+            label: semanticLabel,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const Key('scenery_canvas_tap_target'),
+                onTap: onTap,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 /// Top overlay strip inside the `Shanshui Scenery Card` window, offset clear of
 /// the left-hanging `Bamboo Blind Pull-Cord` and displaying Time/Weather,
@@ -10,6 +63,7 @@ class SceneryWindowOverlayStrip extends StatelessWidget {
   final InkDiaryTokens tokens;
   final double maxWidth;
   final Widget realmBadge;
+  final bool isVisible;
 
   const SceneryWindowOverlayStrip({
     super.key,
@@ -17,6 +71,7 @@ class SceneryWindowOverlayStrip extends StatelessWidget {
     required this.tokens,
     required this.maxWidth,
     required this.realmBadge,
+    this.isVisible = true,
   });
 
   @override
@@ -26,7 +81,16 @@ class SceneryWindowOverlayStrip extends StatelessWidget {
       top: 14,
       left: 72,
       right: 8,
-      child: Row(
+      child: ExcludeSemantics(
+        excluding: !isVisible,
+        child: IgnorePointer(
+          ignoring: !isVisible,
+          child: AnimatedOpacity(
+            key: const Key('scenery_overlay_strip_opacity'),
+            opacity: isVisible ? 1.0 : 0.0,
+            duration: SceneryHudController.fadeDuration,
+            curve: SceneryHudController.fadeCurve,
+            child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
@@ -121,6 +185,9 @@ class SceneryWindowOverlayStrip extends StatelessWidget {
             ],
           ),
         ],
+            ),
+          ),
+        ),
       ),
     );
   }

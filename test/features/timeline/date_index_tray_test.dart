@@ -140,5 +140,47 @@ void main() {
       await tester.tap(find.byKey(const Key('timeline_xun_chip_xia')));
       expect(tappedXun, equals(TimelineXun.xia));
     });
+
+    testWidgets('active year chip uses wash fill without opaque boxShadow obscuring text', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.dark,
+          home: Scaffold(
+            body: DateIndexTray(
+              filters: const TimelineFilterState(),
+              facetSummary: const TimelineDateFacetSummary(
+                years: [2026],
+                activeMonths: {},
+                totalActiveEntries: 1,
+              ),
+              xunExpandFactor: 0.0,
+              onSelectYear: (_) {},
+              onSelectMonth: (_) {},
+              onSelectXun: (_) {},
+              onToggleSort: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final activeContainer = tester.widget<Container>(
+        find.descendant(
+          of: find.byKey(const Key('timeline_year_chip_all')),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Container &&
+                widget.decoration is BoxDecoration &&
+                (widget.decoration! as BoxDecoration).border != null,
+          ),
+        ),
+      );
+      final decoration = activeContainer.decoration! as BoxDecoration;
+      expect(
+        decoration.color,
+        ChronicleDeskPalette.dark.cinnabar.withValues(alpha: 0.20),
+      );
+      expect(decoration.boxShadow ?? const [], isEmpty);
+    });
   });
 }

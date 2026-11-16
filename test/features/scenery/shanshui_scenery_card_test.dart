@@ -557,5 +557,162 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+
+    testWidgets(
+      'auto-hides overlay strip and pull-cord tag after 3s, ignores hidden badge taps, and requires tap-to-reveal before contemplation',
+      (tester) async {
+        var contemplationOpened = false;
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.winter,
+          timeOfDay: ShanshuiTimeOfDay.night,
+          weather: ShanshuiWeather.sunny,
+          isJournalInferred: true,
+        );
+
+        await tester.pumpWidget(
+          buildTestHarness(
+            atmosphere: atmosphere,
+            onOpenContemplation: () => contemplationOpened = true,
+          ),
+        );
+        await tester.pump();
+        await tester.pumpAndSettle();
+
+        // Initially visible at opacity 1.0
+        AnimatedOpacity stripOpacity = tester.widget<AnimatedOpacity>(
+          find.byKey(const Key('scenery_overlay_strip_opacity')),
+        );
+        AnimatedOpacity tagOpacity = tester.widget<AnimatedOpacity>(
+          find.byKey(const Key('scenery_pull_cord_tag_opacity')),
+        );
+        expect(stripOpacity.opacity, 1.0);
+        expect(tagOpacity.opacity, 1.0);
+
+        // Advance past the 3s auto-hide timer + fade duration
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pump(const Duration(milliseconds: 450));
+
+        stripOpacity = tester.widget<AnimatedOpacity>(
+          find.byKey(const Key('scenery_overlay_strip_opacity')),
+        );
+        tagOpacity = tester.widget<AnimatedOpacity>(
+          find.byKey(const Key('scenery_pull_cord_tag_opacity')),
+        );
+        expect(stripOpacity.opacity, 0.0);
+        expect(tagOpacity.opacity, 0.0);
+        expect(find.byKey(const Key('scenery_pull_cord_handle')), findsOneWidget);
+
+        // Hidden realm badge should ignore taps (falling through to reveal HUD)
+        await tester.tap(find.byKey(const Key('scenery_realm_badge')), warnIfMissed: false);
+        await tester.pump();
+        expect(find.byKey(const Key('scenery_realm_option_nature')), findsNothing);
+        expect(contemplationOpened, isFalse);
+
+        // Wait 3s again to verify canvas tap reveals HUD without entering contemplation
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pump(const Duration(milliseconds: 450));
+        expect(
+          tester.widget<AnimatedOpacity>(find.byKey(const Key('scenery_overlay_strip_opacity'))).opacity,
+          0.0,
+        );
+
+        // First tap on canvas reveals overlays without entering contemplation
+        await tester.tap(find.byKey(const Key('scenery_canvas_tap_target')));
+        await tester.pump();
+        expect(contemplationOpened, isFalse);
+
+        stripOpacity = tester.widget<AnimatedOpacity>(
+          find.byKey(const Key('scenery_overlay_strip_opacity')),
+        );
+        tagOpacity = tester.widget<AnimatedOpacity>(
+          find.byKey(const Key('scenery_pull_cord_tag_opacity')),
+        );
+        expect(stripOpacity.opacity, 1.0);
+        expect(tagOpacity.opacity, 1.0);
+
+        // Second tap while overlays are visible opens contemplation
+        await tester.tap(find.byKey(const Key('scenery_canvas_tap_target')));
+        await tester.pump();
+        expect(contemplationOpened, isTrue);
+      },
+    );
+
+    testWidgets(
+      'keeps overlays visible under accessibleNavigation and shows drag feedback during pull after auto-hide',
+      (tester) async {
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+        );
+
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(accessibleNavigation: true),
+            child: buildTestHarness(atmosphere: atmosphere),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 4));
+
+        final stripOpacity = tester.widget<AnimatedOpacity>(
+          find.byKey(const Key('scenery_overlay_strip_opacity')),
+        );
+        expect(stripOpacity.opacity, 1.0);
+
+        // Unmount accessible wrapper cleanly, then verify drag feedback after normal auto-hide
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(buildTestHarness(atmosphere: atmosphere));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pump(const Duration(milliseconds: 450));
+
+        expect(
+          tester.widget<AnimatedOpacity>(find.byKey(const Key('scenery_pull_cord_tag_opacity'))).opacity,
+          0.0,
+        );
+
+        final cordCenter = tester.getCenter(find.byKey(const Key('scenery_pull_cord_handle')));
+        final gesture = await tester.startGesture(cordCenter);
+        await gesture.moveBy(const Offset(0, 22));
+        await tester.pump();
+
+        expect(find.text('继续下拉 ↓'), findsOneWidget);
+        expect(
+          tester.widget<AnimatedOpacity>(find.byKey(const Key('scenery_pull_cord_tag_opacity'))).opacity,
+          1.0,
+        );
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        // Reduced-motion expand from collapsed reveals HUD and restarts 3s auto-hide timer
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(disableAnimations: true),
+            child: buildTestHarness(atmosphere: atmosphere),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('scenery_pull_cord_handle')));
+        await tester.pump();
+        expect(find.byKey(const Key('scenery_collapsed_blind_bar')), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('scenery_collapsed_blind_bar')));
+        await tester.pump();
+        expect(
+          tester.widget<AnimatedOpacity>(find.byKey(const Key('scenery_overlay_strip_opacity'))).opacity,
+          1.0,
+        );
+        await tester.pump(const Duration(seconds: 3));
+        await tester.pump();
+        expect(
+          tester.widget<AnimatedOpacity>(find.byKey(const Key('scenery_overlay_strip_opacity'))).opacity,
+          0.0,
+        );
+      },
+    );
   });
 }

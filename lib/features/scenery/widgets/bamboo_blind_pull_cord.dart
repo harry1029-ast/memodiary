@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../../../core/utils/ambient_animation_utils.dart';
+import 'scenery_hud_controller.dart';
 
 /// Interactive hanging braided-silk **Bamboo Blind Pull-Cord** (`竹帘流苏拉绳`)
 /// anchored at the top-left of the `Shanshui Scenery Card` window.
@@ -25,6 +26,7 @@ class BambooBlindPullCord extends StatefulWidget {
   final bool isDragging;
   final bool isTransitioning;
   final bool isVisible;
+  final bool showRestingTag;
   final bool? enableAmbientAnimation;
   final VoidCallback onTap;
   final ValueChanged<double> onDragStart;
@@ -38,6 +40,7 @@ class BambooBlindPullCord extends StatefulWidget {
     required this.isDragging,
     required this.isTransitioning,
     this.isVisible = true,
+    this.showRestingTag = true,
     this.enableAmbientAnimation,
     required this.onTap,
     required this.onDragStart,
@@ -96,12 +99,13 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
   Widget build(BuildContext context) {
     final passedThreshold =
         widget.dragDelta >= BambooBlindPullCord.triggerDragDelta;
+    final isActivelyPulling =
+        widget.isDragging && widget.dragDelta >= BambooBlindPullCord.tapJitterDelta;
+    final isTagVisible =
+        widget.showRestingTag || isActivelyPulling || passedThreshold;
     final tagLabel = passedThreshold
         ? '松手收窗 ✓'
-        : (widget.isDragging &&
-                widget.dragDelta >= BambooBlindPullCord.tapJitterDelta
-            ? '继续下拉 ↓'
-            : '下拉垂帘 ↓');
+        : (isActivelyPulling ? '继续下拉 ↓' : '下拉垂帘 ↓');
 
     return Semantics(
       button: true,
@@ -234,31 +238,37 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
 
                   // Pull-down micro-tag
                   const SizedBox(height: 2),
-                  Container(
-                    key: const Key('scenery_pull_cord_tag'),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 1.5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xBF000000),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: const Color(0x8CC8A96E),
-                        width: 0.8,
+                  AnimatedOpacity(
+                    key: const Key('scenery_pull_cord_tag_opacity'),
+                    opacity: isTagVisible ? 1.0 : 0.0,
+                    duration: SceneryHudController.fadeDuration,
+                    curve: SceneryHudController.fadeCurve,
+                    child: Container(
+                      key: const Key('scenery_pull_cord_tag'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1.5,
                       ),
-                    ),
-                    child: Text(
-                      tagLabel,
-                      style: TextStyle(
-                        fontSize: 9,
-                        height: 1.15,
-                        color: passedThreshold
-                            ? const Color(0xFFE6C786)
-                            : const Color(0xFFF0E4CC),
-                        fontWeight: passedThreshold
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                      decoration: BoxDecoration(
+                        color: const Color(0xBF000000),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: const Color(0x8CC8A96E),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Text(
+                        tagLabel,
+                        style: TextStyle(
+                          fontSize: 9,
+                          height: 1.15,
+                          color: passedThreshold
+                              ? const Color(0xFFE6C786)
+                              : const Color(0xFFF0E4CC),
+                          fontWeight: passedThreshold
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
                       ),
                     ),
                   ),

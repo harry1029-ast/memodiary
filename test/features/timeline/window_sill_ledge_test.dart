@@ -100,5 +100,54 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       expect(find.byType(WindowSillLedge), findsOneWidget);
     });
+
+    testWidgets('renders enlarged (~1.45x) study ornaments on slim 44dp shelf without overflow at 320px', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.dark,
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: WindowSillLedge(
+                  isCandleLit: true,
+                  onToggleCandle: () {},
+                  enableAmbientAnimation: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getSize(find.byKey(const Key('timeline_window_sill_ledge'))).height,
+        44.0,
+      );
+
+      final customPaints = tester.widgetList<CustomPaint>(
+        find.descendant(
+          of: find.byKey(const Key('timeline_window_sill_ledge')),
+          matching: find.byType(CustomPaint),
+        ),
+      );
+
+      final bonsai = customPaints.firstWhere((paint) => paint.painter.runtimeType.toString() == 'PineBonsaiPainter');
+      final brush = customPaints.firstWhere((paint) => paint.painter.runtimeType.toString() == 'BrushStandPainter');
+      final candle = customPaints.firstWhere((paint) => paint.painter.runtimeType.toString() == 'BrassCandlestickPainter');
+      final incense = customPaints.firstWhere((paint) => paint.painter.runtimeType.toString() == 'CeladonIncensePainter');
+
+      final bonsaiSize = tester.getSize(find.byWidget(bonsai));
+      final brushSize = tester.getSize(find.byWidget(brush));
+      final candleSize = candle.size;
+      final incenseSize = incense.size;
+
+      expect(bonsaiSize.height, greaterThanOrEqualTo(44.0));
+      expect(brushSize.height, greaterThanOrEqualTo(42.0));
+      expect(candleSize.height, greaterThanOrEqualTo(48.0));
+      expect(incenseSize.height, greaterThanOrEqualTo(38.0));
+    });
   });
 }

@@ -251,3 +251,29 @@ class _RealmOptionTile extends StatelessWidget {
     );
   }
 }
+
+/// Resolves the optimistic [ShanshuiAtmosphereState] immediately after the
+/// diarist chooses a [SceneryRealmPreference].
+ShanshuiAtmosphereState resolveAtmosphereForRealmPreference({
+  required SceneryRealmPreference preference,
+  required ShanshuiAtmosphereState currentAtmosphere,
+  ShanshuiAtmosphereState? realTimeAtmosphere,
+}) {
+  if (preference == SceneryRealmPreference.auto) {
+    final target = realTimeAtmosphere ?? currentAtmosphere;
+    return currentAtmosphere.copyWith(
+      realm: target.realm,
+      isJournalInferred: target.isJournalInferred,
+    );
+  }
+  final realm = switch (preference) {
+    SceneryRealmPreference.nature => ShanshuiRealm.nature,
+    SceneryRealmPreference.indoor => ShanshuiRealm.indoor,
+    SceneryRealmPreference.outdoor => ShanshuiRealm.outdoor,
+    SceneryRealmPreference.auto => ShanshuiRealm.nature,
+  };
+  return currentAtmosphere.copyWith(
+    realm: realm,
+    isJournalInferred: false,
+  );
+}

@@ -161,12 +161,36 @@ void main() {
       );
       expect(circleDots, findsNothing);
 
-      // Verify yyyy-MM-dd HH:mm timestamp and metadata badges
+      // Verify yyyy-MM-dd HH:mm timestamp and editor-matched Xuan charm metadata badges
       expect(find.text(DateFormat('yyyy-MM-dd HH:mm').format(date)), findsOneWidget);
+      expect(find.byKey(const Key('entry_mood_charm')), findsOneWidget);
       expect(find.text('🙂'), findsOneWidget);
-      expect(find.byIcon(Icons.water_drop_outlined), findsOneWidget);
+      expect(find.text('怡然'), findsOneWidget);
+      expect(find.byKey(const Key('entry_weather_charm')), findsOneWidget);
+      expect(find.text('🌧️'), findsOneWidget);
+      expect(find.text('润雨'), findsOneWidget);
+      expect(find.byIcon(Icons.water_drop_outlined), findsNothing);
       expect(find.byType(CinnabarSealBadge), findsOneWidget);
       expect(find.text('W44'), findsOneWidget);
+    });
+
+    testWidgets('ignores unrecognized mood and weather values cleanly', (tester) async {
+      final item = _buildItem(
+        title: '未知气象测试',
+        mood: 99,
+        weather: 'hurricane',
+      );
+
+      await _pumpEntryCard(
+        tester,
+        item: item,
+        mediaService: mediaService,
+        theme: InkDiaryTheme.dark,
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('entry_mood_charm')), findsNothing);
+      expect(find.byKey(const Key('entry_weather_charm')), findsNothing);
     });
 
     testWidgets('renders Dark theme (碑拓乌木) folded slip colors', (tester) async {

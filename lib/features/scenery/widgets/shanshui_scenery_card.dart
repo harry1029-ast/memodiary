@@ -6,9 +6,9 @@ import '../models/shanshui_atmosphere.dart';
 import '../services/scenery_settings_service.dart';
 import 'bamboo_blind_collapsed_bar.dart';
 import 'bamboo_blind_pull_cord.dart';
+import 'scenery_hud_controller.dart';
 import 'scenery_realm_switcher.dart';
 import 'scenery_window_frame.dart';
-import 'shanshui_scenery_painting.dart';
 import 'xiangfei_bamboo_blind.dart';
 
 enum _BlindTransitionMode { idle, closing, opening }
@@ -50,9 +50,11 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
   late final AnimationController _transitionController;
   late final AnimationController _springBackController;
 
+  late final SceneryHudController _hudController;
   bool _isCollapsed = false;
   _BlindTransitionMode _transitionMode = _BlindTransitionMode.idle;
   ShanshuiAtmosphereState? _localAtmosphere;
+  bool _wasCurrentRoute = true;
 
   bool _isDragging = false;
   double? _dragStartGlobalY;
@@ -67,10 +69,28 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
   bool get _effectiveAnimate =>
       shouldRunAmbientAnimation(widget.enableAmbientAnimation);
 
+  bool get _isAccessibleNavigation =>
+      MediaQuery.maybeAccessibleNavigationOf(context) ?? false;
+
+  bool get _showExpandedHud =>
+      _hudController.isVisible || _isAccessibleNavigation;
+
+  bool get _canAutoHideHud =>
+      mounted &&
+      !_isCollapsed &&
+      widget.isVisible &&
+      !_isDragging &&
+      _transitionMode == _BlindTransitionMode.idle &&
+      !_isAccessibleNavigation;
+
   @override
   void initState() {
     super.initState();
     _settingsService = widget.settingsService ?? ScenerySettingsService();
+    _hudController = SceneryHudController()
+      ..addListener(() {
+        if (mounted) setState(() {});
+      });
     _transitionController = AnimationController(
       vsync: this,
       duration: BambooBlindChoreography.closeDuration,
@@ -86,6 +106,24 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
         }
       });
     _loadCollapsedPreference();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _hudController.scheduleAutoHide(canAutoHide: _canAutoHideHud);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!_wasCurrentRoute && isCurrentRoute) {
+      _revealHud();
+    } else if (_wasCurrentRoute && !isCurrentRoute) {
+      _hudController.suspend();
+    }
+    _wasCurrentRoute = isCurrentRoute;
+    if (_isAccessibleNavigation) {
+      _hudController.suspend();
+    }
   }
 
   @override
@@ -94,23 +132,47 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
     if (widget.atmosphere != oldWidget.atmosphere ||
         widget.realTimeAtmosphere != oldWidget.realTimeAtmosphere) {
       _localAtmosphere = null;
+      _revealHud();
+    }
+    if (!oldWidget.isVisible && widget.isVisible) {
+      _revealHud();
+    } else if (oldWidget.isVisible && !widget.isVisible) {
+      _hudController.suspend();
     }
   }
 
   @override
   void dispose() {
+    _hudController.dispose();
     _transitionController.dispose();
     _springBackController.dispose();
     super.dispose();
   }
 
+  void _revealHud() => _hudController.reveal(canAutoHide: _canAutoHideHud);
+
+  void _handleCanvasTap() {
+    if (!_showExpandedHud) {
+      _revealHud();
+      return;
+    }
+    _revealHud();
+    widget.onOpenContemplation();
+  }
+
   Future<void> _loadCollapsedPreference() async {
     final collapsed = await _settingsService.getIsCollapsed();
-    if (mounted && collapsed != _isCollapsed) {
+    if (!mounted) return;
+    if (collapsed != _isCollapsed) {
       setState(() {
         _isCollapsed = collapsed;
         _transitionMode = _BlindTransitionMode.idle;
       });
+    }
+    if (collapsed) {
+      _hudController.suspend();
+    } else {
+      _hudController.scheduleAutoHide(canAutoHide: _canAutoHideHud);
     }
   }
 
@@ -124,20 +186,27 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
 
   void _onTransitionStatusChanged(AnimationStatus status) {
     if (status != AnimationStatus.completed || !mounted) return;
+    final completedMode = _transitionMode;
     setState(() {
-      if (_transitionMode == _BlindTransitionMode.closing) {
+      if (completedMode == _BlindTransitionMode.closing) {
         _isCollapsed = true;
-      } else if (_transitionMode == _BlindTransitionMode.opening) {
+      } else if (completedMode == _BlindTransitionMode.opening) {
         _isCollapsed = false;
       }
       _transitionMode = _BlindTransitionMode.idle;
       _dragDelta = 0.0;
       _blindStartProgress = 0.0;
     });
+    if (completedMode == _BlindTransitionMode.opening) {
+      _revealHud();
+    } else if (completedMode == _BlindTransitionMode.closing) {
+      _hudController.suspend();
+    }
   }
 
   void _triggerCloseChoreography() {
     if (_transitionMode != _BlindTransitionMode.idle || _isCollapsed) return;
+    _hudController.suspend();
     _springBackController.stop();
     unawaited(_settingsService.setIsCollapsed(true));
 
@@ -172,6 +241,7 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
         _dragDelta = 0.0;
         _transitionMode = _BlindTransitionMode.idle;
       });
+      _revealHud();
       return;
     }
 
@@ -186,6 +256,7 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
 
   void _handleCordDragStart(double? initialGlobalY) {
     if (_transitionMode != _BlindTransitionMode.idle || _isCollapsed) return;
+    _hudController.suspend();
     _springBackController.stop();
     setState(() {
       _isDragging = true;
@@ -223,9 +294,11 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
       _springStartDelta = releaseDelta;
     });
     _springBackController.forward(from: 0.0);
+    _revealHud();
   }
 
   void _openRealmSwitcher(InkDiaryTokens tokens) {
+    _hudController.suspend();
     showSceneryRealmSwitcherSheet(
       context: context,
       tokens: tokens,
@@ -233,29 +306,18 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
       onSelected: (preference) {
         if (mounted) {
           setState(() {
-            if (preference == SceneryRealmPreference.auto) {
-              final target = widget.realTimeAtmosphere ?? widget.atmosphere;
-              _localAtmosphere = widget.atmosphere.copyWith(
-                realm: target.realm,
-                isJournalInferred: target.isJournalInferred,
-              );
-            } else {
-              final realm = switch (preference) {
-                SceneryRealmPreference.nature => ShanshuiRealm.nature,
-                SceneryRealmPreference.indoor => ShanshuiRealm.indoor,
-                SceneryRealmPreference.outdoor => ShanshuiRealm.outdoor,
-                SceneryRealmPreference.auto => ShanshuiRealm.nature,
-              };
-              _localAtmosphere = widget.atmosphere.copyWith(
-                realm: realm,
-                isJournalInferred: false,
-              );
-            }
+            _localAtmosphere = resolveAtmosphereForRealmPreference(
+              preference: preference,
+              currentAtmosphere: widget.atmosphere,
+              realTimeAtmosphere: widget.realTimeAtmosphere,
+            );
           });
         }
         widget.onRealmPreferenceChanged?.call(preference);
       },
-    );
+    ).then((_) {
+      if (mounted && !_isCollapsed) _revealHud();
+    });
   }
 
   @override
@@ -335,6 +397,7 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
                         atmosphere: _effectiveAtmosphere,
                         tokens: tokens,
                         maxWidth: maxWidth,
+                        isVisible: _showExpandedHud,
                         realmBadge: SceneryRealmBadge(
                           atmosphere: _effectiveAtmosphere,
                           tokens: tokens,
@@ -355,6 +418,7 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
                           isDragging: _isDragging,
                           isTransitioning: isTransitioning,
                           isVisible: widget.isVisible,
+                          showRestingTag: _showExpandedHud,
                           enableAmbientAnimation: _effectiveAnimate,
                           onTap: _triggerCloseChoreography,
                           onDragStart: _handleCordDragStart,
@@ -367,31 +431,13 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
               ),
             );
           },
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ShanshuiSceneryPainting(
-                atmosphere: _effectiveAtmosphere,
-                aspectRatio: maxWidth / expandedHeight,
-                fullPoem: false,
-                showCalligraphy: false,
-                enableAmbientAnimation: widget.enableAmbientAnimation,
-                isVisible: widget.isVisible,
-              ),
-              Positioned.fill(
-                child: Semantics(
-                  button: true,
-                  label: '进入沉浸山水画卷',
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      key: const Key('scenery_canvas_tap_target'),
-                      onTap: widget.onOpenContemplation,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          child: SceneryWindowCanvasLayer(
+            atmosphere: _effectiveAtmosphere,
+            aspectRatio: maxWidth / expandedHeight,
+            enableAmbientAnimation: widget.enableAmbientAnimation,
+            isVisible: widget.isVisible,
+            semanticLabel: _showExpandedHud ? '进入沉浸山水画卷' : '显示画卷信息',
+            onTap: _handleCanvasTap,
           ),
         );
       },

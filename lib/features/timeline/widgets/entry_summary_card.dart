@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
+import 'package:memodiary/features/editor/widgets/journal_letterhead_models.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 import 'package:memodiary/features/timeline/widgets/folded_xuan_slip.dart';
 import 'package:memodiary/features/timeline/widgets/wet_mounted_thumbnail.dart';
@@ -46,8 +47,16 @@ class EntrySummaryCard extends StatelessWidget {
     final entry = item.entry;
 
     final timestampText = DateFormat('yyyy-MM-dd HH:mm').format(entry.entryDate);
-    final moodEmoji = entry.mood != null ? moodEmojis[entry.mood!] : null;
-    final weatherIcon = entry.weather != null ? weatherIcons[entry.weather!] : null;
+    final moodOption = entry.mood == null
+        ? null
+        : JournalLetterheadUtils.moodOptions
+            .where((option) => option.value == entry.mood)
+            .firstOrNull;
+    final weatherOption = entry.weather == null
+        ? null
+        : JournalLetterheadUtils.weatherOptions
+            .where((option) => option.value == entry.weather)
+            .firstOrNull;
 
     final isLocked = entry.isLocked;
     final trimmedTitle = entry.title?.trim() ?? '';
@@ -72,8 +81,8 @@ class EntrySummaryCard extends StatelessWidget {
             isLocked: isLocked,
             isWeeklyReview: entry.isWeeklyReview,
             weekNumber: entry.weekNumber,
-            moodEmoji: moodEmoji,
-            weatherIcon: weatherIcon,
+            moodOption: moodOption,
+            weatherOption: weatherOption,
             tokens: tokens,
           ),
 
@@ -125,8 +134,8 @@ class _EntryCardHeader extends StatelessWidget {
   final bool isLocked;
   final bool isWeeklyReview;
   final int? weekNumber;
-  final String? moodEmoji;
-  final IconData? weatherIcon;
+  final MoodOption? moodOption;
+  final WeatherOption? weatherOption;
   final InkDiaryTokens tokens;
 
   const _EntryCardHeader({
@@ -135,8 +144,8 @@ class _EntryCardHeader extends StatelessWidget {
     required this.isLocked,
     required this.isWeeklyReview,
     required this.weekNumber,
-    required this.moodEmoji,
-    required this.weatherIcon,
+    required this.moodOption,
+    required this.weatherOption,
     required this.tokens,
   });
 
@@ -174,7 +183,7 @@ class _EntryCardHeader extends StatelessWidget {
                     alignment: WrapAlignment.end,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 4,
-                    runSpacing: 3,
+                    runSpacing: 4,
                     children: [
                       FittedBox(
                         fit: BoxFit.scaleDown,
@@ -190,39 +199,33 @@ class _EntryCardHeader extends StatelessWidget {
                           maxLines: 1,
                         ),
                       ),
-                      if (isLocked || isWeeklyReview || moodEmoji != null || weatherIcon != null)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (isLocked) ...[
-                              Icon(
-                                Icons.lock_outline_rounded,
-                                size: 14,
-                                color: tokens.cinnabar,
-                              ),
-                              if (isWeeklyReview || moodEmoji != null || weatherIcon != null)
-                                const SizedBox(width: 4),
-                            ],
-                            if (isWeeklyReview) ...[
-                              CinnabarSealBadge.compact(
-                                text: weekNumber != null ? 'W$weekNumber' : '复盘',
-                                size: 22,
-                                isWashVariant: true,
-                              ),
-                              if (moodEmoji != null || weatherIcon != null)
-                                const SizedBox(width: 4),
-                            ],
-                            if (moodEmoji != null) ...[
-                              Text(moodEmoji!, style: const TextStyle(fontSize: 13.5)),
-                              if (weatherIcon != null) const SizedBox(width: 3),
-                            ],
-                            if (weatherIcon != null)
-                              Icon(
-                                weatherIcon,
-                                size: 14.5,
-                                color: tokens.danmo,
-                              ),
-                          ],
+                      if (isLocked)
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          size: 14,
+                          color: tokens.cinnabar,
+                        ),
+                      if (isWeeklyReview)
+                        CinnabarSealBadge.compact(
+                          text: weekNumber != null ? 'W$weekNumber' : '复盘',
+                          size: 22,
+                          isWashVariant: true,
+                        ),
+                      if (weatherOption != null)
+                        _EntryMetadataCharm(
+                          key: const Key('entry_weather_charm'),
+                          emoji: weatherOption!.emoji,
+                          label: weatherOption!.label,
+                          semanticsLabel: '天象 ${weatherOption!.label}',
+                          tokens: tokens,
+                        ),
+                      if (moodOption != null)
+                        _EntryMetadataCharm(
+                          key: const Key('entry_mood_charm'),
+                          emoji: moodOption!.emoji,
+                          label: moodOption!.label,
+                          semanticsLabel: '心绪 ${moodOption!.label}',
+                          tokens: tokens,
                         ),
                     ],
                   ),
@@ -232,6 +235,61 @@ class _EntryCardHeader extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// Compact horizontal Xuan-paper charm matching the editor's `LetterheadCharm`.
+class _EntryMetadataCharm extends StatelessWidget {
+  final String emoji;
+  final String label;
+  final String semanticsLabel;
+  final InkDiaryTokens tokens;
+
+  const _EntryMetadataCharm({
+    super.key,
+    required this.emoji,
+    required this.label,
+    required this.semanticsLabel,
+    required this.tokens,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+        decoration: BoxDecoration(
+          color: tokens.ricePaper.withValues(alpha: 0.9),
+          border: Border.all(color: tokens.cinnabar.withValues(alpha: 0.3)),
+          borderRadius: BorderRadius.circular(3),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0A000000),
+              offset: Offset(1, 1.5),
+              blurRadius: 3,
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 11.5, height: 1.1)),
+            const SizedBox(width: 2.5),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontKaiti,
+                fontSize: 10.5,
+                height: 1.15,
+                color: tokens.danmo,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

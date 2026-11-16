@@ -50,15 +50,6 @@ class TrayFilterChip extends StatelessWidget {
           color: colors.bgColor,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: colors.borderColor, width: 1.0),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: palette.cinnabar,
-                    offset: const Offset(0, 1.5),
-                    blurRadius: 0,
-                  ),
-                ]
-              : null,
         ),
         alignment: Alignment.center,
         child: Text(
