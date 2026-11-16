@@ -1,78 +1,21 @@
-/// STUB: minimal curated strokes ported from the studio prototype. The full
-/// Latin/digit/punctuation table replaces this file at merge.
+import 'curated_lowercase_strokes.dart';
+import 'curated_symbol_strokes.dart';
+import 'curated_uppercase_strokes.dart';
+
+/// Hand-curated stroke medians for the characters *Make Me a Hanzi* does not
+/// cover: `A–Z`, `a–z`, `0–9` and `，。、·！？；：“”‘’.,!?-` (SPEC-020 §2).
 ///
-/// char -> strokes -> points `[x, y]`, ints in `0..100` (cap height 16..84,
-/// x-height top about 42, baseline 84, descenders about 96).
+/// Maps a character to its strokes in writing order. Each stroke is a
+/// directional median polyline of `[x, y]` points in pen direction, authored
+/// in the same `0..100` top-left box as the compiled Hanzi table: cap height
+/// `y 16..84`, x-height top `y ≈ 42`, baseline `y = 84`, descenders to
+/// `y ≈ 96`.
+///
+/// `tool/build_hanzi_strokes.dart` compiles this table into
+/// `hanzi_strokes.bin`; `HanziStrokeTable` also reads it directly as the
+/// synchronous fallback before the asset loads.
 const Map<String, List<List<List<int>>>> curatedStrokes = {
-  'A': [
-    [
-      [50, 15],
-      [40, 36],
-      [18, 85],
-    ],
-    [
-      [50, 15],
-      [60, 36],
-      [82, 85],
-    ],
-    [
-      [30, 60],
-      [50, 58],
-      [70, 60],
-    ],
-  ],
-  'E': [
-    [
-      [28, 16],
-      [27, 50],
-      [28, 84],
-    ],
-    [
-      [28, 18],
-      [52, 16],
-      [76, 17],
-    ],
-    [
-      [28, 49],
-      [48, 48],
-      [68, 49],
-    ],
-    [
-      [28, 82],
-      [54, 83],
-      [79, 81],
-    ],
-  ],
-  'e': [
-    [
-      [24, 54],
-      [74, 52],
-      [72, 36],
-      [58, 27],
-      [46, 26],
-      [26, 36],
-      [22, 62],
-      [32, 78],
-      [48, 82],
-      [68, 76],
-    ],
-  ],
-  '。': [
-    [
-      [46, 66],
-      [38, 68],
-      [38, 78],
-      [46, 82],
-      [54, 78],
-      [54, 68],
-      [46, 66],
-    ],
-  ],
-  '，': [
-    [
-      [48, 66],
-      [51, 76],
-      [38, 88],
-    ],
-  ],
+  ...curatedUppercaseStrokes,
+  ...curatedLowercaseStrokes,
+  ...curatedSymbolStrokes,
 };

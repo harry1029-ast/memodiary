@@ -1,4 +1,3 @@
-
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/ink_choreography/curated_strokes.dart';
@@ -14,7 +13,9 @@ void main() {
       final strokes = table.strokesFor('A')!;
       expect(strokes.isCjk, isFalse);
       expect(strokes.strokes.length, curatedStrokes['A']!.length);
-      expect(strokes.strokes.first.first, const Offset(50, 15));
+      final first = curatedStrokes['A']!.first.first;
+      expect(strokes.strokes.first.first,
+          Offset(first[0].toDouble(), first[1].toDouble()));
     });
 
     test('procedural fallback is deterministic for unindexed CJK', () {
