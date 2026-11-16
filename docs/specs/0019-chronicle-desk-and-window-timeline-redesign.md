@@ -1,7 +1,7 @@
 ---
 id: SPEC-019
 title: Window Above, Chronicle Desk Below — Timeline Front Screen Redesign
-status: ready-for-agent
+status: completed
 created_at: 2026-11-16T19:15:00+08:00
 ---
 
