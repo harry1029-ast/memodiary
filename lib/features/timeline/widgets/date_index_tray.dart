@@ -89,7 +89,7 @@ class _DateIndexTrayState extends State<DateIndexTray> {
       maxScaleFactor: 1.3,
       child: Container(
         key: const Key('timeline_date_index_tray'),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: palette.deskTray,
           borderRadius: BorderRadius.circular(11),
@@ -149,7 +149,7 @@ class _DateIndexTrayState extends State<DateIndexTray> {
             ),
 
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
+              padding: const EdgeInsets.symmetric(vertical: 1),
               child: Container(height: 1.0, color: dividerColor),
             ),
 
@@ -192,7 +192,7 @@ class _DateIndexTrayState extends State<DateIndexTray> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              padding: const EdgeInsets.symmetric(vertical: 1),
                               child: Container(height: 1.0, color: dividerColor),
                             ),
                             Row(

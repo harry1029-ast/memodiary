@@ -82,7 +82,7 @@ class ChronicleDeskPalette {
     lipTop: Color(0xFF7C5337),
     lipBottom: Color(0xFF382214),
     deskSurroundTop: Color(0xFFDFD3C0),
-    deskSurroundBottom: Color(0xFFD2C3AC),
+    deskSurroundBottom: Color(0xFFDFD3C0),
     deskMat: Color(0xFFEAE2D3),
     deskTray: Color(0xFFE2D8C5),
     agedChip: Color(0xFFDDD2BE),

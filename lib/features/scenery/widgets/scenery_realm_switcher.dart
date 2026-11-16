@@ -79,6 +79,38 @@ class SceneryRealmBadge extends StatelessWidget {
   }
 }
 
+const List<({
+  SceneryRealmPreference preference,
+  String keyName,
+  String title,
+  String subtitle,
+})> _realmOptionConfigs = [
+  (
+    preference: SceneryRealmPreference.auto,
+    keyName: 'scenery_realm_option_auto',
+    title: 'Auto (随文入境)',
+    subtitle: '根据近24小时日记内容自适应意境',
+  ),
+  (
+    preference: SceneryRealmPreference.nature,
+    keyName: 'scenery_realm_option_nature',
+    title: 'Nature (林泉)',
+    subtitle: '水墨山水 · 烟波浩渺',
+  ),
+  (
+    preference: SceneryRealmPreference.indoor,
+    keyName: 'scenery_realm_option_indoor',
+    title: 'Indoor (雅室)',
+    subtitle: '书房茶室 · 烹茶伴读',
+  ),
+  (
+    preference: SceneryRealmPreference.outdoor,
+    keyName: 'scenery_realm_option_outdoor',
+    title: 'Outdoor (市井)',
+    subtitle: '古镇街市 · 烟火人间',
+  ),
+];
+
 /// Presents the 1-tap modal bottom sheet allowing the diarist to switch between
 /// `Auto (随文入境)`, `Nature (林泉)`, `Indoor (雅室)`, and `Outdoor (市井)`.
 Future<void> showSceneryRealmSwitcherSheet({
@@ -135,65 +167,22 @@ Future<void> showSceneryRealmSwitcherSheet({
                     style: TextStyle(fontSize: 11, color: tokens.danmo),
                   ),
                   const SizedBox(height: 12),
-                  _RealmOptionTile(
-                    key: const Key('scenery_realm_option_auto'),
-                    tokens: tokens,
-                    preference: SceneryRealmPreference.auto,
-                    title: 'Auto (随文入境)',
-                    subtitle: '根据近24小时日记内容自适应意境',
-                    isSelected: currentPref == SceneryRealmPreference.auto,
-                    onTap: () async {
-                      Navigator.of(sheetContext).pop();
-                      await settingsService.setRealmPreference(
-                        SceneryRealmPreference.auto,
-                      );
-                      onSelected(SceneryRealmPreference.auto);
-                    },
-                  ),
-                  _RealmOptionTile(
-                    key: const Key('scenery_realm_option_nature'),
-                    tokens: tokens,
-                    preference: SceneryRealmPreference.nature,
-                    title: 'Nature (林泉)',
-                    subtitle: '水墨山水 · 烟波浩渺',
-                    isSelected: currentPref == SceneryRealmPreference.nature,
-                    onTap: () async {
-                      Navigator.of(sheetContext).pop();
-                      await settingsService.setRealmPreference(
-                        SceneryRealmPreference.nature,
-                      );
-                      onSelected(SceneryRealmPreference.nature);
-                    },
-                  ),
-                  _RealmOptionTile(
-                    key: const Key('scenery_realm_option_indoor'),
-                    tokens: tokens,
-                    preference: SceneryRealmPreference.indoor,
-                    title: 'Indoor (雅室)',
-                    subtitle: '书房茶室 · 烹茶伴读',
-                    isSelected: currentPref == SceneryRealmPreference.indoor,
-                    onTap: () async {
-                      Navigator.of(sheetContext).pop();
-                      await settingsService.setRealmPreference(
-                        SceneryRealmPreference.indoor,
-                      );
-                      onSelected(SceneryRealmPreference.indoor);
-                    },
-                  ),
-                  _RealmOptionTile(
-                    key: const Key('scenery_realm_option_outdoor'),
-                    tokens: tokens,
-                    preference: SceneryRealmPreference.outdoor,
-                    title: 'Outdoor (市井)',
-                    subtitle: '古镇街市 · 烟火人间',
-                    isSelected: currentPref == SceneryRealmPreference.outdoor,
-                    onTap: () async {
-                      Navigator.of(sheetContext).pop();
-                      await settingsService.setRealmPreference(
-                        SceneryRealmPreference.outdoor,
-                      );
-                      onSelected(SceneryRealmPreference.outdoor);
-                    },
+                  ..._realmOptionConfigs.map(
+                    (option) => _RealmOptionTile(
+                      key: Key(option.keyName),
+                      tokens: tokens,
+                      preference: option.preference,
+                      title: option.title,
+                      subtitle: option.subtitle,
+                      isSelected: currentPref == option.preference,
+                      onTap: () async {
+                        Navigator.of(sheetContext).pop();
+                        await settingsService.setRealmPreference(
+                          option.preference,
+                        );
+                        onSelected(option.preference);
+                      },
+                    ),
                   ),
                 ],
               ),

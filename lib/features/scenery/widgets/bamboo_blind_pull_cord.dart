@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import '../../../core/utils/ambient_animation_utils.dart';
 
 /// Interactive hanging braided-silk **Bamboo Blind Pull-Cord** (`竹帘流苏拉绳`)
 /// anchored at the top-left of the `Shanshui Scenery Card` window.
@@ -53,16 +53,8 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
     with SingleTickerProviderStateMixin {
   late final AnimationController _swayController;
 
-  bool get _effectiveAnimate {
-    if (widget.enableAmbientAnimation != null) {
-      return widget.enableAmbientAnimation!;
-    }
-    try {
-      return Platform.environment['FLUTTER_TEST'] != 'true';
-    } catch (_) {
-      return true;
-    }
-  }
+  bool get _effectiveAnimate =>
+      shouldRunAmbientAnimation(widget.enableAmbientAnimation);
 
   bool get _shouldSway =>
       _effectiveAnimate &&
@@ -106,7 +98,8 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
         widget.dragDelta >= BambooBlindPullCord.triggerDragDelta;
     final tagLabel = passedThreshold
         ? '松手收窗 ✓'
-        : (widget.isDragging && widget.dragDelta >= 5.0
+        : (widget.isDragging &&
+                widget.dragDelta >= BambooBlindPullCord.tapJitterDelta
             ? '继续下拉 ↓'
             : '下拉垂帘 ↓');
 

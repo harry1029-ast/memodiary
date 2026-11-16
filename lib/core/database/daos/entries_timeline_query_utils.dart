@@ -81,14 +81,10 @@ Future<int> countMatchingTimelineEntries(
 }
 
 /// Computes distinct active years (descending, including [currentYear]),
-/// populated months `1..12` matching [year] + charm filters, and total active count.
+/// populated months `1..12` matching [filters] (year + charm attributes), and total active count.
 Future<TimelineDateFacetSummary> queryTimelineDateFacetSummary(
   EntriesDao dao, {
-  int? year,
-  int? mood,
-  String? weather,
-  bool hasMediaOnly = false,
-  bool weeklyReviewOnly = false,
+  TimelineFilterState filters = const TimelineFilterState(),
   int? currentYear,
 }) async {
   final resolvedCurrentYear = currentYear ?? DateTime.now().year;
@@ -109,11 +105,11 @@ Future<TimelineDateFacetSummary> queryTimelineDateFacetSummary(
     ..sort((yearA, yearB) => yearB.compareTo(yearA));
 
   final monthFilter = TimelineFilterState(
-    year: year,
-    mood: mood,
-    weather: weather,
-    hasMediaOnly: hasMediaOnly,
-    weeklyReviewOnly: weeklyReviewOnly,
+    year: filters.year,
+    mood: filters.mood,
+    weather: filters.weather,
+    hasMediaOnly: filters.hasMediaOnly,
+    weeklyReviewOnly: filters.weeklyReviewOnly,
   );
   final matchingRows = await (dao.selectOnly(dao.entries)
         ..addColumns([dao.entries.entryDate])

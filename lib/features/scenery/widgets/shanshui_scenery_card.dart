@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/utils/ambient_animation_utils.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../services/scenery_settings_service.dart';
 import 'bamboo_blind_collapsed_bar.dart';
@@ -64,16 +64,8 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
   ShanshuiAtmosphereState get _effectiveAtmosphere =>
       _localAtmosphere ?? widget.atmosphere;
 
-  bool get _effectiveAnimate {
-    if (widget.enableAmbientAnimation != null) {
-      return widget.enableAmbientAnimation!;
-    }
-    try {
-      return Platform.environment['FLUTTER_TEST'] != 'true';
-    } catch (_) {
-      return true;
-    }
-  }
+  bool get _effectiveAnimate =>
+      shouldRunAmbientAnimation(widget.enableAmbientAnimation);
 
   @override
   void initState() {

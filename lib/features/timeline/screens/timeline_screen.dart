@@ -176,11 +176,7 @@ class _TimelineScreenState extends State<TimelineScreen>
         filters: _filters,
       );
       final facetSummary = await dao.getTimelineDateFacetSummary(
-        year: _filters.year,
-        mood: _filters.mood,
-        weather: _filters.weather,
-        hasMediaOnly: _filters.hasMediaOnly,
-        weeklyReviewOnly: _filters.weeklyReviewOnly,
+        filters: _filters,
       );
 
       final ids = entries.map((entry) => entry.id).toList();
@@ -377,48 +373,56 @@ class _TimelineScreenState extends State<TimelineScreen>
                 )
               : ChronicleDeskScrollBody(
                   scrollController: _scrollController,
-                  xunExpandAnimation: _xunExpandAnimation,
-                  activeAtmosphere: activeAtmosphere,
-                  realTimeAtmosphere: realTimeAtmosphere,
-                  scenerySettings: _scenerySettings,
-                  audioSanctumService: widget.audioSanctumService,
-                  enableAmbientAnimation: widget.enableSceneryAnimation,
-                  isSceneryVisible: _isSceneryVisible,
-                  isCandleLit: _isCandleLit,
-                  filters: _filters,
-                  facetSummary: _facetSummary,
-                  totalFilteredCount: _totalFilteredCount,
-                  entries: _entries,
-                  mediaMap: _mediaMap,
-                  mediaService: widget.mediaService,
-                  hasMore: _hasMore,
-                  onRefresh: _loadInitial,
-                  onRealmPreferenceChanged: (pref) {
-                    setState(() => _realmPreference = pref);
-                  },
-                  onToggleCandle: () {
-                    setState(() => _isCandleLit = !_isCandleLit);
-                  },
-                  onOpenCharmFilter: _handleOpenCharmFilter,
-                  onSelectYear: (year) => _applyFilterUpdate(
-                    _filters.selectYear(year),
+                  sceneryConfig: TimelineSceneryHeaderConfig(
+                    activeAtmosphere: activeAtmosphere,
+                    realTimeAtmosphere: realTimeAtmosphere,
+                    scenerySettings: _scenerySettings,
+                    audioSanctumService: widget.audioSanctumService,
+                    enableAmbientAnimation: widget.enableSceneryAnimation,
+                    isVisible: _isSceneryVisible,
+                    isCandleLit: _isCandleLit,
+                    onRealmPreferenceChanged: (pref) {
+                      setState(() => _realmPreference = pref);
+                    },
+                    onToggleCandle: () {
+                      setState(() => _isCandleLit = !_isCandleLit);
+                    },
                   ),
-                  onSelectMonth: (month) => _applyFilterUpdate(
-                    _filters.selectMonth(
-                      month,
-                      availableYears: _facetSummary.years,
+                  filterData: ChronicleDeskFilterData(
+                    filters: _filters,
+                    facetSummary: _facetSummary,
+                    totalFilteredCount: _totalFilteredCount,
+                    xunExpandAnimation: _xunExpandAnimation,
+                  ),
+                  feedData: ChronicleDeskFeedData(
+                    entries: _entries,
+                    mediaMap: _mediaMap,
+                    mediaService: widget.mediaService,
+                    hasMore: _hasMore,
+                  ),
+                  callbacks: ChronicleDeskFeedCallbacks(
+                    onRefresh: _loadInitial,
+                    onOpenCharmFilter: _handleOpenCharmFilter,
+                    onSelectYear: (year) => _applyFilterUpdate(
+                      _filters.selectYear(year),
                     ),
+                    onSelectMonth: (month) => _applyFilterUpdate(
+                      _filters.selectMonth(
+                        month,
+                        availableYears: _facetSummary.years,
+                      ),
+                    ),
+                    onSelectXun: (xun) => _applyFilterUpdate(
+                      _filters.selectXun(xun),
+                    ),
+                    onToggleSort: () => _applyFilterUpdate(
+                      _filters.toggleSortOrder(),
+                    ),
+                    onCreateEntry: _handleCreateEntry,
+                    onClearFilters: () =>
+                        _applyFilterUpdate(_filters.resetAll()),
+                    onEntryTap: _navigateToDetail,
                   ),
-                  onSelectXun: (xun) => _applyFilterUpdate(
-                    _filters.selectXun(xun),
-                  ),
-                  onToggleSort: () => _applyFilterUpdate(
-                    _filters.toggleSortOrder(),
-                  ),
-                  onCreateEntry: _handleCreateEntry,
-                  onClearFilters: () =>
-                      _applyFilterUpdate(_filters.resetAll()),
-                  onEntryTap: _navigateToDetail,
                 ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: ScrollRollerFab(

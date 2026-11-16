@@ -68,6 +68,7 @@ class TimelineDateSpineItem extends StatelessWidget {
           top: (isFirst && !connectFromTop) ? 20 : 0,
           bottom: isLast ? 36 : 0,
           child: Container(
+            key: const Key('timeline_date_spine_line'),
             width: 2.0,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(1.0),

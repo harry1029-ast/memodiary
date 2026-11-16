@@ -517,6 +517,28 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(find.byKey(const Key('timeline_charm_filter_button')), findsOneWidget);
+
+        // Expand 三旬 at 320dp + 2.0x text scale to verify zero header sliver overflow
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: const TextScaler.linear(2.0),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            ),
+            home: TimelineScreen(
+              database: db,
+              mediaService: mediaService,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('timeline_month_chip_11')));
+        await tester.tap(find.byKey(const Key('timeline_month_chip_11')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('timeline_xun_chip_shang')), findsOneWidget);
+        expect(tester.takeException(), isNull);
       },
     );
 
@@ -546,16 +568,29 @@ void main() {
       expect(find.byKey(const Key('timeline_window_sill_ledge')), findsOneWidget);
       expect(find.byKey(const Key('timeline_candlestick_button')), findsOneWidget);
 
-      // Candlelight glow starts lit and toggles off/on
-      expect(find.byKey(const Key('timeline_candle_glow_overlay')), findsOneWidget);
+      // Candlelight glow starts lit, is scoped strictly below WindowSillLedge, and toggles off/on
+      final sillRect = tester.getRect(find.byKey(const Key('timeline_window_sill_ledge')));
+      final glowFinder = find.byKey(const Key('timeline_candle_glow_overlay'));
+      expect(glowFinder, findsOneWidget);
+      final glowRect = tester.getRect(glowFinder);
+      expect(glowRect.top, greaterThanOrEqualTo(sillRect.bottom));
+
+      // Brass grommet center aligns horizontally with the vertical spine line
+      final grommetCenter = tester.getCenter(
+        find.byKey(const Key('timeline_brass_grommet_knot')),
+      );
+      final spineLineCenter = tester.getCenter(
+        find.byKey(const Key('timeline_date_spine_line')).first,
+      );
+      expect(grommetCenter.dx, closeTo(spineLineCenter.dx, 1.0));
 
       await tester.tap(find.byKey(const Key('timeline_candlestick_button')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('timeline_candle_glow_overlay')), findsNothing);
+      expect(glowFinder, findsNothing);
 
       await tester.tap(find.byKey(const Key('timeline_candlestick_button')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('timeline_candle_glow_overlay')), findsOneWidget);
+      expect(glowFinder, findsOneWidget);
     });
 
     testWidgets('DateIndexTray filters by year, auto-promotes year on month tap, expands 三旬, toggles sort, and recovers from filtered empty state', (tester) async {

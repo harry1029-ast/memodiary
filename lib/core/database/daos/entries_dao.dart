@@ -167,22 +167,16 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   }) =>
       countMatchingTimelineEntries(this, filters: filters);
 
-  /// Summarizes active years, populated months (`1..12`), and total entry count.
+  /// Summarizes active years, populated months (`1..12`), and total entry count
+  /// matching [filters] (year + charm attributes; month/xun ignored so Row 2
+  /// dots reflect all populated months in the selected year).
   Future<TimelineDateFacetSummary> getTimelineDateFacetSummary({
-    int? year,
-    int? mood,
-    String? weather,
-    bool hasMediaOnly = false,
-    bool weeklyReviewOnly = false,
+    TimelineFilterState filters = const TimelineFilterState(),
     int? currentYear,
   }) =>
       queryTimelineDateFacetSummary(
         this,
-        year: year,
-        mood: mood,
-        weather: weather,
-        hasMediaOnly: hasMediaOnly,
-        weeklyReviewOnly: weeklyReviewOnly,
+        filters: filters,
         currentYear: currentYear,
       );
 

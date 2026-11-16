@@ -1,7 +1,7 @@
-import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import '../../../core/utils/ambient_animation_utils.dart';
 import '../models/ancient_room_palette.dart';
 import '../models/outdoor_street_palette.dart';
 import '../models/shanshui_atmosphere.dart';
@@ -74,16 +74,8 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
   int get particleCount => _particles.length;
   int get rippleCount => _ripples.length;
 
-  bool get _effectiveAnimate {
-    if (widget.enableAmbientAnimation != null) {
-      return widget.enableAmbientAnimation!;
-    }
-    try {
-      return Platform.environment['FLUTTER_TEST'] != 'true';
-    } catch (_) {
-      return true;
-    }
-  }
+  bool get _effectiveAnimate =>
+      shouldRunAmbientAnimation(widget.enableAmbientAnimation);
 
   @override
   void initState() {

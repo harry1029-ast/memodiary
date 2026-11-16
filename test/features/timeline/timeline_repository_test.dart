@@ -453,31 +453,34 @@ void main() {
 
       // Active year 2026 only shows months 10 and 11 (excludes deleted May entry)
       final summary2026 = await db.entriesDao.getTimelineDateFacetSummary(
-        year: 2026,
+        filters: const TimelineFilterState(year: 2026),
         currentYear: 2027,
       );
       expect(summary2026.activeMonths, equals({10, 11}));
 
       // Active year 2026 + hasMediaOnly only shows month 11
       final summary2026Media = await db.entriesDao.getTimelineDateFacetSummary(
-        year: 2026,
-        hasMediaOnly: true,
+        filters: const TimelineFilterState(year: 2026, hasMediaOnly: true),
         currentYear: 2027,
       );
       expect(summary2026Media.activeMonths, equals({11}));
 
       // Combined mood + weather facet summary filters activeMonths accurately
+      // while ignoring month/xun selections on the filter state
       final summaryRainyMood4 = await db.entriesDao.getTimelineDateFacetSummary(
-        year: 2026,
-        mood: 4,
-        weather: 'rainy',
+        filters: const TimelineFilterState(
+          year: 2026,
+          month: 10,
+          xun: TimelineXun.shang,
+          mood: 4,
+          weather: 'rainy',
+        ),
         currentYear: 2027,
       );
       expect(summaryRainyMood4.activeMonths, equals({11}));
 
       final summaryImpossible = await db.entriesDao.getTimelineDateFacetSummary(
-        mood: 1,
-        weather: 'sunny',
+        filters: const TimelineFilterState(mood: 1, weather: 'sunny'),
         currentYear: 2027,
       );
       expect(summaryImpossible.activeMonths, isEmpty);

@@ -39,6 +39,7 @@ class ChronicleBrassGrommet extends StatelessWidget {
             left: 28.0,
             top: 2.0,
             child: Container(
+              key: const Key('timeline_brass_grommet_knot'),
               width: 18.0,
               height: 10.0,
               decoration: BoxDecoration(

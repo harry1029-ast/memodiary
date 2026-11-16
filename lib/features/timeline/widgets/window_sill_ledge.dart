@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/utils/ambient_animation_utils.dart';
 import 'chronicle_desk_palette.dart';
 import 'window_sill_ornaments_painter.dart';
 
@@ -29,16 +29,8 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
   late final AnimationController _candleController;
   late final AnimationController _incenseController;
 
-  bool get _effectiveAnimate {
-    if (widget.enableAmbientAnimation != null) {
-      return widget.enableAmbientAnimation!;
-    }
-    try {
-      return Platform.environment['FLUTTER_TEST'] != 'true';
-    } catch (_) {
-      return true;
-    }
-  }
+  bool get _effectiveAnimate =>
+      shouldRunAmbientAnimation(widget.enableAmbientAnimation);
 
   @override
   void initState() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
+import 'package:memodiary/features/timeline/widgets/chronicle_desk_palette.dart';
 import 'package:memodiary/features/timeline/widgets/date_index_tray.dart';
 
 void main() {
@@ -54,6 +55,18 @@ void main() {
       expect(find.text('中旬'), findsNothing);
       expect(find.text('下旬'), findsNothing);
 
+      // Verify 44x44 minimum tap targets on Row 1 and Row 2 controls
+      for (final keyName in const [
+        'timeline_year_chip_all',
+        'timeline_year_chip_2025',
+        'timeline_sort_toggle_button',
+        'timeline_month_chip_11',
+      ]) {
+        final size = tester.getSize(find.byKey(Key(keyName)));
+        expect(size.width, greaterThanOrEqualTo(44.0), reason: keyName);
+        expect(size.height, greaterThanOrEqualTo(44.0), reason: keyName);
+      }
+
       // Tap interactions
       await tester.tap(find.byKey(const Key('timeline_year_chip_2025')));
       expect(tappedYear, equals(2025));
@@ -65,7 +78,7 @@ void main() {
       expect(sortToggled, isTrue);
     });
 
-    testWidgets('expands 三旬 when xunExpandFactor is 1.0 and renders cleanly on 320px at 1.3x text scale', (tester) async {
+    testWidgets('expands 三旬 with >=44x44 tap targets and renders cleanly on 320px at 2.0x text scale', (tester) async {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -77,7 +90,7 @@ void main() {
 
       await tester.pumpWidget(
         MediaQuery(
-          data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
           child: MaterialApp(
             theme: InkDiaryTheme.light,
             home: Scaffold(
@@ -105,6 +118,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(tester.takeException(), isNull);
+      expect(ChronicleDeskPalette.light.deskSurroundTop, const Color(0xFFDFD3C0));
+      expect(ChronicleDeskPalette.light.deskSurroundBottom, const Color(0xFFDFD3C0));
+
       expect(find.text('最早'), findsOneWidget);
       expect(find.text('↑'), findsOneWidget);
       expect(find.text('上旬'), findsOneWidget);
@@ -113,6 +130,12 @@ void main() {
       expect(find.text('十一–二十'), findsOneWidget);
       expect(find.text('下旬'), findsOneWidget);
       expect(find.text('廿一–晦日'), findsOneWidget);
+
+      for (final xunName in const ['shang', 'zhong', 'xia']) {
+        final size = tester.getSize(find.byKey(Key('timeline_xun_chip_$xunName')));
+        expect(size.width, greaterThanOrEqualTo(44.0), reason: xunName);
+        expect(size.height, greaterThanOrEqualTo(44.0), reason: xunName);
+      }
 
       await tester.tap(find.byKey(const Key('timeline_xun_chip_xia')));
       expect(tappedXun, equals(TimelineXun.xia));

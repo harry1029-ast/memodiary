@@ -149,7 +149,6 @@ class BambooBlindCollapsedBar extends StatelessWidget {
                         ),
                         const SizedBox(width: 7),
                         Expanded(
-                          flex: isCompact ? 1 : 1,
                           child: titleWidget,
                         ),
                         const SizedBox(width: 4),
