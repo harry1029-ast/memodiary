@@ -65,6 +65,12 @@ sealed class TextStationerySheet extends StationerySheetDescriptor {
 
   /// Reaches this sheet's live editor so the canvas can find the caret and keep
   /// it above the software keyboard.
+  ///
+  /// Goes stale: `QuillEditor` adopts its editor key once in `initState`, so a
+  /// descriptor that replaces another on the same page (re-index after
+  /// Auto-Spill, re-partition on a typography change) carries a key that is
+  /// never attached. To reach the live editor reliably, find it under the
+  /// sheet's widget subtree by controller, as `SheetInkStage._findEditor` does.
   final GlobalKey<EditorState> editorKey = GlobalKey<EditorState>();
 
   /// Keepsake photos or short videos attached directly to this sheet (up to 3 items).
