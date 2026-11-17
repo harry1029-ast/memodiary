@@ -1,7 +1,7 @@
 ---
 id: SPEC-021
 title: Plain Modern Chinese UI Diction Redesign
-status: ready-for-agent
+status: completed
 created_at: 2026-11-17T23:30:00+08:00
 adr: ADR-0012
 ---
