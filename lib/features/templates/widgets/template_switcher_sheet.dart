@@ -170,7 +170,7 @@ class _TemplateSwitcherSheetState extends State<TemplateSwitcherSheet> {
                       const SizedBox(width: 8),
                       Flexible(
                         child: Text(
-                          'Switch Template',
+                          '选择信纸',
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontNotoSerif,
@@ -181,99 +181,67 @@ class _TemplateSwitcherSheetState extends State<TemplateSwitcherSheet> {
                           ),
                         ),
                       ),
-                      Text(
-                        ' · ',
-                        style: TextStyle(color: tokens.danmo),
-                      ),
-                      Flexible(
-                        child: Text(
-                          '素笺信札',
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontKaiti,
-                            fontSize: 14,
-                            color: tokens.nongmo,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
                 if (widget.database != null)
-                  InkWell(
-                    key: const Key('new_custom_template_button'),
-                    onTap: _handleCreateCustom,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: tokens.cinnabarWash,
+                  Tooltip(
+                    message: '新建信纸',
+                    child: Semantics(
+                      button: true,
+                      label: '新建信纸',
+                      child: InkWell(
+                        key: const Key('new_custom_template_button'),
+                        onTap: _handleCreateCustom,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: tokens.cinnabar.withValues(alpha: 0.35),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.add,
-                            size: 14,
-                            color: tokens.cinnabar,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '定制雅笺',
-                            style: TextStyle(
-                              fontFamily: InkDiaryTheme.fontNotoSerif,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: tokens.cinnabar,
+                          decoration: BoxDecoration(
+                            color: tokens.cinnabarWash,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: tokens.cinnabar.withValues(alpha: 0.35),
+                              width: 1,
                             ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.add,
+                                size: 14,
+                                color: tokens.cinnabar,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '新建信纸',
+                                style: TextStyle(
+                                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: tokens.cinnabar,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
               ],
             ),
             const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.only(left: 8),
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: tokens.agedFiber,
-                    width: 2,
-                  ),
+            Padding(
+              padding: const EdgeInsets.only(left: 11),
+              child: Text(
+                '切换信纸只改变页面样式，不会修改日记正文',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: tokens.danmo,
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '“笺换风骨，意蕴随迁”',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontKaiti,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.jiaomo,
-                    ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    '随意切换信笺式样，不更动字句分毫',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: tokens.danmo,
-                    ),
-                  ),
-                ],
               ),
             ),
             const SizedBox(height: 18),

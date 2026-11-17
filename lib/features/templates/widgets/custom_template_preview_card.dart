@@ -44,7 +44,7 @@ class CustomTemplatePreviewCard extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              '案头即时笺样 · LIVE PREVIEW',
+              '效果预览',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 12,
@@ -117,7 +117,7 @@ class CustomTemplatePreviewCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '丙午岁九月廿一 · ☀️ 晴朗',
+                            '2026年10月18日 · 晴天',
                             style: TextStyle(
                               fontFamily: activeFont ?? 'serif',
                               fontFamilyFallback: const [
@@ -132,7 +132,7 @@ class CustomTemplatePreviewCard extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             templateTitle.trim().isEmpty
-                                ? '秋山晚眺 · 随笔起兴'
+                                ? '今日随笔'
                                 : templateTitle.trim(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -151,7 +151,7 @@ class CustomTemplatePreviewCard extends StatelessWidget {
                           const SizedBox(height: 6),
                           Expanded(
                             child: Text(
-                              '秋水初凝，晨光微露，案头烹茶一瓯，静观落叶飘飏。\n拾光日记 · 记录每一个值得珍藏的瞬间。',
+                              '微风轻拂，记录今天发生的点滴小事。\n拾光日记，留住值得珍藏的时光。',
                               style: TextStyle(
                                 fontFamily: activeFont ?? 'serif',
                                 fontFamilyFallback: const [

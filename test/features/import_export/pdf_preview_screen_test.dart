@@ -208,14 +208,50 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const Key('pdf_layout_mode_toggle')), findsOneWidget);
-      expect(find.text('横排素笺'), findsOneWidget);
-      expect(find.text('卷轴竖排'), findsOneWidget);
+      expect(find.text('横排'), findsOneWidget);
+      expect(find.text('竖排'), findsOneWidget);
+      expect(find.text('横排素笺'), findsNothing);
+      expect(find.text('卷轴竖排'), findsNothing);
 
-      // Tap 卷轴竖排
-      await tester.tap(find.text('卷轴竖排'));
+      // Tap 竖排
+      await tester.tap(find.text('竖排'));
       await tester.pump();
 
       expect(find.byType(PdfPreview), findsOneWidget);
+    });
+
+    testWidgets('uses plain Chinese fallback title when entry has no title', (tester) async {
+      final untitledEntry = Entry(
+        id: 'entry_untitled_pdf',
+        notebookId: 'default',
+        templateId: 'template_minimalist_white',
+        title: null,
+        contentDelta: jsonEncode([{'insert': '内容\n'}]),
+        plainText: '内容',
+        entryDate: now,
+        mood: 3,
+        weather: 'sunny',
+        isWeeklyReview: false,
+        weekNumber: 42,
+        isLocked: false,
+        legacyMountsPending: false,
+        createdAt: now,
+        updatedAt: now,
+        isDeleted: false,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PdfPreviewScreen(
+            singleEntry: untitledEntry,
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('拾光日记'), findsOneWidget);
     });
   });
 }

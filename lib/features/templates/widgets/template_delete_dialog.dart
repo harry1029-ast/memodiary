@@ -9,9 +9,9 @@ Future<bool?> showTemplateDeleteDialog(
   return showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Delete Custom Template?'),
+      title: const Text('删除自定义信纸'),
       content: Text(
-        '确定删除「${template.name}」？所有使用该信笺的手稿将自动回退为澄心素宣，字句原意毫发无损。',
+        '确定删除「${template.name}」？使用该信纸的日记将自动恢复为默认信纸，正文内容不会丢失。',
       ),
       actions: [
         TextButton(

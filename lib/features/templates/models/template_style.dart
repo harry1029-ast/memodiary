@@ -46,15 +46,15 @@ enum TemplateBackgroundType {
   String get label {
     switch (this) {
       case TemplateBackgroundType.color:
-        return 'Solid Color';
+        return '纯色';
       case TemplateBackgroundType.lined:
-        return 'Lined Paper';
+        return '横线';
       case TemplateBackgroundType.grid:
-        return 'Grid Paper';
+        return '方格';
       case TemplateBackgroundType.dotGrid:
-        return 'Dot Grid';
+        return '点阵';
       case TemplateBackgroundType.paperTexture:
-        return 'Kraft Paper';
+        return '牛皮纸';
     }
   }
 }
@@ -70,15 +70,15 @@ enum PaperSubstrate {
   String get label {
     switch (this) {
       case PaperSubstrate.xuan:
-        return '生宣原色';
+        return '宣纸';
       case PaperSubstrate.coldGold:
-        return '冷金洒粉';
+        return '洒金';
       case PaperSubstrate.minimal:
-        return '素白简约';
+        return '素白';
       case PaperSubstrate.kraft:
-        return '怀旧牛皮';
+        return '牛皮纸';
       case PaperSubstrate.obsidian:
-        return '松烟暗夜';
+        return '暗夜';
     }
   }
 
@@ -132,13 +132,13 @@ enum RuleInkTint {
   String get label {
     switch (this) {
       case RuleInkTint.slate:
-        return '淡墨青灰';
+        return '青灰';
       case RuleInkTint.vermilion:
-        return '朱砂印泥';
+        return '朱红';
       case RuleInkTint.charcoal:
-        return '松烟深黛';
+        return '深灰';
       case RuleInkTint.jade:
-        return '竹青碧玉';
+        return '竹青';
     }
   }
 
@@ -180,9 +180,9 @@ enum SealCarvingStyle {
   String get label {
     switch (this) {
       case SealCarvingStyle.zhuwen:
-        return '朱文 (阳刻)';
+        return '朱文';
       case SealCarvingStyle.baiwen:
-        return '白文 (阴刻)';
+        return '白文';
       case SealCarvingStyle.hidden:
         return '不加盖';
     }
@@ -282,7 +282,6 @@ class StationeryVisualTokens {
 class StationerySuite {
   final String id;
   final String name;
-  final String description;
   final PaperSubstrate substrate;
   final RuleInkTint ruleTint;
   final SealCarvingStyle sealStyle;
@@ -292,7 +291,6 @@ class StationerySuite {
   const StationerySuite({
     required this.id,
     required this.name,
-    required this.description,
     required this.substrate,
     required this.ruleTint,
     required this.sealStyle,
@@ -325,8 +323,7 @@ class StationerySuite {
 abstract final class StationerySuites {
   static const wenfang = StationerySuite(
     id: 'wenfang',
-    name: '文房遗韵 · 朱丝宣纸',
-    description: '生宣温润，朱丝雅致，如临兰亭',
+    name: '朱丝宣纸',
     substrate: PaperSubstrate.xuan,
     ruleTint: RuleInkTint.vermilion,
     sealStyle: SealCarvingStyle.zhuwen,
@@ -336,8 +333,7 @@ abstract final class StationerySuites {
 
   static const lengjin = StationerySuite(
     id: 'lengjin',
-    name: '冷金洒粉 · 暖笺',
-    description: '澄金细碎，松烟墨痕，岁月生辉',
+    name: '冷金暖笺',
     substrate: PaperSubstrate.coldGold,
     ruleTint: RuleInkTint.charcoal,
     sealStyle: SealCarvingStyle.zhuwen,
@@ -347,8 +343,7 @@ abstract final class StationerySuites {
 
   static const zhuqing = StationerySuite(
     id: 'zhuqing',
-    name: '竹青九宫 · 手账方格',
-    description: '素白清爽，竹青正格，井然有序',
+    name: '竹青方格',
     substrate: PaperSubstrate.minimal,
     ruleTint: RuleInkTint.jade,
     sealStyle: SealCarvingStyle.baiwen,
@@ -358,8 +353,7 @@ abstract final class StationerySuites {
 
   static const songyan = StationerySuite(
     id: 'songyan',
-    name: '松烟夜墨 · 暗夜',
-    description: '玄石幽深，青灰微光，护眼静思',
+    name: '松烟暗夜',
     substrate: PaperSubstrate.obsidian,
     ruleTint: RuleInkTint.slate,
     sealStyle: SealCarvingStyle.baiwen,
