@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -164,6 +165,38 @@ void main() {
       expect(player.played.length, 40);
       expect(playersCreated, 1);
       expect(player.played.toSet().length, 1, reason: 'the same cached source every time');
+    });
+
+    test('loads the rustle into the player once and replays it from the start', () async {
+      final service = buildService();
+
+      for (var stroke = 0; stroke < 40; stroke++) {
+        await service.playBrushStroke(soundEnabled: true);
+        advance(110);
+      }
+
+      expect(player.played.length, 40);
+      expect(player.sourcesLoaded, 1, reason: 'reloading re-prepares the platform player on every stroke (replay lag)');
+      expect(player.requestedReleaseMode, ReleaseMode.stop, reason: 'the rustle must stay loaded after it plays');
+    });
+
+    test('drops a stroke while the previous rustle is still starting, so calls never pile up', () async {
+      final service = buildService();
+      final gate = Completer<void>();
+      player.resumeGate = gate;
+
+      final first = service.playBrushStroke(soundEnabled: true);
+      for (var stroke = 0; stroke < 5; stroke++) {
+        advance(110);
+        await service.playBrushStroke(soundEnabled: true);
+      }
+      expect(player.played.length, 1, reason: 'strokes arriving while the player is busy are dropped');
+
+      gate.complete();
+      await first;
+      advance(110);
+      await service.playBrushStroke(soundEnabled: true);
+      expect(player.played.length, 2);
     });
 
     test('is silent when brush sound is off, without starting the rate window', () async {

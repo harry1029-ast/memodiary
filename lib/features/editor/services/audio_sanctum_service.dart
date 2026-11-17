@@ -288,6 +288,8 @@ class AudioSanctumService extends ChangeNotifier {
   AudioPlayer? _lazyPlayer;
   AudioPlayer? _brushStrokePlayer;
   BytesSource? _brushStrokeSource;
+  double? _brushStrokeVolume;
+  bool _isStartingBrushStroke = false;
   DateTime? _lastBrushStrokeAt;
   SoundscapePreset? _activePreset;
   bool _isPlaying = false;
@@ -399,14 +401,27 @@ class AudioSanctumService extends ChangeNotifier {
     final now = _clock();
     final lastPlayedAt = _lastBrushStrokeAt;
     if (lastPlayedAt != null && now.difference(lastPlayedAt) < brushStrokeMinInterval) return;
+    // Drop a stroke while the last rustle is still starting: queued calls would
+    // keep the platform player busy long after the writing stopped.
+    if (_isStartingBrushStroke) return;
     _lastBrushStrokeAt = now;
+    _isStartingBrushStroke = true;
     try {
       final player = _brushStrokePlayer ??= _brushStrokePlayerFactory();
-      final source = _brushStrokeSource ??=
-          BytesSource(ProceduralAudioSynthesizer.generateChimeBuffer(ScholarTactileChime.brushStroke));
-      await player.play(source, volume: (_volume * 0.6).clamp(0.0, 1.0));
+      if (_brushStrokeSource == null) {
+        // Load once (each load re-prepares the platform player); `stop` keeps it loaded after playing.
+        await player.setReleaseMode(ReleaseMode.stop);
+        await player.setSource(_brushStrokeSource =
+            BytesSource(ProceduralAudioSynthesizer.generateChimeBuffer(ScholarTactileChime.brushStroke)));
+      }
+      final volume = (_volume * 0.6).clamp(0.0, 1.0);
+      if (volume != _brushStrokeVolume) await player.setVolume(_brushStrokeVolume = volume);
+      await player.seek(Duration.zero);
+      await player.resume();
     } catch (_) {
       // Absorb audio engine missing errors in headless/test environments
+    } finally {
+      _isStartingBrushStroke = false;
     }
   }
 
