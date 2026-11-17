@@ -8,7 +8,6 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/dictation_service.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
-import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/widgets/keepsake_scroll_view.dart';
 import 'package:memodiary/features/editor/widgets/editor_quill_styles_builder.dart';
 import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
@@ -19,6 +18,7 @@ import 'package:memodiary/features/editor/widgets/writing_dock.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
+import '../../helpers/editor_test_harness.dart';
 import '../../helpers/fake_speech_to_text.dart';
 
 void main() {
@@ -67,19 +67,13 @@ void main() {
 
   group('EntryEditorScreen Widget Tests', () {
     testWidgets('renders full-bleed journal sheet, letterhead, and writing dock without inline ghost prompt', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
       );
-
-      await tester.pumpAndSettle();
 
       // Verify new architecture widgets are rendered
       expect(find.byType(JournalLetterhead), findsOneWidget);
@@ -99,19 +93,13 @@ void main() {
     });
 
     testWidgets('tapping sparkle button in WritingDock displays thought spark SnackBar and adopts it into editor', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
       );
-
-      await tester.pumpAndSettle();
 
       // Tap sparkle tool in WritingDock
       expect(find.byKey(const Key('writing_dock_spark_btn')), findsOneWidget);
@@ -129,19 +117,13 @@ void main() {
     });
 
     testWidgets('synchronizes typography from template on load and template switch', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
       );
-
-      await tester.pumpAndSettle();
 
       // Verify TemplateCanvasContainer receives typography synchronized with initial template
       final initialContainer = tester.widget<TemplateCanvasContainer>(
@@ -184,19 +166,13 @@ void main() {
     });
 
     testWidgets('synchronizes editor horizontal margins directly to innerFrameRect and clamps letterhead height', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
       );
-
-      await tester.pumpAndSettle();
 
       // 1. Verify JournalLetterhead height on canvas is an integer multiple of rowHeight
       final letterheadFinder = find.byType(JournalLetterhead);
@@ -274,19 +250,13 @@ void main() {
     });
 
     testWidgets('enforces StrutStyle forceStrutHeight on editor styles and toggles grid letterSpacing cleanly without mutating delta', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
       );
-
-      await tester.pumpAndSettle();
 
       // Verify StrutStyle on editor styles
       final strutStyle = EditorQuillStylesBuilder.buildStrutStyle(
@@ -335,19 +305,13 @@ void main() {
     });
 
     testWidgets('opening template switcher and typography sheets from scholar chest', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
       );
-
-      await tester.pumpAndSettle();
 
       // Open Scholar's Stationery Chest
       await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
@@ -379,19 +343,14 @@ void main() {
       tester.view.physicalSize = const Size(360, 780);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.dark,
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
+        theme: InkDiaryTheme.dark,
       );
-
-      await tester.pumpAndSettle();
 
       // Verify canvas container fills the screen vertically
       final canvasFinder = find.byType(Positioned);
@@ -407,19 +366,13 @@ void main() {
     });
 
     testWidgets('tapping top_bar_keepsake_scroll_button opens KeepsakeScrollView without mutating delta', (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: EntryEditorScreen(
-            database: db,
-            mediaSandboxService: sandboxService,
-            entryId: 'editor_test_entry',
-            dictationService: dictationService,
-          ),
-        ),
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
       );
-
-      await tester.pumpAndSettle();
 
       final keepsakeBtn = find.byKey(const Key('top_bar_keepsake_scroll_button'));
       expect(keepsakeBtn, findsOneWidget);

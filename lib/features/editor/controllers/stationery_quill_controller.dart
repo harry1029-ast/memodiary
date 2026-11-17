@@ -8,16 +8,39 @@ import 'package:flutter_quill/quill_delta.dart';
 import '../models/mount_marker.dart';
 import '../models/mount_marker_clipboard.dart';
 
+/// Hears every change to one Stationery Sheet's document, in the order the
+/// changes are applied: each is reported once the document holds it and
+/// before the controller notifies its listeners (which may edit again).
+abstract interface class StationeryEditObserver {
+  /// [insertedText] now stands at [index], where [deletedLength] characters
+  /// were removed. [index] is where the edit really landed, after the mount
+  /// marker heuristics. [ignoreFocus] marks a programmatic edit.
+  void onTextReplaced(int index, int deletedLength, String insertedText, {required bool ignoreFocus});
+
+  /// The document changed in a way that is not one plain text replacement:
+  /// undo, redo, a document swap (Auto-Spill, Spill-Back), an embed, a paste
+  /// carrying formatting, or a format change.
+  void onStructuralChange();
+}
+
 /// A [QuillController] tailored for Stationery Sheets.
 ///
 /// Anchors invisible [MountMarker] embeds to their preceding text passage,
 /// protects them from accidental single-character Backspace deletions while
 /// editing, and preserves the unmount lifecycle when a diarist explicitly
-/// deletes the passage or backspaces past the last character.
+/// deletes the passage or backspaces past the last character. Reports every
+/// document change to its [editObserver].
 class StationeryQuillController extends QuillController {
   /// Invoked when a single-character Backspace from a collapsed cursor hits a
   /// leading mount marker with no preceding text on the sheet.
   VoidCallback? onBackspaceAtStart;
+
+  /// Hears this sheet's document changes (the Ink Choreography overlay).
+  StationeryEditObserver? editObserver;
+
+  /// The change being applied, reported by [_reportChange] as soon as the
+  /// document holds it.
+  void Function(StationeryEditObserver observer)? _unreportedChange;
 
   StationeryQuillController._({
     required super.document,
@@ -64,6 +87,76 @@ class StationeryQuillController extends QuillController {
     return true;
   }
 
+  static void _structuralChange(StationeryEditObserver observer) => observer.onStructuralChange();
+
+  void _reportChange() {
+    final report = _unreportedChange;
+    _unreportedChange = null;
+    final observer = editObserver;
+    if (report != null && observer != null) report(observer);
+  }
+
+  /// Runs [change] and reports it as structural.
+  void _applyStructuralChange(VoidCallback change) {
+    _unreportedChange = _structuralChange;
+    change();
+    _reportChange();
+  }
+
+  @override
+  void notifyListeners() {
+    _reportChange();
+    super.notifyListeners();
+  }
+
+  @override
+  set document(Document newDocument) => _applyStructuralChange(() => super.document = newDocument);
+
+  @override
+  void undo() => _applyStructuralChange(super.undo);
+
+  @override
+  void redo() => _applyStructuralChange(super.redo);
+
+  @override
+  void formatText(int index, int len, Attribute? attribute, {bool shouldNotifyListeners = true}) =>
+      _applyStructuralChange(
+        () => super.formatText(index, len, attribute, shouldNotifyListeners: shouldNotifyListeners),
+      );
+
+  /// Applies the replacement at its final [index] and reports it: as a text
+  /// replacement when the document changed by exactly that text, otherwise
+  /// (an embed, a Delta, or Quill's own rules reshaping the edit) as a
+  /// structural change.
+  void _replaceAndReport(
+    int index,
+    int len,
+    Object? data,
+    TextSelection? textSelection, {
+    required bool ignoreFocus,
+    required bool shouldNotifyListeners,
+  }) {
+    final lengthBefore = document.length;
+    _unreportedChange = (observer) {
+      if (data is String &&
+          document.length - lengthBefore == data.length - len &&
+          document.toPlainText().startsWith(data, index)) {
+        if (len > 0 || data.isNotEmpty) observer.onTextReplaced(index, len, data, ignoreFocus: ignoreFocus);
+        return;
+      }
+      observer.onStructuralChange();
+    };
+    super.replaceText(
+      index,
+      len,
+      data,
+      textSelection,
+      ignoreFocus: ignoreFocus,
+      shouldNotifyListeners: shouldNotifyListeners,
+    );
+    _reportChange();
+  }
+
   @override
   void replaceText(
     int index,
@@ -76,7 +169,7 @@ class StationeryQuillController extends QuillController {
     // Programmatic operations (e.g. unmounting or stripping duplicates) explicitly
     // bypass user-input heuristics via ignoreFocus.
     if (ignoreFocus) {
-      super.replaceText(
+      _replaceAndReport(
         index,
         len,
         data,
@@ -97,7 +190,7 @@ class StationeryQuillController extends QuillController {
         final shiftedSelection = (textSelection != null && textSelection.isCollapsed)
             ? TextSelection.collapsed(offset: textSelection.baseOffset + markerSpan)
             : textSelection;
-        super.replaceText(
+        _replaceAndReport(
           shiftedIndex,
           len,
           data,
@@ -130,7 +223,7 @@ class StationeryQuillController extends QuillController {
           if (priorSelection.baseOffset >= index + 1) {
             final target = MountMarker.prevNonMarkerOffset(delta, index);
             if (target != null) {
-              super.replaceText(
+              _replaceAndReport(
                 target,
                 1,
                 '',
@@ -147,7 +240,7 @@ class StationeryQuillController extends QuillController {
       }
     }
 
-    super.replaceText(
+    _replaceAndReport(
       index,
       len,
       data,

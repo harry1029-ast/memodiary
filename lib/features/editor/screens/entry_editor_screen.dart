@@ -88,8 +88,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   late final WritingFocusGuard _focusGuard = WritingFocusGuard(
       sheets: () => _coordinator.sheets, isKeyboardVisible: () => _chrome.isKeyboardVisible);
 
-  QuillController get _activeController =>
-      _paginationHandler?.activeTextController ?? QuillController.basic();
+  QuillController get _activeController => _paginationHandler?.activeTextController ?? QuillController.basic();
 
   @override
   void initState() {
@@ -147,8 +146,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
 
   Future<void> _loadEntryData() async {
     try {
-      final entry =
-          await widget.database.entriesDao.getEntryById(widget.entryId);
+      final entry = await widget.database.entriesDao.getEntryById(widget.entryId);
       if (entry == null) {
         if (mounted) Navigator.pop(context);
         return;
@@ -397,6 +395,8 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
                 chrome: _chrome,
                 coordinator: _coordinator,
                 pageController: _pageController,
+                inkChoreography: _scholarChest.inkChoreography,
+                audioSanctumService: _audioSanctumService,
                 currentSheetIndex: currentSheetIndex,
                 totalSheets: _coordinator.totalSheets,
                 onPreviousSheet: () => _paginationHandler!.goToSheet(currentSheetIndex - 1),

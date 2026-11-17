@@ -7,9 +7,12 @@ import '../controllers/editor_autosave_manager.dart';
 import '../controllers/editor_chrome_controller.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../domain/stationery_sheet_geometry.dart';
+import '../ink_choreography/ink_choreography_controller.dart';
 import '../models/desk_media_handlers.dart';
 import '../models/stationery_sheet_configs.dart';
+import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
+import '../services/ime_composing_guard.dart';
 import 'desk_workstation/desk_space_budget.dart';
 import 'desk_workstation/desk_palette.dart';
 import 'desk_workstation/scholar_desk_painter.dart';
@@ -22,6 +25,7 @@ import 'desk_media_control.dart';
 import 'desk_off_sheet_tap.dart';
 import 'page_corner.dart';
 import 'sheet_drop_target.dart';
+import 'sheet_ink/sheet_ink_stage.dart';
 import 'stationery_ephemera_sheet.dart';
 
 /// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
@@ -35,6 +39,7 @@ import 'stationery_ephemera_sheet.dart';
 /// resting desk height, so the software keyboard never resizes or moves it; the
 /// [KeyboardDeskLift] only lifts the desk to show the whole sheet, or the caret
 /// when the sheet cannot fit. Tapping the bare desk off the sheet ends writing.
+/// Every sheet card is wrapped in a [SheetInkStage], its Ink Choreography overlay.
 class EditorPaperCanvas extends StatelessWidget {
   static final _walnutDeskPainter = ScholarDeskPainter(palette: DeskPalette.walnut);
   static final _ebonyDeskPainter = ScholarDeskPainter(palette: DeskPalette.ebony);
@@ -67,6 +72,12 @@ class EditorPaperCanvas extends StatelessWidget {
   /// Ends writing when the diarist taps the bare desk off the sheet.
   final VoidCallback? onTapDeskOffSheet;
 
+  /// The diarist's live Ink Choreography preferences and replay requests.
+  final InkChoreographyController inkChoreography;
+
+  /// Plays the brush-on-paper rustle of each written stroke.
+  final AudioSanctumService audioSanctumService;
+
   const EditorPaperCanvas({
     super.key,
     required this.themeConfig,
@@ -76,6 +87,8 @@ class EditorPaperCanvas extends StatelessWidget {
     required this.chrome,
     required this.coordinator,
     required this.pageController,
+    required this.inkChoreography,
+    required this.audioSanctumService,
     this.currentSheetIndex = 0,
     this.totalSheets = 1,
     this.onPreviousSheet,
@@ -196,8 +209,9 @@ class EditorPaperCanvas extends StatelessWidget {
                             return const SizedBox.shrink();
                           }
                           final sheet = coordinator.sheets[sheetIndex];
-  
-                          final sheetCard = Container(
+                          final headerHeight = sheet is OpeningSheet ? geometry.openingHeaderHeight : 0.0;
+
+                          Widget buildSheetCard(Widget inkLayer) => Container(
                             width: canvasWidth,
                             height: cardHeight,
                             decoration: BoxDecoration(
@@ -232,9 +246,7 @@ class EditorPaperCanvas extends StatelessWidget {
                                     style: templateStyle,
                                     typography: typography,
                                     scrollOffset: 0.0,
-                                    headerHeight: sheet is OpeningSheet
-                                        ? geometry.openingHeaderHeight
-                                        : 0.0,
+                                    headerHeight: headerHeight,
                                     layoutMetrics: metrics,
                                     customPadding: EdgeInsets.zero,
                                     child: const SizedBox.expand(),
@@ -254,6 +266,8 @@ class EditorPaperCanvas extends StatelessWidget {
                                       geometry: geometry,
                                     ),
                                   ),
+                                  // Ink Choreography's paper mask and wet ink.
+                                  inkLayer,
                                   // Page Corner folds, drawn on the paper so they
                                   // move with the sheet under a swipe.
                                   PageCornerFolds(
@@ -284,7 +298,23 @@ class EditorPaperCanvas extends StatelessWidget {
                                   palette: DeskMediaPalette(isPaperDark: isDark),
                                   onMount: deskMedia.onMount,
                                   isEnabled: sheetIndex == currentSheetIndex,
-                                  child: sheetCard,
+                                  child: SheetInkStage(
+                                    sheet: sheet,
+                                    isActive: sheetIndex == currentSheetIndex,
+                                    geometry: geometry,
+                                    headerHeight: headerHeight,
+                                    themeConfig: themeConfig,
+                                    preferences: inkChoreography,
+                                    audioSanctumService: audioSanctumService,
+                                    onComposingChanged: sheet is TextStationerySheet
+                                        ? (isComposing) => ImeComposingGuard.report(
+                                              coordinator,
+                                              sheet.controller,
+                                              isComposing: isComposing,
+                                            )
+                                        : null,
+                                    cardBuilder: buildSheetCard,
+                                  ),
                                 ),
                               ),
                             ),

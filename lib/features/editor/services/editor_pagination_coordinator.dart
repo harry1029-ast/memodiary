@@ -128,6 +128,15 @@ class EditorPaginationCoordinator extends ChangeNotifier {
     return composing.isValid && !composing.isCollapsed;
   }
 
+  /// Re-runs the Auto-Spill and mount reflow that [controller]'s sheet put
+  /// off while its IME was composing.
+  void resumeDeferredPagination(QuillController controller) {
+    final index = _sheets.indexWhere((sheet) => sheet is TextStationerySheet && identical(sheet.controller, controller));
+    if (_isDisposed || _isMutatingSheets || index < 0 || isSheetComposing(index)) return;
+    checkAndPerformAutoSpill(index);
+    if (!_isMutatingSheets) reflowMounts();
+  }
+
   /// Populates the coordinator from a raw continuous Quill Delta JSON array.
   ///
   /// [attachments] are resolved against the Delta's mount markers: referenced
