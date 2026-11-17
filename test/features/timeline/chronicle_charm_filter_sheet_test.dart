@@ -196,8 +196,8 @@ void main() {
           );
         }
 
-        expect(find.bySemanticsLabel(RegExp('心绪：欢欣')), findsOneWidget);
-        expect(find.bySemanticsLabel(RegExp('天时：晴明')), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('心绪：喜悦')), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('天时：晴天')), findsOneWidget);
         expect(find.bySemanticsLabel(RegExp('含图影')), findsOneWidget);
         expect(find.bySemanticsLabel(RegExp('周志复盘')), findsOneWidget);
         expect(find.bySemanticsLabel(RegExp('重置笺签')), findsOneWidget);

@@ -190,9 +190,12 @@ void main() {
         expect(find.byKey(const Key('contemplation_realm_chip_indoor')), findsOneWidget);
         expect(find.byKey(const Key('contemplation_realm_chip_outdoor')), findsOneWidget);
 
-        expect(find.text('林泉'), findsOneWidget);
-        expect(find.text('雅室'), findsOneWidget);
-        expect(find.text('市井'), findsOneWidget);
+        expect(find.text('山水'), findsOneWidget);
+        expect(find.text('室内'), findsOneWidget);
+        expect(find.text('街市'), findsOneWidget);
+        for (final label in ['清晨', '白天', '傍晚', '夜晚', '晴天', '多云', '小雨', '雷雨', '下雪']) {
+          expect(find.text(label), findsOneWidget);
+        }
 
         // Switch to Indoor (雅室)
         await tester.tap(find.byKey(const Key('contemplation_realm_chip_indoor')));

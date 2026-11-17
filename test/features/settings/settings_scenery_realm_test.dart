@@ -69,14 +69,15 @@ void main() {
     }
 
     testWidgets(
-      'displays 画卷境域 (Scenery Realm) tile with default Auto · 随文入境 subtitle',
+      'displays 画卷场景 tile with default 自动 subtitle',
       (tester) async {
         await pumpSettings(tester);
 
         final tileFinder = find.byKey(const Key('settings_scenery_realm_tile'));
         expect(tileFinder, findsOneWidget);
-        expect(find.textContaining('画卷境域'), findsOneWidget);
-        expect(find.textContaining('随文入境'), findsAtLeast(1));
+        expect(find.text('画卷场景'), findsOneWidget);
+        expect(find.textContaining('Scenery Realm'), findsNothing);
+        expect(find.textContaining('自动'), findsAtLeast(1));
       },
     );
 
@@ -95,7 +96,7 @@ void main() {
         expect(find.byKey(const Key('settings_realm_option_indoor')), findsOneWidget);
         expect(find.byKey(const Key('settings_realm_option_outdoor')), findsOneWidget);
 
-        // Select Indoor (雅室)
+        // Select Indoor (室内)
         await tester.tap(find.byKey(const Key('settings_realm_option_indoor')));
         await tester.pumpAndSettle();
 
@@ -106,10 +107,10 @@ void main() {
         expect(mockStorage.data['memodiary_scenery_realm_preference'], equals('indoor'));
 
         // Feedback SnackBar shown
-        expect(find.textContaining('已设置画卷境域'), findsOneWidget);
+        expect(find.textContaining('已设置画卷场景'), findsOneWidget);
 
-        // Tile subtitle updated to reflect 雅室
-        expect(find.textContaining('雅室'), findsAtLeast(1));
+        // Tile subtitle updated to reflect 室内
+        expect(find.textContaining('室内'), findsAtLeast(1));
       },
     );
 
@@ -125,7 +126,7 @@ void main() {
         await pumpSettings(tester);
 
         // Verify initial state shows indoor
-        expect(find.textContaining('雅室'), findsAtLeast(1));
+        expect(find.textContaining('室内'), findsAtLeast(1));
 
         // Tap reset atmosphere tile
         final resetTile = find.byKey(const Key('settings_scenery_reset_atmosphere_tile'));
@@ -139,8 +140,8 @@ void main() {
         // Storage cleared
         expect(mockStorage.data['memodiary_scenery_realm_preference'], isNull);
 
-        // Subtitle restored to Auto · 随文入境
-        expect(find.textContaining('Auto · 随文入境'), findsOneWidget);
+        // Subtitle restored to 自动
+        expect(find.textContaining('自动（根据近期日记切换）'), findsOneWidget);
       },
     );
 

@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-/// The three classical scenery realms for MemoDiary:
-/// Nature (`林泉`), Indoor Scholar Tea Hall (`雅室`), and Outdoor Market Street (`市井`).
+/// The three scenery realms for MemoDiary:
+/// Nature (`山水`), Indoor (`室内`), and Outdoor (`街市`).
 enum ShanshuiRealm {
   nature(
     id: 'nature',
-    shortNameZh: '林泉',
+    shortNameZh: '山水',
     nameEn: 'Nature',
   ),
   indoor(
     id: 'indoor',
-    shortNameZh: '雅室',
+    shortNameZh: '室内',
     nameEn: 'Indoor Tea Hall',
   ),
   outdoor(
     id: 'outdoor',
-    shortNameZh: '市井',
+    shortNameZh: '街市',
     nameEn: 'Ancient Market Street',
   );
 
@@ -42,22 +42,22 @@ enum ShanshuiRealm {
 enum SceneryRealmPreference {
   auto(
     id: 'auto',
-    nameZh: '随文入境',
+    nameZh: '自动',
     nameEn: 'Auto',
   ),
   nature(
     id: 'nature',
-    nameZh: '林泉',
+    nameZh: '山水',
     nameEn: 'Nature',
   ),
   indoor(
     id: 'indoor',
-    nameZh: '雅室',
+    nameZh: '室内',
     nameEn: 'Indoor Tea Hall',
   ),
   outdoor(
     id: 'outdoor',
-    nameZh: '市井',
+    nameZh: '街市',
     nameEn: 'Ancient Market Street',
   );
 
@@ -310,12 +310,12 @@ enum ShanshuiSeason {
   }
 }
 
-/// Classical Chinese two-hour / solar brackets (时辰) for celestial lighting.
+/// Time-of-day brackets for celestial lighting.
 enum ShanshuiTimeOfDay {
-  dawn(id: 'dawn', nameZh: '破晓', nameEn: 'Dawn'),
-  day(id: 'day', nameZh: '旭日', nameEn: 'Day'),
-  dusk(id: 'dusk', nameZh: '夕照', nameEn: 'Dusk'),
-  night(id: 'night', nameZh: '明月', nameEn: 'Night');
+  dawn(id: 'dawn', nameZh: '清晨', nameEn: 'Dawn'),
+  day(id: 'day', nameZh: '白天', nameEn: 'Day'),
+  dusk(id: 'dusk', nameZh: '傍晚', nameEn: 'Dusk'),
+  night(id: 'night', nameZh: '夜晚', nameEn: 'Night');
 
   final String id;
   final String nameZh;
@@ -336,11 +336,11 @@ enum ShanshuiTimeOfDay {
   }
 }
 
-/// Five classical meteorological states (五候气象) modulating wind, mist, and precipitation.
+/// Five meteorological states modulating wind, mist, and precipitation.
 enum ShanshuiWeather {
   sunny(
     id: 'sunny',
-    nameZh: '晴空',
+    nameZh: '晴天',
     nameEn: 'Sunny',
     badgeZh: '晴空万里',
     windFactor: 1.0,
@@ -350,7 +350,7 @@ enum ShanshuiWeather {
   ),
   cloudy(
     id: 'cloudy',
-    nameZh: '云海',
+    nameZh: '多云',
     nameEn: 'Cloudy',
     badgeZh: '云海山岚',
     windFactor: 1.25,
@@ -360,7 +360,7 @@ enum ShanshuiWeather {
   ),
   rainy(
     id: 'rainy',
-    nameZh: '烟雨',
+    nameZh: '小雨',
     nameEn: 'Rainy',
     badgeZh: '烟雨朦胧',
     windFactor: 1.6,
@@ -380,7 +380,7 @@ enum ShanshuiWeather {
   ),
   snowy(
     id: 'snowy',
-    nameZh: '飞雪',
+    nameZh: '下雪',
     nameEn: 'Snowy',
     badgeZh: '漫天飞雪',
     windFactor: 1.4,
@@ -473,7 +473,7 @@ enum ShanshuiWeather {
 }
 
 /// Immutable value object bundling the active Shanshui atmospheric state across
-/// realm (`林泉` / `雅室` / `市井`), season, time of day, weather, and inference source.
+/// realm (`山水` / `室内` / `街市`), season, time of day, weather, and inference source.
 @immutable
 class ShanshuiAtmosphereState {
   final ShanshuiRealm realm;
@@ -509,9 +509,9 @@ class ShanshuiAtmosphereState {
   /// Realm-specific compact seal badge (e.g. `春 · 桃夭`).
   String get sealBadgeZh => season.sealBadgeZhFor(realm);
 
-  /// Realm badge text: `随文入境 · <realm>` when inferred, or `<realm>` when manually pinned.
+  /// Realm badge text: `自动 · <realm>` when inferred, or `<realm>` when manually pinned.
   String get realmBadgeZh =>
-      isJournalInferred ? '随文入境 · ${realm.shortNameZh}' : realm.shortNameZh;
+      isJournalInferred ? '自动 · ${realm.shortNameZh}' : realm.shortNameZh;
 
   ShanshuiAtmosphereState copyWith({
     ShanshuiRealm? realm,

@@ -239,11 +239,11 @@ class _BookIntroScreenState extends State<BookIntroScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Top Main Title: 拾光 · 云笺日记
+                    // Top Main Title: 拾光日记
                     const Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
-                        '拾光 · 云笺日记',
+                        '拾光日记',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,

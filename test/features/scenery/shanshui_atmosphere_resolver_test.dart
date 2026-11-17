@@ -494,10 +494,10 @@ void main() {
 
       expect(state.realm, equals(ShanshuiRealm.nature));
       expect(state.isJournalInferred, isFalse);
-      expect(state.realmBadgeZh, equals('林泉'));
+      expect(state.realmBadgeZh, equals('山水'));
     });
 
-    test('displays 随文入境 badge when isJournalInferred is true', () {
+    test('displays 自动 badge when isJournalInferred is true', () {
       const state = ShanshuiAtmosphereState(
         realm: ShanshuiRealm.indoor,
         season: ShanshuiSeason.spring,
@@ -506,7 +506,32 @@ void main() {
         isJournalInferred: true,
       );
 
-      expect(state.realmBadgeZh, equals('随文入境 · 雅室'));
+      expect(state.realmBadgeZh, equals('自动 · 室内'));
+    });
+
+    test('exposes plain Chinese labels for realms, preferences, times of day, and weather chips', () {
+      expect(
+        ShanshuiRealm.values.map((realm) => realm.shortNameZh).toList(),
+        equals(['山水', '室内', '街市']),
+      );
+      expect(
+        SceneryRealmPreference.values.map((pref) => pref.nameZh).toList(),
+        equals(['自动', '山水', '室内', '街市']),
+      );
+      expect(
+        ShanshuiTimeOfDay.values.map((time) => time.nameZh).toList(),
+        equals(['清晨', '白天', '傍晚', '夜晚']),
+      );
+      expect(
+        ShanshuiWeather.values.map((weather) => weather.nameZh).toList(),
+        equals(['晴天', '多云', '小雨', '雷雨', '下雪']),
+      );
+      const state = ShanshuiAtmosphereState(
+        season: ShanshuiSeason.spring,
+        timeOfDay: ShanshuiTimeOfDay.dawn,
+        weather: ShanshuiWeather.rainy,
+      );
+      expect(state.timeWeatherBadgeZh, equals('清晨 · 小雨'));
     });
 
     test('resolves realm-specific titles, couplets, and seals across all 12 combinations', () {

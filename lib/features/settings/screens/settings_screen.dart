@@ -645,7 +645,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Icon(Icons.art_track_rounded, color: tokens.cinnabar, size: 20),
             ),
             title: Text(
-              '画卷境域 (Scenery Realm)',
+              '画卷场景',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -655,7 +655,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             subtitle: Text(
               _realmPreference == SceneryRealmPreference.auto
-                  ? 'Auto · 随文入境 (根据近作自适应)'
+                  ? '自动（根据近期日记切换）'
                   : _realmPreference.nameZh,
               style: TextStyle(fontSize: 10.5, color: tokens.danmo),
             ),
@@ -744,7 +744,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backgroundColor: tokens.xuanGround,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
-            '画卷境域',
+            '画卷场景',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontNotoSerif,
               fontWeight: FontWeight.w600,
@@ -761,32 +761,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   tokens: tokens,
                   key: const Key('settings_realm_option_auto'),
                   preference: SceneryRealmPreference.auto,
-                  title: 'Auto · 随文入境',
-                  subtitle: '根据近24小时日记内容自适应意境',
+                  title: '自动',
+                  subtitle: '根据最近 24 小时日记内容自动切换',
                 ),
                 _buildRealmDialogOption(
                   dialogContext: dialogContext,
                   tokens: tokens,
                   key: const Key('settings_realm_option_nature'),
                   preference: SceneryRealmPreference.nature,
-                  title: '林泉',
-                  subtitle: '水墨山水 · 烟波浩渺 (自然)',
+                  title: '山水',
+                  subtitle: '水墨山水风景',
                 ),
                 _buildRealmDialogOption(
                   dialogContext: dialogContext,
                   tokens: tokens,
                   key: const Key('settings_realm_option_indoor'),
                   preference: SceneryRealmPreference.indoor,
-                  title: '雅室',
-                  subtitle: '书房茶室 · 烹茶伴读 (室内茶寮)',
+                  title: '室内',
+                  subtitle: '室内书房茶室',
                 ),
                 _buildRealmDialogOption(
                   dialogContext: dialogContext,
                   tokens: tokens,
                   key: const Key('settings_realm_option_outdoor'),
                   preference: SceneryRealmPreference.outdoor,
-                  title: '市井',
-                  subtitle: '古镇街市 · 烟火人间 (户外古街)',
+                  title: '街市',
+                  subtitle: '街头市集风光',
                 ),
               ],
             ),
@@ -813,7 +813,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isSelected = _realmPreference == preference;
     return Semantics(
       button: true,
-      label: '设置画卷境域为 $title',
+      label: '设置画卷场景为 $title',
       child: ListTile(
         key: key,
         contentPadding: EdgeInsets.zero,
@@ -853,7 +853,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             setState(() => _realmPreference = preference);
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('已设置画卷境域为：$title')),
+              SnackBar(content: Text('已设置画卷场景为：$title')),
             );
           }
         },

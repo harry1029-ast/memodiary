@@ -183,12 +183,12 @@ void main() {
 
       await tester.tap(find.byKey(const Key('letterhead_mood_charm_target')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('心境感怀'), findsOneWidget);
-      await tester.tap(find.text('欢欣'));
+      expect(find.text('选择心情'), findsOneWidget);
+      await tester.tap(find.text('喜悦'));
       await tester.pumpAndSettle();
 
       final charm = find.byKey(const Key('letterhead_mood_charm'));
-      expect(find.descendant(of: charm, matching: find.text('欢')), findsOneWidget);
+      expect(find.descendant(of: charm, matching: find.text('喜')), findsOneWidget);
       expect(find.descendant(of: charm, matching: find.text('😄')), findsOneWidget);
       expect((await database.entriesDao.getEntryById(_entryId))!.mood, 5);
     });
@@ -198,12 +198,12 @@ void main() {
 
       await tester.tap(find.byKey(const Key('letterhead_weather_charm_target')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('天候气象'), findsOneWidget);
-      await tester.tap(find.text('润雨'));
+      expect(find.text('选择天气'), findsOneWidget);
+      await tester.tap(find.text('下雨'));
       await tester.pumpAndSettle();
 
       final charm = find.byKey(const Key('letterhead_weather_charm'));
-      expect(find.descendant(of: charm, matching: find.text('润')), findsOneWidget);
+      expect(find.descendant(of: charm, matching: find.text('下')), findsOneWidget);
       expect((await database.entriesDao.getEntryById(_entryId))!.weather, 'rainy');
     });
 
@@ -213,8 +213,8 @@ void main() {
 
       expect(find.bySemanticsLabel('岁次丙午 孟冬初二，轻触修改日期'), findsOneWidget);
       expect(find.bySemanticsLabel('2026年11月10日 周二，农历十月初二，立冬'), findsOneWidget);
-      expect(find.bySemanticsLabel('天气晴明，轻触修改'), findsOneWidget);
-      expect(find.bySemanticsLabel('心情怡然，轻触修改'), findsOneWidget);
+      expect(find.bySemanticsLabel('天气晴天，轻触修改'), findsOneWidget);
+      expect(find.bySemanticsLabel('心情开心，轻触修改'), findsOneWidget);
       handle.dispose();
     });
 

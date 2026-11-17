@@ -1,36 +1,32 @@
 import 'package:flutter/material.dart';
 
-/// Immutable typed model for literati mood options
+/// Immutable typed model for mood options
 @immutable
 class MoodOption {
   final int value;
   final String emoji;
   final String label;
-  final String subtitle;
 
   const MoodOption({
     required this.value,
     required this.emoji,
     required this.label,
-    required this.subtitle,
   });
 }
 
-/// Immutable typed model for literati weather options
+/// Immutable typed model for weather options
 @immutable
 class WeatherOption {
   final String value;
   final String emoji;
   final IconData icon;
   final String label;
-  final String subtitle;
 
   const WeatherOption({
     required this.value,
     required this.emoji,
     required this.icon,
     required this.label,
-    required this.subtitle,
   });
 }
 
@@ -48,28 +44,28 @@ abstract final class JournalLetterheadUtils {
   ];
 
   static const List<MoodOption> moodOptions = [
-    MoodOption(value: 1, emoji: '😢', label: '沉郁', subtitle: 'Down'),
-    MoodOption(value: 2, emoji: '🙁', label: '倦怠', subtitle: 'Tired'),
-    MoodOption(value: 3, emoji: '😐', label: '静穆', subtitle: 'Calm'),
-    MoodOption(value: 4, emoji: '🙂', label: '怡然', subtitle: 'Happy'),
-    MoodOption(value: 5, emoji: '😄', label: '欢欣', subtitle: 'Great'),
+    MoodOption(value: 1, emoji: '😢', label: '低落'),
+    MoodOption(value: 2, emoji: '🙁', label: '疲惫'),
+    MoodOption(value: 3, emoji: '😐', label: '平静'),
+    MoodOption(value: 4, emoji: '🙂', label: '开心'),
+    MoodOption(value: 5, emoji: '😄', label: '喜悦'),
   ];
 
   static const List<WeatherOption> weatherOptions = [
-    WeatherOption(value: 'sunny', emoji: '☀️', icon: Icons.wb_sunny_outlined, label: '晴明', subtitle: 'Sunny'),
-    WeatherOption(value: 'cloudy', emoji: '☁️', icon: Icons.cloud_outlined, label: '阴翳', subtitle: 'Cloudy'),
-    WeatherOption(value: 'rainy', emoji: '🌧️', icon: Icons.water_drop_outlined, label: '润雨', subtitle: 'Rainy'),
-    WeatherOption(value: 'windy', emoji: '🍃', icon: Icons.air_outlined, label: '朔风', subtitle: 'Windy'),
-    WeatherOption(value: 'snowy', emoji: '❄️', icon: Icons.ac_unit_outlined, label: '凝雪', subtitle: 'Snowy'),
+    WeatherOption(value: 'sunny', emoji: '☀️', icon: Icons.wb_sunny_outlined, label: '晴天'),
+    WeatherOption(value: 'cloudy', emoji: '☁️', icon: Icons.cloud_outlined, label: '多云'),
+    WeatherOption(value: 'rainy', emoji: '🌧️', icon: Icons.water_drop_outlined, label: '下雨'),
+    WeatherOption(value: 'windy', emoji: '🍃', icon: Icons.air_outlined, label: '大风'),
+    WeatherOption(value: 'snowy', emoji: '❄️', icon: Icons.ac_unit_outlined, label: '下雪'),
   ];
 
-  /// The mood for [moodValue], defaulting to 怡然 when unset or unknown.
+  /// The mood for [moodValue], defaulting to 开心 when unset or unknown.
   static MoodOption resolveMood(int? moodValue) => moodOptions.firstWhere(
         (option) => option.value == moodValue,
         orElse: () => moodOptions[3],
       );
 
-  /// The weather for [weatherValue], defaulting to 晴明 when unset or unknown.
+  /// The weather for [weatherValue], defaulting to 晴天 when unset or unknown.
   static WeatherOption resolveWeather(String? weatherValue) => weatherOptions.firstWhere(
         (option) => option.value == weatherValue,
         orElse: () => weatherOptions.first,

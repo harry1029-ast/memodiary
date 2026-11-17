@@ -17,8 +17,8 @@ void main() {
     setUp(() {
       titleController = TextEditingController(text: 'Initial Reverie');
       testDate = DateTime(2026, 11, 10, 14, 30);
-      selectedMood = 4; // 怡然
-      selectedWeather = 'sunny'; // 晴明
+      selectedMood = 4; // 开心
+      selectedWeather = 'sunny'; // 晴天
     });
 
     tearDown(() {
@@ -249,12 +249,12 @@ void main() {
       await tester.pumpAndSettle();
 
       final charm = find.byKey(const Key('letterhead_mood_charm'));
-      final labelCharacter = find.descendant(of: charm, matching: find.text('怡'));
+      final labelCharacter = find.descendant(of: charm, matching: find.text('开'));
       expect(labelCharacter, findsOneWidget);
       expect(tester.widget<Text>(labelCharacter).style!.fontSize, greaterThanOrEqualTo(12));
       expect(find.descendant(of: charm, matching: find.text('🙂')), findsOneWidget);
-      expect(tester.getCenter(find.descendant(of: charm, matching: find.text('怡'))).dy,
-          lessThan(tester.getCenter(find.descendant(of: charm, matching: find.text('然'))).dy));
+      expect(tester.getCenter(find.descendant(of: charm, matching: find.text('开'))).dy,
+          lessThan(tester.getCenter(find.descendant(of: charm, matching: find.text('心'))).dy));
     });
 
     testWidgets('tapping the seal opens the date picker and reports the new date', (tester) async {
@@ -286,9 +286,16 @@ void main() {
 
       await tester.tap(find.byKey(const Key('letterhead_mood_charm_target')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('心境感怀'), findsOneWidget);
+      expect(find.text('选择心情'), findsOneWidget);
+      expect(find.textContaining('Select Mood'), findsNothing);
+      for (final label in ['低落', '疲惫', '平静', '开心', '喜悦']) {
+        expect(find.text(label), findsOneWidget);
+      }
+      for (final subtitle in ['Down', 'Tired', 'Calm', 'Happy', 'Great']) {
+        expect(find.text(subtitle), findsNothing);
+      }
 
-      await tester.tap(find.text('欢欣'));
+      await tester.tap(find.text('喜悦'));
       await tester.pumpAndSettle();
       expect(updatedMood, equals(5));
     });
@@ -300,9 +307,16 @@ void main() {
 
       await tester.tap(find.byKey(const Key('letterhead_weather_charm_target')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('天候气象'), findsOneWidget);
+      expect(find.text('选择天气'), findsOneWidget);
+      expect(find.textContaining('Select Weather'), findsNothing);
+      for (final label in ['晴天', '多云', '下雨', '大风', '下雪']) {
+        expect(find.text(label), findsOneWidget);
+      }
+      for (final subtitle in ['Sunny', 'Cloudy', 'Rainy', 'Windy', 'Snowy']) {
+        expect(find.text(subtitle), findsNothing);
+      }
 
-      await tester.tap(find.text('润雨'));
+      await tester.tap(find.text('下雨'));
       await tester.pumpAndSettle();
       expect(updatedWeather, equals('rainy'));
     });
@@ -314,8 +328,8 @@ void main() {
 
       expect(find.bySemanticsLabel('岁次丙午 孟冬初二，轻触修改日期'), findsOneWidget);
       expect(find.bySemanticsLabel('2026年11月10日 周二，农历十月初二，立冬'), findsOneWidget);
-      expect(find.bySemanticsLabel('天气晴明，轻触修改'), findsOneWidget);
-      expect(find.bySemanticsLabel('心情怡然，轻触修改'), findsOneWidget);
+      expect(find.bySemanticsLabel('天气晴天，轻触修改'), findsOneWidget);
+      expect(find.bySemanticsLabel('心情开心，轻触修改'), findsOneWidget);
       handle.dispose();
     });
   });

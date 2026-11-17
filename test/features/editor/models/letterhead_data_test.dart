@@ -44,10 +44,10 @@ void main() {
       expect(data.dateSemanticsLabel, '2026年11月10日 周二，农历十月初二，立冬');
     });
 
-    test('defaults weather to 晴明 and mood to 怡然, and keeps raw values', () {
+    test('defaults weather to 晴天 and mood to 开心, and keeps raw values', () {
       final defaults = LetterheadData.resolve(entryDate: DateTime(2026, 11, 10));
-      expect(defaults.weatherOption.label, '晴明');
-      expect(defaults.moodOption.label, '怡然');
+      expect(defaults.weatherOption.label, '晴天');
+      expect(defaults.moodOption.label, '开心');
       expect(defaults.weather, isNull);
       expect(defaults.mood, isNull);
 
@@ -56,8 +56,8 @@ void main() {
         weather: 'rainy',
         mood: 5,
       );
-      expect(chosen.weatherOption.label, '润雨');
-      expect(chosen.moodOption.label, '欢欣');
+      expect(chosen.weatherOption.label, '下雨');
+      expect(chosen.moodOption.label, '喜悦');
       expect(chosen.weather, 'rainy');
       expect(chosen.mood, 5);
     });

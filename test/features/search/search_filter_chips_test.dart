@@ -27,11 +27,11 @@ void main() {
 
       await tester.tap(find.byKey(const Key('search_mood_filter_pill')));
       await tester.pumpAndSettle();
-      for (final label in ['沉郁', '倦怠', '静穆', '怡然', '欢欣']) {
+      for (final label in ['低落', '疲惫', '平静', '开心', '喜悦']) {
         expect(find.widgetWithText(ListTile, label), findsOneWidget);
       }
 
-      await tester.tap(find.widgetWithText(ListTile, '欢欣'));
+      await tester.tap(find.widgetWithText(ListTile, '喜悦'));
       await tester.pumpAndSettle();
       expect(changes.single.mood, 5);
     });
@@ -41,11 +41,11 @@ void main() {
 
       await tester.tap(find.byKey(const Key('search_weather_filter_pill')));
       await tester.pumpAndSettle();
-      for (final label in ['晴明', '阴翳', '润雨', '朔风', '凝雪']) {
+      for (final label in ['晴天', '多云', '下雨', '大风', '下雪']) {
         expect(find.widgetWithText(ListTile, label), findsOneWidget);
       }
 
-      await tester.tap(find.widgetWithText(ListTile, '润雨'));
+      await tester.tap(find.widgetWithText(ListTile, '下雨'));
       await tester.pumpAndSettle();
       expect(changes.single.weather, 'rainy');
     });
