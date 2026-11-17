@@ -61,7 +61,7 @@ class ThemesAndStyleSheet extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '全书主题与风格 · Themes & Style',
+                  '画册主题',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 17,
@@ -79,7 +79,7 @@ class ThemesAndStyleSheet extends StatelessWidget {
             ],
           ),
           Text(
-            '选择一套主题装帧，将自动为全书所有内页匹配和谐底色与手绘纹饰',
+            '选择主题后，将为所有页面统一应用背景色和装饰图案',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontNotoSerif,
               fontSize: 12,
@@ -172,18 +172,20 @@ class ThemesAndStyleSheet extends StatelessWidget {
                                     ),
                                 ],
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                theme.description,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                                  fontSize: 12,
-                                  color: tokens.danmo,
-                                  height: 1.35,
+                              if (theme.description.isNotEmpty) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  theme.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                                    fontSize: 12,
+                                    color: tokens.danmo,
+                                    height: 1.35,
+                                  ),
                                 ),
-                              ),
+                              ],
                               const SizedBox(height: 8),
                               Row(
                                 children: [

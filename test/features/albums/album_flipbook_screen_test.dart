@@ -274,7 +274,7 @@ void main() {
     await tester.tap(find.byKey(const Key('flipbook_edit_button')));
     await tester.pumpAndSettle();
     expect(find.byType(AlbumPageEditorScreen), findsOneWidget);
-    expect(find.text('Page 2 / 3'), findsOneWidget);
+    expect(find.text('第 2 / 3 页'), findsOneWidget);
 
     // Add a seal stamp overlay to Page 2 and set photo on Page 2 as collection cover
     await tester.tap(find.byKey(const Key('studio_tab_add')));

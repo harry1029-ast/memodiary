@@ -261,7 +261,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                       size: 20,
                       color: tokens.cinnabar,
                     ),
-                    tooltip: '进入工作室',
+                    tooltip: '进入排版',
                     onPressed: () => _handleOpenStudio(collection, photos),
                   ),
                   IconButton(
@@ -281,7 +281,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                       size: 20,
                       color: tokens.nongmo,
                     ),
-                    tooltip: '编辑影集信息',
+                    tooltip: '编辑相册',
                     onPressed: () => _handleEditMetadata(collection),
                   ),
                   if (photos.length > 1)
@@ -377,7 +377,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                       ),
                       InkMetadataPill(
                         icon: Icons.photo_camera_outlined,
-                        label: '$photoCount 张影像',
+                        label: '$photoCount 张照片',
                         isAccent: photoCount > 0,
                         maxWidth: 120,
                       ),
@@ -460,7 +460,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                   ),
                   icon: const Icon(Icons.dashboard_customize_outlined, size: 17),
                   label: const Text(
-                    '浏览画册 / 进入工作室',
+                    '进入排版',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -485,7 +485,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                   ),
                   icon: const Icon(Icons.auto_stories_outlined, size: 17),
                   label: const Text(
-                    '生成影卷 / 浏览画册',
+                    '浏览画册',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -517,7 +517,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              '轻触「添加照片」，收录旅途第一帧光影',
+              '点击「添加照片」导入旅行照片',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
@@ -686,7 +686,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                     Text(
                       caption != null && caption.isNotEmpty
                           ? caption
-                          : '未题写札记',
+                          : '暂无备注',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

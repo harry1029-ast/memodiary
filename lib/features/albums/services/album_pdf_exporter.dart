@@ -34,11 +34,11 @@ enum AlbumPdfPageFormat {
   String get displayLabel {
     switch (this) {
       case AlbumPdfPageFormat.a4Landscape:
-        return 'A4 横版画册 (297×210mm)';
+        return 'A4 横版 (297×210mm)';
       case AlbumPdfPageFormat.square:
-        return '方册画幅 (210×210mm)';
+        return '方形画册 (210×210mm)';
       case AlbumPdfPageFormat.boundSpread:
-        return '双页跨页画册 (420×210mm)';
+        return '双页跨页 (420×210mm)';
     }
   }
 

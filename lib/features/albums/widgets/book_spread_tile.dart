@@ -79,12 +79,14 @@ class BookSpreadTile extends StatelessWidget {
     final leftLabel = isCoverLeft
         ? AlbumStudioStrings.coverLabel
         : (leftPage != null
-            ? '${AlbumStudioStrings.pagePrefix} ${leftPage!.pageNumber}'
+            ? AlbumStudioStrings.pageLabel(leftPage!.pageNumber)
             : (expectedNextPageNumber != null
-                ? '${AlbumStudioStrings.pendingAddPrefix} $expectedNextPageNumber'
+                ? AlbumStudioStrings.pendingAddPageLabel(
+                    expectedNextPageNumber!,
+                  )
                 : ''));
     final rightLabel = rightPage != null
-        ? '${AlbumStudioStrings.pagePrefix} ${rightPage!.pageNumber}'
+        ? AlbumStudioStrings.pageLabel(rightPage!.pageNumber)
         : AlbumStudioStrings.endpaperLabel;
 
     return Column(

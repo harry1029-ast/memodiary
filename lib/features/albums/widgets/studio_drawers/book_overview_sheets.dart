@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
 import '../../services/album_studio_controller.dart';
+import '../../services/page_layout_catalog.dart';
 
 /// Shows the `+ Add` bottom sheet for [AlbumBookOverviewScreen], allowing the
 /// diarist to append a blank page or import additional photos into the session.
@@ -32,7 +33,7 @@ void showBookOverviewAddSheet({
                   color: tokens.cinnabar,
                 ),
                 title: Text(
-                  '新增空白书页 · Add Blank Page',
+                  '添加空白页',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontWeight: FontWeight.w600,
@@ -40,7 +41,7 @@ void showBookOverviewAddSheet({
                   ),
                 ),
                 subtitle: Text(
-                  '在画册末尾添入一页宣纸留白，自由排入照片与贴纸',
+                  '在画册末尾添加一页空白页，自由排版照片和贴纸',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 12,
@@ -61,7 +62,7 @@ void showBookOverviewAddSheet({
                     color: tokens.nongmo,
                   ),
                   title: Text(
-                    '导入更多照片 · Import Photos',
+                    '导入更多照片',
                     style: TextStyle(
                       fontFamily: InkDiaryTheme.fontNotoSerif,
                       fontWeight: FontWeight.w600,
@@ -115,7 +116,7 @@ void showBookOverviewArrangeSheet({
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          '调整书页顺序 · Arrange Pages',
+                          '调整页面顺序',
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontNotoSerif,
                             fontSize: 16,
@@ -130,6 +131,7 @@ void showBookOverviewArrangeSheet({
                           size: 20,
                           color: tokens.danmo,
                         ),
+                        tooltip: '关闭',
                         onPressed: () => Navigator.of(sheetContext).pop(),
                       ),
                     ],
@@ -143,6 +145,9 @@ void showBookOverviewArrangeSheet({
                       },
                       itemBuilder: (context, index) {
                         final page = pages[index];
+                        final layoutName =
+                            PageLayoutCatalog.getById(page.layoutTemplateId)
+                                .name;
                         return ListTile(
                           key: ValueKey('arrange_page_${page.id}'),
                           contentPadding:
@@ -160,7 +165,7 @@ void showBookOverviewArrangeSheet({
                             ),
                           ),
                           title: Text(
-                            '第 ${page.pageNumber} 页 (${page.photoSlots.length} 张影像)',
+                            '第 ${page.pageNumber} 页 (${page.photoSlots.length} 张照片)',
                             style: TextStyle(
                               fontFamily: InkDiaryTheme.fontNotoSerif,
                               fontSize: 14,
@@ -168,7 +173,7 @@ void showBookOverviewArrangeSheet({
                             ),
                           ),
                           subtitle: Text(
-                            '版式: ${page.layoutTemplateId}',
+                            '版式：$layoutName',
                             style: TextStyle(
                               fontSize: 11.5,
                               color: tokens.danmo,
@@ -185,7 +190,7 @@ void showBookOverviewArrangeSheet({
                                     size: 19,
                                     color: tokens.cinnabar,
                                   ),
-                                  tooltip: '删除此页 (照片将移入收集箱)',
+                                  tooltip: '删除此页（照片将移回收集箱）',
                                   onPressed: () =>
                                       controller.removePage(page.id),
                                 ),

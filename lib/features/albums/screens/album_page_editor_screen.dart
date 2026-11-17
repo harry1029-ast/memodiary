@@ -122,7 +122,7 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
           return Scaffold(
             backgroundColor: tokens.xuanGround,
             appBar: AppBar(),
-            body: const Center(child: Text('暂无书页')),
+            body: const Center(child: Text('暂无页面')),
           );
         }
 
@@ -159,7 +159,7 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
                 Flexible(
                   child: Text(
                     key: const Key('page_editor_page_indicator'),
-                    'Page ${currentIndex + 1} / ${pages.length}',
+                    '第 ${currentIndex + 1} / ${pages.length} 页',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -200,7 +200,7 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
                       ? tokens.jiaomo
                       : tokens.qingmo.withValues(alpha: 0.45),
                 ),
-                tooltip: '撤销 (Undo)',
+                tooltip: '撤销',
                 onPressed: widget.controller.canUndo
                     ? widget.controller.undo
                     : null,
@@ -214,7 +214,7 @@ class _AlbumPageEditorScreenState extends State<AlbumPageEditorScreen> {
                       ? tokens.jiaomo
                       : tokens.qingmo.withValues(alpha: 0.45),
                 ),
-                tooltip: '重做 (Redo)',
+                tooltip: '重做',
                 onPressed: widget.controller.canRedo
                     ? widget.controller.redo
                     : null,

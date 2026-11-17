@@ -64,12 +64,12 @@ class AlbumThemePreset {
   AlbumThemePreset({
     required this.id,
     required this.name,
-    required this.subtitle,
-    required this.description,
+    this.subtitle = '',
+    this.description = '',
     required List<ColorSwatchOption> suggestedSwatches,
     required List<String> graphicPatternIds,
     required this.defaultBackgroundConfig,
-  })  : suggestedSwatches =
+  }) : suggestedSwatches =
             List<ColorSwatchOption>.unmodifiable(suggestedSwatches),
         graphicPatternIds = List<String>.unmodifiable(graphicPatternIds);
 
@@ -261,9 +261,7 @@ class AlbumThemeCatalog {
       List<AlbumThemePreset>.unmodifiable([
     AlbumThemePreset(
       id: 'shanshui_ink',
-      name: 'Shanshui Ink · 水墨丹青',
-      subtitle: '宣纸留白与远山墨竹',
-      description: '温润宣纸底色配以远山黛影、墨竹斜枝与双线文人边框，尽显东方雅韵。',
+      name: '水墨丹青',
       suggestedSwatches: const [
         ColorSwatchOption(
           backgroundColorArgb: 0xFFFCF9F2,
@@ -299,10 +297,7 @@ class AlbumThemeCatalog {
     ),
     AlbumThemePreset(
       id: 'jardin',
-      name: 'Jardin · 东方花苑',
-      subtitle: '温润草木与东方缠枝花卉',
-      description:
-          'An oriental touch that fits with every occasion, a warm floral theme ready to enhance your book.',
+      name: '东方花苑',
       suggestedSwatches: const [
         ColorSwatchOption(
           backgroundColorArgb: 0xFFF9F1E6,
@@ -339,10 +334,7 @@ class AlbumThemeCatalog {
     ),
     AlbumThemePreset(
       id: 'abstract_blue',
-      name: 'Abstract Blue · 留白青瓷',
-      subtitle: '手绘流体线条与青花色阶',
-      description:
-          'Blues, whites and hand-drawn elements make this theme delicate and fluid.',
+      name: '留白青瓷',
       suggestedSwatches: const [
         ColorSwatchOption(
           backgroundColorArgb: 0xFFF4F8FB,
@@ -378,10 +370,7 @@ class AlbumThemeCatalog {
     ),
     AlbumThemePreset(
       id: 'day_at_beach',
-      name: 'Day at the Beach · 盛夏海风',
-      subtitle: '鲜亮青柠、棕榈与海岸活力',
-      description:
-          'The perfect style for summer. Add some zing with fresh fruit and playful colors.',
+      name: '盛夏海风',
       suggestedSwatches: const [
         ColorSwatchOption(
           backgroundColorArgb: 0xFFFFFBF0,
@@ -416,10 +405,7 @@ class AlbumThemeCatalog {
     ),
     AlbumThemePreset(
       id: 'playful_rainbow',
-      name: 'Playful Rainbow · 拾光彩虹',
-      subtitle: '柔和彩虹渐变与童趣手绘',
-      description:
-          'A playful and delicate theme. Let soft rainbow colors and graphics complement your pages.',
+      name: '拾光彩虹',
       suggestedSwatches: const [
         ColorSwatchOption(
           backgroundColorArgb: 0xFFFDF8FF,

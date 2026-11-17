@@ -130,7 +130,7 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
     if (mounted) {
       setState(() => _isCurrentCover = true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已设为影集封面')),
+        const SnackBar(content: Text('已设为相册封面')),
       );
     }
   }
@@ -140,7 +140,7 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('删除这张照片？'),
-        content: const Text('删除后，该照片及其写影札记将从本机永久移除。'),
+        content: const Text('删除后，该照片及备注将从本机永久删除。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -194,7 +194,7 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
                 Row(
                   children: [
                     Text(
-                      '写影札',
+                      '照片备注',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 18,
@@ -263,8 +263,8 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
                   key: const Key('annotation_location_field'),
                   controller: _locationController,
                   decoration: InputDecoration(
-                    labelText: '足迹地标',
-                    hintText: '如：西湖断桥、京都 · 伏见稻荷',
+                    labelText: '拍摄地点',
+                    hintText: '如：西湖断桥、京都伏见稻荷',
                     prefixIcon: Icon(
                       Icons.place_outlined,
                       size: 20,
@@ -281,8 +281,8 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
                   minLines: 3,
                   maxLines: 6,
                   decoration: const InputDecoration(
-                    labelText: '光影札记',
-                    hintText: '记下此刻的微风、声响与心绪…',
+                    labelText: '备注内容',
+                    hintText: '写下这张照片的故事或感受...',
                     alignLabelWithHint: true,
                   ),
                 ),
@@ -366,7 +366,7 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
                         child: FilledButton(
                           key: const Key('annotation_save'),
                           onPressed: _isSaving ? null : _handleSave,
-                          child: const Text('保存札记'),
+                          child: const Text('保存'),
                         ),
                       ),
                     ],
