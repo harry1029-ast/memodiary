@@ -68,7 +68,7 @@ void main() {
         expect(find.text('春 · 桃夭'), findsOneWidget);
         // Attribution badge
         expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
-        expect(find.text('随文入境 · 雅室'), findsOneWidget);
+        expect(find.text('自动 · 室内'), findsOneWidget);
       },
     );
 
@@ -90,9 +90,9 @@ void main() {
 
         // Seasonal title for outdoor summer: 夏 · 翠峰槐夏市
         expect(find.text('夏 · 翠峰槐夏市'), findsOneWidget);
-        // Realm badge displays active realm label without 随文入境 prefix
+        // Realm badge displays active realm label without 自动 prefix
         expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
-        expect(find.text('市井'), findsOneWidget);
+        expect(find.text('街市'), findsOneWidget);
       },
     );
 
@@ -115,7 +115,7 @@ void main() {
 
         expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
         expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
-        expect(find.text('随文入境 · 雅室'), findsOneWidget);
+        expect(find.text('自动 · 室内'), findsOneWidget);
         expect(find.text('冬 · 温炉'), findsOneWidget);
       },
     );
@@ -150,8 +150,36 @@ void main() {
         expect(find.byKey(const Key('scenery_realm_option_indoor')), findsOneWidget);
         expect(find.byKey(const Key('scenery_realm_option_outdoor')), findsOneWidget);
 
-        expect(find.textContaining('Auto (随文入境)'), findsOneWidget);
-        expect(find.textContaining('Indoor (雅室)'), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('scenery_realm_option_auto')),
+            matching: find.text('自动'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('scenery_realm_option_nature')),
+            matching: find.text('山水'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('scenery_realm_option_indoor')),
+            matching: find.text('室内'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('scenery_realm_option_outdoor')),
+            matching: find.text('街市'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.textContaining('Auto'), findsNothing);
+        expect(find.textContaining('Indoor'), findsNothing);
 
         // Tap Indoor option
         await tester.tap(find.byKey(const Key('scenery_realm_option_indoor')));
@@ -166,7 +194,7 @@ void main() {
 
         // Card immediately updated
         expect(find.text('春 · 桃夭茶寮'), findsOneWidget);
-        expect(find.text('雅室'), findsOneWidget);
+        expect(find.text('室内'), findsOneWidget);
       },
     );
 
@@ -198,7 +226,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('随文入境 · 市井'), findsOneWidget);
+        expect(find.text('自动 · 街市'), findsOneWidget);
 
         // 1. Manually select Indoor
         await tester.tap(find.byKey(const Key('scenery_realm_badge')));
@@ -207,8 +235,8 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(changedPref, equals(SceneryRealmPreference.indoor));
-        expect(find.text('雅室'), findsOneWidget);
-        expect(find.text('随文入境 · 市井'), findsNothing);
+        expect(find.text('室内'), findsOneWidget);
+        expect(find.text('自动 · 街市'), findsNothing);
 
         // 2. Select Auto again
         await tester.tap(find.byKey(const Key('scenery_realm_badge')));
@@ -220,8 +248,8 @@ void main() {
         expect(mockStorage.data['memodiary_scenery_realm_preference'], equals('auto'));
 
         // Card immediately resets back to real-time inferred realm
-        expect(find.text('随文入境 · 市井'), findsOneWidget);
-        expect(find.text('雅室'), findsNothing);
+        expect(find.text('自动 · 街市'), findsOneWidget);
+        expect(find.text('室内'), findsNothing);
       },
     );
 
@@ -465,7 +493,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
-        expect(find.text('雅室'), findsOneWidget);
+        expect(find.text('室内'), findsOneWidget);
       },
     );
 

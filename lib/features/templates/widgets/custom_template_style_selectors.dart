@@ -34,7 +34,7 @@ class CustomTemplateStyleSelectors extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle(tokens, '界格规制 · Paper Pattern'),
+        _buildSectionTitle(tokens, '线条样式'),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -50,7 +50,7 @@ class CustomTemplateStyleSelectors extends StatelessWidget {
           }).toList(),
         ),
         const SizedBox(height: 20),
-        _buildSectionTitle(tokens, '宣纸基底 · Paper Substrate'),
+        _buildSectionTitle(tokens, '纸张质感'),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -66,7 +66,7 @@ class CustomTemplateStyleSelectors extends StatelessWidget {
           }).toList(),
         ),
         const SizedBox(height: 20),
-        _buildSectionTitle(tokens, '界格印色 · Rule Ink Tint'),
+        _buildSectionTitle(tokens, '线条颜色'),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -82,7 +82,7 @@ class CustomTemplateStyleSelectors extends StatelessWidget {
           }).toList(),
         ),
         const SizedBox(height: 20),
-        _buildSectionTitle(tokens, '落款印式 · Seal Style'),
+        _buildSectionTitle(tokens, '印章样式'),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,

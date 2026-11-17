@@ -71,16 +71,17 @@ void main() {
       );
 
       // Verify top title and slider widgets
-      expect(find.text('拾光 · 云笺日记'), findsOneWidget);
+      expect(find.text('拾光日记'), findsOneWidget);
       expect(find.byType(BottomSealSlider), findsOneWidget);
       expect(find.byType(Book3DStage), findsOneWidget);
-      expect(find.textContaining('Swipe Left to Open'), findsOneWidget);
+      expect(find.text('左滑翻开'), findsAtLeast(1));
+      expect(find.textContaining('Swipe Left'), findsNothing);
 
-      // In closed state, vertical cover slip is visible
+      // In closed state, vertical cover slip is preserved intact
       expect(find.textContaining('拾\n光\n云\n笺'), findsOneWidget);
     });
 
-    testWidgets('reveals 私人日记 and 旅行画册 when startOpened is true', (tester) async {
+    testWidgets('reveals 选择栏目, 私人日记 and 旅行相册 when startOpened is true', (tester) async {
       await pumpBookIntroScreen(
         tester,
         database: db,
@@ -88,11 +89,13 @@ void main() {
         startOpened: true,
       );
 
+      expect(find.text('选择栏目'), findsOneWidget);
       expect(find.text('私人日记'), findsOneWidget);
-      expect(find.text('今日心绪，静落成笺'), findsOneWidget);
-      expect(find.text('旅行画册'), findsOneWidget);
-      expect(find.text('山河沿路，笔底留痕'), findsOneWidget);
-      expect(find.textContaining('点选书页'), findsOneWidget);
+      expect(find.text('记录日常心情与生活'), findsOneWidget);
+      expect(find.text('旅行相册'), findsOneWidget);
+      expect(find.text('整理旅途照片与足迹'), findsOneWidget);
+      expect(find.text('进入 →'), findsNWidgets(2));
+      expect(find.text('点击「私人日记」或「旅行相册」进入'), findsOneWidget);
     });
 
     testWidgets('私人日记 card shows today\'s true lunar month and day', (tester) async {
@@ -170,7 +173,7 @@ void main() {
 
       // After swiping left, it animates fully open
       expect(find.text('私人日记'), findsOneWidget);
-      expect(find.text('旅行画册'), findsOneWidget);
+      expect(find.text('旅行相册'), findsOneWidget);
     });
 
     testWidgets('tapping bottom seal slider toggles book open and closed', (tester) async {
@@ -187,14 +190,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 900));
 
       expect(find.text('私人日记'), findsOneWidget);
-      expect(find.text('旅行画册'), findsOneWidget);
+      expect(find.text('旅行相册'), findsOneWidget);
 
       // Tap bottom slider again to close
       await tester.tap(find.byType(BottomSealSlider));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 900));
 
-      expect(find.textContaining('Swipe Left to Open'), findsOneWidget);
+      expect(find.text('左滑翻开'), findsAtLeast(1));
     });
 
     testWidgets('tapping directly on the closed book cover opens it', (tester) async {
@@ -211,7 +214,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 900));
 
       expect(find.text('私人日记'), findsOneWidget);
-      expect(find.text('旅行画册'), findsOneWidget);
+      expect(find.text('旅行相册'), findsOneWidget);
     });
 
     testWidgets('swiping right when opened closes the book', (tester) async {
@@ -229,7 +232,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 900));
 
-      expect(find.textContaining('Swipe Left to Open'), findsOneWidget);
+      expect(find.text('左滑翻开'), findsAtLeast(1));
     });
 
     testWidgets('dragging bottom slider handle left opens the book', (tester) async {
@@ -246,7 +249,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 900));
 
       expect(find.text('私人日记'), findsOneWidget);
-      expect(find.text('旅行画册'), findsOneWidget);
+      expect(find.text('旅行相册'), findsOneWidget);
     });
   });
 }

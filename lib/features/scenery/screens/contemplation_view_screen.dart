@@ -288,7 +288,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                             padding: const EdgeInsets.only(right: 8),
                             child: Semantics(
                               button: true,
-                              label: '境域: ${realm.shortNameZh}',
+                              label: '场景: ${realm.shortNameZh}',
                               child: ChoiceChip(
                                 key: Key('contemplation_realm_chip_${realm.id}'),
                                 label: Text(realm.shortNameZh),

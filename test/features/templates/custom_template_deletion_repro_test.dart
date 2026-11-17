@@ -124,7 +124,7 @@ void main() {
       await tester.tap(deleteBtnFinder);
       await tester.pumpAndSettle();
 
-      expect(find.text('Delete Custom Template?'), findsOneWidget);
+      expect(find.text('删除自定义信纸'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byType(AlertDialog),

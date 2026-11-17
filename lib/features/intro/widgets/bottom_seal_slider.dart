@@ -102,8 +102,8 @@ class BottomSealSlider extends StatelessWidget {
                     child: Center(
                       child: Text(
                         progress < 0.70
-                            ? '向左滑动掀开古籍封皮 · Swipe Left to Open'
-                            : '点选书页「私人日记」或「旅行画册」入卷',
+                            ? '左滑翻开'
+                            : '点击「私人日记」或「旅行相册」进入',
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

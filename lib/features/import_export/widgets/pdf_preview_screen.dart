@@ -49,8 +49,8 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
         (widget.singleEntry != null
             ? (widget.singleEntry!.title?.trim().isNotEmpty ?? false
                 ? widget.singleEntry!.title!.trim()
-                : 'MemoDiary Entry')
-            : 'MemoDiary Journal Book');
+                : '拾光日记')
+            : '拾光日记本');
 
     final effectiveMediaService = widget.mediaService ?? MediaSandboxService();
 
@@ -75,11 +75,13 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                 segments: const [
                   ButtonSegment(
                     value: PdfLayoutMode.horizontal,
-                    label: Text('横排素笺', style: TextStyle(fontSize: 11)),
+                    label: Text('横排', style: TextStyle(fontSize: 11)),
+                    tooltip: '横排',
                   ),
                   ButtonSegment(
                     value: PdfLayoutMode.verticalScroll,
-                    label: Text('卷轴竖排', style: TextStyle(fontSize: 11)),
+                    label: Text('竖排', style: TextStyle(fontSize: 11)),
+                    tooltip: '竖排',
                   ),
                 ],
                 selected: {_layoutMode},
@@ -132,7 +134,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 12),
-              Text('Generating vector PDF...'),
+              Text('正在生成 PDF...'),
             ],
           ),
         ),

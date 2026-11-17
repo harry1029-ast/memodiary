@@ -165,10 +165,10 @@ void main() {
       expect(find.text(DateFormat('yyyy-MM-dd HH:mm').format(date)), findsOneWidget);
       expect(find.byKey(const Key('entry_mood_charm')), findsOneWidget);
       expect(find.text('🙂'), findsOneWidget);
-      expect(find.text('怡然'), findsOneWidget);
+      expect(find.text('开心'), findsOneWidget);
       expect(find.byKey(const Key('entry_weather_charm')), findsOneWidget);
       expect(find.text('🌧️'), findsOneWidget);
-      expect(find.text('润雨'), findsOneWidget);
+      expect(find.text('下雨'), findsOneWidget);
       expect(find.byIcon(Icons.water_drop_outlined), findsNothing);
       expect(find.byType(CinnabarSealBadge), findsOneWidget);
       expect(find.text('W44'), findsOneWidget);

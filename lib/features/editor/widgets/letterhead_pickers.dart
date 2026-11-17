@@ -45,7 +45,7 @@ abstract final class LetterheadPickers {
 
     _showSelectionModal(
       context: context,
-      title: '心境感怀 · Select Mood',
+      title: '选择心情',
       children: JournalLetterheadUtils.moodOptions.map((moodOption) {
         final isSelected = mood == moodOption.value;
         return _OptionTile(
@@ -72,7 +72,7 @@ abstract final class LetterheadPickers {
 
     _showSelectionModal(
       context: context,
-      title: '天候气象 · Select Weather',
+      title: '选择天气',
       children: JournalLetterheadUtils.weatherOptions.map((weatherOption) {
         final isSelected = weather == weatherOption.value;
         return _OptionTile(

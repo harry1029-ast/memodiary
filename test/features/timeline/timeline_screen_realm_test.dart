@@ -79,7 +79,7 @@ void main() {
 
         expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
         expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
-        expect(find.text('随文入境 · 雅室'), findsOneWidget);
+        expect(find.text('自动 · 室内'), findsOneWidget);
         expect(find.text('秋 · 霜枫品茗'), findsOneWidget);
       },
     );
@@ -147,7 +147,7 @@ void main() {
         await pumpTimeline(tester);
 
         // Should skip the first 3 ineligible entries and infer Outdoor realm from the 4th
-        expect(find.text('随文入境 · 市井'), findsOneWidget);
+        expect(find.text('自动 · 街市'), findsOneWidget);
         expect(find.textContaining('市'), findsAtLeast(1));
       },
     );
@@ -172,8 +172,8 @@ void main() {
         await pumpTimeline(tester);
 
         // Decays to Nature realm, isJournalInferred is false
-        expect(find.text('林泉'), findsOneWidget);
-        expect(find.text('随文入境 · 雅室'), findsNothing);
+        expect(find.text('山水'), findsOneWidget);
+        expect(find.text('自动 · 室内'), findsNothing);
       },
     );
 
@@ -196,20 +196,20 @@ void main() {
         await pumpTimeline(tester);
 
         // Initially inferred as Indoor
-        expect(find.text('随文入境 · 雅室'), findsOneWidget);
+        expect(find.text('自动 · 室内'), findsOneWidget);
 
         // Tap realm badge to open 1-tap realm switcher bottom sheet
         await tester.tap(find.byKey(const Key('scenery_realm_badge')));
         await tester.pumpAndSettle();
 
-        // Tap Outdoor (市井)
+        // Tap Outdoor (街市)
         await tester.tap(find.byKey(const Key('scenery_realm_option_outdoor')));
         await tester.pumpAndSettle();
 
-        // Card should now display Outdoor (市井) as manually selected
+        // Card should now display Outdoor (街市) as manually selected
         expect(mockStorage.data['memodiary_scenery_realm_preference'], equals('outdoor'));
-        expect(find.text('市井'), findsOneWidget);
-        expect(find.text('随文入境 · 雅室'), findsNothing);
+        expect(find.text('街市'), findsOneWidget);
+        expect(find.text('自动 · 室内'), findsNothing);
       },
     );
 

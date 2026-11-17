@@ -286,8 +286,8 @@ void main() {
 
       await pumpTimelineScreen(tester);
 
-      // Weather badge contains 烟雨
-      expect(find.textContaining('烟雨'), findsAtLeast(1));
+      // Weather badge contains 小雨
+      expect(find.textContaining('小雨'), findsAtLeast(1));
     });
 
     testWidgets('scrolling timeline past header unmounts scenery card and scroll restoration re-renders it', (tester) async {
@@ -406,7 +406,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(ChronicleCharmFilterSheet), findsOneWidget);
 
-        // Select 欢欣 + 含图影
+        // Select 喜悦 + 含图影
         await tester.ensureVisible(find.byKey(const Key('charm_filter_mood_5')));
         await tester.tap(find.byKey(const Key('charm_filter_mood_5')));
         await tester.pumpAndSettle();
@@ -420,7 +420,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Begonia plaque shows active summary & cinnabar accent styling
-        expect(find.text('欢欣 · 含图影'), findsOneWidget);
+        expect(find.text('喜悦 · 含图影'), findsOneWidget);
         expect(tester.widget<BegoniaPlaqueButton>(charmBtnFinder).isAccent, isTrue);
         expect(find.text('共 1 卷'), findsOneWidget);
         expect(find.text('Joyful Photo Nov'), findsOneWidget);
@@ -464,7 +464,7 @@ void main() {
         await tester.tap(find.byKey(const Key('charm_filter_close_button')));
         await tester.pumpAndSettle();
 
-        expect(find.text('润雨 · 周志复盘'), findsOneWidget);
+        expect(find.text('下雨 · 周志复盘'), findsOneWidget);
         expect(find.text('共 1 卷'), findsOneWidget);
         expect(find.text('Rainy Weekly Oct'), findsOneWidget);
       },

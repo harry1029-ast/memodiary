@@ -85,10 +85,10 @@ class LetterheadData {
     return '$solarDateLine，农历$dayLine，$solarTerm';
   }
 
-  /// Label for the Weather Charm, e.g. `天气晴明，轻触修改`.
+  /// Label for the Weather Charm, e.g. `天气晴天，轻触修改`.
   String get weatherSemanticsLabel => '天气${weatherOption.label}，轻触修改';
 
-  /// Label for the Mood Charm, e.g. `心情怡然，轻触修改`.
+  /// Label for the Mood Charm, e.g. `心情开心，轻触修改`.
   String get moodSemanticsLabel => '心情${moodOption.label}，轻触修改';
 
   @override

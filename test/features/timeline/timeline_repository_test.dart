@@ -498,7 +498,7 @@ void main() {
 
       final moodAndMedia = empty.copyWith(mood: 5, hasMediaOnly: true);
       expect(moodAndMedia.hasActiveCharmFilters, isTrue);
-      expect(moodAndMedia.charmSummaryLabel(), equals('欢欣 · 含图影'));
+      expect(moodAndMedia.charmSummaryLabel(), equals('喜悦 · 含图影'));
 
       final allCharms = empty.copyWith(
         mood: 3,
@@ -508,7 +508,7 @@ void main() {
       );
       expect(
         allCharms.charmSummaryLabel(),
-        equals('静穆 · 润雨 · 含图影 · 周志复盘'),
+        equals('平静 · 下雨 · 含图影 · 周志复盘'),
       );
 
       // resetCharms clears only charm attributes while preserving date & sort

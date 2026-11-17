@@ -26,17 +26,61 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Live preview card and canvas container are rendered
+      // Live preview card and canvas container are rendered with plain Chinese labels
       expect(find.byKey(const Key('template_live_preview_card')), findsOneWidget);
       expect(find.byType(TemplateCanvasContainer), findsOneWidget);
+      expect(find.text('新建信纸'), findsOneWidget);
+      expect(find.text('保存'), findsOneWidget);
+      expect(find.text('效果预览'), findsOneWidget);
+      expect(find.text('信纸名称'), findsOneWidget);
+      expect(find.text('线条样式'), findsOneWidget);
+      expect(find.text('纸张质感'), findsOneWidget);
+      expect(find.text('线条颜色'), findsOneWidget);
+      expect(find.text('印章样式'), findsOneWidget);
+      expect(find.text('纸张颜色'), findsOneWidget);
+      expect(find.text('行距'), findsOneWidget);
+      expect(find.text('左右边距'), findsOneWidget);
+      expect(find.text('默认字体'), findsOneWidget);
+      expect(find.text('系统默认'), findsOneWidget);
+
+      // Plain swatch tooltips and selector chip labels
+      expect(find.byTooltip('纯白'), findsOneWidget);
+      expect(find.byTooltip('象牙白'), findsOneWidget);
+      expect(find.byTooltip('米黄'), findsOneWidget);
+      expect(find.byTooltip('牛皮纸色'), findsOneWidget);
+      expect(find.byTooltip('淡绿'), findsOneWidget);
+      expect(find.byTooltip('浅蓝'), findsOneWidget);
+      expect(find.byTooltip('浅粉'), findsOneWidget);
+      expect(find.byTooltip('浅紫'), findsOneWidget);
+      expect(find.byTooltip('浅灰'), findsOneWidget);
 
       // Tap Save with empty name -> triggers validation error
       await tester.tap(find.byKey(const Key('save_custom_template_button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Please enter a template name'), findsOneWidget);
+      expect(find.text('请输入信纸名称'), findsOneWidget);
       final customTemplates = await db.templatesDao.getCustomTemplates();
       expect(customTemplates, isEmpty);
+    });
+
+    testWidgets('renders edit title when editing an existing custom template', (tester) async {
+      final existing = await db.templatesDao.createCustomTemplate(
+        name: '旧信纸',
+        backgroundType: 'lined',
+        backgroundValue: '#FFFFFF',
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CustomTemplateEditorScreen(
+            database: db,
+            existingTemplate: existing,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('编辑信纸'), findsOneWidget);
+      expect(find.text('旧信纸'), findsWidgets);
     });
 
     testWidgets('creates a new custom template and persists it to AppDatabase', (tester) async {

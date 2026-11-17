@@ -304,7 +304,7 @@ class Book3DStage extends StatelessWidget {
                           ),
                           SizedBox(width: 2),
                           Text(
-                            '向左划翻开',
+                            '左滑翻开',
                             style: TextStyle(
                               fontSize: 8.5,
                               color: Color(0xFFDFD7C8),
@@ -431,12 +431,12 @@ class Book3DStage extends StatelessWidget {
                 padding: const EdgeInsets.all(6),
                 child: Column(
                   children: [
-                    // Page Header: 云笺日记 · 卷目
+                    // Page Header: 选择栏目
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          '云笺日记 · 卷目',
+                          '选择栏目',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -452,7 +452,7 @@ class Book3DStage extends StatelessWidget {
                             border: Border.all(color: const Color(0xFFC7B89B), width: 0.8),
                           ),
                           child: const Text(
-                            '点选入卷',
+                            '点击进入',
                             style: TextStyle(
                               fontSize: 6.5,
                               color: Color(0xFF5C5242),
@@ -607,7 +607,7 @@ class Book3DStage extends StatelessWidget {
                 ],
               ),
               const Text(
-                '今日心绪，静落成笺',
+                '记录日常心情与生活',
                 style: TextStyle(
                   fontSize: 7,
                   color: Color(0xFF5A5347),
@@ -702,9 +702,9 @@ class Book3DStage extends StatelessWidget {
                 ),
               ),
 
-              // Poetic Footer
+              // Footer
               const Text(
-                '雨窗独坐，记一段清宁时光。',
+                '随时随地写下你的故事',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -720,7 +720,7 @@ class Book3DStage extends StatelessWidget {
     );
   }
 
-  /// Button 2: 旅行画册 Card
+  /// Button 2: 旅行相册 Card
   Widget _buildTravelAlbumButton() {
     return Material(
       color: Colors.transparent,
@@ -750,7 +750,7 @@ class Book3DStage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    '旅行画册',
+                    '旅行相册',
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
@@ -775,7 +775,7 @@ class Book3DStage extends StatelessWidget {
                 ],
               ),
               const Text(
-                '山河沿路，笔底留痕',
+                '整理旅途照片与足迹',
                 style: TextStyle(
                   fontSize: 7,
                   color: Color(0xFF5A5347),

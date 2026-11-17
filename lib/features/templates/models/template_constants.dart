@@ -19,3 +19,20 @@ bool isTemplateDeletable(Template template) {
   if (kDefaultTemplateIds.contains(template.id)) return false;
   return true;
 }
+
+/// Maps built-in system template IDs to plain modern Chinese display names
+/// without mutating persisted database seed records.
+String displayTemplateName(Template template) {
+  switch (template.id) {
+    case 'template_minimalist_white':
+      return '素白信纸';
+    case 'template_lined_paper':
+      return '横线信纸';
+    case 'template_retro_kraft':
+      return '牛皮纸';
+    case 'template_weekly_review':
+      return '方格信纸';
+    default:
+      return template.name;
+  }
+}

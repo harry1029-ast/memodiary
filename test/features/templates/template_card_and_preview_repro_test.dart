@@ -100,7 +100,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final titleWidget = tester.widget<Text>(find.text('秋山晚眺 · 随笔起兴'));
+      final titleWidget = tester.widget<Text>(find.text('今日随笔'));
       final textColor = titleWidget.style?.color;
 
       // In dark theme, tokens.jiaomo is 0xFFF0ECE3 (nearly white).

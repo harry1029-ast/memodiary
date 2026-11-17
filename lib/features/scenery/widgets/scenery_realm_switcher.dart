@@ -3,7 +3,7 @@ import '../../../core/theme/ink_diary_theme.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../services/scenery_settings_service.dart';
 
-/// Interactive **Scenery Realm** (`画卷境域`) pill badge displayed on both the
+/// Interactive **Scenery Realm** (`画卷场景`) pill badge displayed on both the
 /// expanded `Shanshui Scenery Card` window and the `44dp` collapsed bamboo bar.
 class SceneryRealmBadge extends StatelessWidget {
   final ShanshuiAtmosphereState atmosphere;
@@ -23,7 +23,7 @@ class SceneryRealmBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '切换画卷境域: ${atmosphere.realmBadgeZh}',
+      label: '切换画卷场景: ${atmosphere.realmBadgeZh}',
       child: InkWell(
         key: const Key('scenery_realm_badge'),
         onTap: onTap,
@@ -88,31 +88,31 @@ const List<({
   (
     preference: SceneryRealmPreference.auto,
     keyName: 'scenery_realm_option_auto',
-    title: 'Auto (随文入境)',
-    subtitle: '根据近24小时日记内容自适应意境',
+    title: '自动',
+    subtitle: '根据最近 24 小时日记内容自动切换',
   ),
   (
     preference: SceneryRealmPreference.nature,
     keyName: 'scenery_realm_option_nature',
-    title: 'Nature (林泉)',
-    subtitle: '水墨山水 · 烟波浩渺',
+    title: '山水',
+    subtitle: '水墨山水风景',
   ),
   (
     preference: SceneryRealmPreference.indoor,
     keyName: 'scenery_realm_option_indoor',
-    title: 'Indoor (雅室)',
-    subtitle: '书房茶室 · 烹茶伴读',
+    title: '室内',
+    subtitle: '室内书房茶室',
   ),
   (
     preference: SceneryRealmPreference.outdoor,
     keyName: 'scenery_realm_option_outdoor',
-    title: 'Outdoor (市井)',
-    subtitle: '古镇街市 · 烟火人间',
+    title: '街市',
+    subtitle: '街头市集风光',
   ),
 ];
 
 /// Presents the 1-tap modal bottom sheet allowing the diarist to switch between
-/// `Auto (随文入境)`, `Nature (林泉)`, `Indoor (雅室)`, and `Outdoor (市井)`.
+/// `自动`, `山水`, `室内`, and `街市`.
 Future<void> showSceneryRealmSwitcherSheet({
   required BuildContext context,
   required InkDiaryTokens tokens,
@@ -144,7 +144,7 @@ Future<void> showSceneryRealmSwitcherSheet({
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '画卷境域',
+                        '画卷场景',
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontNotoSerif,
                           fontSize: 16,
@@ -163,7 +163,7 @@ Future<void> showSceneryRealmSwitcherSheet({
                     ],
                   ),
                   Text(
-                    '随文入境根据近作自动切换，亦可手动锁定画卷境域',
+                    '根据最近日记自动切换，也可手动指定场景',
                     style: TextStyle(fontSize: 11, color: tokens.danmo),
                   ),
                   const SizedBox(height: 12),
