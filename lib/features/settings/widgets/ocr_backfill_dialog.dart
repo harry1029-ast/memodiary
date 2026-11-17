@@ -116,11 +116,11 @@ class _OcrBackfillDialogState extends State<OcrBackfillDialog> {
 
     final String statusText;
     if (_isComplete) {
-      statusText = '识图索引已完成';
+      statusText = '文字识别索引已完成';
     } else if (_isPaused) {
       statusText = '已暂停: $_current/$_total 张照片';
     } else {
-      statusText = '正在索引: $_current/$_total 张照片';
+      statusText = '正在识别: $_current/$_total 张照片';
     }
 
     return PopScope(
@@ -148,7 +148,7 @@ class _OcrBackfillDialogState extends State<OcrBackfillDialog> {
             ),
             const SizedBox(width: 8),
             Text(
-              '离线识图索引',
+              '离线文字识别索引',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 16,
@@ -185,8 +185,8 @@ class _OcrBackfillDialogState extends State<OcrBackfillDialog> {
             const SizedBox(height: 10),
             Text(
               _isComplete
-                  ? '所有画卷与照片文字均已加入本地离线全文索引。'
-                  : '正在由端侧视觉引擎于后台建立全文字词索引，可随时取消并保留已完成进度。',
+                  ? '所有照片文字均已加入本地离线全文索引。'
+                  : '正在离线识别照片中的文字并建立搜索索引，可随时暂停或取消，已完成的进度会保留。',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontKaiti,
                 fontSize: 11,

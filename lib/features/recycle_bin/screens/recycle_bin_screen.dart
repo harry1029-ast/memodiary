@@ -60,10 +60,12 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
     HapticFeedback.lightImpact();
     await widget.database.entriesDao.restoreEntry(entry.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
-          '已复墨还案：${(entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : "无题"}',
+          '已恢复：${(entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : "无题"}',
         ),
       ),
     );
@@ -74,21 +76,21 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('焚稿归尘 · 彻底抹去？'),
+        title: const Text('彻底删除日记？'),
         content: const Text(
-          '此操作将彻底焚化本篇日记及一切附载画卷，墨迹成灰，永不可溯。',
+          '将彻底删除这篇日记及其关联的照片和视频，删除后无法恢复。',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('留存残卷'),
+            child: const Text('取消'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red.shade700,
             ),
-            child: const Text('焚为灰烬'),
+            child: const Text('彻底删除'),
           ),
         ],
       ),
@@ -102,8 +104,10 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
         mediaService: widget.mediaService,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已彻底焚化抹去')),
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('已彻底删除')),
       );
       await _loadDeletedEntries();
     }
@@ -115,9 +119,9 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('焚稿净匣 · 清空纸篓？'),
+        title: const Text('清空回收站？'),
         content: Text(
-          '确定焚化全部 ${_deletedEntries.length} 篇残章？磁盘空间将被彻底释清，此去无从追寻。',
+          '确定彻底删除全部 ${_deletedEntries.length} 篇日记？删除后无法恢复。',
         ),
         actions: [
           TextButton(
@@ -129,7 +133,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
             style: FilledButton.styleFrom(
               backgroundColor: Colors.red.shade700,
             ),
-            child: const Text('悉数焚净'),
+            child: const Text('清空回收站'),
           ),
         ],
       ),
@@ -142,8 +146,10 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
         mediaService: widget.mediaService,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('纸篓已焚稿净匣')),
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('已清空回收站')),
       );
       await _loadDeletedEntries();
     }
@@ -167,28 +173,15 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
           tooltip: '返回',
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              '岁暮拾遗',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: tokens.jiaomo,
-                letterSpacing: 2.0,
-              ),
-            ),
-            Text(
-              'RECYCLE BIN',
-              style: TextStyle(
-                fontSize: 9,
-                color: tokens.danmo,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
+        title: Text(
+          '回收站',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: tokens.jiaomo,
+            letterSpacing: 1.5,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -198,7 +191,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
               child: TextButton.icon(
                 style: TextButton.styleFrom(foregroundColor: tokens.cinnabar),
                 icon: const Icon(Icons.delete_sweep, size: 18),
-                label: const Text('焚稿净匣'),
+                label: const Text('清空回收站'),
                 onPressed: _handleEmptyBin,
               ),
             ),
@@ -231,7 +224,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '卷底残章 · 尘匣安歇',
+                                '30 天保留期',
                                 style: TextStyle(
                                   fontFamily: InkDiaryTheme.fontNotoSerif,
                                   fontSize: 14,
@@ -241,7 +234,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                '移入纸篓之文稿，存席三十日后墨迹自散归虚。',
+                                '已删除的日记将保留 30 天，到期后自动彻底清除。',
                                 style: TextStyle(
                                   fontFamily: InkDiaryTheme.fontKaiti,
                                   fontSize: 12,
@@ -253,7 +246,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                         ),
                         const SizedBox(width: 8),
                         CinnabarSealBadge(
-                          text: '存留 ${_deletedEntries.length} 卷',
+                          text: '共 ${_deletedEntries.length} 篇',
                           isRound: false,
                         ),
                       ],
@@ -274,7 +267,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              '尘匣空明 · 暂无残卷',
+                              '回收站为空',
                               style: TextStyle(
                                 fontFamily: InkDiaryTheme.fontNotoSerif,
                                 fontSize: 16,
@@ -292,7 +285,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                           RecycleBinService.getDaysUntilPermanentDelete(entry);
                       final title = (entry.title?.trim().isNotEmpty ?? false)
                           ? entry.title!.trim()
-                          : '无题 · 虚白初草';
+                          : '无题';
                       final updatedStr =
                           DateFormat('yyyy年M月d日 · HH:mm').format(entry.updatedAt);
 
@@ -337,7 +330,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                                             ),
                                           ),
                                           child: Text(
-                                            '$daysRemaining 日后化散',
+                                            '$daysRemaining 天后自动清除',
                                             style: TextStyle(
                                               fontFamily: InkDiaryTheme.fontKaiti,
                                               fontSize: 10,
@@ -350,7 +343,7 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '抹于 $updatedStr',
+                                      '删除于 $updatedStr',
                                       style: TextStyle(
                                         fontFamily: InkDiaryTheme.fontKaiti,
                                         fontSize: 11,
@@ -365,12 +358,12 @@ class _RecycleBinScreenState extends State<RecycleBinScreen> {
                                 children: [
                                   IconButton(
                                     icon: Icon(Icons.history, size: 20, color: tokens.nongmo),
-                                    tooltip: '复墨还案',
+                                    tooltip: '恢复',
                                     onPressed: () => _handleRestore(entry),
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.delete_forever, size: 20, color: tokens.cinnabar),
-                                    tooltip: '焚稿归尘',
+                                    tooltip: '彻底删除',
                                     onPressed: () => _handlePermanentDelete(entry),
                                   ),
                                 ],

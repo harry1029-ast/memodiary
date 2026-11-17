@@ -229,8 +229,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       mediaService: widget.mediaService,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已释清 $purged 份孤立残卷')),
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(content: Text('已清理 $purged 个冗余文件')),
     );
     await _loadStorageStats();
     if (mounted) {
@@ -253,8 +255,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       if (candidates.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('所选文件无有效字句')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          const SnackBar(content: Text('所选文件中没有可导入的日记内容')),
         );
         return;
       }
@@ -274,8 +278,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _loadStorageStats();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('导入失败: $e')),
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('导入失败：$e')),
       );
     }
   }
@@ -306,10 +312,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (result != null && mounted) {
       await _loadLastBackupTimestamp();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
-            '已成全量加密备份：${result.entriesCount} 篇墨卷，${result.mediaFilesCount} 份画卷附件',
+            '已导出备份：${result.entriesCount} 篇日记，${result.mediaFilesCount} 个媒体文件',
           ),
         ),
       );
@@ -334,18 +342,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (result != null && mounted) {
         await _loadStorageStats();
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
-              '已完好还原：${result.entriesRestored} 篇墨卷与 ${result.mediaFilesRestored} 份画卷',
+              '恢复完成：${result.entriesRestored} 篇日记，${result.mediaFilesRestored} 个媒体文件',
             ),
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('备份解析无效: $e')),
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('备份文件无效或无法读取：$e')),
       );
     }
   }
@@ -368,139 +380,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
           tooltip: '返回',
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              '设置与守拙',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: tokens.jiaomo,
-                letterSpacing: 2.0,
-              ),
-            ),
-            Text(
-              'Settings & Privacy',
-              style: TextStyle(
-                fontSize: 9,
-                color: tokens.danmo,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
+        title: Text(
+          '设置',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: tokens.jiaomo,
+            letterSpacing: 1.5,
+          ),
         ),
         centerTitle: true,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
         children: [
-          // Studio Motto Banner
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: tokens.cinnabar),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '墨室守拙 · 恪纯无垢',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: tokens.nongmo,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '立约 · 独处',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 11,
-                    color: tokens.danmo,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           // 0. Book Cover & Experience Section
-          _buildSectionHeader('古籍开卷 · 仪式感设置', 'Book Cover & Intro', tokens),
+          _buildSectionHeader('开卷动画', tokens),
           _buildBookIntroCard(tokens),
           const SizedBox(height: 20),
 
           // 0.5. Appearance & Theme Section
-          _buildSectionHeader('墨韵气象 · 外观模式', 'Appearance & Theme', tokens),
+          _buildSectionHeader('外观主题', tokens),
           _buildAppearanceCard(tokens),
           const SizedBox(height: 20),
 
           // 0.6. Signature Seal Section
-          _buildSectionHeader('落款朱砂印 · 印式名讳', 'Signature Seal', tokens),
+          _buildSectionHeader('签名印章', tokens),
           _buildSignatureSealCard(tokens),
           const SizedBox(height: 20),
 
           // 1. Storage & Optimizer Section
-          _buildSectionHeader('纸墨存蓄 · 存储与空间', 'Storage & Optimization', tokens),
+          _buildSectionHeader('存储与清理', tokens),
           _buildStorageCard(tokens),
           const SizedBox(height: 20),
 
           // 2. Writing Reminders Section
-          _buildSectionHeader('砚边晨昏 · 鸣钟提醒', 'REMINDERS', tokens),
+          _buildSectionHeader('写作提醒', tokens),
           const NotificationSettingsCard(),
           const SizedBox(height: 20),
 
           // 3. Data Portability Section
-          _buildSectionHeader('文墨迁徙 · 数据流转', 'Data Portability', tokens),
+          _buildSectionHeader('导入与导出', tokens),
           _buildDataPortabilityCard(tokens),
           const SizedBox(height: 20),
 
           // 4. Permissions Dashboard
-          _buildSectionHeader('权限看板 · 硬件调用', 'Permissions Dashboard', tokens),
+          _buildSectionHeader('权限管理', tokens),
           _buildPermissionsCard(tokens),
           const SizedBox(height: 20),
 
           // 5. Zero-Cloud Privacy Declaration
+          _buildSectionHeader('隐私保护', tokens),
           _buildPrivacyCard(tokens),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, String tag, InkDiaryTokens tokens) {
+  Widget _buildSectionHeader(String title, InkDiaryTokens tokens) {
     return Padding(
       padding: const EdgeInsets.only(left: 2, bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Flexible(
-            child: Text(
-              title,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: tokens.jiaomo,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            tag,
-            style: TextStyle(fontSize: 10, color: tokens.danmo, letterSpacing: 0.5),
-          ),
-        ],
+      child: Text(
+        title,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: InkDiaryTheme.fontNotoSerif,
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+          color: tokens.jiaomo,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -520,7 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '启动时展示古籍开卷',
+                      '启动时显示开卷动画',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -530,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '开启后冷启动展示 3D 线装书开卷仪式与双入口',
+                      '开启后打开应用时显示封面翻页动画',
                       style: TextStyle(
                         fontSize: 11,
                         color: tokens.danmo,
@@ -565,7 +515,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Icon(Icons.menu_book_rounded, color: tokens.cinnabar, size: 20),
             ),
             title: Text(
-              '重览 3D 古籍封面开卷',
+              '预览开卷动画',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -574,7 +524,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             subtitle: Text(
-              '立即体验水墨开卷动画与双卷目导览',
+              '立即查看 3D 封面翻页效果',
               style: TextStyle(fontSize: 10.5, color: tokens.danmo),
             ),
             trailing: Icon(Icons.arrow_forward_ios, size: 14, color: tokens.danmo),
@@ -600,7 +550,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '默认折叠山水画卷',
+                      '默认收起顶部画卷',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -610,7 +560,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '在日记时间轴默认收起画卷为精简状态条',
+                      '在日记主页默认将顶部风景画卷收起为状态条',
                       style: TextStyle(
                         fontSize: 11,
                         color: tokens.danmo,
@@ -675,7 +625,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Icon(Icons.landscape_outlined, color: tokens.cinnabar, size: 20),
             ),
             title: Text(
-              '锁定画卷意境',
+              '固定画卷氛围',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -686,7 +636,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: Text(
               _pinnedAtmosphere != null
                   ? '${_pinnedAtmosphere!.season.nameZh} · ${_pinnedAtmosphere!.timeOfDay.nameZh} · ${_pinnedAtmosphere!.weather.nameZh}'
-                  : '随本地时辰与近作天候实时流转',
+                  : '随本地时间和近期日记自动变化',
               style: TextStyle(fontSize: 10.5, color: tokens.danmo),
             ),
             trailing: Icon(Icons.tune_rounded, size: 16, color: tokens.danmo),
@@ -705,7 +655,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Icon(Icons.wb_sunny_outlined, color: tokens.cinnabar, size: 20),
             ),
             title: Text(
-              '重置画卷气象同步',
+              '重置画卷氛围',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -714,7 +664,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             subtitle: Text(
-              '清除固定画卷天候，恢复与本地时辰及近作天候同步',
+              '清除固定设置，恢复随本地时间和近期日记自动变化',
               style: TextStyle(fontSize: 10.5, color: tokens.danmo),
             ),
             trailing: Icon(Icons.refresh_rounded, size: 16, color: tokens.danmo),
@@ -727,7 +677,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               });
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('已恢复实时四时天候同步')),
+                const SnackBar(content: Text('已恢复自动同步')),
               );
             },
           ),
@@ -875,7 +825,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               backgroundColor: tokens.xuanGround,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               title: Text(
-                '锁定画卷意境',
+                '固定画卷氛围',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontWeight: FontWeight.w600,
@@ -890,7 +840,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('四季时节', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
+                      Text('季节', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
@@ -910,7 +860,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         }).toList(),
                       ),
                       const SizedBox(height: 12),
-                      Text('时辰光景', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
+                      Text('时段', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
@@ -930,7 +880,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         }).toList(),
                       ),
                       const SizedBox(height: 12),
-                      Text('天候气象', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
+                      Text('天气', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: tokens.danmo)),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
@@ -975,11 +925,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       setState(() => _pinnedAtmosphere = newState);
                       ScaffoldMessenger.of(this.context).hideCurrentSnackBar();
                       ScaffoldMessenger.of(this.context).showSnackBar(
-                        SnackBar(content: Text('已锁定画卷为：${newState.season.nameZh} · ${newState.timeOfDay.nameZh} · ${newState.weather.nameZh}')),
+                        SnackBar(content: Text('已固定画卷氛围：${newState.season.nameZh} · ${newState.timeOfDay.nameZh} · ${newState.weather.nameZh}')),
                       );
                     }
                   },
-                  child: const Text('保存锁定'),
+                  child: const Text('保存'),
                 ),
               ],
             );
@@ -1020,7 +970,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '墨色明暗设定',
+                          '外观模式',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -1074,7 +1024,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Semantics(
       button: true,
       selected: isSelected,
-      label: '${mode.label} (${mode.subtitle})',
+      label: mode.label,
       child: InkWell(
         key: key,
         borderRadius: BorderRadius.circular(10),
@@ -1084,7 +1034,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
             color: isSelected
                 ? tokens.cinnabarWash
@@ -1111,15 +1061,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color: isSelected ? tokens.cinnabarDark : tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                mode.subtitle,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  color: isSelected ? tokens.cinnabar : tokens.qingmo,
-                  letterSpacing: 0.5,
                 ),
               ),
             ],
@@ -1154,7 +1095,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '落款朱砂印名讳',
+                  '签名印章文字',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -1164,7 +1105,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '卷末压角印刻印文：$_signatureSealText',
+                  '当前印章文字：$_signatureSealText',
                   style: TextStyle(
                     fontSize: 11,
                     color: tokens.danmo,
@@ -1188,7 +1129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             ),
             onPressed: () => _showSignatureSealDialog(tokens),
-            child: const Text('更易印文'),
+            child: const Text('修改'),
           ),
         ],
       ),
@@ -1212,7 +1153,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 side: BorderSide(color: tokens.agedFiber),
               ),
               title: Text(
-                '更易落款印文 · 2至4字',
+                '修改签名印章（2至4字）',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontSize: 16,
@@ -1224,7 +1165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '印文将以传统朱文或白文雅致钤盖于日记卷末。',
+                    '印章文字将显示在日记结尾处。',
                     style: TextStyle(fontSize: 12, color: tokens.danmo),
                   ),
                   const SizedBox(height: 16),
@@ -1242,7 +1183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     controller: controller,
                     maxLength: 4,
                     decoration: InputDecoration(
-                      hintText: '如：心迹安放、澄心寄墨',
+                      hintText: '如：心迹安放、随记',
                       filled: true,
                       fillColor: tokens.xuanGround,
                       border: OutlineInputBorder(
@@ -1283,7 +1224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           }
                         }
                       : null,
-                  child: const Text('定稿钤印'),
+                  child: const Text('保存'),
                 ),
               ],
             );
@@ -1311,9 +1252,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildStatColumn('现存墨卷', '${stats.activeEntriesCount}', tokens),
-              _buildStatColumn('画影附件', '${stats.totalMediaFiles} (${stats.totalMediaFormatted})', tokens),
-              _buildStatColumn('纸篓残卷', '${stats.deletedEntriesCount}', tokens),
+              _buildStatColumn('日记篇数', '${stats.activeEntriesCount}', tokens),
+              _buildStatColumn('媒体文件', '${stats.totalMediaFiles} (${stats.totalMediaFormatted})', tokens),
+              _buildStatColumn('回收站', '${stats.deletedEntriesCount}', tokens),
             ],
           ),
           Divider(height: 24, color: tokens.agedFiber),
@@ -1333,8 +1274,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     Text(
                       stats.orphanMediaFiles > 0
-                          ? '${stats.orphanMediaFiles} 份孤立残卷可释清'
-                          : '沙盒纯净 · 无遗留废墨',
+                          ? '发现 ${stats.orphanMediaFiles} 个未关联的冗余文件'
+                          : '存储状态正常，无冗余文件',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 13,
@@ -1345,8 +1286,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 2),
                     Text(
                       stats.orphanMediaFiles > 0
-                          ? '可安全释清 ${stats.orphanMediaFormatted} 存储空间。'
-                          : '所有影音图卷均与在册日记相契，未检得孤立残片。',
+                          ? '清理后可释放 ${stats.orphanMediaFormatted} 空间。'
+                          : '所有照片和视频均已被日记或相册正常引用。',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontKaiti,
                         fontSize: 11.5,
@@ -1379,33 +1320,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             contentPadding: EdgeInsets.zero,
             leading:
                 Icon(Icons.delete_outline_rounded, size: 20, color: tokens.cinnabar),
-            title: Row(
-              children: [
-                Text(
-                  '纸篓残卷',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.bold,
-                    color: tokens.jiaomo,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'Recycle Bin (${stats.deletedEntriesCount})',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 12,
-                      color: tokens.danmo,
-                    ),
-                  ),
-                ),
-              ],
+            title: Text(
+              '回收站 (${stats.deletedEntriesCount})',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 13.5,
+                fontWeight: FontWeight.bold,
+                color: tokens.jiaomo,
+              ),
             ),
             subtitle: Text(
-              '查看并恢复或彻底销毁三十日内的已废墨卷',
+              '查看、恢复或彻底删除 30 天内删除的日记',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontKaiti,
                 fontSize: 11.5,
@@ -1437,30 +1363,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 size: 20,
                 color: tokens.cinnabar,
               ),
-              title: Row(
-                children: [
-                  Text(
-                    '离线识图索引',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.jiaomo,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'OCR Indexing',
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 12,
-                        color: tokens.danmo,
-                      ),
-                    ),
-                  ),
-                ],
+              title: Text(
+                '离线文字识别索引',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.jiaomo,
+                ),
               ),
               subtitle: Text(
                 _unindexedPhotoCount == 0
@@ -1527,11 +1438,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             key: const Key('settings_analytics_tile'),
             leading: Icon(Icons.insights_rounded, color: tokens.nongmo),
             title: Text(
-              '研墨统计与岁时墨痕',
+              '写作统计',
               style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
             ),
             subtitle: Text(
-              '浏览五十二周墨痕长卷、持砚连贯与心境印迹',
+              '查看总篇数、总字数、年度写作热力图与心情分布',
               style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
             ),
             trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
@@ -1549,24 +1460,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Divider(height: 1, color: tokens.agedFiber),
           ListTile(
             leading: Icon(Icons.file_upload_outlined, color: tokens.nongmo),
-            title: Row(
-              children: [
-                Text(
-                  '文本汇入',
-                  style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'Import from .txt / .md',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 12, color: tokens.danmo),
-                  ),
-                ),
-              ],
+            title: Text(
+              '导入文本',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
             ),
             subtitle: Text(
-              '批量识别解析旧日卷宗，智能萃取日期时间',
+              '从 .txt 或 .md 文件批量导入日记并自动识别日期',
               style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
             ),
             trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
@@ -1575,24 +1474,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Divider(height: 1, color: tokens.agedFiber),
           ListTile(
             leading: Icon(Icons.file_download_outlined, color: tokens.nongmo),
-            title: Row(
-              children: [
-                Text(
-                  '导出全册墨卷',
-                  style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
-                ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    'Export All Diaries',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 12, color: tokens.danmo),
-                  ),
-                ),
-              ],
+            title: Text(
+              '导出日记',
+              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
             ),
             subtitle: Text(
-              '存为 Markdown (带元数据标签) 或纯文本',
+              '导出为 PDF、Markdown 或纯文本文件',
               style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
             ),
             trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
@@ -1603,13 +1490,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             key: const Key('settings_last_backup_tile'),
             leading: Icon(Icons.history_edu_outlined, size: 20, color: tokens.danmo),
             title: Text(
-              '最后全量刻印时间',
+              '上次备份时间',
               style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 13, color: tokens.jiaomo),
             ),
             subtitle: Text(
               _lastBackupAt != null
                   ? DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!.toLocal())
-                  : 'No backup created yet',
+                  : '尚未创建备份',
               style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
             ),
             dense: true,
@@ -1619,11 +1506,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             key: const Key('settings_create_backup_tile'),
             leading: Icon(Icons.enhanced_encryption_outlined, color: tokens.cinnabar),
             title: Text(
-              '创制加密全量卷宗 (.mdbak)',
+              '导出加密备份 (.mdbak)',
               style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
             ),
             subtitle: Text(
-              '打包全量 SQLite 数据库与沙盒影音，采用 AES-256 加密封装',
+              '将全部日记、相册、模板及照片视频打包为加密 .mdbak 文件',
               style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
             ),
             trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
@@ -1634,11 +1521,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             key: const Key('settings_restore_backup_tile'),
             leading: Icon(Icons.restore_page_outlined, color: tokens.nongmo),
             title: Text(
-              '自加密卷宗还原备份',
+              '从备份恢复',
               style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
             ),
             subtitle: Text(
-              '原子化验证并完好复苏 .mdbak 全档案',
+              '选择 .mdbak 备份文件并完整恢复数据',
               style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
             ),
             trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
@@ -1657,27 +1544,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _buildPermissionTile(
             icon: Icons.camera_alt_outlined,
-            title: '即时拓影',
-            englishTitle: 'Camera',
-            description: '仅用于拍摄日记配图，且悉数隔离存入私密沙盒目录。',
+            title: '相机',
+            description: '仅用于拍摄日记配图，照片会直接保存在应用私密目录中。',
             status: _cameraStatus,
             tokens: tokens,
           ),
           Divider(height: 1, color: tokens.agedFiber),
           _buildPermissionTile(
             icon: Icons.mic_none_outlined,
-            title: '原声听写',
-            englishTitle: 'Microphone & Speech',
-            description: '仅用于触发系统内置端侧原声听写，零费用且永不上送音频。',
+            title: '语音听写',
+            description: '仅用于调用系统语音识别输入文字，不会向外部上传音频。',
             status: _micStatus,
             tokens: tokens,
           ),
           Divider(height: 1, color: tokens.agedFiber),
           _buildPermissionTile(
             icon: Icons.photo_library_outlined,
-            title: '画影选撷',
-            englishTitle: 'Photos & Files',
-            description: '用于导入画卷及归档导出备份至本地文件存储。',
+            title: '相册与文件',
+            description: '用于从相册导入照片，以及导出日记和备份文件到本地。',
             status: _storageStatus,
             tokens: tokens,
           ),
@@ -1689,7 +1573,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildPermissionTile({
     required IconData icon,
     required String title,
-    required String englishTitle,
     required String description,
     required PermissionStatus? status,
     required InkDiaryTokens tokens,
@@ -1707,30 +1590,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.bold,
-                        color: tokens.jiaomo,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        englishTitle,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontNotoSerif,
-                          fontSize: 11,
-                          color: tokens.danmo,
-                        ),
-                      ),
-                    ),
-                  ],
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.jiaomo,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1756,7 +1623,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             child: Text(
-              isGranted ? '已获准' : '未授权',
+              isGranted ? '已授权' : '未授权',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontKaiti,
                 fontSize: 10.5,
@@ -1780,41 +1647,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Row(
             children: [
-              const CinnabarSealBadge(text: '零云上送', isRound: true),
+              const CinnabarSealBadge(text: '纯本地', isRound: true),
               const SizedBox(width: 8),
               Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      '守拙清规',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: tokens.jiaomo,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        '100% Offline & Private',
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontNotoSerif,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: tokens.cinnabar,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  '完全离线 · 本地隐私保护',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.jiaomo,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            '拾光日记 (MemoDiary) 秉持 100% 离线优先架构 (MemoDiary operates with zero cloud servers)。所有日记文字、Delta JSON 排版与沙盒影音仅驻留于您手中这方屏幕，无任何后台上送、无第三方追踪。配合 SQLCipher AES-256 全库加密，守护案头字句的安宁幽独。',
+            '拾光日记全程离线运行，没有任何云端服务器。所有日记内容、排版格式与照片视频均仅保存在您的设备本地，无后台上传或第三方追踪，并通过 SQLCipher AES-256 全库加密保护您的数据安全。',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontKaiti,
               fontSize: 12,

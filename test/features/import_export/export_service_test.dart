@@ -151,17 +151,17 @@ void main() {
       await tester.tap(find.text('Open Export'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Export Diaries'), findsOneWidget);
-      expect(find.text('Markdown (.md) with YAML Frontmatter'), findsOneWidget);
+      expect(find.text('导出日记'), findsOneWidget);
+      expect(find.text('Markdown (.md) 含元数据'), findsOneWidget);
 
-      // Tap 2: Tap "Save File" button
-      await tester.tap(find.text('Save File'));
+      // Tap 2: Tap "保存文件" button
+      await tester.tap(find.text('保存文件'));
       await tester.pumpAndSettle();
 
       // Dialog closed and mock file selector received export
       expect(mockFileSelector.lastSavedFileName, isNotNull);
       expect(mockFileSelector.lastSavedContent, isNotNull);
-      expect(find.textContaining('Exported 1 entries'), findsOneWidget);
+      expect(find.textContaining('已导出 1 篇日记'), findsOneWidget);
     });
   });
 }

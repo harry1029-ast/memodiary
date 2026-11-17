@@ -135,7 +135,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // SnackBar feedback
-        expect(find.text('已恢复实时四时天候同步'), findsOneWidget);
+        expect(find.text('已恢复自动同步'), findsOneWidget);
 
         // Storage cleared
         expect(mockStorage.data['memodiary_scenery_realm_preference'], isNull);
