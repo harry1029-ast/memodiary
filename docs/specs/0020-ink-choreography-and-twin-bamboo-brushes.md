@@ -1,7 +1,7 @@
 ---
 id: SPEC-020
 title: Ink Choreography & Twin Bamboo Brushes — Live Calligraphic Writing on Stationery Sheets
-status: ready-for-agent
+status: completed
 created_at: 2026-11-16T22:40:00+08:00
 amended_at: 2026-11-17T18:30:00+08:00
 adr: ADR-0011
