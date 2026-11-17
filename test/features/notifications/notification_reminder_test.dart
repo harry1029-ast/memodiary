@@ -72,8 +72,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Daily Writing Reminder'), findsOneWidget);
-      expect(find.text('Sunday Weekly Review'), findsOneWidget);
+      expect(find.text('每日写作提醒'), findsOneWidget);
+      expect(find.text('每周复盘提醒'), findsOneWidget);
+      expect(find.text('每天 21:00（点击更改）'), findsOneWidget);
+      expect(find.text('每周日 20:00（点击更改）'), findsOneWidget);
+      expect(find.bySemanticsLabel('每日写作提醒开关'), findsOneWidget);
+      expect(find.bySemanticsLabel('每周复盘提醒开关'), findsOneWidget);
+      expect(find.text('Daily Writing Reminder'), findsNothing);
+      expect(find.text('Sunday Weekly Review'), findsNothing);
 
       await tester.tap(find.byKey(const Key('daily_reminder_switch')));
       await tester.pumpAndSettle();

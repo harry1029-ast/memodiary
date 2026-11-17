@@ -28,7 +28,7 @@ class IngestionProgressDialog extends StatelessWidget {
               : (progress.processed + 1).clamp(1, progress.total);
 
           return AlertDialog(
-            title: const Text('正在导入旅途影像'),
+            title: const Text('正在导入照片'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -41,8 +41,8 @@ class IngestionProgressDialog extends StatelessWidget {
                 const SizedBox(height: 14),
                 Text(
                   progress.isDone
-                      ? '正在整理入册（已处理 ${progress.processed} / ${progress.total} 张）…'
-                      : '正在导入第 $currentStep / ${progress.total} 张照片…',
+                      ? '正在完成导入（已处理 ${progress.processed} / ${progress.total} 张）...'
+                      : '正在导入第 $currentStep / ${progress.total} 张照片...',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 14,

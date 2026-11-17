@@ -47,7 +47,7 @@ class YearlyContributionHeatmap extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text(
-              'Less',
+              '少',
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -70,7 +70,7 @@ class YearlyContributionHeatmap extends StatelessWidget {
               ),
             const SizedBox(width: 6),
             Text(
-              'More',
+              '多',
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -128,11 +128,10 @@ class HeatmapGridPainter extends CustomPainter {
         lastWeekMonday.subtract(const Duration(days: (weeksCount - 1) * 7));
 
     final dateFormatter = DateFormat('yyyy-MM-dd');
-    final monthFormatter = DateFormat('MMM');
     final paint = Paint()..style = PaintingStyle.fill;
 
     // Draw weekday labels (Mon, Wed, Fri)
-    const dayLabels = {0: 'M', 2: 'W', 4: 'F'};
+    const dayLabels = {0: '一', 2: '三', 4: '五'};
     dayLabels.forEach((row, text) {
       final tp = TextPainter(
         text: TextSpan(
@@ -156,7 +155,7 @@ class HeatmapGridPainter extends CustomPainter {
         lastLabeledMonth = weekStart.month;
         final monthTp = TextPainter(
           text: TextSpan(
-            text: monthFormatter.format(weekStart),
+            text: '${weekStart.month}月',
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w600,

@@ -19,6 +19,15 @@ class AnalyticsDashboardScreen extends StatefulWidget {
     this.referenceDate,
   });
 
+  /// Formats a plain Chinese writing statistics summary for sharing.
+  static String formatShareSummary(WritingStats stats) {
+    return '【拾光日记 · 写作统计】\n'
+        '总篇数：${stats.totalEntries} 篇\n'
+        '总字数：${stats.totalWords} 字\n'
+        '当前连续写作：${stats.currentStreakDays} 天\n'
+        '最长连续写作：${stats.longestStreakDays} 天';
+  }
+
   @override
   State<AnalyticsDashboardScreen> createState() =>
       _AnalyticsDashboardScreenState();
@@ -50,15 +59,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
 
   Future<void> _handleShareStats() async {
     if (_stats == null) return;
-    final text = '【墨记 · 研墨统计】\n'
-        '累积心迹：${_stats!.totalEntries} 篇\n'
-        '挥毫字数：${_stats!.totalWords} 言\n'
-        '当下持砚：${_stats!.currentStreakDays} 天\n'
-        '最长连墨：${_stats!.longestStreakDays} 天\n'
-        '—— 拾光日记 · 墨染素笺';
+    final text = AnalyticsDashboardScreen.formatShareSummary(_stats!);
 
     await SharePlus.instance.share(
-      ShareParams(text: text, subject: '墨记 · 研墨统计'),
+      ShareParams(text: text, subject: '拾光日记 · 写作统计'),
     );
   }
 
@@ -80,42 +84,15 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           tooltip: '返回',
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '研墨统计',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: tokens.jiaomo,
-                    letterSpacing: 2.0,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Writing Analytics',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 12,
-                    color: tokens.danmo,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              'INK ANALYTICS',
-              style: TextStyle(
-                fontSize: 9,
-                color: tokens.danmo,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
+        title: Text(
+          '写作统计',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: tokens.jiaomo,
+            letterSpacing: 1.5,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -137,7 +114,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                     Icon(Icons.share, size: 13, color: tokens.cinnabar),
                     const SizedBox(width: 4),
                     Text(
-                      '印迹',
+                      '分享',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontKaiti,
                         fontSize: 12,
@@ -167,11 +144,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                         child: _buildMetricTile(
                           tokens: tokens,
                           icon: Icons.collections_bookmark_outlined,
-                          title: '册卷总数',
-                          englishTitle: 'Total Entries',
+                          title: '总篇数',
                           value: '${_stats!.totalEntries}',
                           unit: '篇',
-                          caption: '累积心迹笔墨',
+                          caption: '累计记录日记',
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -179,11 +155,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                         child: _buildMetricTile(
                           tokens: tokens,
                           icon: Icons.edit_note,
-                          title: '挥毫字数',
-                          englishTitle: 'Words / Chars',
+                          title: '总字数',
                           value: '${_stats!.totalWords}',
-                          unit: '言',
-                          caption: '平仄字句成篇',
+                          unit: '字',
+                          caption: '累计写作字数',
                         ),
                       ),
                     ],
@@ -195,11 +170,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                         child: _buildMetricTile(
                           tokens: tokens,
                           icon: Icons.local_fire_department_outlined,
-                          title: '当下连墨',
+                          title: '当前连续写作',
                           value: '${_stats!.currentStreakDays}',
                           unit: '天',
-                          englishUnit: 'days',
-                          caption: _stats!.currentStreakDays > 0 ? '笔耕不辍' : '今日未润砚墨',
+                          caption: _stats!.currentStreakDays > 0 ? '保持每日记录' : '今日尚未写作',
                           accentColor: tokens.cinnabar,
                         ),
                       ),
@@ -208,18 +182,17 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                         child: _buildMetricTile(
                           tokens: tokens,
                           icon: Icons.workspace_premium_outlined,
-                          title: '最长持砚',
+                          title: '最长连续写作',
                           value: '${_stats!.longestStreakDays}',
                           unit: '天',
-                          englishUnit: 'days',
-                          caption: '心静则笔耕连绵',
+                          caption: '历史最长连续天数',
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
 
-                  // 2. 52-Week Contribution Heatmap (岁时墨痕)
+                  // 2. 52-Week Contribution Heatmap (年度写作热力图)
                   XuanPaperCard(
                     margin: EdgeInsets.zero,
                     padding: const EdgeInsets.all(16),
@@ -241,7 +214,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                                 ),
                                 const SizedBox(width: 7),
                                 Text(
-                                  '岁时墨痕',
+                                  '年度写作热力图',
                                   style: TextStyle(
                                     fontFamily: InkDiaryTheme.fontNotoSerif,
                                     fontSize: 15,
@@ -250,15 +223,10 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                                     letterSpacing: 1.0,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Yearly Writing Heatmap (52 Weeks)',
-                                  style: TextStyle(fontSize: 10, color: tokens.danmo),
-                                ),
                               ],
                             ),
                             Text(
-                              '年景心流',
+                              '近52周',
                               style: TextStyle(
                                 fontFamily: InkDiaryTheme.fontKaiti,
                                 fontSize: 11,
@@ -269,7 +237,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '字句如溪，随四时清泉细水长流。',
+                          '每日写作记录一览',
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontKaiti,
                             fontSize: 12,
@@ -288,7 +256,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 3. Mood Distribution (心境气象)
+                  // 3. Mood Distribution (心情分布)
                   XuanPaperCard(
                     margin: EdgeInsets.zero,
                     padding: const EdgeInsets.all(16),
@@ -307,21 +275,13 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                             ),
                             const SizedBox(width: 7),
                             Text(
-                              '心境气象',
+                              '心情分布',
                               style: TextStyle(
                                 fontFamily: InkDiaryTheme.fontNotoSerif,
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
                                 color: tokens.jiaomo,
                                 letterSpacing: 1.0,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Mood Distribution',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: tokens.danmo,
                               ),
                             ),
                           ],
@@ -331,7 +291,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             child: Text(
-                              '尚未记录心境感怀',
+                              '暂无心情记录',
                               style: TextStyle(
                                 fontFamily: InkDiaryTheme.fontKaiti,
                                 fontSize: 12,
@@ -394,10 +354,8 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     required InkDiaryTokens tokens,
     required IconData icon,
     required String title,
-    String? englishTitle,
     required String value,
     required String unit,
-    String? englishUnit,
     required String caption,
     Color? accentColor,
   }) {
@@ -410,30 +368,14 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.nongmo,
-                    ),
-                  ),
-                  if (englishTitle != null) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      englishTitle,
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 10,
-                        color: tokens.danmo,
-                      ),
-                    ),
-                  ],
-                ],
+              Text(
+                title,
+                style: TextStyle(
+                  fontFamily: InkDiaryTheme.fontNotoSerif,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.nongmo,
+                ),
               ),
               Icon(icon, size: 17, color: accentColor ?? tokens.danmo),
             ],
@@ -462,17 +404,6 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
                   color: tokens.danmo,
                 ),
               ),
-              if (englishUnit != null) ...[
-                const SizedBox(width: 4),
-                Text(
-                  '$value $englishUnit',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 11,
-                    color: tokens.danmo,
-                  ),
-                ),
-              ],
             ],
           ),
           const SizedBox(height: 4),

@@ -147,17 +147,17 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check PDF option is present
-      expect(find.text('High-Fidelity PDF (.pdf)'), findsOneWidget);
+      expect(find.text('高清排版 PDF (.pdf)'), findsOneWidget);
 
       // Select PDF format
-      await tester.tap(find.text('High-Fidelity PDF (.pdf)'));
+      await tester.tap(find.text('高清排版 PDF (.pdf)'));
       await tester.pumpAndSettle();
 
-      // Button should now read 'Preview PDF'
-      expect(find.text('Preview PDF'), findsOneWidget);
+      // Button should now read '预览 PDF'
+      expect(find.text('预览 PDF'), findsOneWidget);
 
-      // Tap Preview PDF to navigate
-      await tester.tap(find.text('Preview PDF'));
+      // Tap 预览 PDF to navigate
+      await tester.tap(find.text('预览 PDF'));
       await tester.pumpAndSettle();
 
       // Verify navigated to PdfPreviewScreen

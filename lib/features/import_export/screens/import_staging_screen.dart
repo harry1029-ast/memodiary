@@ -112,9 +112,9 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 48),
-          title: const Text('Import Complete'),
+          title: const Text('导入完成'),
           content: Text(
-            'Successfully imported $count diary entries from "${widget.fileName}".',
+            '已从“${widget.fileName}”成功导入 $count 篇日记。',
           ),
           actions: [
             FilledButton(
@@ -122,7 +122,7 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
                 Navigator.pop(ctx); // Close dialog
                 Navigator.pop(context, true); // Pop staging screen
               },
-              child: const Text('View Timeline'),
+              child: const Text('返回时间轴'),
             ),
           ],
         ),
@@ -134,14 +134,14 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.error_outline, color: Colors.red, size: 48),
-          title: const Text('Import Failed'),
+          title: const Text('导入失败'),
           content: Text(
-            'Database transaction rolled back with no changes written:\n$e',
+            '导入已回滚，未写入任何更改：\n$e',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Close'),
+              child: const Text('关闭'),
             ),
           ],
         ),
@@ -160,11 +160,11 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Import Staging'),
+        title: const Text('导入预览'),
         actions: [
           TextButton(
             onPressed: () => _toggleSelectAll(!allSelected),
-            child: Text(allSelected ? 'Deselect All' : 'Select All'),
+            child: Text(allSelected ? '取消全选' : '全选'),
           ),
         ],
       ),
@@ -181,14 +181,14 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Found ${_candidates.length} candidate entries',
+                        '共识别到 ${_candidates.length} 篇日记',
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         _needsReviewCount > 0
-                            ? '$_needsReviewCount entries need date review'
-                            : 'All entries have detected dates',
+                            ? '$_needsReviewCount 篇需要确认日期'
+                            : '所有日记均已识别日期',
                         style: TextStyle(
                           fontSize: 12,
                           color: _needsReviewCount > 0
@@ -200,7 +200,7 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
                   ),
                 ),
                 Text(
-                  '$_selectedCount / ${_candidates.length} selected',
+                  '已选 $_selectedCount / ${_candidates.length} 篇',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -238,8 +238,8 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
                   )
                 : const Icon(Icons.download_done_rounded),
             label: Text(_isImporting
-                ? 'Importing...'
-                : 'Import Selected ($_selectedCount)'),
+                ? '正在导入...'
+                : '导入选中 ($_selectedCount)'),
           ),
         ),
       ),
@@ -249,7 +249,7 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
   Widget _buildCandidateCard(ImportCandidateEntry candidate, ThemeData theme) {
     final dateStr = candidate.parsedDate != null
         ? DateFormat('yyyy-MM-dd · EEE').format(candidate.parsedDate!)
-        : 'Missing Date';
+        : '未识别日期';
 
     final isLowConfidence =
         candidate.confidence == DateParseConfidence.none ||
@@ -360,7 +360,7 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
 
                   // Title
                   Text(
-                    candidate.title.isNotEmpty ? candidate.title : 'Untitled',
+                    candidate.title.isNotEmpty ? candidate.title : '无题',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),

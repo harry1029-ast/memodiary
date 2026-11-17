@@ -103,5 +103,27 @@ void main() {
 
       expect(find.textContaining('纯文本兜底复盘', findRichText: true), findsOneWidget);
     });
+
+    testWidgets('renders plain Chinese weekly debrief labels and preserves saved entry title', (tester) async {
+      await pumpWeeklyDebriefDetailScreen(
+        tester,
+        id: 'debrief_plain_labels',
+        contentDelta: jsonEncode([
+          {'insert': '复盘内容\n'},
+        ]),
+        plainText: '复盘内容',
+      );
+
+      expect(find.text('每周复盘'), findsOneWidget);
+      expect(find.text('已完成'), findsOneWidget);
+      expect(find.text('本周概览'), findsOneWidget);
+      expect(find.text('篇日记'), findsOneWidget);
+      expect(find.text('字'), findsOneWidget);
+      expect(find.text('写作天数'), findsOneWidget);
+      expect(find.text('本周总结'), findsOneWidget);
+      expect(find.text('分享'), findsOneWidget);
+      expect(find.text('继续编辑'), findsOneWidget);
+      expect(find.text('周述'), findsOneWidget);
+    });
   });
 }

@@ -70,7 +70,9 @@ void main() {
 
       // Verify header & auto-synthesized route banner
       expect(find.text('江南水乡行'), findsOneWidget);
-      expect(find.text('3 张影像'), findsOneWidget);
+      expect(find.text('3 张照片'), findsOneWidget);
+      expect(find.text('进入排版'), findsOneWidget);
+      expect(find.text('浏览画册'), findsOneWidget);
       expect(find.byKey(const Key('workspace_route_banner')), findsOneWidget);
       expect(find.text('杭州 → 乌镇 → 苏州'), findsOneWidget);
 
@@ -144,14 +146,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('0 张影像'), findsOneWidget);
+      expect(find.text('0 张照片'), findsOneWidget);
       expect(find.byKey(const Key('workspace_empty_add_button')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('workspace_add_photos')));
       await tester.pumpAndSettle();
 
-      expect(find.text('2 张影像'), findsOneWidget);
+      expect(find.text('2 张照片'), findsOneWidget);
       expect(find.textContaining('已导入 2 张照片'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('workspace_reorder_toggle')));
+      await tester.pumpAndSettle();
+      expect(find.text('暂无备注'), findsNWidgets(2));
 
       await tearDownAlbumScreen(tester);
     });

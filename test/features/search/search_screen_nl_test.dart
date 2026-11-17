@@ -92,8 +92,9 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
 
-    // Verify "Understood as:" bar and both chips are displayed
+    // Verify "筛选条件:" bar and both chips are displayed
     expect(find.byKey(const Key('nl_understood_as_bar')), findsOneWidget);
+    expect(find.text('筛选条件:'), findsOneWidget);
     expect(
       find.byKey(const Key('nl_constraint_chip_dateRange')),
       findsOneWidget,
@@ -102,6 +103,7 @@ void main() {
       find.byKey(const Key('nl_constraint_chip_weeklyReview')),
       findsOneWidget,
     );
+    expect(find.text('每周复盘'), findsWidgets);
 
     // Only the October weekly review entry should be shown
     expect(find.text('十月第二周复盘'), findsOneWidget);
@@ -182,7 +184,7 @@ void main() {
     final chipWidget = tester.widget<InputChip>(chipFinder);
     expect(chipWidget.deleteIcon, isA<Semantics>());
     final deleteSemantics = chipWidget.deleteIcon as Semantics;
-    expect(deleteSemantics.properties.label, 'Remove Weekly Review filter');
+    expect(deleteSemantics.properties.label, '移除每周复盘筛选');
   });
 
   testWidgets('renders Smart Event Suggestions chips and filters CJK substring entries on tap',
@@ -239,8 +241,8 @@ void main() {
     // Understood as bar is visible
     expect(find.byKey(const Key('nl_understood_as_bar')), findsOneWidget);
 
-    // On narrow screen (< 360px), text 'Understood as:' is collapsed to icon tooltip
-    expect(find.text('Understood as:'), findsNothing);
+    // On narrow screen (< 360px), text '筛选条件:' is collapsed to icon
+    expect(find.text('筛选条件:'), findsNothing);
     expect(find.byIcon(Icons.psychology_outlined), findsOneWidget);
 
     // All 4 constraint chips rendered
@@ -293,5 +295,38 @@ void main() {
     );
 
     expect(caughtDetails, isNull);
+  });
+
+  testWidgets('renders plain Chinese search hint, empty prompt, and mood filter chip',
+      (tester) async {
+    await db.entriesDao.createEntry(
+      EntriesCompanion.insert(
+        id: 'e_happy_mood',
+        notebookId: 'notebook_default',
+        templateId: 'template_minimalist_white',
+        title: const Value('晴日郊游'),
+        contentDelta: '[{"insert":"心情很好。\\n"}]',
+        plainText: '心情很好。',
+        entryDate: DateTime(2026, 10, 16, 10, 0),
+        mood: const Value(5),
+      ),
+    );
+
+    await tester.pumpWidget(buildTestWidget());
+    await tester.pumpAndSettle();
+
+    expect(find.text('搜索日记、心情或照片文字'), findsOneWidget);
+    expect(find.text('搜索日记与照片'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('search_text_field')),
+      '欢欣',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('nl_constraint_chip_mood')), findsOneWidget);
+    expect(find.text('心情: 喜悦'), findsOneWidget);
+    expect(find.text('晴日郊游'), findsOneWidget);
   });
 }

@@ -63,11 +63,11 @@ class _SearchScreenState extends State<SearchScreen> {
   int _pendingBackfillCount = 0;
 
   static const List<String> _quickInspirations = [
-    '听雨',
-    '霜降手札',
-    '案头偶得',
-    '静心随笔',
-    '旧友煮茶',
+    '下雨',
+    '开心',
+    '旅行',
+    '读书',
+    '本周',
   ];
 
   @override

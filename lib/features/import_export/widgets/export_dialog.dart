@@ -67,8 +67,10 @@ class _ExportDialogState extends State<ExportDialog> {
 
       if (entriesToExport.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No diary entries available to export.')),
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          const SnackBar(content: Text('没有可导出的日记')),
         );
         Navigator.pop(context);
         return;
@@ -101,10 +103,12 @@ class _ExportDialogState extends State<ExportDialog> {
 
       if (savedPath != null) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        final messenger = ScaffoldMessenger.of(context);
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
           SnackBar(
             content: Text(
-              'Exported ${entriesToExport.length} entries to $savedPath',
+              '已导出 ${entriesToExport.length} 篇日记到 $savedPath',
             ),
           ),
         );
@@ -115,8 +119,10 @@ class _ExportDialogState extends State<ExportDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isExporting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text('导出失败：$e')),
       );
     }
   }
@@ -124,7 +130,7 @@ class _ExportDialogState extends State<ExportDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Export Diaries'),
+      title: const Text('导出日记'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -133,7 +139,7 @@ class _ExportDialogState extends State<ExportDialog> {
             // Scope Selection (if opened with a specific entry)
             if (widget.singleEntry != null) ...[
               const Text(
-                'Export Scope',
+                '导出范围',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
               ),
               const SizedBox(height: 6),
@@ -141,12 +147,12 @@ class _ExportDialogState extends State<ExportDialog> {
                 segments: const [
                   ButtonSegment(
                     value: ExportScope.single,
-                    label: Text('This Entry'),
+                    label: Text('当前日记'),
                     icon: Icon(Icons.description_outlined),
                   ),
                   ButtonSegment(
                     value: ExportScope.all,
-                    label: Text('All Entries'),
+                    label: Text('全部日记'),
                     icon: Icon(Icons.folder_zip_outlined),
                   ),
                 ],
@@ -160,7 +166,7 @@ class _ExportDialogState extends State<ExportDialog> {
 
             // Format Selection
             const Text(
-              'File Format',
+              '文件格式',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
             ),
             const SizedBox(height: 6),
@@ -173,20 +179,20 @@ class _ExportDialogState extends State<ExportDialog> {
                 children: [
                   RadioListTile<ExportFormat>(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('High-Fidelity PDF (.pdf)'),
-                    subtitle: Text('Template-preserving vector layout with embedded photos & fonts.'),
+                    title: Text('高清排版 PDF (.pdf)'),
+                    subtitle: Text('保留信纸样式、照片和字体的矢量排版文件'),
                     value: ExportFormat.pdf,
                   ),
                   RadioListTile<ExportFormat>(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('Markdown (.md) with YAML Frontmatter'),
-                    subtitle: Text('Best for Obsidian, Notion, Logseq, and preserving metadata tags.'),
+                    title: Text('Markdown (.md) 含元数据'),
+                    subtitle: Text('适合导入 Obsidian、Notion 等工具，保留日期与标签'),
                     value: ExportFormat.markdown,
                   ),
                   RadioListTile<ExportFormat>(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('Plain Text (.txt)'),
-                    subtitle: Text('Clean human-readable formatted document.'),
+                    title: Text('纯文本 (.txt)'),
+                    subtitle: Text('简洁易读的纯文本文档'),
                     value: ExportFormat.plainText,
                   ),
                 ],
@@ -198,7 +204,7 @@ class _ExportDialogState extends State<ExportDialog> {
       actions: [
         TextButton(
           onPressed: _isExporting ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const Text('取消'),
         ),
         FilledButton.icon(
           onPressed: _isExporting ? null : _handleExport,
@@ -212,8 +218,8 @@ class _ExportDialogState extends State<ExportDialog> {
                   ? Icons.picture_as_pdf_outlined
                   : Icons.file_download_outlined),
           label: Text(_selectedFormat == ExportFormat.pdf
-              ? 'Preview PDF'
-              : (_isExporting ? 'Exporting...' : 'Save File')),
+              ? '预览 PDF'
+              : (_isExporting ? '导出中...' : '保存文件')),
         ),
       ],
     );

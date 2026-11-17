@@ -51,7 +51,7 @@ class AlbumCollectionCard extends StatelessWidget {
     if (endDate != null) {
       return fmt.format(endDate);
     }
-    return '未设行程日期';
+    return '未设置日期';
   }
 
   static List<PopupMenuEntry<AlbumCardAction>> _buildMenuItems(
@@ -68,7 +68,7 @@ class AlbumCollectionCard extends StatelessWidget {
                 color: tokens.nongmo,
               ),
               const SizedBox(width: 10),
-              const Text('编辑影集信息'),
+              const Text('编辑相册'),
             ],
           ),
         ),
@@ -97,7 +97,7 @@ class AlbumCollectionCard extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                '删除影集',
+                '删除相册',
                 style: TextStyle(color: tokens.cinnabar),
               ),
             ],
@@ -143,7 +143,7 @@ class AlbumCollectionCard extends StatelessWidget {
 
     return Builder(
       builder: (cardContext) => Semantics(
-        label: '${collection.title}，$dateLabel，$photoCount 张影像',
+        label: '${collection.title}，$dateLabel，$photoCount 张照片',
         button: true,
         child: XuanPaperCard(
           key: Key('album_card_${collection.id}'),
@@ -204,21 +204,21 @@ class AlbumCollectionCard extends StatelessWidget {
                 ],
               ),
 
-          // 2. Subtitle / Prologue
-          const SizedBox(height: 4),
-          Text(
-            description != null && description.isNotEmpty
-                ? description
-                : '山河沿路，笔底留痕',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontFamily: InkDiaryTheme.fontNotoSerif,
-              fontSize: 13,
-              color: tokens.danmo,
-              height: 1.4,
+          // 2. Subtitle / Description (omitted when blank)
+          if (description != null && description.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 13,
+                color: tokens.danmo,
+                height: 1.4,
+              ),
             ),
-          ),
+          ],
 
           // 3. 16:9 Cover Image Frame
           const SizedBox(height: 12),
@@ -230,7 +230,7 @@ class AlbumCollectionCard extends StatelessWidget {
               cacheWidth: 720,
               borderRadius: 8,
               width: double.infinity,
-              placeholderLabel: '尚未添加旅途影像',
+              placeholderLabel: '暂无照片',
             ),
           ),
 

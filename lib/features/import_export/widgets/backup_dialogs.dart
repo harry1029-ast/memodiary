@@ -90,16 +90,16 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
     final pass = _passphraseController.text;
     final confirm = _confirmController.text;
     if (pass.isEmpty) {
-      return 'Enter at least 8 characters to encrypt your backup.';
+      return '请输入至少 8 位字符的加密口令。';
     }
     if (pass.length < 8) {
-      return 'Passphrase must be at least 8 characters (${pass.length}/8).';
+      return '口令至少需要 8 位字符（${pass.length}/8）。';
     }
     if (confirm.isNotEmpty && pass != confirm) {
-      return 'Passphrases do not match.';
+      return '两次输入的口令不一致。';
     }
     if (confirm.isEmpty) {
-      return 'Please confirm your passphrase.';
+      return '请再次输入口令以确认。';
     }
     return null;
   }
@@ -140,7 +140,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
           await SharePlus.instance.share(
             ShareParams(
               files: [XFile(result.file.path)],
-              subject: 'MemoDiary Full Archive Backup ($fileName)',
+              subject: '拾光日记全量备份 ($fileName)',
             ),
           );
         }
@@ -162,7 +162,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
       if (!mounted) return;
       setState(() {
         _isWorking = false;
-        _errorMessage = 'Backup failed: $e';
+        _errorMessage = '备份失败：$e';
       });
     } finally {
       if (tempStagingDir != null && await tempStagingDir.exists()) {
@@ -183,7 +183,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
         children: [
           Icon(Icons.enhanced_encryption_outlined, size: 22),
           SizedBox(width: 8),
-          Expanded(child: Text('Create Full-Archive Backup')),
+          Expanded(child: Text('导出加密备份 (.mdbak)')),
         ],
       ),
       content: SingleChildScrollView(
@@ -194,7 +194,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Bundles all diaries, notebooks, custom templates, and sandboxed photos/videos into a single portable .mdbak archive.',
+                '将所有日记、笔记本、自定义信纸模板以及本地照片和视频打包为单个 .mdbak 备份文件。',
                 style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
@@ -202,7 +202,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
                 key: const Key('backup_encrypt_switch'),
                 contentPadding: EdgeInsets.zero,
                 title: const Text(
-                  'Encrypt with Passphrase (AES-256-GCM)',
+                  '使用口令加密 (AES-256-GCM)',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
                 value: _encryptWithPassphrase,
@@ -218,7 +218,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
                   enabled: !_isWorking,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Passphrase (min 8 chars)',
+                    labelText: '加密口令（至少 8 位）',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -230,7 +230,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
                   enabled: !_isWorking,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: 'Confirm Passphrase',
+                    labelText: '确认加密口令',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -254,7 +254,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Text(
-                    'Keep this passphrase safe. Encrypted archives are protected with PBKDF2 + AES-256-GCM and cannot be recovered if forgotten.',
+                    '请妥善保管口令。加密备份采用 PBKDF2 + AES-256-GCM 保护，忘记口令将无法恢复。',
                     style: TextStyle(fontSize: 12),
                   ),
                 ),
@@ -267,7 +267,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Warning: Unencrypted backup stores your diary text and media in plaintext without passphrase protection.',
+                    '注意：未加密备份会以明文保存日记文字和媒体文件，不提供口令保护。',
                     style: TextStyle(
                       fontSize: 12,
                       color: theme.colorScheme.onErrorContainer,
@@ -297,7 +297,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
       actions: [
         TextButton(
           onPressed: _isWorking ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const Text('取消'),
         ),
         OutlinedButton.icon(
           key: const Key('backup_share_button'),
@@ -305,7 +305,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
               ? null
               : () => _executeBackup(shareAfterCreate: true),
           icon: const Icon(Icons.share_outlined, size: 18),
-          label: const Text('Share...'),
+          label: const Text('分享...'),
         ),
         FilledButton.icon(
           key: const Key('backup_save_button'),
@@ -313,7 +313,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
               ? null
               : () => _executeBackup(shareAfterCreate: false),
           icon: const Icon(Icons.save_alt_rounded, size: 18),
-          label: const Text('Save to Device'),
+          label: const Text('保存到设备'),
         ),
       ],
     );
@@ -416,7 +416,7 @@ class _RestoreBackupDialogState extends State<RestoreBackupDialog> {
       if (!mounted) return;
       setState(() {
         _isRestoring = false;
-        _errorMessage = 'Restore failed: $e';
+        _errorMessage = '恢复失败：$e';
       });
     }
   }
@@ -431,7 +431,7 @@ class _RestoreBackupDialogState extends State<RestoreBackupDialog> {
         children: [
           Icon(Icons.restore_page_outlined, size: 22),
           SizedBox(width: 8),
-          Expanded(child: Text('Restore from Backup')),
+          Expanded(child: Text('从备份恢复')),
         ],
       ),
       content: SingleChildScrollView(
@@ -442,7 +442,7 @@ class _RestoreBackupDialogState extends State<RestoreBackupDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Selected archive: $fileName',
+                '已选择备份文件：$fileName',
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               ),
               const SizedBox(height: 12),
@@ -454,7 +454,7 @@ class _RestoreBackupDialogState extends State<RestoreBackupDialog> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Replace Mode Warning: Restoring this backup will replace all current diaries, notebooks, templates, and media on this device. If the archive is corrupted or the passphrase is wrong, your current data will remain untouched.',
+                  '覆盖提示：恢复备份会替换当前设备上的所有日记、笔记本、模板和媒体文件。如果备份文件损坏或口令错误，现有数据不会被修改。',
                   style: TextStyle(
                     fontSize: 12,
                     color: theme.colorScheme.onErrorContainer,
@@ -471,7 +471,7 @@ class _RestoreBackupDialogState extends State<RestoreBackupDialog> {
                   obscureText: true,
                   onChanged: (_) => setState(() => _errorMessage = null),
                   decoration: const InputDecoration(
-                    labelText: 'Backup Passphrase',
+                    labelText: '备份口令',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -483,7 +483,7 @@ class _RestoreBackupDialogState extends State<RestoreBackupDialog> {
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
                 title: const Text(
-                  'I understand this will replace all current diary records.',
+                  '我已知晓恢复备份将覆盖当前全部日记数据',
                   style: TextStyle(fontSize: 13),
                 ),
                 value: _confirmedReplace,
@@ -514,7 +514,7 @@ class _RestoreBackupDialogState extends State<RestoreBackupDialog> {
       actions: [
         TextButton(
           onPressed: _isRestoring ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const Text('取消'),
         ),
         FilledButton(
           key: const Key('restore_confirm_button'),
@@ -523,7 +523,7 @@ class _RestoreBackupDialogState extends State<RestoreBackupDialog> {
             foregroundColor: theme.colorScheme.onError,
           ),
           onPressed: _canSubmit ? _handleRestore : null,
-          child: const Text('Replace & Restore'),
+          child: const Text('覆盖并恢复'),
         ),
       ],
     );

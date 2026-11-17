@@ -67,7 +67,7 @@ class BackgroundStyleDrawer extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '底色与纸本纹饰 · Page Colors & Graphics',
+                  '页面背景',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 15,
@@ -87,7 +87,7 @@ class BackgroundStyleDrawer extends StatelessWidget {
           ),
           // 1. Suggested Swatches with 'Aa' Contrast Preview
           Text(
-            '推荐配色 · Suggested Colors',
+            '背景颜色',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontNotoSerif,
               fontSize: 11.5,
@@ -197,7 +197,7 @@ class BackgroundStyleDrawer extends StatelessWidget {
           const SizedBox(height: 10),
           // 3. Background Vector Graphic Patterns
           Text(
-            '背景纹饰 · Background Graphics',
+            '装饰图案',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontNotoSerif,
               fontSize: 11.5,

@@ -71,7 +71,7 @@ class _LayoutPickerDrawerState extends State<LayoutPickerDrawer> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '拼图版式库 · Collage Layouts',
+                  '选择版式',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 15,
@@ -98,7 +98,7 @@ class _LayoutPickerDrawerState extends State<LayoutPickerDrawer> {
               children: [
                 _buildFilterChip(
                   tokens: tokens,
-                  label: '本页推荐 ($currentCount 张)',
+                  label: '推荐 ($currentCount 张)',
                   isSelected: _filterPhotoCount == null,
                   chipKey: const Key('layout_filter_recommended'),
                   onTap: () => setState(() => _filterPhotoCount = null),
@@ -106,7 +106,7 @@ class _LayoutPickerDrawerState extends State<LayoutPickerDrawer> {
                 const SizedBox(width: 6),
                 _buildFilterChip(
                   tokens: tokens,
-                  label: '全部版式',
+                  label: '全部',
                   isSelected: _filterPhotoCount == 0,
                   chipKey: const Key('layout_filter_all'),
                   onTap: () => setState(() => _filterPhotoCount = 0),
@@ -115,7 +115,7 @@ class _LayoutPickerDrawerState extends State<LayoutPickerDrawer> {
                   const SizedBox(width: 6),
                   _buildFilterChip(
                     tokens: tokens,
-                    label: '$count 图',
+                    label: '$count 张',
                     isSelected: _filterPhotoCount == count,
                     chipKey: Key('layout_filter_count_$count'),
                     onTap: () => setState(() => _filterPhotoCount = count),

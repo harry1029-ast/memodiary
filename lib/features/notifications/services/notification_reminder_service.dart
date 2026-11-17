@@ -170,8 +170,8 @@ class NotificationReminderService {
       const details = NotificationDetails(
         android: AndroidNotificationDetails(
           'memodiary_daily_reminder',
-          'Daily Writing Reminder',
-          channelDescription: 'Gentle daily prompt to capture your thoughts',
+          '每日写作提醒',
+          channelDescription: '定时提醒记录今天的日记',
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
         ),
@@ -180,8 +180,8 @@ class NotificationReminderService {
 
       await _resolvedPlugin.zonedSchedule(
         dailyNotificationId,
-        'Time to Capture Today ✨',
-        'Take a quiet moment to write down today\'s memories in MemoDiary.',
+        '今天写日记了吗',
+        '花一点时间在拾光日记记录今天的生活吧。',
         scheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -221,8 +221,8 @@ class NotificationReminderService {
       const details = NotificationDetails(
         android: AndroidNotificationDetails(
           'memodiary_weekly_review',
-          'Weekly Review Reminder',
-          channelDescription: 'Sunday evening prompt for your weekly reflection',
+          '每周复盘提醒',
+          channelDescription: '每周日提醒回顾本周日记并撰写复盘',
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
         ),
@@ -231,8 +231,8 @@ class NotificationReminderService {
 
       await _resolvedPlugin.zonedSchedule(
         weeklyNotificationId,
-        'Weekly Review Time 📖',
-        'Reflect on your 7-day journey and write your weekly synthesis.',
+        '本周复盘时间到了',
+        '回顾这一周的记录，写下本周复盘。',
         scheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

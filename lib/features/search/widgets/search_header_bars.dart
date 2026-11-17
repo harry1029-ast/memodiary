@@ -59,7 +59,7 @@ class SearchSegmentBar extends StatelessWidget {
             const SizedBox(width: 8),
             _buildSegmentChip(
               key: const Key('search_segment_photos'),
-              label: '图中文字',
+              label: '照片文字',
               count: hasSearched ? photoResultCount : null,
               isSelected: selectedSegment == SearchSegment.photos,
               onTap: () => onSegmentSelected(SearchSegment.photos),
@@ -207,7 +207,7 @@ class SearchUnderstoodAsBar extends StatelessWidget {
                   if (!isNarrow) ...[
                     const SizedBox(width: 6),
                     Text(
-                      '笔意解析:',
+                      '筛选条件:',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 12,
@@ -236,7 +236,7 @@ class SearchUnderstoodAsBar extends StatelessWidget {
                           ),
                         ),
                         deleteIcon: Semantics(
-                          label: 'Remove ${constraint.label} filter',
+                          label: '移除${constraint.label}筛选',
                           child: Icon(
                             Icons.close,
                             size: 14,
@@ -320,7 +320,7 @@ class SearchQueryAppBar extends StatelessWidget implements PreferredSizeWidget {
                   color: tokens.jiaomo,
                 ),
                 decoration: InputDecoration(
-                  hintText: '搜寻手札、心境、旧忆...',
+                  hintText: '搜索日记、心情或照片文字',
                   hintStyle: TextStyle(
                     fontFamily: InkDiaryTheme.fontKaiti,
                     fontSize: 13,

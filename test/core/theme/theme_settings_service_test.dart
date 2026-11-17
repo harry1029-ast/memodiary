@@ -65,19 +65,19 @@ void main() {
     test('ThemeModePresentationX provides labels, subtitles, descriptions, and icons', () {
       expect(ThemeMode.system.label, equals('跟随系统'));
       expect(ThemeMode.system.subtitle, equals('Auto'));
-      expect(ThemeMode.system.description, contains('随系统明暗'));
+      expect(ThemeMode.system.description, contains('随系统外观自动切换'));
       expect(ThemeMode.system.icon, equals(Icons.brightness_auto_outlined));
       expect(ThemeMode.system.filledIcon, equals(Icons.brightness_auto_rounded));
 
-      expect(ThemeMode.light.label, equals('素宣浅色'));
+      expect(ThemeMode.light.label, equals('浅色模式'));
       expect(ThemeMode.light.subtitle, equals('Light'));
-      expect(ThemeMode.light.description, contains('常驻素白宣纸'));
+      expect(ThemeMode.light.description, contains('浅色外观'));
       expect(ThemeMode.light.icon, equals(Icons.light_mode_outlined));
       expect(ThemeMode.light.filledIcon, equals(Icons.light_mode_rounded));
 
-      expect(ThemeMode.dark.label, equals('焦墨深色'));
+      expect(ThemeMode.dark.label, equals('深色模式'));
       expect(ThemeMode.dark.subtitle, equals('Dark'));
-      expect(ThemeMode.dark.description, contains('常驻静谧焦墨'));
+      expect(ThemeMode.dark.description, contains('深色外观'));
       expect(ThemeMode.dark.icon, equals(Icons.dark_mode_outlined));
       expect(ThemeMode.dark.filledIcon, equals(Icons.dark_mode_rounded));
     });

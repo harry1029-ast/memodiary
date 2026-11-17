@@ -138,19 +138,19 @@ void main() {
       // Verify candidate entries rendered
       expect(find.text('Tokyo Arrival'), findsOneWidget);
       expect(find.text('Notes without Date'), findsOneWidget);
-      expect(find.text('Missing Date'), findsOneWidget);
-      expect(find.text('1 entries need date review'), findsOneWidget);
+      expect(find.text('未识别日期'), findsOneWidget);
+      expect(find.text('1 篇需要确认日期'), findsOneWidget);
 
-      // Tap "Import Selected (2)"
-      await tester.tap(find.text('Import Selected (2)'));
+      // Tap "导入选中 (2)"
+      await tester.tap(find.text('导入选中 (2)'));
       await tester.pumpAndSettle();
 
       // Summary completion dialog should appear
-      expect(find.text('Import Complete'), findsOneWidget);
-      expect(find.textContaining('Successfully imported 2 diary entries'), findsOneWidget);
+      expect(find.text('导入完成'), findsOneWidget);
+      expect(find.textContaining('成功导入 2 篇日记'), findsOneWidget);
 
       // Close dialog & verify DB commit
-      await tester.tap(find.text('View Timeline'));
+      await tester.tap(find.text('返回时间轴'));
       await tester.pumpAndSettle();
 
       final active = await db.entriesDao.getAllActiveEntries();
