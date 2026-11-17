@@ -23,15 +23,15 @@ class CustomTemplateEditorScreen extends StatefulWidget {
   });
 
   static const List<ColorSwatchOption> presetSwatches = [
-    ColorSwatchOption(name: '澄心素白', hex: '#FFFFFF', color: Color(0xFFFFFFFF)),
-    ColorSwatchOption(name: '温润象牙', hex: '#FDFBF7', color: Color(0xFFFDFBF7)),
-    ColorSwatchOption(name: '暖阳素笺', hex: '#FDF6E2', color: Color(0xFFFDF6E2)),
-    ColorSwatchOption(name: '仿古茶皮', hex: '#EFE6D5', color: Color(0xFFEFE6D5)),
-    ColorSwatchOption(name: '松烟淡青', hex: '#E8F5E9', color: Color(0xFFE8F5E9)),
-    ColorSwatchOption(name: '天青水色', hex: '#E3F2FD', color: Color(0xFFE3F2FD)),
-    ColorSwatchOption(name: '绛霞微粉', hex: '#FCE4EC', color: Color(0xFFFCE4EC)),
-    ColorSwatchOption(name: '幽兰淡紫', hex: '#F3E5F5', color: Color(0xFFF3E5F5)),
-    ColorSwatchOption(name: '黛灰寒砚', hex: '#F4F5F7', color: Color(0xFFF4F5F7)),
+    ColorSwatchOption(name: '纯白', hex: '#FFFFFF', color: Color(0xFFFFFFFF)),
+    ColorSwatchOption(name: '象牙白', hex: '#FDFBF7', color: Color(0xFFFDFBF7)),
+    ColorSwatchOption(name: '米黄', hex: '#FDF6E2', color: Color(0xFFFDF6E2)),
+    ColorSwatchOption(name: '牛皮纸色', hex: '#EFE6D5', color: Color(0xFFEFE6D5)),
+    ColorSwatchOption(name: '淡绿', hex: '#E8F5E9', color: Color(0xFFE8F5E9)),
+    ColorSwatchOption(name: '浅蓝', hex: '#E3F2FD', color: Color(0xFFE3F2FD)),
+    ColorSwatchOption(name: '浅粉', hex: '#FCE4EC', color: Color(0xFFFCE4EC)),
+    ColorSwatchOption(name: '浅紫', hex: '#F3E5F5', color: Color(0xFFF3E5F5)),
+    ColorSwatchOption(name: '浅灰', hex: '#F4F5F7', color: Color(0xFFF4F5F7)),
   ];
 
   @override
@@ -171,8 +171,9 @@ class _CustomTemplateEditorScreenState
     } catch (error) {
       if (mounted) {
         setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败: $error')),
+          SnackBar(content: Text('保存失败：$error')),
         );
       }
     }
@@ -202,7 +203,7 @@ class _CustomTemplateEditorScreenState
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          isEditing ? '订正雅笺 · 笺谱改样' : '创制新笺 · 笺谱定样',
+          isEditing ? '编辑信纸' : '新建信纸',
           style: TextStyle(
             fontFamily: InkDiaryTheme.fontNotoSerif,
             fontSize: 16,
@@ -225,7 +226,7 @@ class _CustomTemplateEditorScreenState
               onPressed: _isSaving ? null : _handleSave,
               icon: const Icon(Icons.check, size: 16),
               label: Text(
-                _isSaving ? '存卷中...' : '定稿归卷',
+                _isSaving ? '保存中...' : '保存',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
@@ -256,8 +257,8 @@ class _CustomTemplateEditorScreenState
                   color: tokens.jiaomo,
                 ),
                 decoration: InputDecoration(
-                  labelText: '信笺雅称 · Template Name',
-                  hintText: '如：澄心朱丝栏、雨过天青笺',
+                  labelText: '信纸名称',
+                  hintText: '例如：朱丝宣纸、淡绿方格',
                   filled: true,
                   fillColor: tokens.ricePaper,
                   border: OutlineInputBorder(
@@ -272,7 +273,7 @@ class _CustomTemplateEditorScreenState
                 onChanged: (_) => setState(() {}),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
-                    return 'Please enter a template name';
+                    return '请输入信纸名称';
                   }
                   return null;
                 },

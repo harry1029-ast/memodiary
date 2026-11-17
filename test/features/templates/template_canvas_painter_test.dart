@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/editor/models/typography_settings.dart';
+import 'package:memodiary/features/templates/models/template_constants.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/models/template_text_insets.dart';
 import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
@@ -27,7 +29,11 @@ void main() {
       expect(TemplateBackgroundType.fromString('paper_texture'), TemplateBackgroundType.paperTexture);
       expect(TemplateBackgroundType.fromString('unknown'), TemplateBackgroundType.color);
       expect(TemplateBackgroundType.dotGrid.toDbValue, 'dot_grid');
-      expect(TemplateBackgroundType.dotGrid.label, 'Dot Grid');
+      expect(TemplateBackgroundType.color.label, '纯色');
+      expect(TemplateBackgroundType.lined.label, '横线');
+      expect(TemplateBackgroundType.grid.label, '方格');
+      expect(TemplateBackgroundType.dotGrid.label, '点阵');
+      expect(TemplateBackgroundType.paperTexture.label, '牛皮纸');
     });
 
     test('StationeryVisualTokens parses legacy hex and structured JSON round-trip', () {
@@ -52,12 +58,56 @@ void main() {
       expect(decoded.customBgColor, isNull);
     });
 
-    test('StationerySuites exposes curated presets with 4 distinct styles', () {
+    test('StationerySuites exposes curated presets with 4 distinct styles and concise names', () {
       expect(StationerySuites.all.length, 4);
       expect(StationerySuites.wenfang.substrate, PaperSubstrate.xuan);
+      expect(StationerySuites.wenfang.name, '朱丝宣纸');
       expect(StationerySuites.lengjin.substrate, PaperSubstrate.coldGold);
+      expect(StationerySuites.lengjin.name, '冷金暖笺');
       expect(StationerySuites.zhuqing.substrate, PaperSubstrate.minimal);
+      expect(StationerySuites.zhuqing.name, '竹青方格');
       expect(StationerySuites.songyan.substrate, PaperSubstrate.obsidian);
+      expect(StationerySuites.songyan.name, '松烟暗夜');
+    });
+
+    test('PaperSubstrate, RuleInkTint, SealCarvingStyle, and displayTemplateName use plain Chinese labels', () {
+      expect(PaperSubstrate.xuan.label, '宣纸');
+      expect(PaperSubstrate.coldGold.label, '洒金');
+      expect(PaperSubstrate.minimal.label, '素白');
+      expect(PaperSubstrate.kraft.label, '牛皮纸');
+      expect(PaperSubstrate.obsidian.label, '暗夜');
+
+      expect(RuleInkTint.slate.label, '青灰');
+      expect(RuleInkTint.vermilion.label, '朱红');
+      expect(RuleInkTint.charcoal.label, '深灰');
+      expect(RuleInkTint.jade.label, '竹青');
+
+      expect(SealCarvingStyle.zhuwen.label, '朱文');
+      expect(SealCarvingStyle.baiwen.label, '白文');
+      expect(SealCarvingStyle.hidden.label, '不加盖');
+
+      const minimalDbTemplate = Template(
+        id: 'template_minimalist_white',
+        name: 'Minimalist White',
+        backgroundType: 'color',
+        backgroundValue: '#FFFFFF',
+        fontFamily: 'System',
+        lineSpacing: 1.5,
+        marginHorizontal: 20.0,
+        isCustom: false,
+      );
+      const customTemplate = Template(
+        id: 'template_custom_1',
+        name: '我的信纸',
+        backgroundType: 'lined',
+        backgroundValue: '#FDFBF7',
+        fontFamily: 'System',
+        lineSpacing: 1.6,
+        marginHorizontal: 20.0,
+        isCustom: true,
+      );
+      expect(displayTemplateName(minimalDbTemplate), '素白信纸');
+      expect(displayTemplateName(customTemplate), '我的信纸');
     });
   });
 

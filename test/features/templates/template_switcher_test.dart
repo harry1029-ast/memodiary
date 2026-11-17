@@ -84,18 +84,20 @@ void main() {
       await tester.tap(find.text('Open Switcher'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Switch Template'), findsOneWidget);
-      expect(find.text('Minimalist White'), findsOneWidget);
-      expect(find.text('Retro Kraft Scrapbook'), findsOneWidget);
+      expect(find.text('选择信纸'), findsOneWidget);
+      expect(find.text('素白信纸'), findsOneWidget);
+      expect(find.text('牛皮纸'), findsWidgets);
+      expect(find.text('纯色'), findsOneWidget);
+      expect(find.text('Switch Template'), findsNothing);
 
-      // Tap on Retro Kraft Scrapbook
-      await tester.tap(find.text('Retro Kraft Scrapbook'));
+      // Tap on 牛皮纸 (template_retro_kraft)
+      await tester.tap(find.text('牛皮纸').first);
       await tester.pumpAndSettle();
 
       expect(selectedTemplate, isNotNull);
       expect(selectedTemplate!.id, 'template_retro_kraft');
       // Bottom sheet is dismissed
-      expect(find.text('Switch Template'), findsNothing);
+      expect(find.text('选择信纸'), findsNothing);
     });
 
     testWidgets('TemplateSwitcherSheet supports deleting a custom template and falls back safely', (tester) async {
@@ -132,7 +134,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('new_custom_template_button')), findsOneWidget);
+      expect(find.text('新建信纸'), findsOneWidget);
       expect(find.text('Sky Blue Custom'), findsOneWidget);
+      expect(find.text('自定义'), findsOneWidget);
+      expect(find.byTooltip('编辑信纸'), findsOneWidget);
+      expect(find.byTooltip('删除信纸'), findsOneWidget);
 
       // Scroll or locate delete icon for custom template
       await tester.ensureVisible(find.byKey(Key('delete_template_${custom.id}')));
@@ -140,7 +146,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Confirm dialog appears
-      expect(find.text('Delete Custom Template?'), findsOneWidget);
+      expect(find.text('删除自定义信纸'), findsOneWidget);
+      expect(find.textContaining('默认信纸'), findsOneWidget);
       await tester.tap(find.byKey(const Key('confirm_delete_custom_template_button')));
       await tester.pumpAndSettle();
 
