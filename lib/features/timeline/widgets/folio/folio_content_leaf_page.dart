@@ -117,18 +117,18 @@ class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
     };
     final layoutLabel = switch (leaf) {
       FolioContentBodyLeaf bodyLeaf => switch (bodyLeaf.layout) {
-          FolioRulingLayout.vermilionVertical => '朱丝栏 · 竖排',
-          FolioRulingLayout.genkoVertical => '原稿用紙 · 竖排',
+          FolioRulingLayout.vermilionVertical => '朱丝竖排',
+          FolioRulingLayout.genkoVertical => '方格竖排',
           FolioRulingLayout.faithfulHorizontal => switch (widget.theme.backgroundType) {
-              TemplateBackgroundType.lined => '乌丝栏 · 横排',
+              TemplateBackgroundType.lined => '横线 · 横排',
               TemplateBackgroundType.paperTexture => '牛皮纸 · 横排',
-              TemplateBackgroundType.color => '素笺 · 横排',
+              TemplateBackgroundType.color => '纯色 · 横排',
               TemplateBackgroundType.grid => '方格 · 横排',
               TemplateBackgroundType.dotGrid => '点阵 · 横排',
             },
         },
       FolioTippedInEphemeraLeaf ephemeraLeaf =>
-        ephemeraLeaf.mediaType == 'video' ? '动态拓片 · 影印' : '珍藏拓影 · 插页',
+        ephemeraLeaf.mediaType == 'video' ? '视频插页' : '插图页',
       _ => '',
     };
 
@@ -173,7 +173,7 @@ class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      _isPolaroidHidden ? '📌 展开微笺' : '👁️ 隐藏微笺',
+                      _isPolaroidHidden ? '显示照片卡片' : '隐藏照片卡片',
                       style: TextStyle(
                         fontSize: 9.5,
                         fontWeight: FontWeight.w600,
@@ -344,7 +344,9 @@ class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
   Widget _buildFooterColophon(Color accentColor) {
     final leaf = widget.leaf;
     final hasPhotos = leaf is FolioContentBodyLeaf && leaf.photos.isNotEmpty;
-    final footerNotice = hasPhotos ? '第 ${leaf.leafIndex + 1}/${leaf.totalLeaves} 页 · 可自由拖拽微笺位置' : '第 ${leaf.leafIndex + 1}/${leaf.totalLeaves} 页 · 拾光存卷';
+    final footerNotice = hasPhotos
+        ? '第 ${leaf.leafIndex + 1}/${leaf.totalLeaves} 页 · 可拖动照片卡片'
+        : '第 ${leaf.leafIndex + 1}/${leaf.totalLeaves} 页';
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

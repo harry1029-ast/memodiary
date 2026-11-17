@@ -27,20 +27,17 @@ class TimelineEntryItem {
     return diff.isNegative ? Duration.zero : diff;
   }
 
-  /// Human-readable remaining time string (e.g., "3 days", "5 hours", "20 mins")
+  /// Human-readable remaining time string (e.g., "3 天", "5 小时", "20 分钟")
   String get remainingUnlockTimeFormatted {
     final diff = timeUntilUnlock;
-    if (diff == null || diff == Duration.zero) return 'Ready to open';
+    if (diff == null || diff == Duration.zero) return '已可解锁';
     if (diff.inDays > 0) {
-      final days = diff.inDays;
-      return '$days ${days == 1 ? "day" : "days"}';
+      return '${diff.inDays} 天';
     }
     if (diff.inHours > 0) {
-      final hours = diff.inHours;
-      return '$hours ${hours == 1 ? "hour" : "hours"}';
+      return '${diff.inHours} 小时';
     }
-    final mins = diff.inMinutes;
-    return '$mins ${mins <= 1 ? "min" : "mins"}';
+    return '${diff.inMinutes} 分钟';
   }
 }
 

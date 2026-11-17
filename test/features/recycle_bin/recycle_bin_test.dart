@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/services/recycle_bin_service.dart';
+import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
@@ -328,6 +331,144 @@ void main() {
 
       deleted = await db.entriesDao.getDeletedEntries();
       expect(deleted.isEmpty, isTrue);
+    });
+  });
+
+  group('RecycleBinScreen Widget Tests', () {
+    Future<void> pumpRecycleBin(WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: RecycleBinScreen(
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('displays plain Chinese title and empty state when no deleted entries', (tester) async {
+      await pumpRecycleBin(tester);
+
+      expect(find.text('回收站'), findsOneWidget);
+      expect(find.text('RECYCLE BIN'), findsNothing);
+      expect(find.text('岁暮拾遗'), findsNothing);
+      expect(find.text('回收站为空'), findsOneWidget);
+      expect(find.text('清空回收站'), findsNothing);
+    });
+
+    testWidgets('displays deleted entries with plain countdown, timestamp, and tooltips', (tester) async {
+      final deletedAt = DateTime(2026, 11, 10, 14, 30);
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'bin_entry_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('秋日笔记'),
+          contentDelta: jsonEncode([{'insert': '内容\n'}]),
+          plainText: '内容',
+          entryDate: deletedAt,
+          isDeleted: const Value(true),
+          updatedAt: Value(deletedAt),
+        ),
+      );
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'bin_entry_2',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value(''),
+          contentDelta: jsonEncode([{'insert': '无题内容\n'}]),
+          plainText: '无题内容',
+          entryDate: deletedAt,
+          isDeleted: const Value(true),
+          updatedAt: Value(deletedAt),
+        ),
+      );
+
+      await pumpRecycleBin(tester);
+
+      expect(find.text('清空回收站'), findsOneWidget);
+      expect(find.text('秋日笔记'), findsOneWidget);
+      expect(find.text('无题'), findsOneWidget);
+      expect(find.textContaining('天后自动清除'), findsNWidgets(2));
+      final formattedTime = DateFormat('yyyy年M月d日 · HH:mm').format(deletedAt);
+      expect(find.text('删除于 $formattedTime'), findsNWidgets(2));
+      expect(find.byTooltip('恢复'), findsNWidgets(2));
+      expect(find.byTooltip('彻底删除'), findsNWidgets(2));
+    });
+
+    testWidgets('restoring entry shows plain snackbar and removes it from bin', (tester) async {
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'bin_restore_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('待恢复日记'),
+          contentDelta: jsonEncode([{'insert': '内容\n'}]),
+          plainText: '内容',
+          entryDate: DateTime(2026, 11, 10, 9, 0),
+          isDeleted: const Value(true),
+        ),
+      );
+
+      await pumpRecycleBin(tester);
+      await tester.tap(find.byTooltip('恢复'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('已恢复：待恢复日记'), findsOneWidget);
+      expect(find.text('回收站为空'), findsOneWidget);
+      final restored = await db.entriesDao.getEntryById('bin_restore_1');
+      expect(restored?.isDeleted, isFalse);
+    });
+
+    testWidgets('permanent delete and empty bin show unmistakable confirmation dialogs', (tester) async {
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'bin_del_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('日记一'),
+          contentDelta: jsonEncode([{'insert': '一\n'}]),
+          plainText: '一',
+          entryDate: DateTime(2026, 11, 10, 9, 0),
+          isDeleted: const Value(true),
+        ),
+      );
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'bin_del_2',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('日记二'),
+          contentDelta: jsonEncode([{'insert': '二\n'}]),
+          plainText: '二',
+          entryDate: DateTime(2026, 11, 11, 9, 0),
+          isDeleted: const Value(true),
+        ),
+      );
+
+      await pumpRecycleBin(tester);
+
+      // Single permanent delete dialog
+      await tester.tap(find.byTooltip('彻底删除').first);
+      await tester.pumpAndSettle();
+      expect(find.text('彻底删除日记？'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, '彻底删除'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('已彻底删除'), findsOneWidget);
+      expect(await db.entriesDao.getDeletedEntries(), hasLength(1));
+
+      // Empty bin dialog with exact confirmation text
+      await tester.tap(find.text('清空回收站'));
+      await tester.pumpAndSettle();
+      expect(find.text('确定彻底删除全部 1 篇日记？删除后无法恢复。'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, '清空回收站'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('回收站为空'), findsOneWidget);
+      expect(await db.entriesDao.getDeletedEntries(), isEmpty);
     });
   });
 }

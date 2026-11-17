@@ -44,7 +44,7 @@ class FolioPolaroidMiniCard extends StatelessWidget {
     final photoCount = photos.length;
 
     return Semantics(
-      label: '随文微笺 · ${activePhoto.title}',
+      label: '照片卡片 · ${activePhoto.title}',
       button: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -208,7 +208,7 @@ class FolioPolaroidMiniCard extends StatelessWidget {
             ),
           ),
           const Text(
-            '✥ 拖拽 / 点展读',
+            '拖动 / 点击放大',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 7.0,
@@ -300,7 +300,7 @@ class FolioPolaroidMiniCard extends StatelessWidget {
   Widget _buildHideButton() {
     return Semantics(
       button: true,
-      label: '隐藏微笺',
+      label: '隐藏照片卡片',
       child: GestureDetector(
         key: const Key('folio_polaroid_hide_button'),
         onTap: () {
@@ -340,7 +340,7 @@ class FolioPolaroidMiniCard extends StatelessWidget {
   Widget _buildResetButton() {
     return Semantics(
       button: true,
-      label: '归位微笺',
+      label: '重置照片卡片位置',
       child: GestureDetector(
         key: const Key('folio_polaroid_reset_button'),
         onTap: () {

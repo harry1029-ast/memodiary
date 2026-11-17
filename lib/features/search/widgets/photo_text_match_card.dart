@@ -30,7 +30,7 @@ class PhotoTextMatchCard extends StatelessWidget {
 
     final title = (match.parentTitle?.trim().isNotEmpty ?? false)
         ? match.parentTitle!.trim()
-        : (match.sourceType == PhotoTextMatch.sourceAlbumPhoto ? '旅行相册' : '无题手札');
+        : (match.sourceType == PhotoTextMatch.sourceAlbumPhoto ? '旅行相册' : '无标题日记');
 
     final dateText = match.parentDate != null
         ? '${match.parentDate!.year}年${match.parentDate!.month}月${match.parentDate!.day}日'
@@ -197,7 +197,7 @@ class PhotoTextMatchCard extends StatelessWidget {
         ),
       ),
       child: Text(
-        '图中文字匹配',
+        '照片文字',
         style: TextStyle(
           fontFamily: InkDiaryTheme.fontNotoSerif,
           fontSize: 10,

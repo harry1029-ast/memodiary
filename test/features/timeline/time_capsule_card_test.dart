@@ -74,7 +74,7 @@ void main() {
       await pumpTimeCapsuleCard(tester, width: 360);
 
       expect(tester.takeException(), isNull);
-      expect(find.textContaining('TIME CAPSULE'), findsOneWidget);
+      expect(find.text('时间胶囊'), findsOneWidget);
       expect(find.byType(CinnabarSealBadge), findsOneWidget);
     });
 
@@ -109,8 +109,10 @@ void main() {
 
       expect(find.byType(FoldedXuanSlip), findsOneWidget);
       expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
-      expect(find.text('封存中'), findsOneWidget);
-      expect(find.textContaining('Unlocks in'), findsOneWidget);
+      expect(find.text('待解锁'), findsOneWidget);
+      expect(find.textContaining('将于 '), findsOneWidget);
+      expect(find.textContaining('解锁'), findsWidgets);
+      expect(find.textContaining('天解锁'), findsOneWidget);
       expect(find.textContaining('Super secret sealed capsule content'), findsNothing);
 
       // Light theme slip color
@@ -149,10 +151,10 @@ void main() {
       await tester.tap(find.byType(TimeCapsuleCard));
       await tester.pumpAndSettle();
 
-      expect(find.text('Time Capsule Sealed'), findsOneWidget);
-      await tester.tap(find.text('Keep Waiting'));
+      expect(find.text('时间胶囊待解锁'), findsOneWidget);
+      await tester.tap(find.text('知道了'));
       await tester.pumpAndSettle();
-      expect(find.text('Time Capsule Sealed'), findsNothing);
+      expect(find.text('时间胶囊待解锁'), findsNothing);
 
       var customTapped = false;
       await pumpTimeCapsuleCard(

@@ -8,6 +8,7 @@ import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
+import 'package:memodiary/features/timeline/widgets/timeline_empty_states.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
 import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
@@ -46,8 +47,10 @@ void main() {
       await pumpTimelineScreen(tester);
 
       expect(find.text('MemoDiary'), findsOneWidget);
-      expect(find.text('No Diary Entries Yet'), findsOneWidget);
-      expect(find.text('Write Your First Entry'), findsOneWidget);
+      expect(find.text('日记'), findsOneWidget);
+      expect(find.text('共 0 篇'), findsOneWidget);
+      expect(find.text('暂无日记'), findsOneWidget);
+      expect(find.text('写第一篇日记'), findsOneWidget);
       expect(find.byKey(const Key('timeline_write_fab')), findsOneWidget);
     });
 
@@ -95,10 +98,12 @@ void main() {
       await tester.pumpAndSettle();
 
       // Sealed Time Capsule is rendered with capsule banner and countdown
-      expect(find.textContaining('TIME CAPSULE'), findsOneWidget);
+      expect(find.text('时间胶囊'), findsOneWidget);
+      expect(find.text('待解锁'), findsOneWidget);
       expect(find.text('Letter to my 2030 Self'), findsOneWidget);
       expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
-      expect(find.textContaining('Unlocks in'), findsOneWidget);
+      expect(find.textContaining('将于 '), findsOneWidget);
+      expect(find.textContaining('天解锁'), findsOneWidget);
 
       // Privacy invariant check: The sealed plain text snippet must NOT appear anywhere
       expect(find.text('Deep secret confidential thoughts.'), findsNothing);
@@ -118,10 +123,10 @@ void main() {
       await tester.tap(find.text('Letter to my 2030 Self'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Time Capsule Sealed'), findsOneWidget);
-      expect(find.text('Keep Waiting'), findsOneWidget);
+      expect(find.text('时间胶囊待解锁'), findsOneWidget);
+      expect(find.text('知道了'), findsOneWidget);
 
-      await tester.tap(find.text('Keep Waiting'));
+      await tester.tap(find.text('知道了'));
       await tester.pumpAndSettle();
     });
 
@@ -137,8 +142,9 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Tap "Write Diary" FAB
-      await tester.tap(find.text('Write Diary'));
+      // Tap "写日记" FAB
+      expect(find.text('写日记'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('timeline_write_fab')));
       await tester.pumpAndSettle();
 
       // Editor screen should now be opened
@@ -164,7 +170,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(WeeklyReviewScreen), findsOneWidget);
-      expect(find.text('Weekly Review'), findsOneWidget);
+      expect(find.text('每周复盘'), findsOneWidget);
     });
 
     testWidgets('AppBar renders 3 octagonal medallions without back arrow or albums overflow', (WidgetTester tester) async {
@@ -185,9 +191,12 @@ void main() {
       expect(find.byKey(const Key('timeline_albums_button')), findsNothing);
       expect(find.byType(BackButton), findsNothing);
 
-      // Verify title is rendered cleanly without overflow
+      // Verify title and plain tooltips are rendered cleanly without overflow
       expect(find.text('MemoDiary'), findsOneWidget);
       expect(find.text('拾光日记'), findsOneWidget);
+      expect(find.byTooltip('每周复盘'), findsOneWidget);
+      expect(find.byTooltip('搜索'), findsOneWidget);
+      expect(find.byTooltip('设置'), findsOneWidget);
     });
 
     testWidgets('AppBar renders streamlined actions without overflow on mobile screen width', (WidgetTester tester) async {
@@ -220,9 +229,12 @@ void main() {
       expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
       expect(find.byIcon(Icons.insights_rounded), findsNothing);
 
-      // Verify title is rendered cleanly without overflow
+      // Verify title and plain tooltips are rendered cleanly without overflow
       expect(find.text('MemoDiary'), findsOneWidget);
       expect(find.text('拾光日记'), findsOneWidget);
+      expect(find.byTooltip('每周复盘'), findsOneWidget);
+      expect(find.byTooltip('搜索'), findsOneWidget);
+      expect(find.byTooltip('设置'), findsOneWidget);
     });
 
     testWidgets('ShanshuiSceneryCard renders unobstructed in header without ThoughtSparkDock', (tester) async {
@@ -394,7 +406,7 @@ void main() {
         );
         final charmBtnFinder = find.byKey(const Key('timeline_charm_filter_button'));
         expect(charmBtnFinder, findsOneWidget);
-        expect(find.text('全部笺签'), findsOneWidget);
+        expect(find.text('筛选'), findsOneWidget);
         expect(tester.widget<BegoniaPlaqueButton>(charmBtnFinder).isAccent, isFalse);
 
         final buttonSize = tester.getSize(charmBtnFinder);
@@ -406,7 +418,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(ChronicleCharmFilterSheet), findsOneWidget);
 
-        // Select 喜悦 + 含图影
+        // Select 喜悦 + 含照片
         await tester.ensureVisible(find.byKey(const Key('charm_filter_mood_5')));
         await tester.tap(find.byKey(const Key('charm_filter_mood_5')));
         await tester.pumpAndSettle();
@@ -420,9 +432,9 @@ void main() {
         await tester.pumpAndSettle();
 
         // Begonia plaque shows active summary & cinnabar accent styling
-        expect(find.text('喜悦 · 含图影'), findsOneWidget);
+        expect(find.text('喜悦 · 含照片'), findsOneWidget);
         expect(tester.widget<BegoniaPlaqueButton>(charmBtnFinder).isAccent, isTrue);
-        expect(find.text('共 1 卷'), findsOneWidget);
+        expect(find.text('共 1 篇'), findsOneWidget);
         expect(find.text('Joyful Photo Nov'), findsOneWidget);
         expect(find.text('Rainy Weekly Oct'), findsNothing);
         expect(find.text('Joyful Text Aug'), findsNothing);
@@ -437,8 +449,8 @@ void main() {
         await tester.ensureVisible(find.byKey(const Key('timeline_month_chip_10')));
         await tester.tap(find.byKey(const Key('timeline_month_chip_10')));
         await tester.pumpAndSettle();
-        expect(find.text('共 0 卷'), findsOneWidget);
-        expect(find.text('此岁时检目下暂无案头卷宗'), findsOneWidget);
+        expect(find.text('共 0 篇'), findsOneWidget);
+        expect(find.text('当前筛选条件下暂无日记'), findsOneWidget);
 
         // Tap 清除筛选 -> resets BOTH Date Index Tray AND Charm & Tag Filter
         await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
@@ -446,9 +458,9 @@ void main() {
         await tester.tap(find.byKey(const Key('timeline_clear_filters_button')));
         await tester.pumpAndSettle();
 
-        expect(find.text('全部笺签'), findsOneWidget);
+        expect(find.text('筛选'), findsOneWidget);
         expect(tester.widget<BegoniaPlaqueButton>(charmBtnFinder).isAccent, isFalse);
-        expect(find.text('共 3 卷'), findsOneWidget);
+        expect(find.text('共 3 篇'), findsOneWidget);
         expect(find.text('上旬'), findsNothing);
         expect(find.text('Rainy Weekly Oct'), findsOneWidget);
 
@@ -464,8 +476,8 @@ void main() {
         await tester.tap(find.byKey(const Key('charm_filter_close_button')));
         await tester.pumpAndSettle();
 
-        expect(find.text('下雨 · 周志复盘'), findsOneWidget);
-        expect(find.text('共 1 卷'), findsOneWidget);
+        expect(find.text('下雨 · 每周复盘'), findsOneWidget);
+        expect(find.text('共 1 篇'), findsOneWidget);
         expect(find.text('Rainy Weekly Oct'), findsOneWidget);
       },
     );
@@ -617,7 +629,7 @@ void main() {
       await pumpTimelineScreen(tester);
 
       // Default state: 全部, 最新 ↓, 三旬 collapsed, all 4 entries shown
-      expect(find.text('共 4 卷'), findsOneWidget);
+      expect(find.text('共 4 篇'), findsOneWidget);
       expect(find.text('上旬'), findsNothing);
       expect(find.text('Late Nov Entry'), findsOneWidget);
 
@@ -626,28 +638,31 @@ void main() {
       await tester.tap(find.byKey(const Key('timeline_month_chip_11')));
       await tester.pumpAndSettle();
 
-      expect(find.text('共 3 卷'), findsOneWidget);
+      expect(find.text('共 3 篇'), findsOneWidget);
       expect(find.text('上旬'), findsOneWidget);
+      expect(find.text('1–10日'), findsOneWidget);
       expect(find.text('中旬'), findsOneWidget);
+      expect(find.text('11–20日'), findsOneWidget);
       expect(find.text('下旬'), findsOneWidget);
+      expect(find.text('21日–月底'), findsOneWidget);
       expect(find.text('Autumn 2025 Entry'), findsNothing);
 
       // Tap 上旬 -> only Early Nov Entry remains
       await tester.tap(find.byKey(const Key('timeline_xun_chip_shang')));
       await tester.pumpAndSettle();
 
-      expect(find.text('共 1 卷'), findsOneWidget);
+      expect(find.text('共 1 篇'), findsOneWidget);
       expect(find.text('Early Nov Entry'), findsOneWidget);
       expect(find.text('Mid Nov Entry'), findsNothing);
 
-      // Tap an empty month (3月) -> shows filtered empty card (not 素宣待书)
+      // Tap an empty month (3月) -> shows filtered empty card (not 暂无日记)
       await tester.ensureVisible(find.byKey(const Key('timeline_month_chip_3')));
       await tester.tap(find.byKey(const Key('timeline_month_chip_3')));
       await tester.pumpAndSettle();
 
-      expect(find.text('共 0 卷'), findsOneWidget);
-      expect(find.text('此岁时检目下暂无案头卷宗'), findsOneWidget);
-      expect(find.text('素宣待书'), findsNothing);
+      expect(find.text('共 0 篇'), findsOneWidget);
+      expect(find.text('当前筛选条件下暂无日记'), findsOneWidget);
+      expect(find.text('暂无日记'), findsNothing);
 
       // Scroll slightly so 清除筛选 sits clear of the bottom ScrollRollerFab, then tap
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
@@ -655,7 +670,7 @@ void main() {
       await tester.tap(find.byKey(const Key('timeline_clear_filters_button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('共 4 卷'), findsOneWidget);
+      expect(find.text('共 4 篇'), findsOneWidget);
       expect(find.text('上旬'), findsNothing);
       expect(find.text('Autumn 2025 Entry'), findsOneWidget);
 
@@ -667,6 +682,26 @@ void main() {
       final oldestTop = tester.getTopLeft(find.text('Autumn 2025 Entry')).dy;
       final newestTop = tester.getTopLeft(find.text('Late Nov Entry')).dy;
       expect(oldestTop, lessThan(newestTop));
+    });
+
+    testWidgets('TimelineErrorState renders plain Chinese 加载失败 and 重试', (tester) async {
+      var retried = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: TimelineErrorState(
+              errorMessage: 'Database unavailable',
+              onRetry: () => retried = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('加载失败'), findsOneWidget);
+      expect(find.text('重试'), findsOneWidget);
+      await tester.tap(find.text('重试'));
+      expect(retried, isTrue);
     });
   });
 }

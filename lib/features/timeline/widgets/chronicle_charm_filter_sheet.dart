@@ -121,14 +121,14 @@ class _ChronicleCharmFilterSheetState extends State<ChronicleCharmFilterSheet> {
                   ),
                   const SizedBox(height: 14),
                   _CharmSection(
-                    title: '心绪',
+                    title: '心情',
                     palette: palette,
                     children: [
                       for (final option in moodOptions)
                         _CharmOptionChip(
                           key: Key('charm_filter_mood_${option.value}'),
                           label: option.label,
-                          semanticLabel: '心绪：${option.label}',
+                          semanticLabel: '心情：${option.label}',
                           leadingEmoji: option.emoji,
                           isSelected: _filters.mood == option.value,
                           palette: palette,
@@ -138,7 +138,7 @@ class _ChronicleCharmFilterSheetState extends State<ChronicleCharmFilterSheet> {
                   ),
                   const SizedBox(height: 16),
                   _CharmSection(
-                    title: '天时',
+                    title: '天气',
                     palette: palette,
                     children: [
                       for (final option
@@ -146,7 +146,7 @@ class _ChronicleCharmFilterSheetState extends State<ChronicleCharmFilterSheet> {
                         _CharmOptionChip(
                           key: Key('charm_filter_weather_${option.value}'),
                           label: option.label,
-                          semanticLabel: '天时：${option.label}',
+                          semanticLabel: '天气：${option.label}',
                           leadingIcon: option.icon,
                           isSelected: _filters.weather == option.value,
                           palette: palette,
@@ -156,13 +156,13 @@ class _ChronicleCharmFilterSheetState extends State<ChronicleCharmFilterSheet> {
                   ),
                   const SizedBox(height: 16),
                   _CharmSection(
-                    title: '卷帙特征',
+                    title: '类型',
                     palette: palette,
                     children: [
                       _CharmOptionChip(
                         key: const Key('charm_filter_media_toggle'),
-                        label: '含图影',
-                        semanticLabel: '仅看含图影日记',
+                        label: '含照片',
+                        semanticLabel: '仅看含照片日记',
                         leadingIcon: Icons.photo_outlined,
                         isSelected: _filters.hasMediaOnly,
                         palette: palette,
@@ -172,8 +172,8 @@ class _ChronicleCharmFilterSheetState extends State<ChronicleCharmFilterSheet> {
                       ),
                       _CharmOptionChip(
                         key: const Key('charm_filter_weekly_toggle'),
-                        label: '周志复盘',
-                        semanticLabel: '仅看周志复盘日记',
+                        label: '每周复盘',
+                        semanticLabel: '仅看每周复盘日记',
                         leadingIcon: Icons.auto_stories_outlined,
                         isSelected: _filters.weeklyReviewOnly,
                         palette: palette,
@@ -263,7 +263,7 @@ class _CharmSheetHeader extends StatelessWidget {
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      '笺签筛选',
+                      '筛选',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -278,7 +278,7 @@ class _CharmSheetHeader extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '按心绪、天时与卷帙特征检阅案头日记',
+                '按心情、天气和类型筛选（未选则显示全部）',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 11.5, color: palette.textMuted),
@@ -290,12 +290,12 @@ class _CharmSheetHeader extends StatelessWidget {
         MinTapTarget(
           inkWellKey: const Key('charm_filter_reset_button'),
           enabled: hasActiveCharms,
-          semanticLabel: '重置笺签筛选',
+          semanticLabel: '清除筛选',
           onTap: onReset,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
-              '重置笺签',
+              '清除筛选',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 12.5,
@@ -309,7 +309,7 @@ class _CharmSheetHeader extends StatelessWidget {
         ),
         Semantics(
           button: true,
-          label: '关闭笺签筛选',
+          label: '关闭筛选',
           child: Material(
             color: Colors.transparent,
             child: InkWell(

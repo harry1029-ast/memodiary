@@ -109,6 +109,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('settings_ocr_backfill_tile')), findsOneWidget);
+      expect(find.text('离线文字识别索引'), findsOneWidget);
+      expect(find.text('OCR Indexing'), findsNothing);
       expect(find.textContaining('发现 2 张照片尚未建立索引'), findsOneWidget);
     });
 
@@ -178,7 +180,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('settings_ocr_backfill_dialog')), findsOneWidget);
-      expect(find.text('识图索引已完成'), findsOneWidget);
+      expect(find.text('离线文字识别索引'), findsAtLeast(1));
+      expect(find.text('文字识别索引已完成'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('settings_ocr_backfill_done_button')));
       await tester.pumpAndSettle();
@@ -255,7 +258,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('settings_ocr_backfill_dialog')), findsOneWidget);
-      expect(find.text('识图索引已完成'), findsOneWidget);
+      expect(find.text('离线文字识别索引'), findsAtLeast(1));
+      expect(find.text('文字识别索引已完成'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('settings_ocr_backfill_done_button')));
       await tester.pumpAndSettle();
@@ -290,7 +294,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('settings_ocr_backfill_dialog')), findsOneWidget);
-      expect(find.text('识图索引已完成'), findsOneWidget);
+      expect(find.text('离线文字识别索引'), findsAtLeast(1));
+      expect(find.text('文字识别索引已完成'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('settings_ocr_backfill_done_button')));
       await tester.pumpAndSettle();
@@ -314,7 +319,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('settings_ocr_backfill_dialog')), findsOneWidget);
-      expect(find.text('识图索引已完成'), findsOneWidget);
+      expect(find.text('离线文字识别索引'), findsAtLeast(1));
+      expect(find.text('文字识别索引已完成'), findsOneWidget);
     });
 
     testWidgets('Pause and resume toggle updates status label and button text',
@@ -380,7 +386,7 @@ void main() {
       completer.complete();
       await tester.pumpAndSettle();
 
-      expect(find.text('识图索引已完成'), findsOneWidget);
+      expect(find.text('文字识别索引已完成'), findsOneWidget);
       await tester.tap(find.byKey(const Key('settings_ocr_backfill_done_button')));
       await tester.pumpAndSettle();
     });

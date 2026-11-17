@@ -12,6 +12,7 @@ class DateIndexTray extends StatefulWidget {
   final TimelineFilterState filters;
   final TimelineDateFacetSummary facetSummary;
   final double xunExpandFactor;
+  final bool useLunarDates;
   final ValueChanged<int?> onSelectYear;
   final ValueChanged<int> onSelectMonth;
   final ValueChanged<TimelineXun> onSelectXun;
@@ -22,6 +23,7 @@ class DateIndexTray extends StatefulWidget {
     required this.filters,
     required this.facetSummary,
     required this.xunExpandFactor,
+    this.useLunarDates = false,
     required this.onSelectYear,
     required this.onSelectMonth,
     required this.onSelectXun,
@@ -29,7 +31,14 @@ class DateIndexTray extends StatefulWidget {
   });
 
   static const List<({TimelineXun xun, String label, String rangeLabel})>
-      _xunConfigs = [
+      gregorianXunConfigs = [
+    (xun: TimelineXun.shang, label: '上旬', rangeLabel: '1–10日'),
+    (xun: TimelineXun.zhong, label: '中旬', rangeLabel: '11–20日'),
+    (xun: TimelineXun.xia, label: '下旬', rangeLabel: '21日–月底'),
+  ];
+
+  static const List<({TimelineXun xun, String label, String rangeLabel})>
+      lunarXunConfigs = [
     (xun: TimelineXun.shang, label: '上旬', rangeLabel: '初一–初十'),
     (xun: TimelineXun.zhong, label: '中旬', rangeLabel: '十一–二十'),
     (xun: TimelineXun.xia, label: '下旬', rangeLabel: '廿一–晦日'),
@@ -197,25 +206,21 @@ class _DateIndexTrayState extends State<DateIndexTray> {
                             ),
                             Row(
                               children: [
-                                for (int idx = 0;
-                                    idx < DateIndexTray._xunConfigs.length;
-                                    idx++) ...[
+                                for (final (idx, config) in (widget.useLunarDates
+                                        ? DateIndexTray.lunarXunConfigs
+                                        : DateIndexTray.gregorianXunConfigs)
+                                    .indexed) ...[
                                   if (idx > 0) const SizedBox(width: 6),
                                   Expanded(
                                     child: XunSegmentChip(
                                       key: Key(
-                                        'timeline_xun_chip_${DateIndexTray._xunConfigs[idx].xun.name}',
+                                        'timeline_xun_chip_${config.xun.name}',
                                       ),
-                                      label:
-                                          DateIndexTray._xunConfigs[idx].label,
-                                      rangeLabel: DateIndexTray
-                                          ._xunConfigs[idx].rangeLabel,
-                                      isActive: widget.filters.xun ==
-                                          DateIndexTray._xunConfigs[idx].xun,
+                                      label: config.label,
+                                      rangeLabel: config.rangeLabel,
+                                      isActive: widget.filters.xun == config.xun,
                                       palette: palette,
-                                      onTap: () => widget.onSelectXun(
-                                        DateIndexTray._xunConfigs[idx].xun,
-                                      ),
+                                      onTap: () => widget.onSelectXun(config.xun),
                                     ),
                                   ),
                                 ],

@@ -169,6 +169,20 @@ void main() {
     );
 
     test(
+      'AlbumThemeCatalog exposes the 5 concise plain Chinese theme names with no poetic descriptions',
+      () {
+        expect(
+          AlbumThemeCatalog.allThemes.map((t) => t.name).toList(),
+          equals(['水墨丹青', '东方花苑', '留白青瓷', '盛夏海风', '拾光彩虹']),
+        );
+        for (final theme in AlbumThemeCatalog.allThemes) {
+          expect(theme.subtitle, isEmpty);
+          expect(theme.description, isEmpty);
+        }
+      },
+    );
+
+    test(
       'applies all 5 global book themes and updates page backgrounds & overlays',
       () {
         for (final theme in AlbumThemeCatalog.allThemes) {

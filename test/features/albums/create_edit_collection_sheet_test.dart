@@ -29,10 +29,16 @@ void main() {
       await tester.tap(find.byKey(const Key('open_sheet_btn')));
       await tester.pumpAndSettle();
 
+      expect(find.text('新建相册'), findsOneWidget);
+      expect(find.text('封面印章（选填）'), findsOneWidget);
+      expect(find.text('路线（选填）'), findsOneWidget);
+      expect(find.text('相册简介（选填）'), findsOneWidget);
+      expect(find.text('山河沿路，笔底留痕…'), findsNothing);
+
       // 1. Submit with empty title
       await tester.tap(find.byKey(const Key('album_form_submit')));
       await tester.pump();
-      expect(find.text('请输入影集标题'), findsOneWidget);
+      expect(find.text('请输入相册名称'), findsOneWidget);
       expect(capturedResult, isNull);
 
       // 2. Submit with >100 character title
@@ -40,7 +46,7 @@ void main() {
       await tester.enterText(find.byKey(const Key('album_form_title')), longTitle);
       await tester.tap(find.byKey(const Key('album_form_submit')));
       await tester.pump();
-      expect(find.text('标题长度不能超过 100 个字符'), findsOneWidget);
+      expect(find.text('相册名称不能超过 100 个字'), findsOneWidget);
 
       // 3. Submit with >8 character destinationTag
       await tester.enterText(find.byKey(const Key('album_form_title')), '江南春行纪');
@@ -50,7 +56,7 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('album_form_submit')));
       await tester.pump();
-      expect(find.text('地域印章请控制在 8 个字符以内'), findsOneWidget);
+      expect(find.text('封面印章请控制在 8 个字以内'), findsOneWidget);
       expect(capturedResult, isNull);
 
       // 4. Valid submission returns CollectionFormResult
@@ -61,7 +67,7 @@ void main() {
       );
       await tester.enterText(
         find.byKey(const Key('album_form_description')),
-        '山河沿路，笔底留痕',
+        '江南春游记录',
       );
       await tester.tap(find.byKey(const Key('album_form_submit')));
       await tester.pumpAndSettle();
@@ -70,7 +76,7 @@ void main() {
       expect(capturedResult!.title, '江南春行纪');
       expect(capturedResult!.destinationTag, '江南');
       expect(capturedResult!.routeSummary, '杭州 → 乌镇 → 苏州');
-      expect(capturedResult!.description, '山河沿路，笔底留痕');
+      expect(capturedResult!.description, '江南春游记录');
     });
 
     testWidgets('pre-fills existing collection fields in edit mode', (tester) async {
@@ -114,7 +120,7 @@ void main() {
       await tester.tap(find.byKey(const Key('edit_sheet_btn')));
       await tester.pumpAndSettle();
 
-      expect(find.text('编辑旅行影集'), findsOneWidget);
+      expect(find.text('编辑相册'), findsOneWidget);
       expect(find.text('京都枫叶季'), findsOneWidget);
       expect(find.text('关西'), findsOneWidget);
       expect(find.text('京都 → 岚山 → 宇治'), findsOneWidget);

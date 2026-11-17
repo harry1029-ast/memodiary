@@ -1,4 +1,3 @@
-import 'package:intl/intl.dart';
 import '../../../core/database/app_database.dart';
 
 /// Represents the inclusive start (Monday 00:00:00.000) and end (Sunday 23:59:59.999)
@@ -142,18 +141,15 @@ class CalendarWeekUtils {
     return grouped;
   }
 
-  /// Formats the week range as a human-readable string (e.g., "Oct 12 – Oct 18, 2026").
+  /// Formats the week range as a plain Chinese date range (e.g., "2026年10月12日 – 10月18日").
   static String formatWeekRange(int year, int weekNumber) {
     final range = getIsoWeekRange(year, weekNumber);
-    final startFmt = DateFormat('MMM d');
-    final endFmt = range.start.year == range.end.year
-        ? DateFormat('MMM d, y')
-        : DateFormat('MMM d, y');
-    if (range.start.year != range.end.year) {
-      final startWithYear = DateFormat('MMM d, y').format(range.start);
-      return '$startWithYear – ${endFmt.format(range.end)}';
-    }
-    return '${startFmt.format(range.start)} – ${endFmt.format(range.end)}';
+    final startText =
+        '${range.start.year}年${range.start.month}月${range.start.day}日';
+    final endText = range.start.year == range.end.year
+        ? '${range.end.month}月${range.end.day}日'
+        : '${range.end.year}年${range.end.month}月${range.end.day}日';
+    return '$startText – $endText';
   }
 }
 

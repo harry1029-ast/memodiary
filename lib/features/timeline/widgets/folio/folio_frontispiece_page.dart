@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/services/media_sandbox_service.dart';
 import '../../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../../editor/widgets/fullscreen_media_lightbox.dart';
+import '../../../editor/widgets/journal_letterhead_models.dart';
 import 'folio_cover_showcase.dart';
 import 'folio_leaf_model.dart';
 import 'folio_leaf_scaffold.dart';
@@ -103,8 +104,16 @@ class FolioFrontispiecePage extends StatelessWidget {
   }
 
   Widget _buildTopMetadata(Color accentColor) {
-    const moodLabels = ['低落', '平淡', '平静', '愉快', '欣喜'];
-    final moodText = leaf.mood != null ? moodLabels[(leaf.mood! - 1).clamp(0, 4)] : null;
+    final moodText = leaf.mood != null
+        ? JournalLetterheadUtils.resolveMood(leaf.mood).label
+        : null;
+    final weatherText = (leaf.weather != null && leaf.weather!.isNotEmpty)
+        ? JournalLetterheadUtils.weatherOptions
+                .where((option) => option.value == leaf.weather)
+                .firstOrNull
+                ?.label ??
+            leaf.weather!
+        : null;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -133,8 +142,8 @@ class FolioFrontispiecePage extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (leaf.weather != null && leaf.weather!.isNotEmpty)
-              Text(leaf.weather!, style: TextStyle(fontSize: 10.5, color: theme.inkSecondary)),
+            if (weatherText != null)
+              Text(weatherText, style: TextStyle(fontSize: 10.5, color: theme.inkSecondary)),
             if (moodText != null) ...[
               const SizedBox(width: 6),
               Container(
@@ -155,11 +164,11 @@ class FolioFrontispiecePage extends StatelessWidget {
   Widget _buildTitleBanner(BuildContext context, Color accentColor) {
     final photoCount = leaf.photos.length;
     final badgeLabel = switch (photoCount) {
-      1 => '单幅画心 · 1帧',
-      2 => '双屏对幅 · 2帧',
-      3 => '三景册页 · 3帧',
-      > 3 => '集锦画匣 · $photoCount帧',
-      _ => '扉页 · 封面',
+      1 => '1 张照片',
+      2 => '2 张照片',
+      3 => '3 张照片',
+      > 3 => '共 $photoCount 张照片',
+      _ => '封面',
     };
 
     return Row(
@@ -173,7 +182,7 @@ class FolioFrontispiecePage extends StatelessWidget {
               Text(
                 leaf.gregorianDate.isNotEmpty
                     ? leaf.gregorianDate
-                    : '拾光日记 · 岁时扉页',
+                    : '拾光日记',
                 style: TextStyle(fontSize: 10.0, letterSpacing: 1.2, color: theme.inkSecondary),
               ),
               const SizedBox(height: 2),
@@ -221,7 +230,7 @@ class FolioFrontispiecePage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: Text(
-                  leaf.weekNumber != null ? '周报 · 第${leaf.weekNumber}周' : '周回顾',
+                  leaf.weekNumber != null ? '第${leaf.weekNumber}周复盘' : '每周复盘',
                   style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Color(0xFF9E7812)),
                 ),
               ),
@@ -243,10 +252,10 @@ class FolioFrontispiecePage extends StatelessWidget {
         ),
         child: Center(
           child: Text(
-            '「此卷留白，静待泼墨」',
+            '这篇日记暂无正文',
             style: TextStyle(
               fontSize: 13.0,
-              letterSpacing: 2.2,
+              letterSpacing: 1.0,
               fontWeight: FontWeight.w500,
               fontFamily: theme.fontFamily,
               color: accentColor,
@@ -285,27 +294,27 @@ class FolioFrontispiecePage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          '扉页 · 第 1 / ${leaf.totalLeaves} 页',
+          '封面 · 第 1 / ${leaf.totalLeaves} 页',
           style: TextStyle(fontSize: 10.0, letterSpacing: 1.1, color: theme.inkSecondary),
         ),
         if (onTurnForward != null && !leaf.isZeroWordDraft)
           Semantics(
             button: true,
-            label: '轻翻展读正文',
+            label: '翻到正文',
             child: GestureDetector(
               onTap: onTurnForward,
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
                 child: Text(
-                  '轻翻展读正文 ⇢',
+                  '翻到正文 ›',
                   style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, letterSpacing: 1.0, color: accentColor),
                 ),
               ),
             ),
           )
         else
-          Text(leaf.isZeroWordDraft ? '卷末 · 静候落笔' : '', style: TextStyle(fontSize: 10.0, color: theme.inkSecondary)),
+          Text(leaf.isZeroWordDraft ? '共 1 页' : '', style: TextStyle(fontSize: 10.0, color: theme.inkSecondary)),
       ],
     );
   }

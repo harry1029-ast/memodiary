@@ -125,11 +125,11 @@ void main() {
       expect(find.text('最早'), findsOneWidget);
       expect(find.text('↑'), findsOneWidget);
       expect(find.text('上旬'), findsOneWidget);
-      expect(find.text('初一–初十'), findsOneWidget);
+      expect(find.text('1–10日'), findsOneWidget);
       expect(find.text('中旬'), findsOneWidget);
-      expect(find.text('十一–二十'), findsOneWidget);
+      expect(find.text('11–20日'), findsOneWidget);
       expect(find.text('下旬'), findsOneWidget);
-      expect(find.text('廿一–晦日'), findsOneWidget);
+      expect(find.text('21日–月底'), findsOneWidget);
 
       for (final xunName in const ['shang', 'zhong', 'xia']) {
         final size = tester.getSize(find.byKey(Key('timeline_xun_chip_$xunName')));
@@ -139,6 +139,39 @@ void main() {
 
       await tester.tap(find.byKey(const Key('timeline_xun_chip_xia')));
       expect(tappedXun, equals(TimelineXun.xia));
+    });
+
+    testWidgets('preserves lunar range formatting when useLunarDates is true', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: Scaffold(
+            body: DateIndexTray(
+              filters: const TimelineFilterState(
+                year: 2026,
+                month: 11,
+                xun: TimelineXun.zhong,
+              ),
+              facetSummary: const TimelineDateFacetSummary(
+                years: [2026],
+                activeMonths: {11},
+                totalActiveEntries: 2,
+              ),
+              xunExpandFactor: 1.0,
+              useLunarDates: true,
+              onSelectYear: (_) {},
+              onSelectMonth: (_) {},
+              onSelectXun: (_) {},
+              onToggleSort: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('初一–初十'), findsOneWidget);
+      expect(find.text('十一–二十'), findsOneWidget);
+      expect(find.text('廿一–晦日'), findsOneWidget);
     });
 
     testWidgets('active year chip uses wash fill without opaque boxShadow obscuring text', (tester) async {

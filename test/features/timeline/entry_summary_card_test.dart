@@ -338,7 +338,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.text('Secret Note'), findsOneWidget);
-      expect(find.text('🔒 This entry is locked'), findsOneWidget);
+      expect(find.text('🔒 已加锁'), findsOneWidget);
       expect(find.textContaining('Confidential secret'), findsNothing);
       expect(find.byIcon(Icons.lock_outline_rounded), findsOneWidget);
       expect(find.byType(WetMountedThumbnail), findsNothing);

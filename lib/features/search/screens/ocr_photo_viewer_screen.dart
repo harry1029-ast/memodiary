@@ -138,7 +138,7 @@ class _OcrPhotoViewerScreenState extends State<OcrPhotoViewerScreen> {
         title: Text(
           widget.match.parentTitle?.trim().isNotEmpty == true
               ? widget.match.parentTitle!
-              : '识图详情',
+              : '照片详情',
           style: TextStyle(
             fontFamily: InkDiaryTheme.fontKaiti,
             color: tokens.jiaomo,
@@ -198,7 +198,7 @@ class _OcrPhotoViewerScreenState extends State<OcrPhotoViewerScreen> {
             Icon(Icons.broken_image_outlined, size: 48, color: tokens.danmo),
             const SizedBox(height: 12),
             Text(
-              '未能载入照片',
+              '无法加载照片',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontKaiti,
                 color: tokens.danmo,

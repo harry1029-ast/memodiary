@@ -4,6 +4,13 @@ import 'package:memodiary/features/timeline/widgets/timeline_date_spine_item.dar
 
 void main() {
   group('Timeline Date Spine Helpers', () {
+    test('formatGregorianDay formats days with numeric 日 suffix', () {
+      expect(formatGregorianDay(1), '1日');
+      expect(formatGregorianDay(15), '15日');
+      expect(formatGregorianDay(25), '25日');
+      expect(formatGregorianDay(31), '31日');
+    });
+
     test('formatTraditionalChineseDay formats days to traditional Chinese lunar style', () {
       expect(formatTraditionalChineseDay(1), '初一');
       expect(formatTraditionalChineseDay(5), '初五');
@@ -28,7 +35,7 @@ void main() {
   });
 
   group('TimelineDateSpineItem Widget Tests', () {
-    testWidgets('renders date stamp badge with month, traditional day, weekday and connecting pip', (tester) async {
+    testWidgets('renders date stamp badge with month, numeric Gregorian day by default, and weekday', (tester) async {
       final testDate = DateTime(2026, 10, 25); // Sunday
 
       await tester.pumpWidget(
@@ -49,7 +56,8 @@ void main() {
 
       // Verify date components are rendered
       expect(find.text('10月'), findsOneWidget);
-      expect(find.text('廿五'), findsOneWidget);
+      expect(find.text('25日'), findsOneWidget);
+      expect(find.text('廿五'), findsNothing);
       expect(find.text('周日'), findsOneWidget);
       expect(find.text('Test Entry Card'), findsOneWidget);
 
@@ -57,7 +65,7 @@ void main() {
       expect(find.byType(Tooltip), findsOneWidget);
     });
 
-    testWidgets('renders calm aged stone stamp in dark mode for non-highlighted items', (tester) async {
+    testWidgets('renders traditional lunar day when useLunarDay is true', (tester) async {
       final testDate = DateTime(2026, 10, 20); // Tuesday
 
       await tester.pumpWidget(
@@ -69,6 +77,7 @@ void main() {
               isFirst: false,
               isLast: true,
               isHighlighted: false,
+              useLunarDay: true,
               child: const Text('Standard Entry Card'),
             ),
           ),

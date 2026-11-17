@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
-import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
 import '../../timeline/models/timeline_entry_item.dart';
 import '../../timeline/widgets/entry_summary_card.dart';
 import '../widgets/photo_text_match_card.dart';
@@ -27,15 +26,15 @@ class SearchResultsCounterBanner extends StatelessWidget {
     switch (selectedSegment) {
       case SearchSegment.all:
         if (photoCount > 0 && entryCount > 0) {
-          return '寻得 $entryCount 篇墨卷 · $photoCount 处图中文字';
+          return '找到 $entryCount 篇日记 · $photoCount 处照片文字';
         } else if (photoCount > 0) {
-          return '寻得 $photoCount 处图中文字';
+          return '找到 $photoCount 处照片文字';
         }
-        return '寻得 $entryCount 篇墨卷';
+        return '找到 $entryCount 篇日记';
       case SearchSegment.entries:
-        return '寻得 $entryCount 篇墨卷';
+        return '找到 $entryCount 篇日记';
       case SearchSegment.photos:
-        return '寻得 $photoCount 处图中文字';
+        return '找到 $photoCount 处照片文字';
     }
   }
 
@@ -46,51 +45,45 @@ class SearchResultsCounterBanner extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 3,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: tokens.jiaomo,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '检索录存',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 1.5,
-                ),
-                decoration: BoxDecoration(
-                  color: tokens.ricePaper,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: tokens.agedFiber),
-                ),
-                child: Text(
-                  _getResultsCountLabel(),
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 11,
-                    color: tokens.danmo,
-                  ),
-                ),
-              ),
-            ],
+          Container(
+            width: 3,
+            height: 14,
+            decoration: BoxDecoration(
+              color: tokens.jiaomo,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
-          const CinnabarSealBadge(text: '澄心印记', isRound: true),
+          const SizedBox(width: 6),
+          Text(
+            '搜索结果',
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: tokens.jiaomo,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 6,
+              vertical: 1.5,
+            ),
+            decoration: BoxDecoration(
+              color: tokens.ricePaper,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: tokens.agedFiber),
+            ),
+            child: Text(
+              _getResultsCountLabel(),
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontKaiti,
+                fontSize: 11,
+                color: tokens.danmo,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -169,11 +162,11 @@ class SearchResultsList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       children: [
         if (entries.isNotEmpty) ...[
-          _buildSectionHeader('墨卷篇章', entries.length, tokens),
+          _buildSectionHeader('日记', entries.length, tokens),
           ...entries.map(_buildEntryCard),
         ],
         if (photoMatches.isNotEmpty) ...[
-          _buildSectionHeader('图中文字', photoMatches.length, tokens),
+          _buildSectionHeader('照片文字', photoMatches.length, tokens),
           ...photoMatches.map(_buildPhotoCard),
         ],
       ],

@@ -70,15 +70,16 @@ void main() {
 
       // Verify Title & Frontispiece metadata
       expect(find.text('Reflections on Autumn'), findsAtLeastNWidgets(1));
-      expect(find.text('周报 · 第42周'), findsOneWidget);
-      expect(find.text('愉快'), findsOneWidget); // Mood 4
+      expect(find.text('第42周复盘'), findsOneWidget);
+      expect(find.text('开心'), findsOneWidget); // Mood 4
+      expect(find.text('晴天'), findsOneWidget); // Weather sunny
 
       // Verify Action Bar items exist (Reading Perspective, Share, Edit)
       expect(find.byKey(const Key('folio_reading_perspective_btn')), findsOneWidget);
-      expect(find.text('忠实原貌'), findsOneWidget);
+      expect(find.text('原样'), findsOneWidget);
       expect(find.byKey(const Key('folio_share_btn')), findsOneWidget);
       expect(find.byKey(const Key('folio_edit_entry_btn')), findsOneWidget);
-      expect(find.text('落墨修改'), findsOneWidget);
+      expect(find.text('编辑'), findsOneWidget);
       expect(find.byKey(const Key('folio_page_indicator')), findsOneWidget);
 
       // Test Share Action Button
@@ -126,17 +127,27 @@ void main() {
       await tester.tap(find.byKey(const Key('folio_reading_perspective_btn')));
       await tester.pumpAndSettle();
 
-      expect(find.text('展阅视角'), findsOneWidget);
-      expect(find.text('朱丝古刻'), findsOneWidget);
-      expect(find.text('原稿墨格'), findsOneWidget);
-      expect(find.text('松烟夜卷'), findsOneWidget);
+      expect(find.text('阅读模式'), findsOneWidget);
+      expect(find.text('按日记原信纸显示'), findsOneWidget);
+      expect(find.text('朱丝竖排'), findsOneWidget);
+      expect(find.text('竖排红线'), findsOneWidget);
+      expect(find.text('方格竖排'), findsOneWidget);
+      expect(find.text('竖排方格'), findsOneWidget);
+      expect(find.text('暗夜横排'), findsOneWidget);
+      expect(find.text('深色横排'), findsOneWidget);
 
-      // Select '朱丝古刻'
+      // Select '朱丝竖排'
       await tester.tap(find.byKey(Key('folio_perspective_option_${ReadingPerspective.vermilionVertical.name}')));
       await tester.pumpAndSettle();
 
-      // Perspective button now displays '朱丝古刻'
-      expect(find.text('朱丝古刻'), findsOneWidget);
+      // Perspective button now displays '朱丝竖排'
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('folio_reading_perspective_btn')),
+          matching: find.text('朱丝竖排'),
+        ),
+        findsOneWidget,
+      );
 
       // Verify SQLite entry record template is completely untouched
       final dbEntry = await db.entriesDao.getEntryById('detail_entry_persp');
@@ -181,11 +192,11 @@ void main() {
       await tester.pumpAndSettle();
 
       // Confirmation dialog should appear
-      expect(find.text('Move to Recycle Bin?'), findsOneWidget);
-      expect(find.text('Move to Bin'), findsOneWidget);
+      expect(find.text('移入回收站？'), findsOneWidget);
+      expect(find.text('移入回收站'), findsOneWidget);
 
       // Confirm delete
-      await tester.tap(find.text('Move to Bin'));
+      await tester.tap(find.text('移入回收站'));
       await tester.pumpAndSettle();
 
       // Entry should now be soft deleted in the database
@@ -277,7 +288,9 @@ void main() {
       await tester.tap(find.byKey(const Key('folio_page_indicator')));
       await tester.pumpAndSettle();
 
-      expect(find.text('展卷索引 · 翻转至特定页'), findsOneWidget);
+      expect(find.text('目录跳转'), findsOneWidget);
+      expect(find.text('封面'), findsOneWidget);
+      expect(find.text('正文第 1 页'), findsOneWidget);
       expect(find.byKey(const Key('folio_jump_page_tile_0')), findsOneWidget);
 
       // Tap first page tile to jump back to frontispiece
@@ -291,6 +304,42 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+
+    testWidgets('locked entry barrier renders plain Chinese labels and error message', (tester) async {
+      final now = DateTime(2026, 10, 20);
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'locked_detail_entry',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('私密日记'),
+          contentDelta: jsonEncode([{'insert': 'Secret\n'}]),
+          plainText: 'Secret',
+          entryDate: now,
+          isLocked: const Value(true),
+        ),
+      );
+      final entry = (await db.entriesDao.getEntryById('locked_detail_entry'))!;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EntryDetailScreen(
+            entry: entry,
+            database: db,
+            mediaService: mediaService,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('这篇日记已锁定'), findsOneWidget);
+      expect(find.text('解锁查看'), findsOneWidget);
+      expect(find.text('生物识别解锁'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('entry_unlock_submit_btn')));
+      await tester.pumpAndSettle();
+      expect(find.text('请输入密码'), findsOneWidget);
     });
   });
 }

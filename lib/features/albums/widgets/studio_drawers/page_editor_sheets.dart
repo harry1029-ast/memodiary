@@ -34,7 +34,7 @@ Future<String?> showPageDateHeaderSheet({
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              '编辑书页日期标题',
+              '编辑日期标题',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 16,
@@ -48,7 +48,7 @@ Future<String?> showPageDateHeaderSheet({
               controller: textController,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: '例如：2026.10.02 · 西湖秋日',
+                hintText: '例如：2026.10.02 西湖',
                 filled: true,
                 fillColor: tokens.agedFiber,
                 border: OutlineInputBorder(
@@ -133,7 +133,7 @@ class StudioBottomDock extends StatelessWidget {
                 child: _DockTabItem(
                   tabKey: const Key('studio_tab_add'),
                   icon: Icons.add_circle_outline,
-                  label: 'Add',
+                  label: '添加',
                   isSelected: activeTab == StudioDrawerTab.add,
                   tokens: tokens,
                   onTap: () => onToggleTab(StudioDrawerTab.add),
@@ -143,7 +143,7 @@ class StudioBottomDock extends StatelessWidget {
                 child: _DockTabItem(
                   tabKey: const Key('studio_tab_background'),
                   icon: Icons.palette_outlined,
-                  label: 'Background',
+                  label: '背景',
                   isSelected: activeTab == StudioDrawerTab.background,
                   tokens: tokens,
                   onTap: () => onToggleTab(StudioDrawerTab.background),
@@ -153,7 +153,7 @@ class StudioBottomDock extends StatelessWidget {
                 child: _DockTabItem(
                   tabKey: const Key('studio_tab_layout'),
                   icon: Icons.dashboard_customize_outlined,
-                  label: 'Layout',
+                  label: '版式',
                   isSelected: activeTab == StudioDrawerTab.layout,
                   tokens: tokens,
                   onTap: () => onToggleTab(StudioDrawerTab.layout),

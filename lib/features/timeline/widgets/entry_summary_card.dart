@@ -61,9 +61,9 @@ class EntrySummaryCard extends StatelessWidget {
     final isLocked = entry.isLocked;
     final trimmedTitle = entry.title?.trim() ?? '';
     final titleText = isLocked
-        ? (trimmedTitle.isNotEmpty ? trimmedTitle : 'Private Reflection')
-        : (trimmedTitle.isNotEmpty ? trimmedTitle : '无题 · 偶感');
-    final snippetText = isLocked ? '🔒 This entry is locked' : entry.plainText.trim();
+        ? (trimmedTitle.isNotEmpty ? trimmedTitle : '私密日记')
+        : (trimmedTitle.isNotEmpty ? trimmedTitle : '无题');
+    final snippetText = isLocked ? '🔒 已加锁' : entry.plainText.trim();
     final hasThumbnail = !isLocked && item.primaryMedia != null;
     final hasTier2 = snippetText.isNotEmpty || hasThumbnail;
 
@@ -216,7 +216,7 @@ class _EntryCardHeader extends StatelessWidget {
                           key: const Key('entry_weather_charm'),
                           emoji: weatherOption!.emoji,
                           label: weatherOption!.label,
-                          semanticsLabel: '天象 ${weatherOption!.label}',
+                          semanticsLabel: '天气 ${weatherOption!.label}',
                           tokens: tokens,
                         ),
                       if (moodOption != null)
@@ -224,7 +224,7 @@ class _EntryCardHeader extends StatelessWidget {
                           key: const Key('entry_mood_charm'),
                           emoji: moodOption!.emoji,
                           label: moodOption!.label,
-                          semanticsLabel: '心绪 ${moodOption!.label}',
+                          semanticsLabel: '心情 ${moodOption!.label}',
                           tokens: tokens,
                         ),
                     ],

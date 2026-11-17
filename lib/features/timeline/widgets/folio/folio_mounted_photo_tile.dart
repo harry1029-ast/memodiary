@@ -41,7 +41,7 @@ class FolioMountedPhotoTile extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '展读影札 ${photo.title}',
+      label: '查看大图 ${photo.title}',
       child: GestureDetector(
         onTap: onTap,
         child: Container(
@@ -102,7 +102,7 @@ class FolioMountedPhotoTile extends StatelessWidget {
                           borderRadius: BorderRadius.circular(3),
                         ),
                         child: const Text(
-                          '🔍 展读',
+                          '查看大图',
                           style: TextStyle(fontSize: 8.5, color: Colors.white),
                         ),
                       ),
@@ -165,7 +165,7 @@ class FolioMountedPhotoTile extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '第${photo.pageNumber}页附图',
+                        '第 ${photo.pageNumber} 页',
                         style: TextStyle(fontSize: 9.5, color: theme.inkSecondary),
                       ),
                     ],

@@ -103,7 +103,7 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Daily Writing Reminder',
+                        '每日写作提醒',
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontNotoSerif,
                           fontSize: 14,
@@ -116,7 +116,7 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard> {
                         key: const Key('daily_reminder_time_btn'),
                         onTap: _pickDailyTime,
                         child: Text(
-                          '每日 ${_formatTime(_prefs.dailyHour, _prefs.dailyMinute)} (夜阑提笔时 · 点击更改)',
+                          '每天 ${_formatTime(_prefs.dailyHour, _prefs.dailyMinute)}（点击更改）',
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontKaiti,
                             fontSize: 11.5,
@@ -139,7 +139,7 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard> {
                     );
                     await _loadPrefs();
                   },
-                  semanticLabel: '每日日记提醒开关',
+                  semanticLabel: '每日写作提醒开关',
                 ),
               ],
             ),
@@ -162,7 +162,7 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Sunday Weekly Review',
+                        '每周复盘提醒',
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontNotoSerif,
                           fontSize: 14,
@@ -175,7 +175,7 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard> {
                         key: const Key('weekly_reminder_time_btn'),
                         onTap: _pickWeeklyTime,
                         child: Text(
-                          '每周日 ${_formatTime(_prefs.weeklyHour, _prefs.weeklyMinute)} (结卷温故时 · 点击更改)',
+                          '每周日 ${_formatTime(_prefs.weeklyHour, _prefs.weeklyMinute)}（点击更改）',
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontKaiti,
                             fontSize: 11.5,
@@ -198,7 +198,7 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard> {
                     );
                     await _loadPrefs();
                   },
-                  semanticLabel: '周末复盘提醒开关',
+                  semanticLabel: '每周复盘提醒开关',
                 ),
               ],
             ),

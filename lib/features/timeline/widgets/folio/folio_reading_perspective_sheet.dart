@@ -76,7 +76,7 @@ class FolioReadingPerspectiveSheet extends StatelessWidget {
                       Icon(Icons.auto_stories_outlined, size: 20, color: tokens.cinnabar),
                       const SizedBox(width: 8),
                       const Text(
-                        '展阅视角',
+                        '阅读模式',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

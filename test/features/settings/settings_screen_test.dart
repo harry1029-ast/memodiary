@@ -73,35 +73,103 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pumpAndSettle();
 
-      // Verify Screen Title
-      expect(find.text('Settings & Privacy'), findsOneWidget);
+      // Verify Screen Title (no English subtitle or slogan banner)
+      expect(find.text('设置'), findsOneWidget);
+      expect(find.text('Settings & Privacy'), findsNothing);
+      expect(find.text('设置与守拙'), findsNothing);
+      expect(find.text('墨室守拙 · 恪纯无垢'), findsNothing);
 
-      // Verify Sections
-      expect(find.text('Appearance & Theme'), findsOneWidget);
-      expect(find.text('墨色明暗设定'), findsOneWidget);
+      // Verify Plain Section Headers (no English subheaders)
+      expect(find.text('开卷动画'), findsOneWidget);
+      expect(find.text('外观主题'), findsOneWidget);
+      expect(find.text('外观模式'), findsOneWidget);
+      expect(find.text('签名印章'), findsOneWidget);
+      expect(find.text('存储与清理'), findsOneWidget);
+      expect(find.text('写作提醒'), findsOneWidget);
+      expect(find.text('导入与导出'), findsOneWidget);
+      expect(find.text('权限管理'), findsOneWidget);
+      expect(find.text('隐私保护'), findsOneWidget);
+
+      expect(find.text('Book Cover & Intro'), findsNothing);
+      expect(find.text('Appearance & Theme'), findsNothing);
+      expect(find.text('Signature Seal'), findsNothing);
+      expect(find.text('Storage & Optimization'), findsNothing);
+      expect(find.text('REMINDERS'), findsNothing);
+      expect(find.text('Data Portability'), findsNothing);
+      expect(find.text('Permissions Dashboard'), findsNothing);
+
       expect(find.byKey(const Key('settings_theme_mode_system')), findsOneWidget);
       expect(find.byKey(const Key('settings_theme_mode_light')), findsOneWidget);
       expect(find.byKey(const Key('settings_theme_mode_dark')), findsOneWidget);
-      expect(find.text('Storage & Optimization'), findsOneWidget);
-      expect(find.text('Data Portability'), findsOneWidget);
-      expect(find.text('Permissions Dashboard'), findsOneWidget);
+      expect(find.text('Auto'), findsNothing);
+      expect(find.text('Light'), findsNothing);
+      expect(find.text('Dark'), findsNothing);
 
       // Verify Privacy Declaration Card
-      expect(find.text('100% Offline & Private'), findsOneWidget);
-      expect(find.textContaining('MemoDiary operates with zero cloud servers'), findsOneWidget);
+      expect(find.text('完全离线 · 本地隐私保护'), findsOneWidget);
+      expect(find.textContaining('拾光日记全程离线运行'), findsOneWidget);
+      expect(find.text('100% Offline & Private'), findsNothing);
 
       // Verify Permissions Listed
-      expect(find.text('Camera'), findsOneWidget);
-      expect(find.text('Microphone & Speech'), findsOneWidget);
-      expect(find.text('Photos & Files'), findsOneWidget);
+      expect(find.text('相机'), findsOneWidget);
+      expect(find.text('语音听写'), findsOneWidget);
+      expect(find.text('相册与文件'), findsOneWidget);
+      expect(find.text('已授权'), findsNWidgets(3));
+      expect(find.text('Camera'), findsNothing);
+      expect(find.text('Microphone & Speech'), findsNothing);
+      expect(find.text('Photos & Files'), findsNothing);
+      expect(find.text('已获准'), findsNothing);
 
       // Verify Data Portability Actions
-      expect(find.text('Import from .txt / .md'), findsOneWidget);
-      expect(find.text('Export All Diaries'), findsOneWidget);
+      expect(find.text('写作统计'), findsOneWidget);
+      expect(find.text('导入文本'), findsOneWidget);
+      expect(find.text('导出日记'), findsOneWidget);
       expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
-      expect(find.text('No backup created yet'), findsOneWidget);
+      expect(find.text('尚未创建备份'), findsOneWidget);
+      expect(find.text('No backup created yet'), findsNothing);
+      expect(find.text('导出加密备份 (.mdbak)'), findsOneWidget);
+      expect(find.text('从备份恢复'), findsOneWidget);
       expect(find.byKey(const Key('settings_create_backup_tile')), findsOneWidget);
       expect(find.byKey(const Key('settings_restore_backup_tile')), findsOneWidget);
+      expect(find.text('Import from .txt / .md'), findsNothing);
+      expect(find.text('Export All Diaries'), findsNothing);
+    });
+
+    testWidgets('displays 未授权 badge for denied hardware permissions', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SettingsScreen(
+            database: db,
+            mediaService: mediaService,
+            fileSelector: mockFileSelector,
+            initialStats: const StorageStats(
+              activeEntriesCount: 0,
+              deletedEntriesCount: 0,
+              totalMediaFiles: 0,
+              totalMediaBytes: 0,
+              orphanMediaFiles: 0,
+              orphanMediaBytes: 0,
+            ),
+            permissionChecker: () async => {
+              'camera': PermissionStatus.granted,
+              'microphone': PermissionStatus.denied,
+              'photos': PermissionStatus.permanentlyDenied,
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('已授权'), findsOneWidget);
+      expect(find.text('未授权'), findsNWidgets(2));
     });
 
     testWidgets('tapping Create Encrypted Backup opens CreateBackupDialog and validates passphrase',
@@ -145,7 +213,7 @@ void main() {
       await tester.tap(backupTile);
       await tester.pumpAndSettle();
 
-      expect(find.text('Create Full-Archive Backup'), findsOneWidget);
+      expect(find.text('导出加密备份 (.mdbak)'), findsAtLeast(1));
       expect(find.byKey(const Key('backup_passphrase_field')), findsOneWidget);
 
       // Save & Share buttons should be disabled when passphrase is empty
@@ -222,15 +290,15 @@ Visiting Dotonbori in the evening.
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pumpAndSettle();
 
-      // Tap "Import from .txt / .md"
-      await tester.tap(find.text('Import from .txt / .md'));
+      // Tap "导入文本"
+      await tester.tap(find.text('导入文本'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pumpAndSettle();
 
       // ImportStagingScreen should now be on top of navigation
       expect(find.byType(ImportStagingScreen), findsOneWidget);
-      expect(find.text('Import Staging'), findsOneWidget);
+      expect(find.text('导入预览'), findsOneWidget);
       expect(find.text('Trip to Osaka'), findsOneWidget);
     });
 
@@ -290,7 +358,7 @@ Visiting Dotonbori in the evening.
 
       final tileFinder = find.byKey(const Key('settings_last_backup_tile'));
       expect(tileFinder, findsOneWidget);
-      expect(find.text('No backup created yet'), findsNothing);
+      expect(find.text('尚未创建备份'), findsNothing);
       expect(find.textContaining('2026-10-19'), findsOneWidget);
 
       final listTile = tester.widget<ListTile>(tileFinder);
@@ -306,22 +374,22 @@ Visiting Dotonbori in the evening.
 
       // Initially shows no backup created yet
       expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
-      expect(find.text('No backup created yet'), findsOneWidget);
+      expect(find.text('尚未创建备份'), findsOneWidget);
 
-      // Tap "Create Encrypted Backup" tile to open dialog
+      // Tap "导出加密备份 (.mdbak)" tile to open dialog
       final backupTile = find.byKey(const Key('settings_create_backup_tile'));
       await tester.scrollUntilVisible(backupTile, 200.0);
       await tester.pumpAndSettle();
       await tester.tap(backupTile);
       await tester.pumpAndSettle();
 
-      expect(find.text('Create Full-Archive Backup'), findsOneWidget);
+      expect(find.byKey(const Key('backup_save_button')), findsOneWidget);
 
       // Toggle off encryption to create an unencrypted backup instantly
       await tester.tap(find.byKey(const Key('backup_encrypt_switch')));
       await tester.pumpAndSettle();
 
-      // Tap "Save to Device" button and await disk write in runAsync
+      // Tap "保存到设备" button and await disk write in runAsync
       await tester.runAsync(() async {
         await tester.tap(find.byKey(const Key('backup_save_button')));
         for (var i = 0; i < 20; i++) {
@@ -332,9 +400,9 @@ Visiting Dotonbori in the evening.
       await tester.pumpAndSettle();
 
       // Dialog dismissed and tile dynamically refreshed with today's date
-      expect(find.text('Create Full-Archive Backup'), findsNothing);
+      expect(find.byKey(const Key('backup_save_button')), findsNothing);
       expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
-      expect(find.text('No backup created yet'), findsNothing);
+      expect(find.text('尚未创建备份'), findsNothing);
       final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
       expect(find.textContaining(todayStr), findsOneWidget);
     });
@@ -399,7 +467,7 @@ Visiting Dotonbori in the evening.
       await tester.tap(pinTileFinder);
       await tester.pumpAndSettle();
 
-      expect(find.text('锁定画卷意境'), findsAtLeast(1));
+      expect(find.text('固定画卷氛围'), findsAtLeast(1));
       // Tap winter season chip
       final winterChip = find.byKey(const Key('settings_pin_season_chip_winter'));
       expect(winterChip, findsOneWidget);
@@ -428,7 +496,7 @@ Visiting Dotonbori in the evening.
       await tester.tap(resetTileFinder);
       await tester.pumpAndSettle();
 
-      expect(find.text('已恢复实时四时天候同步'), findsOneWidget);
+      expect(find.text('已恢复自动同步'), findsOneWidget);
       expect(mockStorage.data['memodiary_scenery_pinned_season'], isNull);
       expect(mockStorage.data['memodiary_scenery_pinned_time'], isNull);
     });
@@ -466,7 +534,7 @@ Visiting Dotonbori in the evening.
 
       // Card is rendered with default seal text
       expect(find.byKey(const Key('settings_signature_seal_card')), findsOneWidget);
-      expect(find.text('卷末压角印刻印文：心迹安放'), findsOneWidget);
+      expect(find.text('当前印章文字：心迹安放'), findsOneWidget);
 
       // Tap edit button to open dialog
       final editBtn = find.byKey(const Key('settings_edit_signature_seal_button'));
@@ -475,7 +543,7 @@ Visiting Dotonbori in the evening.
       await tester.pumpAndSettle();
 
       // Dialog is open
-      expect(find.text('更易落款印文 · 2至4字'), findsOneWidget);
+      expect(find.text('修改签名印章（2至4字）'), findsOneWidget);
       final inputFinder = find.byKey(const Key('settings_signature_seal_input'));
       expect(inputFinder, findsOneWidget);
 
@@ -490,7 +558,7 @@ Visiting Dotonbori in the evening.
       await tester.pumpAndSettle();
 
       // Card is updated
-      expect(find.text('卷末压角印刻印文：春山如笑'), findsOneWidget);
+      expect(find.text('当前印章文字：春山如笑'), findsOneWidget);
       expect(await sealService.getSealText(), equals('春山如笑'));
     });
   });

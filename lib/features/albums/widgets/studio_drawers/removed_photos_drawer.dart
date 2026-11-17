@@ -159,7 +159,7 @@ class _RemovedPhotosDrawerState extends State<RemovedPhotosDrawer> {
             child: widget.removedPhotoIds.isEmpty
                 ? Center(
                     child: Text(
-                      '收集箱为空，所有素材已排入画册中',
+                      '收集箱为空，所有照片都已放入页面',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 13,

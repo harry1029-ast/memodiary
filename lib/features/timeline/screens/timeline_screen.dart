@@ -368,7 +368,7 @@ class _TimelineScreenState extends State<TimelineScreen>
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null && _entries.isEmpty
               ? TimelineErrorState(
-                  errorMessage: _errorMessage ?? '载入卷宗时发生未预料之异常。',
+                  errorMessage: _errorMessage ?? '加载日记时发生未知错误。',
                   onRetry: _loadInitial,
                 )
               : ChronicleDeskScrollBody(
@@ -428,6 +428,8 @@ class _TimelineScreenState extends State<TimelineScreen>
       floatingActionButton: ScrollRollerFab(
         key: const Key('timeline_write_fab'),
         isRolledUp: _isFabRolledUp,
+        label: '写日记',
+        subLabel: '',
         onPressed: _handleCreateEntry,
       ),
     );

@@ -99,7 +99,7 @@ class _CreateEditCollectionSheetState extends State<CreateEditCollectionSheet> {
       firstDate: DateTime(1990),
       lastDate: DateTime(now.year + 5, 12, 31),
       initialDateRange: initialRange,
-      helpText: '选择旅途起止日期',
+      helpText: '选择行程起止日期',
     );
 
     if (picked != null && mounted) {
@@ -145,7 +145,7 @@ class _CreateEditCollectionSheetState extends State<CreateEditCollectionSheet> {
     final hasDates = _startDate != null || _endDate != null;
     final dateText = (_startDate != null && _endDate != null)
         ? '${fmt.format(_startDate!)} – ${fmt.format(_endDate!)}'
-        : (_startDate != null ? fmt.format(_startDate!) : '点击选择行程起止日期');
+        : (_startDate != null ? fmt.format(_startDate!) : '选择行程起止日期');
 
     return Padding(
       padding: EdgeInsets.only(
@@ -166,7 +166,7 @@ class _CreateEditCollectionSheetState extends State<CreateEditCollectionSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      _isEditing ? '编辑旅行影集' : '新建旅行影集',
+                      _isEditing ? '编辑相册' : '新建相册',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 18,
@@ -189,16 +189,16 @@ class _CreateEditCollectionSheetState extends State<CreateEditCollectionSheet> {
                 key: const Key('album_form_title'),
                 controller: _titleController,
                 decoration: const InputDecoration(
-                  labelText: '影集标题 *',
-                  hintText: '如：江南春行纪、川西雪山行',
+                  labelText: '相册名称 *',
+                  hintText: '如：杭州春游、川西之旅',
                 ),
                 validator: (value) {
                   final trimmed = value?.trim() ?? '';
                   if (trimmed.isEmpty) {
-                    return '请输入影集标题';
+                    return '请输入相册名称';
                   }
                   if (trimmed.length > 100) {
-                    return '标题长度不能超过 100 个字符';
+                    return '相册名称不能超过 100 个字';
                   }
                   return null;
                 },
@@ -210,13 +210,13 @@ class _CreateEditCollectionSheetState extends State<CreateEditCollectionSheet> {
                 key: const Key('album_form_destination'),
                 controller: _destinationController,
                 decoration: const InputDecoration(
-                  labelText: '地域印章（选填）',
-                  hintText: '如：江南、关西、川西（最多 8 字）',
+                  labelText: '封面印章（选填）',
+                  hintText: '如：江南、川西（最多 8 字）',
                 ),
                 validator: (value) {
                   final trimmed = value?.trim() ?? '';
                   if (trimmed.length > 8) {
-                    return '地域印章请控制在 8 个字符以内';
+                    return '封面印章请控制在 8 个字以内';
                   }
                   return null;
                 },
@@ -228,7 +228,7 @@ class _CreateEditCollectionSheetState extends State<CreateEditCollectionSheet> {
                 key: const Key('album_form_route'),
                 controller: _routeController,
                 decoration: const InputDecoration(
-                  labelText: '旅途路线（选填）',
+                  labelText: '路线（选填）',
                   hintText: '如：杭州 → 乌镇 → 苏州',
                   helperText: '留空则根据照片地点自动生成',
                 ),
@@ -242,8 +242,8 @@ class _CreateEditCollectionSheetState extends State<CreateEditCollectionSheet> {
                 maxLines: 3,
                 minLines: 2,
                 decoration: const InputDecoration(
-                  labelText: '卷首语 / 旅途序言（选填）',
-                  hintText: '山河沿路，笔底留痕…',
+                  labelText: '相册简介（选填）',
+                  hintText: '简单记录这次出行的故事...',
                 ),
               ),
               const SizedBox(height: 12),
@@ -305,7 +305,7 @@ class _CreateEditCollectionSheetState extends State<CreateEditCollectionSheet> {
               FilledButton(
                 key: const Key('album_form_submit'),
                 onPressed: _handleSubmit,
-                child: Text(_isEditing ? '保存修改' : '创建影集'),
+                child: Text(_isEditing ? '保存修改' : '创建相册'),
               ),
             ],
           ),

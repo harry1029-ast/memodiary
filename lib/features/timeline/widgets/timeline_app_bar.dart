@@ -81,12 +81,12 @@ class TimelineAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ],
                 ),
                 Text(
-                  'INK DIARY · TIMELINE',
+                  '个人离线日记',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 8.5,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: 1.2,
+                    letterSpacing: 0.6,
                     color: tokens.danmo,
                   ),
                 ),
@@ -101,7 +101,7 @@ class TimelineAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: OctagonalMedallionButton(
             key: const Key('timeline_weekly_review_button'),
             icon: Icons.calendar_view_week_rounded,
-            tooltip: '周志复盘',
+            tooltip: '每周复盘',
             onPressed: () {
               Navigator.push(
                 context,
@@ -120,7 +120,7 @@ class TimelineAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: OctagonalMedallionButton(
             key: const Key('timeline_search_button'),
             icon: Icons.search_rounded,
-            tooltip: '检索墨痕',
+            tooltip: '搜索',
             onPressed: () {
               Navigator.push(
                 context,
@@ -140,7 +140,7 @@ class TimelineAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: OctagonalMedallionButton(
             key: const Key('timeline_settings_button'),
             icon: Icons.settings_outlined,
-            tooltip: '设置与私隐',
+            tooltip: '设置',
             onPressed: () {
               Navigator.push(
                 context,
