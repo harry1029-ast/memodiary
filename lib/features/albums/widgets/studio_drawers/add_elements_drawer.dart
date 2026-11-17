@@ -97,7 +97,7 @@ class _AddElementsDrawerState extends State<AddElementsDrawer> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                '添加手账文字批注',
+                '添加文字',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontSize: 16,
@@ -113,7 +113,7 @@ class _AddElementsDrawerState extends State<AddElementsDrawer> {
                 maxLines: 2,
                 maxLength: 60,
                 decoration: InputDecoration(
-                  hintText: '写下此刻的心境、地名或诗句…',
+                  hintText: '输入要添加的文字...',
                   filled: true,
                   fillColor: tokens.agedFiber,
                   border: OutlineInputBorder(
@@ -196,7 +196,7 @@ class _AddElementsDrawerState extends State<AddElementsDrawer> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '添加手账元素 · Add Elements',
+                  '添加元素',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 15,
@@ -223,7 +223,7 @@ class _AddElementsDrawerState extends State<AddElementsDrawer> {
                 _QuickAddButton(
                   buttonKey: const Key('studio_add_date_pill'),
                   icon: Icons.event_note_outlined,
-                  label: '日期胶囊',
+                  label: '日期标签',
                   tokens: tokens,
                   onTap: _handleInsertDatePill,
                 ),
@@ -231,7 +231,7 @@ class _AddElementsDrawerState extends State<AddElementsDrawer> {
                 _QuickAddButton(
                   buttonKey: const Key('studio_add_text_note'),
                   icon: Icons.text_fields,
-                  label: '文字批注',
+                  label: '文字',
                   tokens: tokens,
                   onTap: () => _handleOpenTextNoteModal(context),
                 ),
@@ -239,7 +239,7 @@ class _AddElementsDrawerState extends State<AddElementsDrawer> {
                 _QuickAddButton(
                   buttonKey: const Key('studio_add_seal_stamp'),
                   icon: Icons.verified_outlined,
-                  label: '朱印闲章',
+                  label: '印章',
                   tokens: tokens,
                   isAccent: true,
                   onTap: _handleInsertSealStamp,

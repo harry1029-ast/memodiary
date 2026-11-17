@@ -199,7 +199,7 @@ class _DraggableOverlayItemState extends State<DraggableOverlayItem> {
                                 Key('delete_overlay_${widget.overlay.id}'),
                             icon: Icons.close,
                             color: const Color(0xFFFF8A80),
-                            tooltip: '移除元素',
+                            tooltip: '删除',
                             onTap: widget.onDelete!,
                           ),
                       ],

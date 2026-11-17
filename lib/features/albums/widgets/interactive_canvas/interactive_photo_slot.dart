@@ -286,20 +286,20 @@ class _InteractivePhotoSlotState extends State<InteractivePhotoSlot> {
                 _SlotActionBtn(
                   buttonKey: Key('slot_zoom_in_$index'),
                   icon: Icons.zoom_in,
-                  tooltip: '放大画面',
+                  tooltip: '放大',
                   onTap: () => _handleZoomDelta(0.25),
                 ),
                 _SlotActionBtn(
                   buttonKey: Key('slot_zoom_out_$index'),
                   icon: Icons.zoom_out,
-                  tooltip: '缩小画面',
+                  tooltip: '缩小',
                   onTap: () => _handleZoomDelta(-0.25),
                 ),
                 if (widget.onEditAnnotation != null)
                   _SlotActionBtn(
                     buttonKey: Key('slot_annotate_button_$index'),
                     icon: Icons.edit_note,
-                    tooltip: '写影札',
+                    tooltip: '照片备注',
                     onTap: widget.onEditAnnotation!,
                   ),
                 if (widget.onRemoveToTray != null)

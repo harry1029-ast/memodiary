@@ -217,7 +217,7 @@ class _AlbumFlipbookScreenState extends State<AlbumFlipbookScreen> {
                           size: 20,
                           color: tokens.jiaomo,
                         ),
-                        tooltip: '编辑画册排版',
+                        tooltip: '进入排版',
                         onPressed: _handleOpenStudioEditor,
                       ),
                     IconButton(

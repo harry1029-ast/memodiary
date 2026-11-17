@@ -91,7 +91,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
 
     if (photos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先进入影集添加照片，再选择封面')),
+        const SnackBar(content: Text('请先进入相册添加照片，再选择封面')),
       );
       return;
     }
@@ -167,7 +167,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
       await _repository.setCollectionCover(collection.id, selectedPhotoId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已更新影集封面')),
+          const SnackBar(content: Text('已更新相册封面')),
         );
       }
     }
@@ -179,7 +179,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
       builder: (dialogContext) => AlertDialog(
         title: Text('删除「${collection.title}」？'),
         content: const Text(
-          '删除后，该影集内的所有照片文件与写影札记将从设备存储中永久清除，不可恢复。',
+          '删除后，该相册内的所有照片和备注将从本机永久删除，无法恢复。',
         ),
         actions: [
           TextButton(
@@ -200,7 +200,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
       await _repository.deleteCollection(collection.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已删除影集「${collection.title}」')),
+          SnackBar(content: Text('已删除相册「${collection.title}」')),
         );
       }
     }
@@ -229,35 +229,21 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
     return Scaffold(
       backgroundColor: tokens.xuanGround,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '旅行影集',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: tokens.jiaomo,
-              ),
-            ),
-            Text(
-              '山河沿路，笔底留痕',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 11,
-                color: tokens.danmo,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ],
+        title: Text(
+          '旅行相册',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: tokens.jiaomo,
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         key: const Key('albums_add_fab'),
         onPressed: _handleCreateCollection,
         icon: const Icon(Icons.add_photo_alternate_outlined, size: 20),
-        label: const Text('新建影集'),
+        label: const Text('新建相册'),
       ),
       body: StreamBuilder<List<AlbumCollection>>(
         stream: _collectionsStream,
@@ -365,7 +351,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              '尚无旅行影集',
+              '暂无旅行相册',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 18,
@@ -375,7 +361,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              '山河沿路，笔底留痕。将旅途照片整理成册，题写地标与心绪。',
+              '将旅途照片整理成相册，记录地点与回忆。',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
@@ -389,7 +375,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
               key: const Key('albums_empty_create_button'),
               onPressed: _handleCreateCollection,
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('新建影集'),
+              label: const Text('新建相册'),
             ),
           ],
         ),

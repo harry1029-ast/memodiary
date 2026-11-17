@@ -27,7 +27,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('尚无旅行影集'), findsOneWidget);
+      expect(find.text('旅行相册'), findsOneWidget);
+      expect(find.text('新建相册'), findsWidgets);
+      expect(find.text('暂无旅行相册'), findsOneWidget);
+      expect(find.text('山河沿路，笔底留痕'), findsNothing);
       expect(find.byKey(const Key('albums_empty_create_button')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('albums_empty_create_button')));
@@ -52,6 +55,7 @@ void main() {
       expect(find.text('江南'), findsOneWidget);
       expect(find.text('杭州 → 乌镇 → 苏州'), findsOneWidget);
       expect(find.text('0 张'), findsOneWidget);
+      expect(find.text('山河沿路，笔底留痕'), findsNothing);
 
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump(const Duration(milliseconds: 100));
@@ -100,7 +104,7 @@ void main() {
       // Open contextual menu -> Delete -> Cancel
       await tester.tap(find.byKey(Key('album_card_menu_${collection.id}')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('删除影集'));
+      await tester.tap(find.text('删除相册'));
       await tester.pumpAndSettle();
 
       expect(find.text('删除「川西秘境录」？'), findsOneWidget);
@@ -114,7 +118,7 @@ void main() {
       // Open contextual menu -> Delete -> Confirm
       await tester.tap(find.byKey(Key('album_card_menu_${collection.id}')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('删除影集'));
+      await tester.tap(find.text('删除相册'));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('album_delete_confirm')));
@@ -124,7 +128,7 @@ void main() {
       });
       await tester.pumpAndSettle();
 
-      expect(find.text('尚无旅行影集'), findsOneWidget);
+      expect(find.text('暂无旅行相册'), findsOneWidget);
       expect(fullResFile.existsSync(), isFalse);
       expect(thumbFile.existsSync(), isFalse);
 
@@ -159,9 +163,9 @@ void main() {
       await tester.longPress(cardFinder);
       await tester.pumpAndSettle();
 
-      expect(find.text('编辑影集信息'), findsOneWidget);
+      expect(find.text('编辑相册'), findsOneWidget);
       expect(find.text('更换封面照片'), findsOneWidget);
-      expect(find.text('删除影集'), findsOneWidget);
+      expect(find.text('删除相册'), findsOneWidget);
 
       // Dismiss menu
       await tester.tapAt(const Offset(10, 10));

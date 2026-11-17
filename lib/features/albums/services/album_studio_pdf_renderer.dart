@@ -455,7 +455,7 @@ class AlbumStudioPdfRenderer {
                 else
                   pw.Center(
                     child: pw.Text(
-                      resolver.sanitizeText(photo?.locationTag ?? '拾光影像'),
+                      resolver.sanitizeText(photo?.locationTag ?? '旅行照片'),
                       maxLines: 1,
                       overflow: pw.TextOverflow.clip,
                       style: pw.TextStyle(
@@ -562,7 +562,7 @@ class AlbumStudioPdfRenderer {
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text(
-                  resolver.sanitizeText('拾光手账 · 珍藏印本'),
+                  resolver.sanitizeText('拾光日记 · 旅行相册'),
                   style: pw.TextStyle(
                     font: resolver.regularFont,
                     fontSize: 8,
@@ -643,7 +643,7 @@ class AlbumStudioPdfRenderer {
           ),
           pw.SizedBox(height: 6),
           pw.Text(
-            resolver.sanitizeText('$dateLabel · 共 $totalPhotos 帧影像'),
+            resolver.sanitizeText('$dateLabel · 共 $totalPhotos 张照片'),
             maxLines: 1,
             overflow: pw.TextOverflow.clip,
             style: pw.TextStyle(
@@ -697,7 +697,7 @@ class AlbumStudioPdfRenderer {
           mainAxisSize: pw.MainAxisSize.min,
           children: [
             pw.Text(
-              resolver.sanitizeText('拾光手账 · 卷尾留白'),
+              resolver.sanitizeText('封底'),
               maxLines: 1,
               overflow: pw.TextOverflow.clip,
               style: pw.TextStyle(
