@@ -3,7 +3,7 @@ id: SPEC-020
 title: Ink Choreography & Twin Bamboo Brushes — Live Calligraphic Writing on Stationery Sheets
 status: ready-for-agent
 created_at: 2026-11-16T22:40:00+08:00
-amended_at: 2026-11-16T23:55:00+08:00
+amended_at: 2026-11-17T18:30:00+08:00
 adr: ADR-0011
 ---
 
@@ -30,7 +30,7 @@ Replace the placeholder inside the **Twin Bamboo Brushes** compartment of the **
      - **Mixed Hair (`兼毫 · 温润`, `lagFactor = 0.18`, Default)**: Balanced literati brush feel combining resilience and fullness.
      - **Goat Hair (`羊毫 · 柔婉`, `lagFactor = 0.11`)**: Deep lag and generous bristle belly bulge around curves.
 3. **Writing Cadence (`运笔疾徐`) & Acoustic Feedback (`运笔声效`)**:
-   - Three speed multipliers—**Slow (`0.5x 慢品`)**, **Standard (`1.0x 标准`, Default)**, and **Swift (`1.8x 疾书`)**—plus a rate-limited procedural brush-on-paper sound toggle (`运笔声效: 开/关`) integrated with the Writing Sanctum audio synthesizer.
+   - Three speed multipliers—**Slow (`0.5x 慢品`, multiplier `0.55`)**, **Standard (`1.0x 标准`, Default)**, and **Swift (`1.8x 疾书`)**—plus a rate-limited procedural brush-on-paper sound toggle (`运笔声效: 开/关`) integrated with the Writing Sanctum audio synthesizer.
 4. **Full Offline Stroke Coverage (~9,574 Hanzi + Latin/Punctuation Binary Table + Procedural Fallback)**:
    - Bundle a precompiled, 100% offline quantized binary stroke-median table covering ~9,574 Simplified and Traditional Chinese characters from the open-source *Make Me a Hanzi* dataset alongside Latin letters (`A–Z`, `a–z`), digits (`0–9`), and common CJK/Latin punctuation, with `O(log N)` binary-search lookup and a deterministic 6-stroke procedural generator for any rare unindexed CJK ideograph.
 5. **Non-Destructive Mask-and-Reveal Overlay**:
@@ -49,7 +49,7 @@ Replace the placeholder inside the **Twin Bamboo Brushes** compartment of the **
 3. As a diarist tapping the **Twin Bamboo Brushes** artifact, I want the brushes to gently lift with a ceramic chime and open the **Ink Choreography** sub-panel above the velvet tray, so that I can configure how my brush writes on the **Stationery Sheet**.
 4. As a diarist inside the **Twin Bamboo Brushes** sub-panel, I want to choose among four delivery modes—**Single Fluent Brush (`单笔连绵`)**, **Concurrent Multi-Brush (`并笔齐书`)**, **Ink-Only Bloom (`见墨不见笔`)**, and **Off (`敛锋静书`)**—with **Single Fluent Brush** selected by default, so that I can tailor the visual choreography to my writing mood.
 5. As a diarist inside the **Twin Bamboo Brushes** sub-panel, I want to choose among three bristle elasticity presets—**Wolf Hair (`狼毫 · 劲健`)**, **Mixed Hair (`兼毫 · 温润`, default)**, and **Goat Hair (`羊毫 · 柔婉`)**—so that the brush tip's lag and belly bend match my preferred calligraphy brush.
-6. As a diarist inside the **Twin Bamboo Brushes** sub-panel, I want to choose among three writing cadence multipliers—**Slow (`0.5x 慢品`)**, **Standard (`1.0x 标准`, default)**, and **Swift (`1.8x 疾书`)**—so that I can savor slow stroke-by-stroke brushwork or write briskly.
+6. As a diarist inside the **Twin Bamboo Brushes** sub-panel, I want to choose among three writing cadence multipliers—**Slow (`0.5x 慢品`, multiplier `0.55`)**, **Standard (`1.0x 标准`, default)**, and **Swift (`1.8x 疾书`)**—so that I can savor slow stroke-by-stroke brushwork or write briskly.
 7. As a diarist inside the **Twin Bamboo Brushes** sub-panel, I want to toggle **Brush Sound (`运笔声效: 开/关`)**, so that I can hear a soft procedural brush-on-Xuan-paper rustle as strokes are painted or write in complete silence.
 8. As a diarist adjusting any setting in the **Twin Bamboo Brushes** sub-panel, I want my delivery mode, bristle elasticity, writing cadence, and brush sound preferences persisted app-wide across sessions without altering any diary entry's saved content, so that my setup is remembered every time I open the editor.
 
@@ -163,8 +163,8 @@ shaftAngle = 22° + dragTilt
 2. **Brush layer**: a sibling above the card, unclipped, so the shaft can extend over the desk.
 
 **Insertion detection (`InkInsertionTracker`, one per text sheet).**
-- `StationeryQuillController` gains an observer hook. `replaceText` reports `(index, deletedLength, insertedText, ignoreFocus)` after it applies the edit, including after the mount-marker heuristics have shifted the index. `undo()`, `redo()`, and a document swap (the `document` setter used by `setDelta` during **Auto-Spill** / **Spill-Back**) report a structural change. The tracker does not subscribe to `document.changes`, because that stream is replaced on every document swap.
-- **Composing.** `controller.plainTextEditingValue.composing` is always empty: Quill builds it from text and selection only. The real range is `QuillRawEditorState.composingRange` (a `ValueNotifier<TextRange>`), reached through `sheet.editorKey.currentState`. It needs a `package:flutter_quill/src/...` import, which is acceptable against the pinned `11.6.0` and lives in one adapter file (`quill_composing_probe.dart`) with a comment naming the pin.
+- `StationeryQuillController` gains an observer hook. `replaceText` reports `(index, deletedLength, insertedText, ignoreFocus)` after it applies the edit, including after the mount-marker heuristics have shifted the index. `undo()`, `redo()`, and a document swap (the `document` setter used by `setDelta` during **Auto-Spill** / **Spill-Back**) report a structural change, as do `formatText`, embed/Delta replacements, and any replacement that Quill's rules reshaped. The tracker does not subscribe to `document.changes`, because that stream is replaced on every document swap.
+- **Composing.** `controller.plainTextEditingValue.composing` is always empty: Quill builds it from text and selection only. The real range is `QuillRawEditorState.composingRange` (a `ValueNotifier<TextRange>`), found by locating the sheet's `QuillRawEditorState` in the widget tree. (`sheet.editorKey` is not reliable: `QuillEditor` captures its key once in `initState`, and re-indexed or re-partitioned sheets carry new keys that are never attached. `KeyboardDeskLift` caret tracking has the same latent defect.) `flutter_quill` 11.6.0 exports `QuillRawEditorState` publicly, so no `src/` import is needed; the one adapter file that reads `composingRange` (`quill_composing_probe.dart`) carries a comment naming the pin.
 - **Rules:**
   - `ignoreFocus` edits, structural changes, and edits while the sheet has no focus: no animation, and every queued or active slot on that sheet settles immediately.
   - While composing is non-empty, insertions accumulate into a *pending commit range*. When `composingRange` collapses, the committed text inside that range is enqueued if it holds `1..20` characters. Otherwise it is dropped.
@@ -176,7 +176,7 @@ shaftAngle = 22° + dragTilt
 **Rect resolution.**
 - For offset `o`: `a = renderEditor.getLocalRectForCaret(TextPosition(offset: o))` and `b = …(o + 1)`. If `a` and `b` share a line (tops within 0.5dp), the glyph advance is `a.left .. b.left`. Otherwise (the glyph ends its line) the advance is measured with a `TextPainter` in the active text style.
 - Vertically, the mask spans the full ruled row that contains `a.center`. Row bounds come from `StationerySheetGeometry` (`paperHeart.top + k × lineStridePx`, offset by `openingHeaderHeight` on the opening sheet).
-- Rects are converted from `RenderEditor` space to sheet-card space with `localToGlobal` / `globalToLocal`. They are resolved when a slot becomes active (so earlier settles and wraps are already laid out). Any geometry, template, or typography change while slots exist settles them all.
+- Rects are converted from `RenderEditor` space to sheet-card space with `localToGlobal` / `globalToLocal`. They are resolved at paint time for every masked slot and marked stale on each edit, so a character is masked in the frame it first appears and follows its glyph if a wrap moves it. A slot the editor has not laid out within `400ms` is dropped, and a slot whose character no longer matches the document (e.g. after a `document.insert` that bypasses `replaceText`) settles every slot on the sheet. On a line taller than one ruled row (headings), the mask covers the line's full height; strokes still use the body em. Any geometry, template, or typography change while slots exist settles them all.
 - `RenderEditor.getBoxesForSelection` is not available: `flutter_quill` 11.6.0 keeps it private to text lines.
 
 **Mask-and-reveal lifecycle.**
@@ -184,13 +184,14 @@ shaftAngle = 22° + dragTilt
 - `queued` slots show a faint `2dp` cinnabar guide dot (`#B83B2E`, 25% alpha) at the rect centre. `active` slots show a faint cinnabar border guide (`#B83B2E`, 35% alpha) plus the progressive wet ink: halo, core, entry/exit blots, and tip pool.
 - `singleFluent`: one master brush. Between characters it travels along the parabolic transit of §3, with a dashed **Airborne Silk Trace**.
 - `multiConcurrent`: every slot of an accepted insertion goes active at once, each with its own local brush.
-- `inkOnly`: wet ink without brush, shaft, or contact shadow.
+- `inkOnly`: wet ink without brush, shaft, or contact shadow; like `multiConcurrent`, every slot of an accepted insertion writes at once.
+- Switching the saved mode to `off` while slots are in flight settles them. An insertion over 20 characters also settles slots in flight (story 27).
 - `off`: the tracker enqueues nothing during live typing.
 - On a slot's final stroke it enters `settling` for `260ms`: mask and wet ink fade `1.0 → 0.0` while the real `QuillEditor` glyph shows through.
-- One `Ticker` per sheet overlay runs only while slots exist and stops when the last settles. Only the active sheet's overlay may tick.
+- One `Ticker` per sheet overlay runs only while slots exist (plus the master brush's brief `brushRestDuration` lift-off after the last settles) and then stops. Only the active sheet's overlay may tick.
 
 **Full-sheet replay (`▶ 全页挥毫`).**
-- `InkChoreographyController.requestSheetReplay()` closes the drawer. The active text sheet then enqueues every character on it with non-null strokes, in document order, in `singleFluent` choreography (even if the saved mode is `off` or another mode; the saved preference is untouched) with `replayBoost = 1.6`. Unsupported on ephemera sheets, where the button is disabled.
+- `▶ 全页挥毫` calls `InkChoreographyController.requestSheetReplay()` and closes the drawer. The active text sheet then enqueues every character on it with non-null strokes, in document order, in `singleFluent` choreography (even if the saved mode is `off` or another mode; the saved preference is untouched) with `replayBoost = 1.6`. Unsupported on ephemera sheets, where the button is disabled.
 - Any pointer-down on the sheet card (a `Listener` beside the overlay, which leaves the editor's own gestures alone), any `replaceText` on the sheet, or any page change (`onPageChanged`) cancels the replay. Every remaining slot settles in a single frame. A keystroke that cancels a replay is itself animated under the saved mode.
 
 ### 5. Twin Bamboo Brushes Sub-Panel & Velvet Tray Artifact
@@ -264,3 +265,5 @@ shaftAngle = 22° + dragTilt
 - **Replay length.** A full sheet is long: ~14 rows × ~17 characters ≈ 240 Hanzi at ~9 strokes each, at `1.6x` boost and `2.6x` catch-up, comes to roughly two minutes. That is intentional (it is a meditative replay, and any tap ends it), but worth confirming on device.
 - **Android word-level composing** (story 15) needs a device check with Gboard. If it feels wrong, a follow-up can animate Latin letters live inside the composing region; that would need the mask to track a moving composing range and is deliberately not attempted here.
 - `graphics.txt` is downloaded by the developer from GitHub once to run `tool/build_hanzi_strokes.dart`. The app itself performs zero network access.
+- **Follow-up defect (outside this spec).** `KeyboardDeskLift` (`keyboard_desk_lift.dart`) still reads caret geometry through `sheet.editorKey`, which goes stale after an Auto-Spill or typography change (see §4 Composing). It should locate the editor the same way the ink overlay does.
+- **Accepted additions from implementation.** The Trial Rice-Grid shows a status caption (`「永」挥毫中` / `「永」落墨已成`). Active slots carry a faint 5% cinnabar fill inside the 35% guide border. When a composition ends, deferred pagination resumes (`resumeDeferredPagination`), so an Auto-Spill held back by the IME guard actually runs.
