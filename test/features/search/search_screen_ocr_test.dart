@@ -68,8 +68,8 @@ void main() {
       // Verify card key
       expect(find.byKey(const Key('search_photo_match_card_photo_match_1')), findsOneWidget);
 
-      // Verify "图中文字匹配" badge
-      expect(find.text('图中文字匹配'), findsOneWidget);
+      // Verify "照片文字" badge
+      expect(find.text('照片文字'), findsOneWidget);
 
       // Verify parent title
       expect(find.text('游西湖记'), findsOneWidget);
@@ -176,6 +176,9 @@ void main() {
       expect(find.byKey(const Key('search_segment_all')), findsOneWidget);
       expect(find.byKey(const Key('search_segment_entries')), findsOneWidget);
       expect(find.byKey(const Key('search_segment_photos')), findsOneWidget);
+      expect(find.text('全部'), findsOneWidget);
+      expect(find.text('日记'), findsOneWidget);
+      expect(find.text('照片文字'), findsOneWidget);
     });
 
     testWidgets(
@@ -203,9 +206,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // In "全部" segment: both entry card and photo text match card appear
+      expect(find.text('找到 1 篇日记 · 1 处照片文字'), findsOneWidget);
       expect(find.text('午后咖啡'), findsOneWidget); // Entry title
       expect(find.byKey(const Key('search_photo_match_card_media_signboard')), findsOneWidget);
-      expect(find.text('图中文字匹配'), findsOneWidget);
+      expect(find.text('照片文字'), findsWidgets);
 
       // Tap on photo match card
       await tester.tap(find.byKey(const Key('search_photo_match_card_media_signboard')));
@@ -298,11 +302,11 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pumpAndSettle();
 
-      // Switch to "图中文字"
+      // Switch to "照片文字"
       await tester.tap(find.byKey(const Key('search_segment_photos')));
       await tester.pumpAndSettle();
 
-      expect(find.text('图中文字杳然 · 暂无匹配照片'), findsOneWidget);
+      expect(find.text('未找到匹配的照片文字'), findsOneWidget);
     });
 
     testWidgets(

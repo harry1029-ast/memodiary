@@ -163,6 +163,17 @@ void main() {
       final sundayEntries = grouped[DateTime(2026, 10, 18)]!;
       expect(sundayEntries, isEmpty);
     });
+
+    test('formatWeekRange formats same-year and cross-year ISO weeks in plain Chinese', () {
+      expect(
+        CalendarWeekUtils.formatWeekRange(2026, 42),
+        equals('2026年10月12日 – 10月18日'),
+      );
+      expect(
+        CalendarWeekUtils.formatWeekRange(2026, 1),
+        equals('2025年12月29日 – 2026年1月4日'),
+      );
+    });
   });
 }
 
