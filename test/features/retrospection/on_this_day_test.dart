@@ -167,7 +167,8 @@ void main() {
         ),
       );
 
-      expect(find.textContaining('On This Day · 1 Memory'), findsOneWidget);
+      expect(find.textContaining('往年今日 · 1 篇'), findsOneWidget);
+      expect(find.textContaining('On This Day'), findsNothing);
       expect(find.text('One Year Ago Today'), findsOneWidget);
 
       // Open Serendipity Roulette dialog

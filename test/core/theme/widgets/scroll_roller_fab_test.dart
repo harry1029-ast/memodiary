@@ -24,8 +24,8 @@ void main() {
       );
 
       expect(find.byKey(const Key('test_scroll_fab')), findsOneWidget);
-      expect(find.text('挥毫落墨'), findsOneWidget);
-      expect(find.text('Write Diary'), findsOneWidget);
+      expect(find.text('写日记'), findsOneWidget);
+      expect(find.text('Write Diary'), findsNothing);
       expect(find.byIcon(Icons.brush_rounded), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('test_scroll_fab')));
@@ -54,7 +54,7 @@ void main() {
       expect(find.byKey(const Key('test_scroll_fab_compact')), findsOneWidget);
       expect(find.byIcon(Icons.brush_rounded), findsOneWidget);
       // In rolled-up state, text is collapsed
-      expect(find.text('挥毫落墨'), findsNothing);
+      expect(find.text('写日记'), findsNothing);
     });
   });
 }

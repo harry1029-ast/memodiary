@@ -44,32 +44,17 @@ class OnThisDayBanner extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      entries.isNotEmpty
-                          ? '岁时忆昔 · 往年今日存留 ${entries.length} 篇'
-                          : '岁时忆昔 · 岁月吉光',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: tokens.jiaomo,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    if (entries.isNotEmpty) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        'On This Day · ${entries.length} ${entries.length == 1 ? "Memory" : "Memories"}',
-                        style: TextStyle(
-                          fontFamily: InkDiaryTheme.fontNotoSerif,
-                          fontSize: 11,
-                          color: tokens.danmo,
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  entries.isNotEmpty
+                      ? '往年今日 · ${entries.length} 篇'
+                      : '往年今日',
+                  style: TextStyle(
+                    fontFamily: InkDiaryTheme.fontNotoSerif,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: tokens.jiaomo,
+                    letterSpacing: 0.5,
+                  ),
                 ),
               ),
               if (onOpenSerendipity != null)

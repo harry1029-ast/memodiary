@@ -20,8 +20,8 @@ class ScrollRollerFab extends StatelessWidget {
     super.key,
     required this.onPressed,
     this.isRolledUp = false,
-    this.label = '挥毫落墨',
-    this.subLabel = 'Write Diary',
+    this.label = '写日记',
+    this.subLabel = '',
     this.icon = Icons.brush_rounded,
   });
 
@@ -69,7 +69,7 @@ class ScrollRollerFab extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '$label $subLabel',
+      label: subLabel.isNotEmpty ? '$label $subLabel' : label,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
@@ -152,16 +152,18 @@ class ScrollRollerFab extends StatelessWidget {
                                       letterSpacing: 0.6,
                                     ),
                                   ),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    subLabel,
-                                    style: TextStyle(
-                                      color: const Color(0xFFFFD8CC).withValues(alpha: 0.9),
-                                      fontSize: 9.0,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.3,
+                                  if (subLabel.isNotEmpty) ...[
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      subLabel,
+                                      style: TextStyle(
+                                        color: const Color(0xFFFFD8CC).withValues(alpha: 0.9),
+                                        fontSize: 9.0,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.3,
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ),
                             ),

@@ -184,7 +184,7 @@ void main() {
       );
 
       expect(find.text('Private Reflection'), findsAtLeastNWidgets(1));
-      expect(find.text('🔒 This entry is locked'), findsOneWidget);
+      expect(find.text('🔒 已加锁'), findsOneWidget);
       expect(find.textContaining('Hidden confidential'), findsNothing);
 
       // 2. Verify EntryDetailScreen shows lock barrier until correct PIN is entered
@@ -200,22 +200,22 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('This Diary Entry is Locked'), findsOneWidget);
+      expect(find.text('这篇日记已锁定'), findsOneWidget);
       expect(find.text('Private Reflection'), findsNothing);
 
       // Enter wrong PIN
       await tester.enterText(find.byKey(const Key('entry_unlock_pin_field')), '0000');
       await tester.tap(find.byKey(const Key('entry_unlock_submit_btn')));
       await tester.pumpAndSettle();
-      expect(find.text('Incorrect PIN'), findsOneWidget);
-      expect(find.text('This Diary Entry is Locked'), findsOneWidget);
+      expect(find.text('密码错误'), findsOneWidget);
+      expect(find.text('这篇日记已锁定'), findsOneWidget);
 
       // Enter correct PIN
       await tester.enterText(find.byKey(const Key('entry_unlock_pin_field')), '4321');
       await tester.tap(find.byKey(const Key('entry_unlock_submit_btn')));
       await tester.pumpAndSettle();
 
-      expect(find.text('This Diary Entry is Locked'), findsNothing);
+      expect(find.text('这篇日记已锁定'), findsNothing);
       expect(find.text('Private Reflection'), findsAtLeastNWidgets(1));
     });
   });
