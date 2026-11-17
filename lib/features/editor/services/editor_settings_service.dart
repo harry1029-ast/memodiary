@@ -28,17 +28,17 @@ class EditorSettingsService {
   /// The diarist's Ink Choreography preferences. A missing or unknown value
   /// reads back as that field's default.
   Future<InkChoreographyConfig> getInkChoreographyConfig() async {
-    final stored = await Future.wait([
+    final (deliveryMode, bristleStiffness, cadence, brushSound) = await (
       _read(_keyInkDeliveryMode),
       _read(_keyBristleStiffness),
       _read(_keyWritingCadence),
       _read(_keyBrushSound),
-    ]);
+    ).wait;
     return InkChoreographyConfig(
-      deliveryMode: InkDeliveryMode.fromStorageId(stored[0]),
-      bristleStiffness: BristleStiffness.fromStorageId(stored[1]),
-      cadence: WritingCadence.fromStorageId(stored[2]),
-      soundEnabled: stored[3] != 'false',
+      deliveryMode: InkDeliveryMode.fromStorageId(deliveryMode),
+      bristleStiffness: BristleStiffness.fromStorageId(bristleStiffness),
+      cadence: WritingCadence.fromStorageId(cadence),
+      soundEnabled: brushSound != 'false',
     );
   }
 

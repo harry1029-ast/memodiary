@@ -104,7 +104,7 @@ class SheetInkStageState extends State<SheetInkStage> with SingleTickerProviderS
     return sheet is TextStationerySheet ? sheet : null;
   }
 
-  Color get _inkColor => widget.themeConfig.typography.textColor ?? widget.themeConfig.inkColor;
+  Color get _inkColor => widget.themeConfig.writingInkColor;
 
   TemplateCanvasPainter _paperOf(SheetInkStage stage) => TemplateCanvasPainter(
         style: stage.themeConfig.templateStyle,

@@ -251,7 +251,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     await _scholarChest.open(
       context,
       template: activeTemplate,
-      typography: _typography,
       coordinator: _coordinator,
       unlockAt: _unlockAt,
       isCenterAligned: _isCenterAligned,

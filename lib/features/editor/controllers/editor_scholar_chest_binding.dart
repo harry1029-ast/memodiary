@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/database/app_database.dart';
-import '../../templates/models/template_style.dart';
 import '../domain/stationery_sheet_descriptor.dart';
 import '../ink_choreography/ink_choreography_controller.dart';
 import '../models/stationery_sheet_configs.dart';
@@ -33,12 +32,12 @@ class EditorScholarChestBinding {
     inkChoreography.restorePreferences();
   }
 
-  /// Opens the drawer over [context]. [onTemplateChanged] runs before the
-  /// entry's template is persisted; [onUnlockAtChanged] after its seal is.
+  /// Opens the drawer over [context], dressed in [coordinator]'s live paper
+  /// and typography. [onTemplateChanged] runs before the entry's template is
+  /// persisted; [onUnlockAtChanged] after its seal is.
   Future<void> open(
     BuildContext context, {
     required Template template,
-    required TypographySettings typography,
     required EditorPaginationCoordinator coordinator,
     required DateTime? unlockAt,
     required bool isCenterAligned,
@@ -49,8 +48,8 @@ class EditorScholarChestBinding {
     required VoidCallback onToggleAlignment,
   }) {
     final sheetTheme = StationerySheetThemeConfig.fromTemplateStyle(
-      templateStyle: TemplateStyle.fromTemplate(template),
-      typography: typography,
+      templateStyle: coordinator.templateStyle,
+      typography: coordinator.typography,
     );
     final activeSheetIndex = coordinator.activeSheetIndex;
     final sheets = coordinator.sheets;
@@ -58,21 +57,18 @@ class EditorScholarChestBinding {
       context: context,
       database: database,
       activeTemplateId: template.id,
-      typography: typography,
+      typography: sheetTheme.typography,
       audioSanctumService: audioSanctumService,
       inkChoreography: inkChoreography,
-      inkColor: sheetTheme.inkColor,
-      paperColor: sheetTheme.templateStyle.backgroundColor,
+      trialInk: TrialInkStyle.of(sheetTheme),
       unlockAt: unlockAt,
       isCenterAligned: isCenterAligned,
       isEphemeraSheetActive: activeSheetIndex < sheets.length && sheets[activeSheetIndex] is EphemeraSheet,
       initialArtifact: initialArtifact,
       onSelectTemplate: (newTemplate) async {
         onTemplateChanged(newTemplate);
-        coordinator.updateTypography(
-          TypographySettings.fromTemplate(newTemplate),
-          newTemplateStyle: TemplateStyle.fromTemplate(newTemplate),
-        );
+        final newTheme = StationerySheetThemeConfig.fromTemplate(newTemplate);
+        coordinator.updateTypography(newTheme.typography, newTemplateStyle: newTheme.templateStyle);
         await database.entriesDao.updateEntryTemplate(entryId, newTemplate.id);
       },
       onTypographyChanged: (newTypography) {

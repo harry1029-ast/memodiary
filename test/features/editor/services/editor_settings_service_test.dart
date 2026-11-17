@@ -1,36 +1,8 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/ink_choreography/ink_choreography_config.dart';
 import 'package:memodiary/features/editor/services/editor_settings_service.dart';
 
 import '../../../helpers/mock_secure_storage.dart';
-
-class _BrokenStorage extends FlutterSecureStorage {
-  @override
-  Future<String?> read({
-    required String key,
-    IOSOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    MacOsOptions? mOptions,
-    WindowsOptions? wOptions,
-  }) =>
-      Future.error(StateError('keystore unavailable'));
-
-  @override
-  Future<void> write({
-    required String key,
-    required String? value,
-    IOSOptions? iOptions,
-    AndroidOptions? aOptions,
-    LinuxOptions? lOptions,
-    WebOptions? webOptions,
-    MacOsOptions? mOptions,
-    WindowsOptions? wOptions,
-  }) =>
-      Future.error(StateError('keystore unavailable'));
-}
 
 void main() {
   group('Ink Choreography preferences', () {
@@ -107,7 +79,7 @@ void main() {
     });
 
     test('storage errors are absorbed: reads give defaults and writes complete', () async {
-      final broken = EditorSettingsService(storage: _BrokenStorage());
+      final broken = EditorSettingsService(storage: MockSecureStorage.broken());
 
       await broken.setInkDeliveryMode(InkDeliveryMode.off);
       await broken.setBristleStiffness(BristleStiffness.goat);

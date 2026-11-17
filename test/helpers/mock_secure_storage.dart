@@ -1,8 +1,20 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Reusable mock implementation of [FlutterSecureStorage] for unit and widget tests.
+///
+/// [MockSecureStorage.broken] fails every read and write, like a keystore
+/// that is unavailable in a restricted environment.
 class MockSecureStorage extends FlutterSecureStorage {
   final Map<String, String> data = {};
+  final bool _isBroken;
+
+  MockSecureStorage() : _isBroken = false;
+
+  MockSecureStorage.broken() : _isBroken = true;
+
+  void _failIfBroken() {
+    if (_isBroken) throw StateError('keystore unavailable');
+  }
 
   @override
   Future<String?> read({
@@ -13,8 +25,10 @@ class MockSecureStorage extends FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async =>
-      data[key];
+  }) async {
+    _failIfBroken();
+    return data[key];
+  }
 
   @override
   Future<void> write({
@@ -27,6 +41,7 @@ class MockSecureStorage extends FlutterSecureStorage {
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
+    _failIfBroken();
     if (value != null) {
       data[key] = value;
     } else {

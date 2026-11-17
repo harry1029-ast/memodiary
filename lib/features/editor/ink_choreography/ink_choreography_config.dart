@@ -23,10 +23,8 @@ enum InkDeliveryMode {
   /// Whether a bamboo brush accompanies the wet ink.
   bool get showsBrush => this == singleFluent || this == multiConcurrent;
 
-  static InkDeliveryMode fromStorageId(String? storageId) => values.firstWhere(
-        (mode) => mode.storageId == storageId,
-        orElse: () => InkChoreographyConfig.defaultDeliveryMode,
-      );
+  static InkDeliveryMode fromStorageId(String? storageId) =>
+      _byStorageId(values, storageId, (mode) => mode.storageId, InkChoreographyConfig.defaultDeliveryMode);
 }
 
 /// Bristle elasticity presets (毫锋弹性). [lagFactor] is how much of the gap to
@@ -46,10 +44,8 @@ enum BristleStiffness {
 
   const BristleStiffness(this.storageId, this.lagFactor);
 
-  static BristleStiffness fromStorageId(String? storageId) => values.firstWhere(
-        (stiffness) => stiffness.storageId == storageId,
-        orElse: () => InkChoreographyConfig.defaultBristleStiffness,
-      );
+  static BristleStiffness fromStorageId(String? storageId) =>
+      _byStorageId(values, storageId, (stiffness) => stiffness.storageId, InkChoreographyConfig.defaultBristleStiffness);
 }
 
 /// Writing cadence presets (运笔疾徐).
@@ -68,11 +64,14 @@ enum WritingCadence {
 
   const WritingCadence(this.storageId, this.speedMultiplier);
 
-  static WritingCadence fromStorageId(String? storageId) => values.firstWhere(
-        (cadence) => cadence.storageId == storageId,
-        orElse: () => InkChoreographyConfig.defaultCadence,
-      );
+  static WritingCadence fromStorageId(String? storageId) =>
+      _byStorageId(values, storageId, (cadence) => cadence.storageId, InkChoreographyConfig.defaultCadence);
 }
+
+/// The preset in [values] persisted as [storageId], or [fallback] for a
+/// missing or unknown value.
+T _byStorageId<T>(List<T> values, String? storageId, String Function(T) storageIdOf, T fallback) =>
+    values.firstWhere((value) => storageIdOf(value) == storageId, orElse: () => fallback);
 
 /// The diarist's app-wide Ink Choreography preferences. Never part of an
 /// entry: it is not serialized into `entries.content_delta` or SQLite.

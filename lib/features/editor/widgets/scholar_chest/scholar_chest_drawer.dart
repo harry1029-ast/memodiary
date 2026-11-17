@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/database/app_database.dart';
-import '../../../templates/models/template_style.dart';
 import '../../models/stationery_sheet_configs.dart';
 import '../../models/typography_settings.dart';
 import '../../services/audio_sanctum_service.dart';
@@ -28,9 +27,8 @@ class ScholarChestDrawer extends StatefulWidget {
   /// from it directly (Modal Route State Encapsulation).
   final InkChoreographyController inkChoreography;
 
-  /// The active template's ink and paper, for the Trial Rice-Grid.
-  final Color inkColor;
-  final Color paperColor;
+  /// The sheet's writing ink, paper and font, for the Trial Rice-Grid.
+  final TrialInkStyle trialInk;
   final DateTime? unlockAt;
   final bool isCenterAligned;
 
@@ -50,8 +48,7 @@ class ScholarChestDrawer extends StatefulWidget {
     required this.typography,
     required this.audioSanctumService,
     required this.inkChoreography,
-    this.inkColor = defaultInkColor,
-    this.paperColor = defaultPaperColor,
+    this.trialInk = TrialInkStyle.fallback,
     this.unlockAt,
     this.isCenterAligned = false,
     this.isEphemeraSheetActive = false,
@@ -62,9 +59,6 @@ class ScholarChestDrawer extends StatefulWidget {
     this.onToggleAlignment,
   });
 
-  static const Color defaultInkColor = Color(0xFF212121);
-  static const Color defaultPaperColor = Color(0xFFFBF8F1);
-
   /// Opens the Scholar's Stationery Chest modal bottom drawer.
   static Future<void> show({
     required BuildContext context,
@@ -73,8 +67,7 @@ class ScholarChestDrawer extends StatefulWidget {
     required TypographySettings typography,
     required AudioSanctumService audioSanctumService,
     required InkChoreographyController inkChoreography,
-    Color inkColor = defaultInkColor,
-    Color paperColor = defaultPaperColor,
+    TrialInkStyle trialInk = TrialInkStyle.fallback,
     DateTime? unlockAt,
     bool isCenterAligned = false,
     bool isEphemeraSheetActive = false,
@@ -94,8 +87,7 @@ class ScholarChestDrawer extends StatefulWidget {
         typography: typography,
         audioSanctumService: audioSanctumService,
         inkChoreography: inkChoreography,
-        inkColor: inkColor,
-        paperColor: paperColor,
+        trialInk: trialInk,
         unlockAt: unlockAt,
         isCenterAligned: isCenterAligned,
         isEphemeraSheetActive: isEphemeraSheetActive,
@@ -116,8 +108,7 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
   ScholarArtifactType? _activeArtifact;
   late String _activeTemplateId;
   late TypographySettings _currentTypography;
-  late Color _inkColor;
-  late Color _paperColor;
+  late TrialInkStyle _trialInk;
   DateTime? _unlockAt;
   late bool _isCenterAligned;
 
@@ -127,8 +118,7 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
     _activeArtifact = widget.initialArtifact;
     _activeTemplateId = widget.activeTemplateId;
     _currentTypography = widget.typography;
-    _inkColor = widget.inkColor;
-    _paperColor = widget.paperColor;
+    _trialInk = widget.trialInk;
     _unlockAt = widget.unlockAt;
     _isCenterAligned = widget.isCenterAligned;
   }
@@ -141,6 +131,9 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
     }
     if (oldWidget.typography != widget.typography) {
       _currentTypography = widget.typography;
+    }
+    if (oldWidget.trialInk != widget.trialInk) {
+      _trialInk = widget.trialInk;
     }
     if (oldWidget.unlockAt != widget.unlockAt) {
       _unlockAt = widget.unlockAt;
@@ -300,9 +293,7 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
         return TwinBrushesSubPanel(
           controller: widget.inkChoreography,
           audioSanctumService: widget.audioSanctumService,
-          inkColor: _inkColor,
-          paperColor: _paperColor,
-          fontFamily: _currentTypography.fontFamily,
+          trialInk: _trialInk,
           isSheetReplayAvailable: !widget.isEphemeraSheetActive,
           onSheetReplayRequested: () => Navigator.pop(context),
           onClose: () => setState(() => _activeArtifact = null),
@@ -313,15 +304,11 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
           database: widget.database,
           activeTemplateId: _activeTemplateId,
           onSelectTemplate: (selectedTemplate) {
-            final sheetTheme = StationerySheetThemeConfig.fromTemplateStyle(
-              templateStyle: TemplateStyle.fromTemplate(selectedTemplate),
-              typography: TypographySettings.fromTemplate(selectedTemplate),
-            );
+            final sheetTheme = StationerySheetThemeConfig.fromTemplate(selectedTemplate);
             setState(() {
               _activeTemplateId = selectedTemplate.id;
               _currentTypography = sheetTheme.typography;
-              _inkColor = sheetTheme.inkColor;
-              _paperColor = sheetTheme.templateStyle.backgroundColor;
+              _trialInk = TrialInkStyle.of(sheetTheme);
             });
             widget.onSelectTemplate(selectedTemplate);
           },
@@ -334,6 +321,7 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
           onTypographyChanged: (updatedTypography) {
             setState(() {
               _currentTypography = updatedTypography;
+              _trialInk = _trialInk.withTypography(updatedTypography);
             });
             widget.onTypographyChanged(updatedTypography);
           },

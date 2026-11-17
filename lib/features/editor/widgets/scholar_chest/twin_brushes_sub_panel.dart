@@ -4,6 +4,7 @@ import '../../../../core/theme/ink_diary_theme.dart';
 import '../../../../core/theme/widgets/min_tap_target.dart';
 import '../../ink_choreography/ink_choreography_config.dart';
 import '../../ink_choreography/ink_choreography_controller.dart';
+import '../../models/stationery_sheet_configs.dart';
 import '../../services/audio_sanctum_service.dart';
 import 'ink_choreography_labels.dart';
 import 'trial_rice_grid.dart';
@@ -20,11 +21,9 @@ class TwinBrushesSubPanel extends StatefulWidget {
   final InkChoreographyController controller;
   final AudioSanctumService audioSanctumService;
 
-  /// The active template's ink and paper, and the Brush Mountain font, for
-  /// the Trial Rice-Grid.
-  final Color inkColor;
-  final Color paperColor;
-  final String? fontFamily;
+  /// The sheet's writing ink, paper and Brush Mountain font, for the Trial
+  /// Rice-Grid.
+  final TrialInkStyle trialInk;
 
   /// False on an ephemera sheet, which has no characters to replay.
   final bool isSheetReplayAvailable;
@@ -37,9 +36,7 @@ class TwinBrushesSubPanel extends StatefulWidget {
     super.key,
     required this.controller,
     required this.audioSanctumService,
-    required this.inkColor,
-    required this.paperColor,
-    this.fontFamily,
+    required this.trialInk,
     this.isSheetReplayAvailable = true,
     this.onSheetReplayRequested,
     this.onClose,
@@ -76,9 +73,7 @@ class _TwinBrushesSubPanelState extends State<TwinBrushesSubPanel> {
             TrialRiceGrid(
               config: config,
               replayToken: _replayToken,
-              inkColor: widget.inkColor,
-              paperColor: widget.paperColor,
-              fontFamily: widget.fontFamily,
+              ink: widget.trialInk,
               audioSanctumService: widget.audioSanctumService,
             ),
             const SizedBox(height: 8),

@@ -9,6 +9,7 @@ import '../../ink_choreography/ink_choreography_timeline.dart';
 import '../../ink_choreography/ink_glyph_frame.dart';
 import '../../ink_choreography/ink_glyph_performance.dart';
 import '../../ink_choreography/ink_stroke_path.dart';
+import '../../models/stationery_sheet_configs.dart';
 import '../../services/audio_sanctum_service.dart';
 import 'trial_rice_grid_painter.dart';
 
@@ -31,20 +32,16 @@ class TrialRiceGrid extends StatefulWidget {
 
   /// Bumped by the compartment on every selector tap to replay the sample.
   final int replayToken;
-  final Color inkColor;
-  final Color paperColor;
 
-  /// The Brush Mountain font family of the printed glyph.
-  final String? fontFamily;
+  /// The sheet's writing ink, paper and Brush Mountain font family.
+  final TrialInkStyle ink;
   final AudioSanctumService audioSanctumService;
 
   const TrialRiceGrid({
     super.key,
     required this.config,
     required this.replayToken,
-    required this.inkColor,
-    required this.paperColor,
-    required this.fontFamily,
+    required this.ink,
     required this.audioSanctumService,
   });
 
@@ -140,9 +137,9 @@ class _TrialRiceGridState extends State<TrialRiceGrid> with SingleTickerProvider
                 performance: () => _performance,
                 glyphBox: TrialRiceGrid.glyphBox,
                 showsBrush: _previewMode.showsBrush,
-                inkColor: widget.inkColor,
-                paperColor: widget.paperColor,
-                fontFamily: widget.fontFamily,
+                inkColor: widget.ink.inkColor,
+                paperColor: widget.ink.paperColor,
+                fontFamily: widget.ink.fontFamily,
                 repaint: _frames,
               ),
             ),
@@ -201,7 +198,7 @@ class _TrialRiceGridState extends State<TrialRiceGrid> with SingleTickerProvider
         child: Text(
           sample,
           style: TextStyle(
-            fontFamily: widget.fontFamily,
+            fontFamily: widget.ink.fontFamily,
             fontSize: 14,
             fontWeight: FontWeight.bold,
             color: isSelected ? Colors.white : const Color(0xFFE8DCC8),
