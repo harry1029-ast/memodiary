@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/editor/models/letterhead_data.dart';
+import 'package:memodiary/features/editor/widgets/journal_letterhead_models.dart';
 
 /// Expected strings are published almanac values (2026-11-07 is 九月廿九,
 /// 2026-11-10 is 十月初二), not recomputed from the converter.
@@ -60,6 +61,25 @@ void main() {
       expect(chosen.moodOption.label, '喜悦');
       expect(chosen.weather, 'rainy');
       expect(chosen.mood, 5);
+    });
+
+    test('JournalLetterheadUtils resolves plain Chinese mood and weather labels', () {
+      expect(JournalLetterheadUtils.resolveMoodLabel(null), isNull);
+      expect(JournalLetterheadUtils.resolveMoodLabel(1), '低落');
+      expect(JournalLetterheadUtils.resolveMoodLabel(2), '疲惫');
+      expect(JournalLetterheadUtils.resolveMoodLabel(3), '平静');
+      expect(JournalLetterheadUtils.resolveMoodLabel(4), '开心');
+      expect(JournalLetterheadUtils.resolveMoodLabel(5), '喜悦');
+      expect(JournalLetterheadUtils.resolveMoodLabel(99), isNull);
+
+      expect(JournalLetterheadUtils.resolveWeatherLabel(null), isNull);
+      expect(JournalLetterheadUtils.resolveWeatherLabel(''), isNull);
+      expect(JournalLetterheadUtils.resolveWeatherLabel('sunny'), '晴天');
+      expect(JournalLetterheadUtils.resolveWeatherLabel('cloudy'), '多云');
+      expect(JournalLetterheadUtils.resolveWeatherLabel('rainy'), '下雨');
+      expect(JournalLetterheadUtils.resolveWeatherLabel('windy'), '大风');
+      expect(JournalLetterheadUtils.resolveWeatherLabel('snowy'), '下雪');
+      expect(JournalLetterheadUtils.resolveWeatherLabel('custom'), 'custom');
     });
   });
 }

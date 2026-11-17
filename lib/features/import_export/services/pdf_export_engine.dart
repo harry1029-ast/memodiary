@@ -1,10 +1,12 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/documents/vertical_typography_mapper.dart';
+import '../../editor/widgets/journal_letterhead_models.dart';
 import '../../settings/services/signature_seal_service.dart';
 import '../../templates/models/template_style.dart';
 import '../../timeline/services/folio_media_pairing.dart';
@@ -133,7 +135,7 @@ class PdfExportEngine {
         footer: (context) =>
             PdfTemplateRenderer.buildFooter(context, entry, style, resolver),
         build: (context) => [
-          _buildEntryHeader(entry, resolver),
+          buildEntryHeader(entry, resolver),
           pw.SizedBox(height: 10),
           ...sectionWidgets,
           _buildSealColophon(
@@ -171,7 +173,7 @@ class PdfExportEngine {
           pageFormat: pageFormat,
           build: (context) => pw.Center(
             child: pw.Text(
-              'No entries selected for export.',
+              resolver.sanitizeText('未选择要导出的日记。'),
               style: pw.TextStyle(
                 font: resolver.regularFont,
                 fontSize: 14,
@@ -188,12 +190,12 @@ class PdfExportEngine {
     final sortedEntries = List<Entry>.from(entries)
       ..sort((first, second) => first.entryDate.compareTo(second.entryDate));
 
-    final title = resolver.sanitizeText(bookTitle ?? 'MemoDiary Journal Archive');
+    final title = resolver.sanitizeText(bookTitle ?? '拾光日记合集');
     final startDateStr =
-        DateFormat('MMM d, y').format(sortedEntries.first.entryDate);
+        DateFormat('yyyy年M月d日').format(sortedEntries.first.entryDate);
     final endDateStr =
-        DateFormat('MMM d, y').format(sortedEntries.last.entryDate);
-    final dateRangeStr = '$startDateStr - $endDateStr';
+        DateFormat('yyyy年M月d日').format(sortedEntries.last.entryDate);
+    final dateRangeStr = resolver.sanitizeText('$startDateStr - $endDateStr');
 
     // 1. Archive Cover Page
     doc.addPage(
@@ -235,7 +237,7 @@ class PdfExportEngine {
                 ),
                 pw.SizedBox(height: 6),
                 pw.Text(
-                  '${sortedEntries.length} ${sortedEntries.length == 1 ? "Entry" : "Entries"}',
+                  resolver.sanitizeText('共 ${sortedEntries.length} 篇日记'),
                   style: pw.TextStyle(
                     font: resolver.italicFont,
                     fontSize: 12,
@@ -244,7 +246,7 @@ class PdfExportEngine {
                 ),
                 pw.SizedBox(height: 60),
                 pw.Text(
-                  'MemoDiary · 100% Private, Sandboxed & Local-First',
+                  resolver.sanitizeText('拾光日记 · 本地离线私密存储'),
                   style: pw.TextStyle(
                     font: resolver.regularFont,
                     fontSize: 9,
@@ -288,7 +290,7 @@ class PdfExportEngine {
           footer: (context) =>
               PdfTemplateRenderer.buildFooter(context, entry, style, resolver),
           build: (context) => [
-            _buildEntryHeader(entry, resolver),
+            buildEntryHeader(entry, resolver),
             pw.SizedBox(height: 10),
             ...contentWidgets,
             _buildSealColophon(
@@ -321,19 +323,24 @@ class PdfExportEngine {
   }
 
   /// Builds the top metadata banner for an entry (date, mood, weather, title, divider).
-  static pw.Widget _buildEntryHeader(Entry entry, PdfFontResolver fontResolver) {
-    final dateFormatted =
-        DateFormat('EEEE, MMMM d, y · h:mm a').format(entry.entryDate);
+  @visibleForTesting
+  static pw.Widget buildEntryHeader(Entry entry, PdfFontResolver fontResolver) {
+    final dateFormatted = fontResolver.sanitizeText(
+      DateFormat('yyyy年M月d日 · HH:mm').format(entry.entryDate),
+    );
 
     final metadataBadges = <String>[];
     if (entry.isWeeklyReview) {
-      metadataBadges.add('Week ${entry.weekNumber ?? ""} Review');
+      metadataBadges.add(
+        entry.weekNumber != null ? '第 ${entry.weekNumber} 周复盘' : '每周复盘',
+      );
     }
     if (entry.mood != null) {
-      metadataBadges.add('Mood: ${entry.mood}/5');
+      metadataBadges.add('心情: ${entry.mood}/5');
     }
-    if (entry.weather != null && entry.weather!.isNotEmpty) {
-      metadataBadges.add('Weather: ${entry.weather}');
+    final weatherLabel = JournalLetterheadUtils.resolveWeatherLabel(entry.weather);
+    if (weatherLabel != null) {
+      metadataBadges.add('天气: $weatherLabel');
     }
 
     final rawTitle = entry.title?.trim() ?? '';
@@ -356,7 +363,7 @@ class PdfExportEngine {
             ),
             if (metadataBadges.isNotEmpty)
               pw.Text(
-                metadataBadges.join('  ·  '),
+                fontResolver.sanitizeText(metadataBadges.join('  ·  ')),
                 style: pw.TextStyle(
                   font: fontResolver.boldFont,
                   fontSize: 9,

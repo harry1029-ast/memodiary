@@ -222,20 +222,10 @@ class SearchFilterChips extends StatelessWidget {
     );
   }
 
-  String? _resolveWeatherLabel(String? weatherValue) {
-    if (weatherValue == null || weatherValue.isEmpty) return null;
-    for (final option in JournalLetterheadUtils.weatherOptions) {
-      if (option.value == weatherValue) {
-        return option.label;
-      }
-    }
-    return weatherValue;
-  }
-
   @override
   Widget build(BuildContext context) {
     final moodEmoji = filters.mood != null ? EntrySummaryCard.moodEmojis[filters.mood!] : null;
-    final weatherLabel = _resolveWeatherLabel(filters.weather);
+    final weatherLabel = JournalLetterheadUtils.resolveWeatherLabel(filters.weather);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,

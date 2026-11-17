@@ -94,7 +94,7 @@ class AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
 
   Future<void> _attemptBiometricAuth() async {
     final authenticated = await _authService.authenticateBiometric(
-      localizedReason: 'Unlock MemoDiary',
+      localizedReason: '解锁拾光日记',
     );
     if (authenticated && mounted) {
       setState(() {
@@ -138,7 +138,7 @@ class AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
         });
       } else {
         setState(() {
-          _errorMessage = 'Incorrect PIN. Please try again.';
+          _errorMessage = '密码错误，请重试';
           _enteredPin = '';
         });
       }
@@ -185,12 +185,12 @@ class AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
               const Icon(Icons.lock_rounded, size: 64, color: Colors.deepPurple),
               const SizedBox(height: 16),
               const Text(
-                'MemoDiary Locked',
+                '拾光日记已锁定',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Enter PIN to unlock your private entries',
+                '请输入密码解锁私密日记',
                 style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 32),

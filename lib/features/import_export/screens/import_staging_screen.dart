@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/features/editor/widgets/journal_letterhead_models.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 import '../models/import_candidate_entry.dart';
 
@@ -247,8 +248,9 @@ class _ImportStagingScreenState extends State<ImportStagingScreen> {
   }
 
   Widget _buildCandidateCard(ImportCandidateEntry candidate, ThemeData theme) {
-    final dateStr = candidate.parsedDate != null
-        ? DateFormat('yyyy-MM-dd · EEE').format(candidate.parsedDate!)
+    final parsedDate = candidate.parsedDate;
+    final dateStr = parsedDate != null
+        ? '${DateFormat('yyyy-MM-dd').format(parsedDate)} · ${JournalLetterheadUtils.chineseWeekdays[parsedDate.weekday - 1]}'
         : '未识别日期';
 
     final isLowConfidence =

@@ -35,32 +35,39 @@ class SoundscapeModal extends StatefulWidget {
   State<SoundscapeModal> createState() => _SoundscapeModalState();
 }
 
+typedef _SoundscapePresetMeta = ({
+  String title,
+  String tag,
+  String desc,
+  String stamp,
+});
+
 class _SoundscapeModalState extends State<SoundscapeModal> {
-  static const Map<SoundscapePreset, Map<String, String>> _literatiPresets = {
-    SoundscapePreset.gentleRain: {
-      'title': '雨声',
-      'tag': '自然',
-      'desc': '轻柔均匀的下雨白噪音',
-      'stamp': '雨',
-    },
-    SoundscapePreset.vintageLibrary: {
-      'title': '书房白噪音',
-      'tag': '环境',
-      'desc': '安静温暖的室内环境底噪',
-      'stamp': '静',
-    },
-    SoundscapePreset.mechanicalKeyboard: {
-      'title': '键盘敲击',
-      'tag': '节奏',
-      'desc': '柔和规律的打字敲击声',
-      'stamp': '韵',
-    },
-    SoundscapePreset.bambooBreeze: {
-      'title': '竹林微风',
-      'tag': '自然',
-      'desc': '微风拂过竹叶的沙沙声',
-      'stamp': '风',
-    },
+  static const Map<SoundscapePreset, _SoundscapePresetMeta> _soundscapePresets = {
+    SoundscapePreset.gentleRain: (
+      title: '雨声',
+      tag: '自然',
+      desc: '轻柔均匀的下雨白噪音',
+      stamp: '雨',
+    ),
+    SoundscapePreset.vintageLibrary: (
+      title: '书房白噪音',
+      tag: '环境',
+      desc: '安静温暖的室内环境底噪',
+      stamp: '静',
+    ),
+    SoundscapePreset.mechanicalKeyboard: (
+      title: '键盘敲击',
+      tag: '节奏',
+      desc: '柔和规律的打字敲击声',
+      stamp: '韵',
+    ),
+    SoundscapePreset.bambooBreeze: (
+      title: '竹林微风',
+      tag: '自然',
+      desc: '微风拂过竹叶的沙沙声',
+      stamp: '风',
+    ),
   };
 
   @override
@@ -292,12 +299,13 @@ class _SoundscapeModalState extends State<SoundscapeModal> {
     required bool isSelected,
     required InkDiaryTokens tokens,
   }) {
-    final meta = _literatiPresets[preset] ?? {
-      'title': preset.label,
-      'tag': '音律',
-      'desc': preset.subtitle,
-      'stamp': '韵',
-    };
+    final meta = _soundscapePresets[preset] ??
+        (
+          title: preset.label,
+          tag: '音律',
+          desc: preset.subtitle,
+          stamp: '韵',
+        );
 
     return InkWell(
       key: Key('soundscape_preset_${preset.id}'),
@@ -362,7 +370,7 @@ class _SoundscapeModalState extends State<SoundscapeModal> {
                   Row(
                     children: [
                       Text(
-                        meta['title']!,
+                        meta.title,
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontNotoSerif,
                           fontSize: 14,
@@ -370,17 +378,6 @@ class _SoundscapeModalState extends State<SoundscapeModal> {
                           color: isSelected ? tokens.jiaomo : tokens.nongmo,
                         ),
                       ),
-                      if (meta['englishTitle'] != null) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          meta['englishTitle']!,
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                            fontSize: 12,
-                            color: tokens.danmo,
-                          ),
-                        ),
-                      ],
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
@@ -393,7 +390,7 @@ class _SoundscapeModalState extends State<SoundscapeModal> {
                           ),
                         ),
                         child: Text(
-                          meta['tag']!,
+                          meta.tag,
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
@@ -405,7 +402,7 @@ class _SoundscapeModalState extends State<SoundscapeModal> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    meta['desc']!,
+                    meta.desc,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -420,7 +417,7 @@ class _SoundscapeModalState extends State<SoundscapeModal> {
 
             // Calligraphic Stamp character
             Text(
-              meta['stamp']!,
+              meta.stamp,
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontMaShanZheng,
                 fontSize: 20,

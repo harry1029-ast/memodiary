@@ -85,7 +85,7 @@ class _SerendipityRouletteCardState extends State<SerendipityRouletteCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Serendipity Memory Roulette',
+                  '随机回顾',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -103,7 +103,7 @@ class _SerendipityRouletteCardState extends State<SerendipityRouletteCard> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                'No unlocked memories older than ${widget.minDaysAgo} days yet. Keep writing to fill your time vault!',
+                '暂无超过 ${widget.minDaysAgo} 天的已解锁日记，继续记录后会出现在这里。',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
               ),
@@ -123,7 +123,7 @@ class _SerendipityRouletteCardState extends State<SerendipityRouletteCard> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    DateFormat('EEEE, MMMM d, y').format(_drawnEntry!.entryDate),
+                    DateFormat('yyyy年M月d日').format(_drawnEntry!.entryDate),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -134,7 +134,7 @@ class _SerendipityRouletteCardState extends State<SerendipityRouletteCard> {
                   Text(
                     (_drawnEntry!.title?.trim().isNotEmpty ?? false)
                         ? _drawnEntry!.title!.trim()
-                        : 'Untitled Memory',
+                        : '无标题日记',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -142,7 +142,7 @@ class _SerendipityRouletteCardState extends State<SerendipityRouletteCard> {
                   const SizedBox(height: 8),
                   Text(
                     _drawnEntry!.isLocked
-                        ? '🔒 This memory is PIN-locked.'
+                        ? '🔒 该日记已加密锁定'
                         : _drawnEntry!.plainText.trim(),
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
@@ -162,14 +162,14 @@ class _SerendipityRouletteCardState extends State<SerendipityRouletteCard> {
                 key: const Key('serendipity_draw_again_btn'),
                 onPressed: _drawMemory,
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Draw Another'),
+                label: const Text('再抽一篇'),
               ),
               if (_drawnEntry != null) ...[
                 const SizedBox(width: 8),
                 FilledButton(
                   key: const Key('serendipity_open_entry_btn'),
                   onPressed: () => widget.onOpenEntry(_drawnEntry!),
-                  child: const Text('Read Memory'),
+                  child: const Text('查看日记'),
                 ),
               ],
             ],

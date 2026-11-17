@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 class FontOption {
   final String id;
   final String name;
+  final String displayName;
   final String? fontFamily;
   final String description;
 
   const FontOption({
     required this.id,
     required this.name,
+    String? displayName,
     this.fontFamily,
     required this.description,
-  });
+  }) : displayName = displayName ?? name;
 }
 
 /// Catalog of 100% offline system & SIL OFL font families
@@ -20,72 +22,84 @@ class TypographyCatalog {
     FontOption(
       id: 'system',
       name: 'System Default',
+      displayName: '系统默认',
       fontFamily: null,
       description: 'Native OS font typography',
     ),
     FontOption(
       id: 'serif',
       name: 'System Serif',
+      displayName: '系统衬线',
       fontFamily: 'serif',
       description: 'Classic literary serif styling',
     ),
     FontOption(
       id: 'sans-serif',
       name: 'System Sans',
+      displayName: '系统无衬线',
       fontFamily: 'sans-serif',
       description: 'Modern clean sans-serif',
     ),
     FontOption(
       id: 'monospace',
       name: 'Monospace',
+      displayName: '等宽字体',
       fontFamily: 'monospace',
       description: 'Typewriter monospaced aesthetic',
     ),
     FontOption(
       id: 'noto_serif',
       name: 'Noto Serif',
+      displayName: '思源宋体',
       fontFamily: 'Noto Serif',
       description: 'SIL OFL editorial serif typography',
     ),
     FontOption(
       id: 'inter',
       name: 'Inter',
+      displayName: 'Inter（无衬线）',
       fontFamily: 'Inter',
       description: 'SIL OFL ultra-readable contemporary sans',
     ),
     FontOption(
       id: 'lora',
       name: 'Lora',
+      displayName: 'Lora（衬线）',
       fontFamily: 'Lora',
       description: 'SIL OFL elegant reading font',
     ),
     FontOption(
       id: 'merriweather',
       name: 'Merriweather',
+      displayName: 'Merriweather（衬线）',
       fontFamily: 'Merriweather',
       description: 'SIL OFL pleasant screen-reading serif',
     ),
     FontOption(
       id: 'playfair',
       name: 'Playfair Display',
+      displayName: 'Playfair Display（标题）',
       fontFamily: 'Playfair Display',
       description: 'SIL OFL high-contrast decorative title serif',
     ),
     FontOption(
       id: 'source_code',
       name: 'Source Code Pro',
+      displayName: 'Source Code Pro（等宽）',
       fontFamily: 'Source Code Pro',
       description: 'SIL OFL crisp monospace code & journal font',
     ),
     FontOption(
       id: 'caveat',
       name: 'Caveat',
+      displayName: 'Caveat（手写体）',
       fontFamily: 'Caveat',
       description: 'SIL OFL casual handwritten script',
     ),
     FontOption(
       id: 'ma_shan_zheng',
       name: 'Ma Shan Zheng',
+      displayName: '楷体',
       fontFamily: 'Ma Shan Zheng',
       description: 'SIL OFL expressive Chinese brush calligraphy',
     ),

@@ -90,9 +90,11 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
     if (!mounted) return;
 
     if (photos.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先进入相册添加照片，再选择封面')),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('请先进入相册添加照片，再选择封面')),
+        );
       return;
     }
 
@@ -166,9 +168,11 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
     if (selectedPhotoId != null && mounted) {
       await _repository.setCollectionCover(collection.id, selectedPhotoId);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已更新相册封面')),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('已更新相册封面')),
+          );
       }
     }
   }
@@ -199,9 +203,11 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
     if (confirmed == true && mounted) {
       await _repository.deleteCollection(collection.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('已删除相册「${collection.title}」')),
-        );
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(content: Text('已删除相册「${collection.title}」')),
+          );
       }
     }
   }

@@ -352,7 +352,7 @@ class PdfTemplateRenderer {
     final dateStr = DateFormat('yyyy-MM-dd').format(entry.entryDate);
     final rawTitle = (entry.title?.trim().isNotEmpty ?? false)
         ? entry.title!.trim()
-        : 'MemoDiary Entry';
+        : '拾光日记';
     final title = fontResolver.sanitizeText(rawTitle);
 
     return pw.Container(
@@ -402,7 +402,7 @@ class PdfTemplateRenderer {
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
           pw.Text(
-            'MemoDiary · 100% Private & Sandboxed',
+            fontResolver.sanitizeText('拾光日记 · 本地离线私密存储'),
             style: pw.TextStyle(
               font: fontResolver.regularFont,
               fontSize: 8,
@@ -410,7 +410,7 @@ class PdfTemplateRenderer {
             ),
           ),
           pw.Text(
-            'Page ${context.pageNumber} of ${context.pagesCount}',
+            fontResolver.sanitizeText('第 ${context.pageNumber} / ${context.pagesCount} 页'),
             style: pw.TextStyle(
               font: fontResolver.regularFont,
               fontSize: 8,

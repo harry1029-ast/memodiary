@@ -104,16 +104,8 @@ class FolioFrontispiecePage extends StatelessWidget {
   }
 
   Widget _buildTopMetadata(Color accentColor) {
-    final moodText = leaf.mood != null
-        ? JournalLetterheadUtils.resolveMood(leaf.mood).label
-        : null;
-    final weatherText = (leaf.weather != null && leaf.weather!.isNotEmpty)
-        ? JournalLetterheadUtils.weatherOptions
-                .where((option) => option.value == leaf.weather)
-                .firstOrNull
-                ?.label ??
-            leaf.weather!
-        : null;
+    final moodText = JournalLetterheadUtils.resolveMoodLabel(leaf.mood);
+    final weatherText = JournalLetterheadUtils.resolveWeatherLabel(leaf.weather);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

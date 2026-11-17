@@ -71,6 +71,25 @@ abstract final class JournalLetterheadUtils {
         orElse: () => weatherOptions.first,
       );
 
+  /// Plain Chinese label for [moodValue], or `null` when unset or unknown.
+  static String? resolveMoodLabel(int? moodValue) {
+    if (moodValue == null) return null;
+    for (final option in moodOptions) {
+      if (option.value == moodValue) return option.label;
+    }
+    return null;
+  }
+
+  /// Plain Chinese label for [weatherValue], falling back to the raw value
+  /// when non-empty and unknown, or `null` when unset or empty.
+  static String? resolveWeatherLabel(String? weatherValue) {
+    if (weatherValue == null || weatherValue.isEmpty) return null;
+    for (final option in weatherOptions) {
+      if (option.value == weatherValue) return option.label;
+    }
+    return weatherValue;
+  }
+
   /// Deterministic approximation of 24 Chinese solar terms (节气)
   static String calculateSolarTerm(DateTime date) {
     final month = date.month;

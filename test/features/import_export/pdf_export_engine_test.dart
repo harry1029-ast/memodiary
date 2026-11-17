@@ -10,6 +10,7 @@ import 'package:memodiary/features/import_export/models/pdf_layout_mode.dart';
 import 'package:memodiary/features/import_export/services/pdf_entry_serializer.dart';
 import 'package:memodiary/features/import_export/services/pdf_export_engine.dart';
 import 'package:memodiary/features/import_export/services/pdf_font_resolver.dart';
+import 'package:memodiary/features/import_export/services/pdf_polaroid_overlay_builder.dart';
 import 'package:memodiary/features/import_export/services/pdf_vertical_scroll_builder.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:pdf/pdf.dart';
@@ -473,6 +474,86 @@ void main() {
       }
       final bytes = await saveDoc.save();
       expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
+
+    test('PdfPolaroidOverlayBuilder uses plain modern Chinese labels without retired glossary terms', () {
+      final resolver = PdfFontResolver.cjk();
+      final photoAttachment = MediaAttachment(
+        id: 'att_img',
+        entryId: 'entry_1',
+        mediaType: 'image',
+        relativePath: 'media/a.webp',
+        createdAt: DateTime(2026, 11, 6),
+      );
+      final videoAttachment = MediaAttachment(
+        id: 'att_vid',
+        entryId: 'entry_1',
+        mediaType: 'video',
+        relativePath: 'media/v.mp4',
+        createdAt: DateTime(2026, 11, 6),
+      );
+
+      final photoCard = PdfPolaroidOverlayBuilder.buildPolaroidMiniCard(
+        attachment: photoAttachment,
+        image: null,
+        resolver: resolver,
+      );
+      final videoCard = PdfPolaroidOverlayBuilder.buildPolaroidMiniCard(
+        attachment: videoAttachment,
+        image: null,
+        resolver: resolver,
+      );
+
+      final photoTexts = _collectPdfTexts(photoCard)
+          .map((textWidget) => textWidget.text.toPlainText())
+          .toList();
+      final videoTexts = _collectPdfTexts(videoCard)
+          .map((textWidget) => textWidget.text.toPlainText())
+          .toList();
+
+      expect(photoTexts, contains('配图'));
+      expect(photoTexts, contains('[图片]'));
+      expect(videoTexts, contains('[短视频]'));
+      for (final retired in ['随文影札', '动态影札', '随文拓影', '拾光留影']) {
+        expect(photoTexts.join(' '), isNot(contains(retired)));
+        expect(videoTexts.join(' '), isNot(contains(retired)));
+      }
+    });
+
+    test('PdfExportEngine entry header metadata uses plain Chinese date, week review, mood and weather labels', () {
+      final resolver = PdfFontResolver.cjk();
+      final entry = Entry(
+        id: 'entry_meta_header',
+        notebookId: 'default',
+        templateId: 'template_minimalist_white',
+        title: '周日小结',
+        contentDelta: '[]',
+        plainText: '内容',
+        entryDate: DateTime(2026, 11, 8, 21, 5),
+        mood: 5,
+        weather: 'rainy',
+        isWeeklyReview: true,
+        weekNumber: 45,
+        unlockAt: null,
+        isLocked: false,
+        legacyMountsPending: false,
+        createdAt: DateTime(2026, 11, 8),
+        updatedAt: DateTime(2026, 11, 8),
+        isDeleted: false,
+      );
+
+      final headerWidget = PdfExportEngine.buildEntryHeader(entry, resolver);
+      final texts = _collectPdfTexts(headerWidget)
+          .map((textWidget) => textWidget.text.toPlainText())
+          .toList();
+
+      expect(texts, contains('2026年11月8日 · 21:05'));
+      expect(texts.join(' '), contains('第 45 周复盘'));
+      expect(texts.join(' '), contains('心情: 5/5'));
+      expect(texts.join(' '), contains('天气: 下雨'));
+      expect(texts.join(' '), isNot(contains('Mood:')));
+      expect(texts.join(' '), isNot(contains('Weather:')));
+      expect(texts.join(' '), isNot(contains('Week 45 Review')));
     });
   });
 }

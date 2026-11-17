@@ -17,37 +17,6 @@ class ColorSwatchOption {
   });
 }
 
-String _displayFontOptionLabel(FontOption option) {
-  switch (option.id) {
-    case 'system':
-      return '系统默认（原生）';
-    case 'serif':
-      return '系统衬线';
-    case 'sans-serif':
-      return '系统无衬线';
-    case 'monospace':
-      return '等宽字体';
-    case 'noto_serif':
-      return 'Noto Serif（衬线）';
-    case 'inter':
-      return 'Inter（无衬线）';
-    case 'lora':
-      return 'Lora（衬线）';
-    case 'merriweather':
-      return 'Merriweather（衬线）';
-    case 'playfair':
-      return 'Playfair Display（标题）';
-    case 'source_code':
-      return 'Source Code Pro（等宽）';
-    case 'caveat':
-      return 'Caveat（手写体）';
-    case 'ma_shan_zheng':
-      return '马善政毛笔楷书';
-    default:
-      return option.name;
-  }
-}
-
 /// Paper color swatches, hex input, spacing/margin sliders, and font selector.
 class CustomTemplateColorTypographySection extends StatelessWidget {
   final List<ColorSwatchOption> presetSwatches;
@@ -288,7 +257,7 @@ class CustomTemplateColorTypographySection extends StatelessWidget {
               return DropdownMenuItem(
                 value: opt.fontFamily ?? opt.id,
                 child: Text(
-                  _displayFontOptionLabel(opt),
+                  opt.displayName,
                   style: TextStyle(fontFamily: opt.fontFamily),
                 ),
               );

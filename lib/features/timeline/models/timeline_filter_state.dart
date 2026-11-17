@@ -169,22 +169,10 @@ class TimelineFilterState {
   String charmSummaryLabel() {
     if (!hasActiveCharmFilters) return '筛选';
     final parts = <String>[];
-    if (mood != null) {
-      for (final option in JournalLetterheadUtils.moodOptions) {
-        if (option.value == mood) {
-          parts.add(option.label);
-          break;
-        }
-      }
-    }
-    if (weather != null && weather!.isNotEmpty) {
-      for (final option in JournalLetterheadUtils.weatherOptions) {
-        if (option.value == weather) {
-          parts.add(option.label);
-          break;
-        }
-      }
-    }
+    final moodLabel = JournalLetterheadUtils.resolveMoodLabel(mood);
+    if (moodLabel != null) parts.add(moodLabel);
+    final weatherLabel = JournalLetterheadUtils.resolveWeatherLabel(weather);
+    if (weatherLabel != null) parts.add(weatherLabel);
     if (hasMediaOnly) parts.add('含照片');
     if (weeklyReviewOnly) parts.add('每周复盘');
     return parts.isEmpty ? '筛选' : parts.join(' · ');

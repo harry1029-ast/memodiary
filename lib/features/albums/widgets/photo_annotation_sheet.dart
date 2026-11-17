@@ -129,9 +129,11 @@ class _PhotoAnnotationSheetState extends State<PhotoAnnotationSheet> {
     );
     if (mounted) {
       setState(() => _isCurrentCover = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已设为相册封面')),
-      );
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('已设为相册封面')),
+        );
     }
   }
 

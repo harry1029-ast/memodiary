@@ -137,6 +137,8 @@ void main() {
 
       // Verify candidate entries rendered
       expect(find.text('Tokyo Arrival'), findsOneWidget);
+      expect(find.text('2026-10-14 · 周三'), findsOneWidget);
+      expect(find.text('2026-10-14 · Wed'), findsNothing);
       expect(find.text('Notes without Date'), findsOneWidget);
       expect(find.text('未识别日期'), findsOneWidget);
       expect(find.text('1 篇需要确认日期'), findsOneWidget);

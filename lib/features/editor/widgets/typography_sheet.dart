@@ -154,6 +154,7 @@ class _TypographySheetState extends State<TypographySheet> {
                   final isSelected = option.id == _current.fontId;
 
                   return GestureDetector(
+                    key: Key('typography_font_${option.id}'),
                     onTap: () {
                       HapticFeedback.lightImpact();
                       _update(_current.copyWith(
@@ -224,7 +225,7 @@ class _TypographySheetState extends State<TypographySheet> {
                             ],
                           ),
                           Text(
-                            option.name,
+                            option.displayName,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(

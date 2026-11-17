@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../editor/widgets/journal_letterhead_models.dart';
 import '../models/search_filters.dart';
 
 /// Categories of constraints that can be extracted from a natural language query.
@@ -113,22 +114,6 @@ class NaturalLanguageSearchParser {
     'dec': 12,
   };
 
-  static const Map<int, String> _moodLabels = {
-    1: '低落',
-    2: '疲惫',
-    3: '平静',
-    4: '开心',
-    5: '喜悦',
-  };
-
-  static const Map<String, String> _weatherLabels = {
-    'sunny': '晴天',
-    'cloudy': '多云',
-    'rainy': '下雨',
-    'windy': '大风',
-    'snowy': '下雪',
-  };
-
   /// Parses [query] relative to [now] (defaults to `DateTime.now()`).
   /// Any [ConstraintKind] present in [ignoredKinds] will not be extracted,
   /// allowing users to dismiss "Understood as" chips and fall back to literal text search.
@@ -218,7 +203,7 @@ class NaturalLanguageSearchParser {
       if (moodMatch != null) {
         mood = moodMatch.moodValue;
         working = moodMatch.remaining;
-        final moodLabel = _moodLabels[mood] ?? '$mood';
+        final moodLabel = JournalLetterheadUtils.resolveMoodLabel(mood) ?? '$mood';
         detected.add(
           DetectedConstraint(
             kind: ConstraintKind.mood,
@@ -235,7 +220,7 @@ class NaturalLanguageSearchParser {
       if (weatherMatch != null) {
         weather = weatherMatch.weatherValue;
         working = weatherMatch.remaining;
-        final weatherLabel = _weatherLabels[weather] ?? weather;
+        final weatherLabel = JournalLetterheadUtils.resolveWeatherLabel(weather) ?? weather;
         detected.add(
           DetectedConstraint(
             kind: ConstraintKind.weather,

@@ -213,6 +213,70 @@ void main() {
       expect(bytes, isNotEmpty);
     });
 
+    test('renders plain Chinese fallback title and page footer without English labels', () async {
+      final cjkResolver = PdfFontResolver.cjk();
+      final doc = pw.Document();
+      final untitledEntry = Entry(
+        id: 'entry-cn-header',
+        notebookId: 'nb-1',
+        templateId: 'template_minimalist_white',
+        title: null,
+        contentDelta: '[]',
+        plainText: '',
+        entryDate: DateTime(2026, 10, 18),
+        mood: 3,
+        weather: 'cloudy',
+        isWeeklyReview: false,
+        weekNumber: null,
+        unlockAt: null,
+        isLocked: false,
+        legacyMountsPending: false,
+        createdAt: DateTime(2026, 10, 18),
+        updatedAt: DateTime(2026, 10, 18),
+        isDeleted: false,
+      );
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.color,
+        backgroundColor: material.Colors.white,
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+      );
+
+      pw.Widget? capturedHeader;
+      pw.Widget? capturedFooter;
+      doc.addPage(
+        pw.Page(
+          pageFormat: PdfPageFormat.a4,
+          build: (context) {
+            capturedHeader = PdfTemplateRenderer.buildHeader(
+              context,
+              untitledEntry,
+              style,
+              cjkResolver,
+            );
+            capturedFooter = PdfTemplateRenderer.buildFooter(
+              context,
+              untitledEntry,
+              style,
+              cjkResolver,
+            );
+            return pw.Column(children: [capturedHeader!, capturedFooter!]);
+          },
+        ),
+      );
+
+      final bytes = await doc.save();
+      expect(bytes, isNotEmpty);
+
+      final headerTexts = _extractTexts(capturedHeader!);
+      final footerTexts = _extractTexts(capturedFooter!);
+      expect(headerTexts, contains('拾光日记'));
+      expect(headerTexts, isNot(contains('MemoDiary Entry')));
+      expect(footerTexts, contains('拾光日记 · 本地离线私密存储'));
+      expect(footerTexts, contains('第 1 / 1 页'));
+      expect(footerTexts, isNot(contains('Page 1 of 1')));
+    });
+
     test('pdfRuleColor returns distinct non-null colors for all RuleInkTint values', () {
       for (final tint in RuleInkTint.values) {
         final color = PdfTemplateRenderer.pdfRuleColor(tint);
@@ -363,5 +427,31 @@ void main() {
       expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
     });
   });
+}
+
+List<String> _extractTexts(pw.Widget widget) {
+  final results = <String>[];
+  void visit(pw.Widget node) {
+    if (node is pw.Text) {
+      results.add(node.text.toPlainText());
+      return;
+    }
+    if (node is pw.Container && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.SingleChildWidget && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.Flex) {
+      for (final child in node.children) {
+        visit(child);
+      }
+    } else if (node is pw.Stack) {
+      for (final child in node.children) {
+        visit(child);
+      }
+    }
+  }
+
+  visit(widget);
+  return results;
 }
 

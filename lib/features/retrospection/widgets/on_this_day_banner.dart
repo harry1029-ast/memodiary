@@ -68,7 +68,7 @@ class OnThisDayBanner extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.casino_outlined, size: 15),
                   label: const Text(
-                    '漫步偶遇',
+                    '随机回顾',
                     style: TextStyle(
                       fontFamily: InkDiaryTheme.fontNotoSerif,
                       fontSize: 11.5,
@@ -87,7 +87,7 @@ class OnThisDayBanner extends StatelessWidget {
                   final yearsAgo = currentYear - entry.entryDate.year;
                   final title = (entry.title?.trim().isNotEmpty ?? false)
                       ? entry.title!.trim()
-                      : DateFormat('h:mm a').format(entry.entryDate);
+                      : DateFormat('HH:mm').format(entry.entryDate);
 
                   return Padding(
                     padding: const EdgeInsets.only(right: 8.0),

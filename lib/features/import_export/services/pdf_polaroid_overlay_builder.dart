@@ -65,7 +65,7 @@ class PdfPolaroidOverlayBuilder {
   }) {
     final title = attachment.caption?.trim().isNotEmpty == true
         ? attachment.caption!.trim().split('\n').first
-        : '随文影札';
+        : '配图';
 
     return pw.Container(
       width: cardWidth,
@@ -94,7 +94,9 @@ class PdfPolaroidOverlayBuilder {
                         ? pw.Image(image, fit: pw.BoxFit.cover)
                         : pw.Center(
                             child: pw.Text(
-                              attachment.mediaType == 'video' ? '[动态影札]' : '[随文拓影]',
+                              resolver.sanitizeText(
+                                attachment.mediaType == 'video' ? '[短视频]' : '[图片]',
+                              ),
                               style: pw.TextStyle(font: resolver.italicFont, fontSize: 8.0),
                             ),
                           ),
@@ -113,7 +115,7 @@ class PdfPolaroidOverlayBuilder {
                   ),
                 ),
                 pw.Text(
-                  '随文影札 · 拾光留影',
+                  resolver.sanitizeText('配图'),
                   textAlign: pw.TextAlign.center,
                   style: pw.TextStyle(
                     font: resolver.italicFont,

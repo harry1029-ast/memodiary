@@ -31,7 +31,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Secret Diary Content'), findsOneWidget);
-      expect(find.text('MemoDiary Locked'), findsNothing);
+      expect(find.text('拾光日记已锁定'), findsNothing);
     });
 
     testWidgets('displays lock screen when lock is enabled, unlocks with correct PIN', (tester) async {
@@ -48,7 +48,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify lock screen is shown and content is hidden
-      expect(find.text('MemoDiary Locked'), findsOneWidget);
+      expect(find.text('拾光日记已锁定'), findsOneWidget);
+      expect(find.text('请输入密码解锁私密日记'), findsOneWidget);
       expect(find.text('Secret Diary Content'), findsNothing);
 
       // Enter wrong PIN: 0, 0, 0, 0
@@ -62,7 +63,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Error message should appear
-      expect(find.text('Incorrect PIN. Please try again.'), findsOneWidget);
+      expect(find.text('密码错误，请重试'), findsOneWidget);
       expect(find.text('Secret Diary Content'), findsNothing);
 
       // Enter correct PIN: 1, 2, 3, 4
@@ -77,7 +78,7 @@ void main() {
 
       // Verify gate unlocks and child content is revealed
       expect(find.text('Secret Diary Content'), findsOneWidget);
-      expect(find.text('MemoDiary Locked'), findsNothing);
+      expect(find.text('拾光日记已锁定'), findsNothing);
     });
 
     testWidgets('re-locks on app resume lifecycle transition', (tester) async {
@@ -110,7 +111,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Should be re-locked
-      expect(find.text('MemoDiary Locked'), findsOneWidget);
+      expect(find.text('拾光日记已锁定'), findsOneWidget);
       expect(find.text('Secret Diary Content'), findsNothing);
     });
   });

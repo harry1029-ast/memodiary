@@ -169,18 +169,69 @@ void main() {
 
       expect(find.textContaining('往年今日 · 1 篇'), findsOneWidget);
       expect(find.textContaining('On This Day'), findsNothing);
+      expect(find.text('随机回顾'), findsOneWidget);
+      expect(find.text('漫步偶遇'), findsNothing);
       expect(find.text('One Year Ago Today'), findsOneWidget);
 
       // Open Serendipity Roulette dialog
       await tester.tap(find.byKey(const Key('open_serendipity_roulette_btn')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Serendipity Memory Roulette'), findsOneWidget);
+      expect(find.text('随机回顾'), findsWidgets);
+      expect(find.text('Serendipity Memory Roulette'), findsNothing);
       expect(find.text('One Year Ago Today'), findsWidgets);
+      expect(find.text('再抽一篇'), findsOneWidget);
+      expect(find.text('查看日记'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('serendipity_open_entry_btn')));
       await tester.pumpAndSettle();
       expect(tappedEntry?.id, equals('hist_1'));
+    });
+
+    testWidgets('OnThisDayBanner uses 24-hour HH:mm fallback and SerendipityRouletteCard uses plain Chinese empty/untitled copy',
+        (tester) async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+
+      final untitledDate = DateTime(2025, 10, 18, 21, 5);
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'untitled_otd',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          contentDelta: '[{"insert":"夜色安静。\\n"}]',
+          plainText: '夜色安静。',
+          entryDate: untitledDate,
+        ),
+      );
+      final untitledEntry = (await db.entriesDao.getEntryById('untitled_otd'))!;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                OnThisDayBanner(
+                  entries: [untitledEntry],
+                  onEntryTap: (_) {},
+                ),
+                Expanded(
+                  child: SerendipityRouletteCard(
+                    database: db,
+                    minDaysAgo: 99999,
+                    onOpenEntry: (_) {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('21:05'), findsOneWidget);
+      expect(find.text('9:05 PM'), findsNothing);
+      expect(find.text('暂无超过 99999 天的已解锁日记，继续记录后会出现在这里。'), findsOneWidget);
     });
   });
 }
