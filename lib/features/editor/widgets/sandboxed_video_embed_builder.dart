@@ -85,7 +85,7 @@ class SandboxedVideoEmbedBuilder extends EmbedBuilder {
                   Icon(Icons.broken_image_outlined, size: 36, color: Colors.grey.shade400),
                   const SizedBox(height: 6),
                   Text(
-                    'Video not found in sandbox',
+                    '找不到视频',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],

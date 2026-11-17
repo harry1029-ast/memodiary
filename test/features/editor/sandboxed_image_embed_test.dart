@@ -96,7 +96,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Image not found in sandbox'), findsOneWidget);
+      expect(find.text('找不到图片'), findsOneWidget);
       expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
 
       controller.dispose();

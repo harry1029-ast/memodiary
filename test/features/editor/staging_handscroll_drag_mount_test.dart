@@ -113,7 +113,7 @@ void main() {
       expect(tester.getTopLeft(tuckedPrint('seeded_0')).dx, isNot(restingLeft));
 
       await tester.pumpAndSettle();
-      expect(snackBarText('本页已满三影'), findsOneWidget);
+      expect(snackBarText('本页已满 3 项'), findsOneWidget);
       expect(handscrollItem('seeded_3'), findsOneWidget);
       expect(tuckedPrint('seeded_3'), findsNothing);
     });

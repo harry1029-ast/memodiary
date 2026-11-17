@@ -72,7 +72,7 @@ void main() {
       await tester.tap(dictationButton);
       await pumpSteps(tester);
 
-      await tester.tap(find.byTooltip('Cancel Dictation'));
+      await tester.tap(find.byTooltip('取消听写'));
       await pumpSteps(tester);
       expect(find.byType(DictationBar), findsNothing);
       expect(find.byType(WritingDock), findsOneWidget);

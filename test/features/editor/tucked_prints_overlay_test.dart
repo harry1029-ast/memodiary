@@ -187,10 +187,12 @@ void main() {
           expect(size.height, greaterThanOrEqualTo(44.0));
         }
       }
-      expect(find.bySemanticsLabel(RegExp(r'^揭回画卷：本页第 1 影 · 影札$')), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp(r'^揭回画卷：本页第 2 影 · 影札$')), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp(r'^本页第 1 影 · 影札，点按查看$')), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp(r'^本页第 2 影 · 影札，点按查看$')), findsOneWidget);
+      expect(find.text('移回待选'), findsNWidgets(2));
+      expect(find.bySemanticsLabel(RegExp(r'^移回待选：本页第 1 项 · 照片$')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'^移回待选：本页第 2 项 · 照片$')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'^本页第 1 项 · 照片，点击查看$')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'^本页第 2 项 · 照片，点击查看$')), findsOneWidget);
+      expect(find.ancestor(of: tuckedPrintsOverlay, matching: find.bySemanticsLabel('收起本页照片')), findsOneWidget);
       await expectAccessibleTapTargets(tester, within: tuckedPrintsOverlay);
       semantics.dispose();
     });

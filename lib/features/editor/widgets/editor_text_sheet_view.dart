@@ -73,7 +73,7 @@ class EditorTextSheetView extends StatelessWidget {
               _buildTappableBodyArea(
                 minHeight: geometry.openingBodyHeight,
                 child: _buildTextEditor(
-                  placeholder: '提笔落墨，且将心事付素笺... Write your heart out today...',
+                  placeholder: '开始写今天的日记...',
                 ),
               ),
             ],
@@ -113,7 +113,7 @@ class EditorTextSheetView extends StatelessWidget {
           child: _buildTappableBodyArea(
             minHeight: geometry.continuationBodyHeight,
             child: _buildTextEditor(
-              placeholder: '续写素笺... Continue writing...',
+              placeholder: '继续写...',
             ),
           ),
         ),

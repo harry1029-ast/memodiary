@@ -10,7 +10,7 @@ class ClosedBrocadeScroll extends StatefulWidget {
 
   const ClosedBrocadeScroll({super.key, this.onTap});
 
-  static const String kSemanticLabel = '待贴画卷已空 · 点按收集影札';
+  static const String kSemanticLabel = '待选照片为空，点击添加';
 
   @override
   State<ClosedBrocadeScroll> createState() => _ClosedBrocadeScrollState();
@@ -43,7 +43,7 @@ class _ClosedBrocadeScrollState extends State<ClosedBrocadeScroll> {
 /// cord, jade pin and the spiral of rolled silk at its end.
 class ClosedBrocadeScrollPainter extends CustomPainter {
   static const double kTiltRadians = -66.0 * math.pi / 180.0;
-  static const String kSlipTitle = '拾光待贴画卷';
+  static const String kSlipTitle = '待选照片';
   static const double kSlipFontSize = 12.0;
 
   ui.Picture? _picture;

@@ -76,7 +76,7 @@ void main() {
       );
 
       expect(
-        find.bySemanticsLabel('落款朱砂印: 诗书自娱'),
+        find.bySemanticsLabel('签名印章：诗书自娱'),
         findsOneWidget,
       );
       handle.dispose();

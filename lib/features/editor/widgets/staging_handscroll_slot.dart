@@ -95,7 +95,7 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot>
     final isPaperDark = widget.isPaperDark;
     final cinnabar = DeskMediaPalette(isPaperDark: isPaperDark).cinnabar;
     final isVideo = item.mediaType == EphemeraMediaType.video;
-    final kind = isVideo ? '短影' : '影札';
+    final kind = isVideo ? '视频' : '照片';
 
     final isSettled = widget.revealStatus == BrushRevealStatus.settled;
     return Padding(
@@ -105,7 +105,7 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot>
           Expanded(
             child: Semantics(
               button: true,
-              label: '待贴第 $ordinal 影 · $kind，点按查看',
+              label: '待选第 $ordinal 项 · $kind，点击查看',
               onTap: widget.onTap == null ? null : () => widget.onTap!(item),
               excludeSemantics: true,
               // Long-press lifts the print to drop it on the active sheet (same
@@ -173,7 +173,7 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot>
                     icon: Icons.push_pin_outlined,
                     isPaperDark: isPaperDark,
                     semanticLabel:
-                        '贴至本页：待贴第 $ordinal 影 → 第 ${widget.activeSheetNumber} 页',
+                        '添加到本页：第 $ordinal 项 → 第 ${widget.activeSheetNumber} 页',
                     onPressed: () => widget.onMount?.call(item),
                   ),
                   DeskMediaControl(
@@ -181,7 +181,7 @@ class _StagingHandscrollSlotState extends State<StagingHandscrollSlot>
                     icon: Icons.close,
                     tone: DeskMediaControlTone.cinnabar,
                     isPaperDark: isPaperDark,
-                    semanticLabel: '舍弃待贴第 $ordinal 影 · $kind',
+                    semanticLabel: '移除：第 $ordinal 项 · $kind',
                     onPressed: _erase,
                   ),
                 ],

@@ -85,14 +85,24 @@ void main() {
 
       // Drawer is open
       expect(find.byKey(const Key('scholar_chest_drawer')), findsOneWidget);
-      expect(find.text('文房百宝匣 · 锦盒书案'), findsOneWidget);
+      expect(find.text('写作工具箱'), findsOneWidget);
 
-      // Verify all 5 artifacts exist
+      // Verify all 5 compartments and matching accessibility semantics exist
       expect(find.byKey(const Key('chest_artifact_twin_brushes')), findsOneWidget);
       expect(find.byKey(const Key('chest_artifact_stationery_fan')), findsOneWidget);
       expect(find.byKey(const Key('chest_artifact_brush_mountain')), findsOneWidget);
       expect(find.byKey(const Key('chest_artifact_guqin_zither')), findsOneWidget);
       expect(find.byKey(const Key('chest_artifact_fish_lock')), findsOneWidget);
+
+      expect(find.text('信纸'), findsOneWidget);
+      expect(find.text('排版'), findsOneWidget);
+      expect(find.text('背景音'), findsOneWidget);
+      expect(find.text('定时锁'), findsOneWidget);
+      expect(find.bySemanticsLabel('信纸'), findsOneWidget);
+      expect(find.bySemanticsLabel('排版'), findsOneWidget);
+      expect(find.bySemanticsLabel('背景音'), findsOneWidget);
+      expect(find.bySemanticsLabel('定时锁'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'^笔刷动画')), findsOneWidget);
 
       // Tap dismissal handle
       await tester.tap(find.byKey(const Key('chest_dismiss_handle')));
@@ -125,6 +135,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // Plain typography labels & colors exist
+      expect(find.text('字体'), findsOneWidget);
+      expect(find.textContaining('字号'), findsOneWidget);
+      expect(find.textContaining('行距'), findsOneWidget);
+      expect(find.text('文字颜色'), findsOneWidget);
+      expect(find.byTooltip('居中对齐'), findsOneWidget);
+      expect(find.text('黑色'), findsOneWidget);
+      expect(find.text('朱红'), findsOneWidget);
+      expect(find.text('墨绿'), findsOneWidget);
+
       // Sliders exist
       expect(find.byKey(const Key('chest_font_size_slider')), findsOneWidget);
       expect(find.byKey(const Key('chest_line_spacing_slider')), findsOneWidget);
@@ -137,7 +157,7 @@ void main() {
       // Change font family
       await tester.tap(find.byKey(const Key('chest_font_family_dropdown')));
       await tester.pumpAndSettle();
-      await tester.tap(find.textContaining('Noto Serif').last, warnIfMissed: false);
+      await tester.tap(find.text('思源宋体').last, warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(updatedTypography, isNotNull);
     });
@@ -164,6 +184,10 @@ void main() {
 
       expect(find.byKey(const Key('chest_soundscape_chip_rain')), findsOneWidget);
       expect(find.byKey(const Key('chest_soundscape_volume_slider')), findsOneWidget);
+      expect(find.text('雨声'), findsOneWidget);
+      expect(find.text('竹林微风'), findsOneWidget);
+      expect(find.text('书房白噪音'), findsOneWidget);
+      expect(find.text('键盘敲击'), findsOneWidget);
 
       // Select rain preset
       await tester.tap(find.byKey(const Key('chest_soundscape_chip_rain')));
@@ -174,6 +198,7 @@ void main() {
 
       // Stop button appears and can stop playback
       expect(find.byKey(const Key('chest_soundscape_stop_button')), findsOneWidget);
+      expect(find.text('关闭背景音'), findsOneWidget);
       await tester.tap(find.byKey(const Key('chest_soundscape_stop_button')));
       await tester.pumpAndSettle();
       expect(audioSanctumService.isPlaying, isFalse);
@@ -201,7 +226,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('当前未封缄 · 随笔随览'), findsOneWidget);
+      expect(find.text('定时解锁'), findsOneWidget);
+      expect(find.text('未锁定'), findsOneWidget);
+      expect(find.text('1个月后'), findsOneWidget);
+      expect(find.text('到元旦'), findsOneWidget);
+      expect(find.text('1年后'), findsOneWidget);
+      expect(find.text('自定义日期'), findsOneWidget);
 
       // Tap +30 days preset
       await tester.tap(find.byKey(const Key('chest_lock_preset_1month')));
@@ -209,6 +239,7 @@ void main() {
 
       expect(lockedAt, isNotNull);
       expect(lockedAt!.isAfter(DateTime.now().add(const Duration(days: 28))), isTrue);
+      expect(find.text('解除锁定'), findsOneWidget);
     });
   });
 
@@ -259,7 +290,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('top_bar_scholar_chest_button')));
       await tester.pumpAndSettle();
-      expect(find.text('双管 · 纯墨'), findsOneWidget);
+      expect(find.text('笔刷动画 · 仅墨迹'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('chest_artifact_twin_brushes')));
       await tester.pump(const Duration(milliseconds: 400));
@@ -293,14 +324,14 @@ void main() {
 
       final pill = find.byKey(const Key('top_bar_soundscape_pill'));
       expect(pill, findsOneWidget);
-      expect(find.text('清音'), findsOneWidget);
+      expect(find.text('背景音'), findsOneWidget);
 
       // Tapping pill opens chest directly into Guqin Zither
       await tester.tap(pill);
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('scholar_chest_drawer')), findsOneWidget);
-      expect(find.text('书斋清音 · 琴韵自然'), findsOneWidget);
+      expect(find.text('关闭背景音'), findsOneWidget);
     });
 
     testWidgets('Fanned Stationery exposes card carousel, selects template, and collapses on toggle', (tester) async {
@@ -326,8 +357,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Card carousel header exists
-      expect(find.text('文房雅笺 · 素笺谱系'), findsOneWidget);
-      expect(find.text('“笺换风骨，意蕴随迁”'), findsOneWidget);
+      expect(find.text('信纸模板'), findsOneWidget);
+      expect(find.text('新建信纸'), findsOneWidget);
+      expect(find.text('“笺换风骨，意蕴随迁”'), findsNothing);
       expect(find.byKey(const Key('chest_create_template_button')), findsOneWidget);
       expect(find.byKey(const Key('chest_template_chip_template_lined_paper')), findsOneWidget);
 

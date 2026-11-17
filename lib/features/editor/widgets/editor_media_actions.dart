@@ -27,7 +27,7 @@ class EditorMediaActions {
       );
   }
 
-  /// Refuses a collect with "画卷已满 15 影" when the Staging Handscroll is full.
+  /// Refuses a collect with "待选区已满 15 项" when the Staging Handscroll is full.
   static bool _refuseWhenHandscrollFull(
     BuildContext context,
     EditorPaginationCoordinator coordinator,
@@ -35,7 +35,7 @@ class EditorMediaActions {
     if (coordinator.handscrollRoom > 0) return false;
     _showSnackBar(
       context,
-      '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影',
+      '待选区已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 项',
     );
     return true;
   }
@@ -97,9 +97,9 @@ class EditorMediaActions {
     final source = await _pickMediaSource(
       context,
       cameraIcon: Icons.camera_alt_outlined,
-      cameraLabel: '即时拓影 · Take Photo',
+      cameraLabel: '拍照',
       galleryIcon: Icons.photo_library_outlined,
-      galleryLabel: '相册选撷 · Photo Gallery',
+      galleryLabel: '从相册选择照片',
     );
     if (source == null || !context.mounted) return;
 
@@ -118,17 +118,17 @@ class EditorMediaActions {
       if (outcome.wasFull) {
         _showSnackBar(
           context,
-          '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影',
+          '待选区已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 项',
         );
       } else if (outcome.hasRejected) {
         _showSnackBar(
           context,
-          '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影 · ${outcome.rejectedByCapacity} 影未入卷',
+          '待选区已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 项，${outcome.rejectedByCapacity} 项未添加',
         );
       }
     } catch (error) {
       if (context.mounted) {
-        _showSnackBar(context, 'Failed to insert photo: $error');
+        _showSnackBar(context, '插入照片失败：$error');
       }
     }
   }
@@ -145,9 +145,9 @@ class EditorMediaActions {
     final source = await _pickMediaSource(
       context,
       cameraIcon: Icons.videocam_outlined,
-      cameraLabel: '录制短影 · Record Video (≤60s)',
+      cameraLabel: '录制视频（≤60秒）',
       galleryIcon: Icons.video_library_outlined,
-      galleryLabel: '相册选取短影 · Video Gallery (≤60s)',
+      galleryLabel: '从相册选择视频（≤60秒）',
     );
     if (source == null || !context.mounted) return;
 
@@ -162,7 +162,7 @@ class EditorMediaActions {
       if (context.mounted && outcome.wasFull) {
         _showSnackBar(
           context,
-          '画卷已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 影',
+          '待选区已满 ${EditorPaginationCoordinator.kHandscrollCapacity} 项',
         );
       }
     } on VideoDurationExceededException catch (error) {
@@ -175,7 +175,7 @@ class EditorMediaActions {
       }
     } catch (error) {
       if (context.mounted) {
-        _showSnackBar(context, 'Failed to insert video: $error');
+        _showSnackBar(context, '插入视频失败：$error');
       }
     }
   }

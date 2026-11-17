@@ -49,9 +49,9 @@ class StagedExitReminderDialog extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     return AlertDialog(
       key: const Key('staged_exit_reminder'),
-      title: const Text('画卷中尚有待贴之物'),
+      title: const Text('还有未添加到页面的照片'),
       content: Text(
-        '待贴画卷里还有 $stagedCount 件影札未装裱。离开后可留在画卷，下次继续；亦可舍弃。',
+        '待选照片里还有 $stagedCount 项未添加到正文页面。离开后可保留在待选区下次继续，或直接移除。',
         style: textTheme.bodyMedium,
       ),
       actionsOverflowDirection: VerticalDirection.down,
@@ -60,19 +60,19 @@ class StagedExitReminderDialog extends StatelessWidget {
           key: const Key('staged_exit_keep_button'),
           style: FilledButton.styleFrom(minimumSize: minTapSize),
           onPressed: () => Navigator.pop(context, StagedExitChoice.keep),
-          child: const Text('留在画卷'),
+          child: const Text('保留并离开'),
         ),
         TextButton(
           key: const Key('staged_exit_discard_button'),
           style: TextButton.styleFrom(minimumSize: minTapSize),
           onPressed: () => Navigator.pop(context, StagedExitChoice.discard),
-          child: const Text('舍弃待贴'),
+          child: const Text('移除并离开'),
         ),
         TextButton(
           key: const Key('staged_exit_continue_button'),
           style: TextButton.styleFrom(minimumSize: minTapSize),
           onPressed: () => Navigator.pop(context, StagedExitChoice.continueMounting),
-          child: const Text('继续装裱'),
+          child: const Text('继续编辑'),
         ),
       ],
     );

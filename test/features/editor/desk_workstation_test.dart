@@ -69,7 +69,7 @@ void main() {
   final pill = find.byKey(const Key('workstation_restore_pill'));
 
   Future<void> pickFromGallery(WidgetTester tester) async {
-    await tester.tap(find.text('相册选撷 · Photo Gallery'));
+    await tester.tap(find.text('从相册选择照片'));
     await tester.pumpAndSettle();
   }
 
@@ -80,7 +80,7 @@ void main() {
       expect(workstation, findsOneWidget);
       expect(closedScroll, findsOneWidget);
       expect(handscroll, findsNothing);
-      expect(find.bySemanticsLabel(RegExp('待贴画卷已空')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('待选照片为空')), findsOneWidget);
 
       final semantics = tester.ensureSemantics();
       await expectAccessibleTapTargets(tester, within: workstation);
@@ -120,7 +120,7 @@ void main() {
 
       expect(workstation, findsNothing);
       expect(pullTab, findsNothing);
-      expect(find.bySemanticsLabel('展开画案'), findsOneWidget);
+      expect(find.bySemanticsLabel('展开待选区'), findsOneWidget);
 
       await tester.tap(pill);
       await tester.pumpAndSettle();
@@ -128,7 +128,7 @@ void main() {
       expect(closedScroll, findsOneWidget);
       expect(pill, findsNothing);
       expect(tester.getSize(workstation).height, greaterThanOrEqualTo(110.0));
-      expect(find.bySemanticsLabel('收起画案'), findsOneWidget);
+      expect(find.bySemanticsLabel('收起待选区'), findsOneWidget);
     });
 
     testWidgets('on a tall viewport the pull tab puts the workstation away and the pill restores it', (tester) async {
@@ -152,7 +152,7 @@ void main() {
       expect(pullTab, findsNothing);
       expect(pill, findsOneWidget);
       expect(tester.getSize(pill).height, greaterThanOrEqualTo(44.0));
-      expect(find.text('锦袱合卷'), findsOneWidget);
+      expect(find.descendant(of: pill, matching: find.text('待选照片')), findsOneWidget);
       // The sheet centres on the desk.
       expect(tester.getRect(find.byType(TemplateCanvasContainer)).top, greaterThan(dockedSheetTop));
 
@@ -196,7 +196,7 @@ void main() {
 
       await tester.tap(pullTab);
       await tester.pumpAndSettle();
-      expect(find.text('待贴画卷已收起 · 待贴 1 影'), findsOneWidget);
+      expect(find.text('待选照片已收起 · 1 项'), findsOneWidget);
     });
 
     testWidgets('neither control summons or drops the keyboard', (tester) async {

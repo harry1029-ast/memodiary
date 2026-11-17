@@ -183,7 +183,7 @@ class PageCornerTargets extends StatelessWidget {
             top: top,
             child: _PageCornerTarget(
               key: const Key('editor_page_corner_prev'),
-              label: '上卷 · 第 ${sheetNumber - 1} 页',
+              label: '上一页：第 ${sheetNumber - 1} 页',
               onTap: onPreviousSheet,
             ),
           ),
@@ -193,7 +193,7 @@ class PageCornerTargets extends StatelessWidget {
             top: top,
             child: _PageCornerTarget(
               key: const Key('editor_page_corner_next'),
-              label: '下卷 · 第 ${sheetNumber + 1} 页',
+              label: '下一页：第 ${sheetNumber + 1} 页',
               onTap: onNextSheet,
             ),
           ),

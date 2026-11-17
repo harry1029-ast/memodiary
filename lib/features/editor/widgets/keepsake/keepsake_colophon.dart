@@ -36,10 +36,10 @@ class KeepsakeColophon extends StatelessWidget {
       colophonDetails.add('第${entry.weekNumber ?? ""}周复盘');
     }
     if (entry.mood != null) {
-      colophonDetails.add('心绪 ${entry.mood}/5');
+      colophonDetails.add('心情 ${entry.mood}/5');
     }
     if (entry.weather != null && entry.weather!.trim().isNotEmpty) {
-      colophonDetails.add('天象 ${entry.weather!.trim()}');
+      colophonDetails.add('天气 ${entry.weather!.trim()}');
     }
 
     final fullColophonText = '$dateFormatted $dayOfWeek ${colophonDetails.join(" · ")}';

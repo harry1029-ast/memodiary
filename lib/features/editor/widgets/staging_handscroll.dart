@@ -169,7 +169,7 @@ class _StagingHandscrollState extends State<StagingHandscroll> with SingleTicker
 
     final handscroll = Semantics(
       container: true,
-      label: '待贴画卷 · ${items.length} 影',
+      label: '待选照片 · ${items.length} 项',
       child: Container(
         key: const Key('staging_handscroll'),
         decoration: BoxDecoration(

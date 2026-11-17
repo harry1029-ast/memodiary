@@ -63,7 +63,7 @@ class _ArtifactTwinBrushesState extends State<ArtifactTwinBrushes>
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '双管毛笔: 挥毫落墨 · ${widget.activeMode.title}',
+      label: '笔刷动画：${widget.activeMode.title}',
       excludeSemantics: true,
       selected: widget.isSelected,
       child: GestureDetector(

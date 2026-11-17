@@ -77,7 +77,7 @@ void main() {
   Future<void> collectPhoto(WidgetTester tester) async {
     await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('相册选撷 · Photo Gallery'));
+    await tester.tap(find.text('从相册选择照片'));
     await tester.pumpAndSettle();
   }
 
@@ -234,21 +234,21 @@ void main() {
   });
 
   group('Capacity limits', () {
-    testWidgets('collecting into a full handscroll is refused with 画卷已满 15 影', (tester) async {
+    testWidgets('collecting into a full handscroll is refused with 待选区已满 15 项', (tester) async {
       await seedStagedPhotos(15);
       await openEditor(tester);
 
       await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
       await tester.pumpAndSettle();
 
-      expect(find.text('相册选撷 · Photo Gallery'), findsNothing);
-      expect(snackBarText('画卷已满 15 影'), findsOneWidget);
+      expect(find.text('从相册选择照片'), findsNothing);
+      expect(snackBarText('待选区已满 15 项'), findsOneWidget);
       expect(await attachmentIds(), hasLength(15));
 
       await tester.tap(find.byKey(const Key('writing_dock_video_btn')));
       await tester.pumpAndSettle();
-      expect(find.text('相册选取短影 · Video Gallery (≤60s)'), findsNothing);
-      expect(snackBarText('画卷已满 15 影'), findsOneWidget);
+      expect(find.text('从相册选择视频（≤60秒）'), findsNothing);
+      expect(snackBarText('待选区已满 15 项'), findsOneWidget);
       expect(await attachmentIds(), hasLength(15));
     });
 
@@ -263,13 +263,13 @@ void main() {
 
       await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('相册选撷 · Photo Gallery'));
+      await tester.tap(find.text('从相册选择照片'));
       // Bounded pumps: the collected items are still being painted in.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(await attachmentIds(), hasLength(15));
-      expect(snackBarText('2 影未入卷'), findsOneWidget);
+      expect(snackBarText('2 项未添加'), findsOneWidget);
       await tester.pumpAndSettle();
     });
 
@@ -288,7 +288,7 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(tuckedPrint('seeded_0')).dx, restingLeft);
-      expect(snackBarText('本页已满三影'), findsOneWidget);
+      expect(snackBarText('本页已满 3 项'), findsOneWidget);
       expect(handscrollItem('seeded_3'), findsOneWidget);
       expect(tuckedPrint('seeded_3'), findsNothing);
     });
@@ -303,13 +303,13 @@ void main() {
     final eraseSize = tester.getSize(find.byKey(const Key('handscroll_erase_seeded_1')));
     expect(eraseSize.width, greaterThanOrEqualTo(44));
     expect(eraseSize.height, greaterThanOrEqualTo(44));
-    expect(find.bySemanticsLabel(RegExp(r'^舍弃待贴第 1 影 · 影札$')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'^移除：第 1 项 · 照片$')), findsOneWidget);
 
     await openTuckedPrintsOverlay(tester);
     final unmountSize = tester.getSize(overlayUnmount('seeded_0'));
     expect(unmountSize.width, greaterThanOrEqualTo(44));
     expect(unmountSize.height, greaterThanOrEqualTo(44));
-    expect(find.bySemanticsLabel(RegExp(r'^揭回画卷：本页第 1 影 · 影札$')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'^移回待选：本页第 1 项 · 照片$')), findsOneWidget);
     semantics.dispose();
   });
 }

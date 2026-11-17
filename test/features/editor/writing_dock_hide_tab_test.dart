@@ -55,7 +55,7 @@ void main() {
     expect(hideRect.right, closeTo(360.0, 20.0));
     expect(hideRect.bottom, lessThanOrEqualTo(tester.getRect(dock).bottom));
     expect(hideRect.top, greaterThanOrEqualTo(tester.getRect(dock).top));
-    expect(find.bySemanticsLabel('收起文房'), findsOneWidget);
+    expect(find.bySemanticsLabel('收起工具栏'), findsOneWidget);
 
     await tester.tap(hideTab);
     await tester.pumpAndSettle();
@@ -67,7 +67,7 @@ void main() {
     expect(restoreRect.right, closeTo(360.0, 20.0));
     expect(restoreRect.bottom, closeTo(780.0, 1.0));
     expect(restoreRect.overlaps(tester.getRect(find.byKey(const Key('desk_workstation')))), isTrue);
-    expect(find.bySemanticsLabel('展开文房'), findsOneWidget);
+    expect(find.bySemanticsLabel('展开工具栏'), findsOneWidget);
 
     await tester.tap(restoreTab);
     await tester.pumpAndSettle();

@@ -73,7 +73,7 @@ class _GridSnappedEmbedContainerState extends State<GridSnappedEmbedContainer> {
           side: BorderSide(color: tokens.agedFiber),
         ),
         title: Text(
-          '题跋批注 · Caption',
+          '照片备注',
           style: TextStyle(
             fontFamily: InkDiaryTheme.fontNotoSerif,
             fontSize: 16,
@@ -91,7 +91,7 @@ class _GridSnappedEmbedContainerState extends State<GridSnappedEmbedContainer> {
             color: tokens.jiaomo,
           ),
           decoration: InputDecoration(
-            hintText: '写下画幅题跋...',
+            hintText: '输入备注...',
             filled: true,
             fillColor: tokens.xuanGround,
             border: OutlineInputBorder(
@@ -145,7 +145,7 @@ class _GridSnappedEmbedContainerState extends State<GridSnappedEmbedContainer> {
 
         return Semantics(
           container: true,
-          label: '贴片拓影: ${hasCaption ? widget.caption : "无题跋"}',
+          label: '插入的照片：${hasCaption ? widget.caption : "无备注"}',
           child: SizedBox(
             height: totalHeight,
             width: contentWidth,
@@ -257,7 +257,7 @@ class _GridSnappedEmbedContainerState extends State<GridSnappedEmbedContainer> {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               icon: Icon(Icons.edit_note_outlined, size: 16, color: tokens.cinnabar),
-              label: const Text('题跋', style: TextStyle(fontSize: 12)),
+              label: const Text('备注', style: TextStyle(fontSize: 12)),
               onPressed: () => _showCaptionDialog(context, tokens),
             ),
             const SizedBox(width: 4),
@@ -276,8 +276,8 @@ class _GridSnappedEmbedContainerState extends State<GridSnappedEmbedContainer> {
               icon: Icon(Icons.aspect_ratio_outlined, size: 16, color: tokens.cinnabar),
               label: Text(
                 widget.aspect == 'auto'
-                    ? '画幅: 自动'
-                    : (widget.aspect == '4:3' ? '画幅: 4:3' : '画幅: 1:1'),
+                    ? '比例: 自动'
+                    : (widget.aspect == '4:3' ? '比例: 4:3' : '比例: 1:1'),
                 style: const TextStyle(fontSize: 12),
               ),
               onPressed: _cycleAspectRatio,

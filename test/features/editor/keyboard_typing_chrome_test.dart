@@ -101,7 +101,7 @@ void main() {
       // One frame delivers the document change, the next repaints the dot.
       await tester.pump();
       await tester.pump();
-      expect(tester.getSemantics(saveDot).label, '草稿未存');
+      expect(tester.getSemantics(saveDot).label, '未保存');
 
       await tester.pumpAndSettle(const Duration(seconds: 3));
       expect(tester.getSemantics(saveDot).label, '已保存');
@@ -126,7 +126,7 @@ void main() {
       await openSoftKeyboard(tester);
       await closeSoftKeyboard(tester);
 
-      await tester.tap(find.byTooltip('返回 · Back'));
+      await tester.tap(find.byTooltip('返回'));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('staged_exit_reminder')), findsOneWidget);

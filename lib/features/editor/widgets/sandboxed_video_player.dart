@@ -89,7 +89,7 @@ class _SandboxedVideoPlayerState extends State<SandboxedVideoPlayer>
         setState(() {
           _isInitializing = false;
           _hasError = true;
-          _errorMessage = 'Could not load video: $e';
+          _errorMessage = '视频加载失败：$e';
         });
       }
     }
@@ -149,7 +149,7 @@ class _SandboxedVideoPlayerState extends State<SandboxedVideoPlayer>
             TextButton.icon(
               onPressed: _initializeAndPlay,
               icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Retry'),
+              label: const Text('重试'),
             ),
           ],
         ),
@@ -197,7 +197,7 @@ class _SandboxedVideoPlayerState extends State<SandboxedVideoPlayer>
                     Icon(Icons.videocam, size: 14, color: Colors.white),
                     SizedBox(width: 4),
                     Text(
-                      'Short Video',
+                      '短视频',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 11,

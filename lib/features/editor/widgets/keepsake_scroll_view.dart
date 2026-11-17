@@ -68,11 +68,11 @@ class KeepsakeScrollView extends StatelessWidget {
           leading: IconButton(
             key: const Key('keepsake_close_button'),
             icon: Icon(Icons.arrow_back, color: _inkColor, size: 22.0),
-            tooltip: '返回 · Back',
+            tooltip: '返回',
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: Text(
-            '卷轴赏鉴 · ${(entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : "无题"}',
+            '竖排预览 · ${(entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : "无题"}',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontKaiti,
               fontSize: 16.0,
@@ -85,7 +85,7 @@ class KeepsakeScrollView extends StatelessWidget {
               IconButton(
                 key: const Key('keepsake_export_pdf_button'),
                 icon: Icon(Icons.picture_as_pdf_outlined, color: tokens.cinnabar, size: 22.0),
-                tooltip: '导出墨卷 PDF',
+                tooltip: '导出 PDF',
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(

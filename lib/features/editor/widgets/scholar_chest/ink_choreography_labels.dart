@@ -6,28 +6,28 @@ typedef _ModeLabels = ({String title, String badge, String icon, String descript
 /// unlabelled.
 _ModeLabels _modeLabels(InkDeliveryMode mode) => switch (mode) {
       InkDeliveryMode.singleFluent => const (
-          title: '单笔连绵',
-          badge: '双管 · 单笔',
+          title: '逐笔书写',
+          badge: '笔刷动画 · 逐笔',
           icon: '🖌️',
-          description: '一管毛笔依次书写，字与字间提笔飞渡。',
+          description: '依次逐笔书写，展示连续笔顺动画。',
         ),
       InkDeliveryMode.multiConcurrent => const (
-          title: '并笔齐书',
-          badge: '双管 · 并笔',
+          title: '同时书写',
+          badge: '笔刷动画 · 同时',
           icon: '🖌️🖌️',
-          description: '每字各生一笔，同时挥毫落墨。',
+          description: '每个字同时开始书写。',
         ),
       InkDeliveryMode.inkOnly => const (
-          title: '见墨不见笔',
-          badge: '双管 · 纯墨',
+          title: '仅墨迹',
+          badge: '笔刷动画 · 仅墨迹',
           icon: '✨',
-          description: '隐去笔杆，唯见水墨晕染成形。',
+          description: '不显示笔杆，只显示墨迹渐显效果。',
         ),
       InkDeliveryMode.off => const (
-          title: '敛锋静书',
-          badge: '双管 · 静书',
+          title: '无动画',
+          badge: '笔刷动画 · 关闭',
           icon: '🪷',
-          description: '落字即成，不作运笔动效。',
+          description: '直接显示文字，不播放书写动画。',
         ),
     };
 
@@ -35,10 +35,10 @@ _ModeLabels _modeLabels(InkDeliveryMode mode) => switch (mode) {
 extension InkDeliveryModeLabels on InkDeliveryMode {
   _ModeLabels get _labels => _modeLabels(this);
 
-  /// The full mode name (运笔模式), e.g. `单笔连绵`.
+  /// The full mode name, e.g. `逐笔书写`.
   String get title => _labels.title;
 
-  /// The Twin Bamboo Brushes badge, e.g. `双管 · 单笔`.
+  /// The Twin Bamboo Brushes badge, e.g. `笔刷动画 · 逐笔`.
   String get badge => _labels.badge;
 
   String get icon => _labels.icon;
@@ -48,16 +48,16 @@ extension InkDeliveryModeLabels on InkDeliveryMode {
 
 extension BristleStiffnessLabels on BristleStiffness {
   String get title => switch (this) {
-        BristleStiffness.wolf => '狼毫 · 劲健',
-        BristleStiffness.mixed => '兼毫 · 温润',
-        BristleStiffness.goat => '羊毫 · 柔婉',
+        BristleStiffness.wolf => '狼毫 (偏硬)',
+        BristleStiffness.mixed => '兼毫 (适中)',
+        BristleStiffness.goat => '羊毫 (偏软)',
       };
 }
 
 extension WritingCadenceLabels on WritingCadence {
   String get title => switch (this) {
-        WritingCadence.slow => '0.5x 慢品',
+        WritingCadence.slow => '0.5x 慢速',
         WritingCadence.standard => '1.0x 标准',
-        WritingCadence.swift => '1.8x 疾书',
+        WritingCadence.swift => '1.8x 快速',
       };
 }

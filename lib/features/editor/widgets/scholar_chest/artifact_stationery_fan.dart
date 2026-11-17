@@ -20,7 +20,8 @@ class ArtifactStationeryFan extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '叠印花笺: 切换笺纸底色与界格',
+      label: '信纸',
+      excludeSemantics: true,
       selected: isSelected,
       child: GestureDetector(
         key: const Key('chest_artifact_stationery_fan'),
@@ -86,7 +87,7 @@ class ArtifactStationeryFan extends StatelessWidget {
                       ),
                     ),
                     child: const Text(
-                      '叠印花笺',
+                      '信纸',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontKaiti,
                         fontSize: 11,

@@ -141,7 +141,7 @@ class JournalLetterhead extends StatelessWidget {
         ),
         cursorColor: tokens.cinnabar,
         decoration: InputDecoration(
-          hintText: '题名 · Title...',
+          hintText: '标题...',
           hintStyle: TextStyle(
             fontFamily: InkDiaryTheme.fontNotoSerif,
             fontSize: titleFontSize - 1,

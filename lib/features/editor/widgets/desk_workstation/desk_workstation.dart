@@ -95,8 +95,8 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
   Widget build(BuildContext context) {
     final isClosed = widget.stagedItems.isEmpty;
     final headerLabel = isClosed
-        ? '待贴画卷 · 锦袱束绦'
-        : '待贴画卷 · ${widget.stagedItems.length} 影';
+        ? '待选照片'
+        : '待选照片 · ${widget.stagedItems.length} 项';
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,

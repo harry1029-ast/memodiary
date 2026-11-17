@@ -44,7 +44,7 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
         scrolledUnderElevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: iconColor, size: 22),
-          tooltip: '返回 · Back',
+          tooltip: '返回',
           onPressed: onSaveAndExit,
         ),
         title: AutosaveStatusDot(status: autosaveStatusNotifier, showLabel: true, labelColor: iconColor),
@@ -70,7 +70,7 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
                       Icon(Icons.music_note, size: 12, color: tokens.cinnabar),
                       const SizedBox(width: 3),
                       Text(
-                        '清音',
+                        '背景音',
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontKaiti,
                           fontSize: 10,
@@ -102,7 +102,7 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
                     const Icon(Icons.lock, size: 11, color: Color(0xFF8A5A2B)),
                     const SizedBox(width: 3),
                     Text(
-                      '封缄',
+                      '定时锁',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontKaiti,
                         fontSize: 10,
@@ -117,7 +117,7 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             key: const Key('top_bar_keepsake_scroll_button'),
             icon: Icon(Icons.auto_stories_outlined, color: iconColor, size: 22),
-            tooltip: '卷轴赏鉴 · Keepsake Scroll',
+            tooltip: '竖排预览',
             onPressed: onOpenKeepsakeScroll,
           ),
           ListenableBuilder(
@@ -135,7 +135,7 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
                 child: IconButton(
                   key: const Key('top_bar_scholar_chest_button'),
                   icon: Icon(Icons.all_inbox_outlined, color: iconColor, size: 22),
-                  tooltip: '文房百宝匣 · 锦盒书案',
+                  tooltip: '工具箱',
                   onPressed: () => onOpenScholarChest(),
                 ),
               );
@@ -144,7 +144,7 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             key: const Key('editor_seal_done_btn'),
             icon: Icon(Icons.check, color: tokens.cinnabar, size: 22),
-            tooltip: '完成归卷 · Done',
+            tooltip: '完成',
             onPressed: onSaveAndExit,
           ),
         ],

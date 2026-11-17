@@ -70,16 +70,19 @@ void main() {
         ),
       );
 
-      expect(find.text('Writing Sanctum Soundscapes'), findsOneWidget);
-      expect(find.text('Gentle Rain'), findsOneWidget);
-      expect(find.text('Vintage Library'), findsOneWidget);
-      expect(find.text('Mechanical Study'), findsOneWidget);
+      expect(find.text('背景音'), findsOneWidget);
+      expect(find.text('雨声'), findsOneWidget);
+      expect(find.text('书房白噪音'), findsOneWidget);
+      expect(find.text('键盘敲击'), findsOneWidget);
+      expect(find.text('竹林微风'), findsOneWidget);
+      expect(find.text('Writing Sanctum Soundscapes'), findsNothing);
 
       await tester.tap(find.byKey(const Key('soundscape_preset_vintage_library')));
       await tester.pumpAndSettle();
 
       expect(service.isPlaying, isTrue);
       expect(service.activePreset, equals(SoundscapePreset.vintageLibrary));
+      expect(find.text('关闭背景音'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('soundscape_stop_btn')));
       await tester.pumpAndSettle();

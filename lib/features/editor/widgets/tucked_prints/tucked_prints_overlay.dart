@@ -56,7 +56,7 @@ class TuckedPrintsOverlay extends StatefulWidget {
     return showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierLabel: '收起夹页影札',
+      barrierLabel: '收起本页照片',
       barrierColor: Colors.black.withValues(alpha: 0.6),
       transitionDuration: const Duration(milliseconds: 220),
       transitionBuilder: (transitionContext, animation, secondaryAnimation, child) => FadeTransition(
@@ -114,7 +114,7 @@ class _TuckedPrintsOverlayState extends State<TuckedPrintsOverlay> {
         // action named as such.
         child: Semantics(
           container: true,
-          label: '收起夹页影札',
+          label: '收起本页照片',
           onTap: _dismiss,
           child: GestureDetector(
             key: const Key('tucked_prints_overlay'),
@@ -179,7 +179,7 @@ class _FannedPrint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kind = item.mediaType == EphemeraMediaType.video ? '短影' : '影札';
+    final kind = item.mediaType == EphemeraMediaType.video ? '视频' : '照片';
     return SizedBox(
       width: TuckedPrintsOverlay.kPrintWidth,
       child: Column(
@@ -187,7 +187,7 @@ class _FannedPrint extends StatelessWidget {
         children: [
           Semantics(
             button: true,
-            label: '本页第 $ordinal 影 · $kind，点按查看',
+            label: '本页第 $ordinal 项 · $kind，点击查看',
             onTap: onOpen,
             excludeSemantics: true,
             child: GestureDetector(
@@ -213,11 +213,11 @@ class _FannedPrint extends StatelessWidget {
             key: Key('tucked_overlay_unmount_${item.id}'),
             icon: Icons.undo,
             isPaperDark: true,
-            semanticLabel: '揭回画卷：本页第 $ordinal 影 · $kind',
+            semanticLabel: '移回待选：本页第 $ordinal 项 · $kind',
             onPressed: onUnmount,
           ),
           const ExcludeSemantics(
-            child: Text('揭回', style: TextStyle(fontSize: 12.0, color: Color(0xFFD6D1C7))),
+            child: Text('移回待选', style: TextStyle(fontSize: 12.0, color: Color(0xFFD6D1C7))),
           ),
         ],
       ),

@@ -68,7 +68,7 @@ class EditorOverlayActions {
             style: const TextStyle(fontFamily: InkDiaryTheme.fontKaiti),
           ),
           action: SnackBarAction(
-            label: '由此题落墨',
+            label: '使用此提示',
             onPressed: () => onAdoptPrompt(nextSpark.localizedPrompt),
           ),
           duration: const Duration(seconds: 4),
@@ -89,7 +89,7 @@ class EditorOverlayActions {
       0,
       controller.document.length - 1,
     );
-    controller.document.insert(index, '【灵感拾遗】$prompt\n');
+    controller.document.insert(index, '【写作灵感】$prompt\n');
     controller.formatText(index, prompt.length + 6, Attribute.blockQuote);
     autosaveManager?.saveDraft(force: true);
     onStateChanged?.call();

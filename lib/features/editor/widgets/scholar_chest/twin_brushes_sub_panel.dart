@@ -83,7 +83,7 @@ class _TwinBrushesSubPanelState extends State<TwinBrushesSubPanel> {
             ),
             const SizedBox(height: 8),
             InkPresetPills<BristleStiffness>(
-              label: '毫锋弹性',
+              label: '笔毫软硬',
               keyPrefix: 'chest_ink_stiffness_pill',
               options: BristleStiffness.values,
               selected: config.bristleStiffness,
@@ -92,7 +92,7 @@ class _TwinBrushesSubPanelState extends State<TwinBrushesSubPanel> {
             ),
             const SizedBox(height: 4),
             InkPresetPills<WritingCadence>(
-              label: '运笔疾徐',
+              label: '书写速度',
               keyPrefix: 'chest_ink_cadence_pill',
               options: WritingCadence.values,
               selected: config.cadence,
@@ -112,7 +112,7 @@ class _TwinBrushesSubPanelState extends State<TwinBrushesSubPanel> {
         const SizedBox(width: 6),
         const Expanded(
           child: Text(
-            '挥毫落墨 · 双管笔意',
+            '笔刷动画',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -126,7 +126,7 @@ class _TwinBrushesSubPanelState extends State<TwinBrushesSubPanel> {
         if (widget.onClose != null)
           MinTapTarget(
             key: const Key('chest_subpanel_close_button'),
-            semanticLabel: '收拢面板',
+            semanticLabel: '关闭面板',
             onTap: widget.onClose,
             child: const Icon(Icons.close, size: 16, color: _mutedText),
           ),
@@ -135,7 +135,7 @@ class _TwinBrushesSubPanelState extends State<TwinBrushesSubPanel> {
   }
 
   Widget _buildHeaderActions(InkChoreographyConfig config) {
-    final soundLabel = config.soundEnabled ? '🔊 运笔声效' : '🔇 运笔声效';
+    final soundLabel = config.soundEnabled ? '🔊 书写音效' : '🔇 书写音效';
     return Wrap(
       spacing: 6,
       children: [
@@ -143,7 +143,7 @@ class _TwinBrushesSubPanelState extends State<TwinBrushesSubPanel> {
           key: const Key('chest_ink_sound_toggle'),
           toggled: config.soundEnabled,
           child: MinTapTarget(
-            semanticLabel: '运笔声效',
+            semanticLabel: '书写音效',
             excludeChildSemantics: true,
             onTap: () => _controller.setSoundEnabled(!config.soundEnabled),
             child: _HeaderChip(label: soundLabel, isActive: config.soundEnabled),
@@ -151,11 +151,11 @@ class _TwinBrushesSubPanelState extends State<TwinBrushesSubPanel> {
         ),
         MinTapTarget(
           key: const Key('chest_ink_sheet_replay_button'),
-          semanticLabel: '全页挥毫: 重演当前笺页',
+          semanticLabel: '全页回放：重播当前页动画',
           enabled: widget.isSheetReplayAvailable,
           excludeChildSemantics: true,
           onTap: widget.isSheetReplayAvailable ? _requestSheetReplay : null,
-          child: _HeaderChip(label: '▶ 全页挥毫', isActive: widget.isSheetReplayAvailable, isAccent: true),
+          child: _HeaderChip(label: '▶ 全页回放', isActive: widget.isSheetReplayAvailable, isAccent: true),
         ),
       ],
     );

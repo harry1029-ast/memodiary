@@ -7,23 +7,23 @@ import 'package:flutter/foundation.dart';
 enum SoundscapePreset {
   gentleRain(
     id: 'gentle_rain',
-    label: 'Gentle Rain',
-    subtitle: 'Soft filtered pink-noise rainfall',
+    label: '雨声',
+    subtitle: '轻柔均匀的下雨白噪音',
   ),
   vintageLibrary(
     id: 'vintage_library',
-    label: 'Vintage Library',
-    subtitle: 'Warm brown-noise room tone & quiet hearth',
+    label: '书房白噪音',
+    subtitle: '安静温暖的室内环境底噪',
   ),
   mechanicalKeyboard(
     id: 'mechanical_keyboard',
-    label: 'Mechanical Study',
-    subtitle: 'Subtle study room ambience with soft rhythmic ticks',
+    label: '键盘敲击',
+    subtitle: '柔和规律的打字敲击声',
   ),
   bambooBreeze(
     id: 'bamboo_breeze',
-    label: 'Bamboo Breeze',
-    subtitle: 'Gentle mountain wind swaying through pine and bamboo',
+    label: '竹林微风',
+    subtitle: '微风拂过竹叶的沙沙声',
   );
 
   final String id;

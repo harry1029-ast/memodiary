@@ -61,16 +61,16 @@ void main() {
       await pumpDrawer(tester, initialArtifact: null);
 
       const expectations = {
-        InkDeliveryMode.singleFluent: ('双管 · 单笔', '单笔连绵'),
-        InkDeliveryMode.multiConcurrent: ('双管 · 并笔', '并笔齐书'),
-        InkDeliveryMode.inkOnly: ('双管 · 纯墨', '见墨不见笔'),
-        InkDeliveryMode.off: ('双管 · 静书', '敛锋静书'),
+        InkDeliveryMode.singleFluent: ('笔刷动画 · 逐笔', '逐笔书写'),
+        InkDeliveryMode.multiConcurrent: ('笔刷动画 · 同时', '同时书写'),
+        InkDeliveryMode.inkOnly: ('笔刷动画 · 仅墨迹', '仅墨迹'),
+        InkDeliveryMode.off: ('笔刷动画 · 关闭', '无动画'),
       };
       for (final MapEntry(key: mode, value: (badge, name)) in expectations.entries) {
         controller.setDeliveryMode(mode);
         await tester.pump();
         expect(find.text(badge), findsOneWidget, reason: '$mode badge');
-        expect(find.bySemanticsLabel('双管毛笔: 挥毫落墨 · $name'), findsOneWidget, reason: '$mode semantics');
+        expect(find.bySemanticsLabel('笔刷动画：$name'), findsOneWidget, reason: '$mode semantics');
       }
       expect(find.textContaining('敬请期待'), findsNothing);
       expect(find.bySemanticsLabel(RegExp('敬请期待')), findsNothing);
@@ -88,7 +88,22 @@ void main() {
     testWidgets('each selector highlights in the open drawer, persists, and reloads in a fresh drawer',
         (tester) async {
       await pumpDrawer(tester);
-      expect(find.text('挥毫落墨 · 双管笔意'), findsOneWidget);
+      expect(find.descendant(of: find.byKey(const Key('chest_subpanel_twin_brushes')), matching: find.text('笔刷动画')),
+          findsOneWidget);
+      for (final expectedLabel in const [
+        '🖌️ 逐笔书写',
+        '🖌️🖌️ 同时书写',
+        '✨ 仅墨迹',
+        '🪷 无动画',
+        '狼毫 (偏硬)',
+        '兼毫 (适中)',
+        '羊毫 (偏软)',
+        '0.5x 慢速',
+        '1.0x 标准',
+        '1.8x 快速',
+      ]) {
+        expect(find.text(expectedLabel), findsOneWidget, reason: expectedLabel);
+      }
 
       // Defaults are highlighted.
       expect(tester.getSemantics(find.byKey(const Key('chest_ink_mode_card_singleFluent'))),
@@ -112,7 +127,7 @@ void main() {
           isSemantics(isSelected: true));
       expect(tester.getSemantics(find.byKey(const Key('chest_ink_cadence_pill_swift'))),
           isSemantics(isSelected: true));
-      expect(find.text('双管 · 纯墨'), findsOneWidget);
+      expect(find.text('笔刷动画 · 仅墨迹'), findsOneWidget);
 
       // A fresh controller over the same store reloads them into a new drawer.
       await tester.pumpWidget(const SizedBox());
@@ -132,10 +147,10 @@ void main() {
     testWidgets('the brush sound toggle flips its label and persists', (tester) async {
       await pumpDrawer(tester);
       final toggle = find.byKey(const Key('chest_ink_sound_toggle'));
-      expect(find.descendant(of: toggle, matching: find.text('🔊 运笔声效')), findsOneWidget);
+      expect(find.descendant(of: toggle, matching: find.text('🔊 书写音效')), findsOneWidget);
 
       await tapVisible(tester, toggle);
-      expect(find.descendant(of: toggle, matching: find.text('🔇 运笔声效')), findsOneWidget);
+      expect(find.descendant(of: toggle, matching: find.text('🔇 书写音效')), findsOneWidget);
       expect(tester.getSemantics(toggle), isSemantics(isToggled: false));
 
       final reloaded = InkChoreographyController(settings: EditorSettingsService(storage: storage));
@@ -229,20 +244,20 @@ void main() {
     testWidgets('a sample chip animates its character, then settles and stops ticking', (tester) async {
       await pumpDrawer(tester);
       await pumpUntilSettled(tester);
-      expect(captionText(tester), '「永」落墨已成');
+      expect(captionText(tester), '「永」已完成');
 
       await tapVisible(tester, find.byKey(const Key('chest_trial_grid_chip_墨')));
-      expect(captionText(tester), '「墨」挥毫中');
+      expect(captionText(tester), '「墨」书写中');
       await tester.pump(const Duration(milliseconds: 300));
-      expect(captionText(tester), '「墨」挥毫中', reason: 'still writing after 300ms');
+      expect(captionText(tester), '「墨」书写中', reason: 'still writing after 300ms');
 
       await pumpUntilSettled(tester);
-      expect(captionText(tester), '「墨」落墨已成');
+      expect(captionText(tester), '「墨」已完成');
       expect(tester.binding.hasScheduledFrame, isFalse, reason: 'the ticker stops once settled');
       expect(find.byKey(const Key('chest_subpanel_twin_brushes')), findsOneWidget);
     });
 
-    testWidgets('重演 and each selector replay the current sample', (tester) async {
+    testWidgets('重播 and each selector replay the current sample', (tester) async {
       await pumpDrawer(tester);
       await pumpUntilSettled(tester);
 
@@ -253,9 +268,9 @@ void main() {
         'chest_ink_cadence_pill_slow',
       ]) {
         await tapVisible(tester, find.byKey(Key(key)));
-        expect(captionText(tester), '「永」挥毫中', reason: '$key replays');
+        expect(captionText(tester), '「永」书写中', reason: '$key replays');
         await pumpUntilSettled(tester, limit: const Duration(seconds: 10));
-        expect(captionText(tester), '「永」落墨已成', reason: '$key settles');
+        expect(captionText(tester), '「永」已完成', reason: '$key settles');
       }
     });
 
@@ -265,9 +280,9 @@ void main() {
       await pumpUntilSettled(tester);
 
       await tapVisible(tester, find.byKey(const Key('chest_trial_grid_chip_E')));
-      expect(captionText(tester), '「E」挥毫中');
+      expect(captionText(tester), '「E」书写中');
       await pumpUntilSettled(tester);
-      expect(captionText(tester), '「E」落墨已成');
+      expect(captionText(tester), '「E」已完成');
       expect(controller.config.deliveryMode, InkDeliveryMode.off);
     });
 
@@ -297,7 +312,7 @@ void main() {
     testWidgets('closing the drawer mid-stroke stops the ticker cleanly', (tester) async {
       await pumpDrawer(tester);
       await tester.pump(const Duration(milliseconds: 120));
-      expect(captionText(tester), '「永」挥毫中');
+      expect(captionText(tester), '「永」书写中');
       await tester.pumpWidget(const SizedBox());
       expect(tester.takeException(), isNull, reason: 'no active ticker at dispose');
       await tester.pump();

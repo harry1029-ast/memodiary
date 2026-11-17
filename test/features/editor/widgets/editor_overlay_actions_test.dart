@@ -35,7 +35,7 @@ void main() {
 
       final expectedSpark = ThoughtSparkService.sparks[1];
       expect(find.textContaining(expectedSpark.localizedPrompt), findsOneWidget);
-      await tester.tap(find.text('由此题落墨'));
+      await tester.tap(find.text('使用此提示'));
       await tester.pumpAndSettle();
 
       expect(adoptedPrompt, equals(expectedSpark.localizedPrompt));
@@ -55,7 +55,7 @@ void main() {
       expect(stateChangedCount, 1);
       expect(
         controller.document.toPlainText(),
-        equals('【灵感拾遗】今天哪顿饭让你感到治愈？\n\n'),
+        equals('【写作灵感】今天哪顿饭让你感到治愈？\n\n'),
       );
       final ops = controller.document.toDelta().toList();
       expect(

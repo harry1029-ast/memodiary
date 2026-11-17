@@ -66,7 +66,7 @@ class DictationToolButton extends StatelessWidget {
     return WritingDockToolButton(
       buttonKey: buttonKey,
       icon: Icon(isDictating ? Icons.mic : Icons.mic_none, size: 21, color: isDictating ? Colors.white : kCinnabar),
-      tooltip: '原声听写 · Voice Dictation',
+      tooltip: '语音听写',
       isActive: isDictating,
       activeBackground: kCinnabar,
       minHeight: minHeight,

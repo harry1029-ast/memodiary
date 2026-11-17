@@ -50,7 +50,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('今天最让你心动的瞬间是什么？'), findsOneWidget);
-      expect(find.textContaining('由此题落墨'), findsOneWidget);
+      expect(find.textContaining('使用此提示'), findsOneWidget);
     });
 
     testWidgets('renders nothing when document contains text', (tester) async {
@@ -58,7 +58,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('今天最让你心动的瞬间是什么？'), findsNothing);
-      expect(find.textContaining('由此题落墨'), findsNothing);
+      expect(find.textContaining('使用此提示'), findsNothing);
     });
 
     testWidgets('tapping adopt button invokes onAdoptPrompt callback', (tester) async {
@@ -69,7 +69,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.textContaining('由此题落墨'));
+      await tester.tap(find.textContaining('使用此提示'));
       await tester.pump();
 
       expect(adopted, isTrue);

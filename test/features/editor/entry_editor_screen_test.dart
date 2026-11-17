@@ -106,14 +106,14 @@ void main() {
       await tester.tap(find.byKey(const Key('writing_dock_spark_btn')));
       await tester.pumpAndSettle();
 
-      // Verify SnackBar with '由此题落墨' appears
-      expect(find.textContaining('由此题落墨'), findsOneWidget);
-      await tester.tap(find.textContaining('由此题落墨'));
+      // Verify SnackBar with '使用此提示' appears
+      expect(find.textContaining('使用此提示'), findsOneWidget);
+      await tester.tap(find.textContaining('使用此提示'));
       await tester.pumpAndSettle();
 
       // Verify database gets updated with quoted prompt content
       final entry = await db.entriesDao.getEntryById('editor_test_entry');
-      expect(entry!.plainText.contains('【灵感拾遗】'), isTrue);
+      expect(entry!.plainText.contains('【写作灵感】'), isTrue);
     });
 
     testWidgets('synchronizes typography from template on load and template switch', (tester) async {
@@ -332,10 +332,10 @@ void main() {
       await tester.tap(find.byKey(const Key('chest_artifact_brush_mountain')));
       await tester.pumpAndSettle();
 
-      expect(find.text('字法墨韵 · 笔意规制'), findsOneWidget);
-      expect(find.textContaining('字形大小'), findsOneWidget);
-      expect(find.textContaining('行间高距'), findsOneWidget);
-      expect(find.text('墨色韵调'), findsOneWidget);
+      expect(find.text('排版设置'), findsOneWidget);
+      expect(find.textContaining('字号'), findsOneWidget);
+      expect(find.textContaining('行距'), findsOneWidget);
+      expect(find.text('文字颜色'), findsOneWidget);
     });
 
     testWidgets('renders cleanly in dark mode without canvas collapse', (tester) async {
@@ -360,9 +360,10 @@ void main() {
       expect(find.byType(ThoughtSparkBanner), findsNothing);
 
       // Verify Cinnabar Signature Seal is present
-      expect(find.byKey(const Key('cinnabar_signature_seal')), findsOneWidget);
-      expect(find.text('心'), findsOneWidget);
-      expect(find.text('放'), findsOneWidget);
+      final sealFinder = find.byKey(const Key('cinnabar_signature_seal'));
+      expect(sealFinder, findsOneWidget);
+      expect(find.descendant(of: sealFinder, matching: find.text('心')), findsOneWidget);
+      expect(find.descendant(of: sealFinder, matching: find.text('放')), findsOneWidget);
     });
 
     testWidgets('tapping top_bar_keepsake_scroll_button opens KeepsakeScrollView without mutating delta', (tester) async {
@@ -381,7 +382,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(KeepsakeScrollView), findsOneWidget);
-      expect(find.textContaining('卷轴赏鉴'), findsOneWidget);
+      expect(find.textContaining('竖排预览'), findsOneWidget);
 
       // Verify close button dismisses KeepsakeScrollView
       await tester.tap(find.byKey(const Key('keepsake_close_button')));

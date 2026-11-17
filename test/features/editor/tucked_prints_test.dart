@@ -129,7 +129,7 @@ void main() {
       final fanSize = tester.getSize(tuckedPrintsFan);
       expect(fanSize.width, greaterThanOrEqualTo(44.0));
       expect(fanSize.height, greaterThanOrEqualTo(44.0));
-      expect(find.bySemanticsLabel('本页夹页影札 2 枚，轻触展开'), findsOneWidget);
+      expect(find.bySemanticsLabel('本页照片 2 项，点击展开'), findsOneWidget);
       await expectAccessibleTapTargets(tester, within: tuckedPrintsFan);
       semantics.dispose();
     });

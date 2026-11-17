@@ -62,7 +62,7 @@ class _LightboxCaptionStripState extends State<LightboxCaptionStrip> {
 
   Widget _buildReader(String caption, bool isEditable) {
     final captionText = Text(
-      caption.isNotEmpty ? caption : '添注随笔 · Add caption',
+      caption.isNotEmpty ? caption : '添加备注',
       textAlign: TextAlign.center,
       style: TextStyle(
         color: caption.isNotEmpty ? Colors.white : Colors.white60,
@@ -81,7 +81,7 @@ class _LightboxCaptionStripState extends State<LightboxCaptionStrip> {
         IconButton(
           key: const Key('lightbox_caption_edit_button'),
           icon: const Icon(Icons.edit_outlined, size: 20, color: Colors.white),
-          tooltip: '编辑题注 · Edit caption',
+          tooltip: '编辑备注',
           constraints: const BoxConstraints(minWidth: _minTapTarget, minHeight: _minTapTarget),
           onPressed: _startEditing,
         ),
@@ -101,7 +101,7 @@ class _LightboxCaptionStripState extends State<LightboxCaptionStrip> {
             cursorColor: Colors.white,
             textInputAction: TextInputAction.done,
             decoration: const InputDecoration(
-              hintText: '写下当下的心境与留白...',
+              hintText: '写下照片备注...',
               hintStyle: TextStyle(color: Colors.white38),
               border: InputBorder.none,
             ),
@@ -111,7 +111,7 @@ class _LightboxCaptionStripState extends State<LightboxCaptionStrip> {
         IconButton(
           key: const Key('lightbox_caption_save_button'),
           icon: const Icon(Icons.check, size: 20, color: Colors.white),
-          tooltip: '保存题注 · Save caption',
+          tooltip: '保存备注',
           constraints: const BoxConstraints(minWidth: _minTapTarget, minHeight: _minTapTarget),
           onPressed: _save,
         ),

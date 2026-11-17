@@ -65,7 +65,7 @@ class WritingDockHideTab extends StatelessWidget {
   const WritingDockHideTab({super.key, required this.onHide});
 
   static const double kTargetSize = 44.0;
-  static const String kSemanticLabel = '收起文房';
+  static const String kSemanticLabel = '收起工具栏';
 
   @override
   Widget build(BuildContext context) => _BrassDockTab(
@@ -76,7 +76,7 @@ class WritingDockHideTab extends StatelessWidget {
       );
 }
 
-/// The tab (展开文房) floating at the bottom-right of the Scholar's Desk while
+/// The tab floating at the bottom-right of the Scholar's Desk while
 /// the Writing Dock is hidden; tapping it brings the dock back. The desk
 /// positions it.
 class WritingDockRestoreTab extends StatelessWidget {
@@ -85,7 +85,7 @@ class WritingDockRestoreTab extends StatelessWidget {
   const WritingDockRestoreTab({super.key, required this.onRestore});
 
   static const double kTargetSize = 44.0;
-  static const String kSemanticLabel = '展开文房';
+  static const String kSemanticLabel = '展开工具栏';
 
   @override
   Widget build(BuildContext context) => _BrassDockTab(

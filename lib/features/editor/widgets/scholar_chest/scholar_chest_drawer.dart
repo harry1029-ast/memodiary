@@ -208,7 +208,7 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
                     Flexible(
                       flex: 3,
                       child: Text(
-                        '文房百宝匣 · 锦盒书案',
+                        '写作工具箱',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -225,7 +225,7 @@ class _ScholarChestDrawerState extends State<ScholarChestDrawer> {
                     Flexible(
                       flex: 2,
                       child: Text(
-                        '下拉收拢 / 点器物设雅',
+                        '点击收起 / 选择工具',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 11, color: Color(0xFFD4C5B0)),

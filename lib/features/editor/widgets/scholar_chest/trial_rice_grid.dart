@@ -121,12 +121,12 @@ class _TrialRiceGridState extends State<TrialRiceGrid> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final caption = _isWriting ? '「$_sample」挥毫中' : '「$_sample」落墨已成';
+    final caption = _isWriting ? '「$_sample」书写中' : '「$_sample」已完成';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Semantics(
-          label: '米字格试笔窗',
+          label: '米字格试写',
           value: caption,
           image: true,
           child: RepaintBoundary(
@@ -163,10 +163,10 @@ class _TrialRiceGridState extends State<TrialRiceGrid> with SingleTickerProvider
                   ),
                   MinTapTarget(
                     key: const Key('chest_trial_grid_replay_button'),
-                    semanticLabel: '重演此字',
+                    semanticLabel: '重播此字',
                     excludeChildSemantics: true,
                     onTap: () => setState(() => _write(_sample)),
-                    child: const Text('重演 ↻', style: TextStyle(fontSize: 11, color: Color(0xFFE8826F))),
+                    child: const Text('重播 ↻', style: TextStyle(fontSize: 11, color: Color(0xFFE8826F))),
                   ),
                 ],
               ),

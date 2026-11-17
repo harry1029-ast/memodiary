@@ -56,7 +56,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(FullscreenMediaLightbox), findsOneWidget);
+      expect(find.text('照片'), findsOneWidget);
       expect(find.text('钱塘江潮'), findsOneWidget);
+      expect(find.byTooltip('关闭'), findsOneWidget);
       expect(find.byType(InteractiveViewer), findsOneWidget);
 
       // Close button dismisses lightbox

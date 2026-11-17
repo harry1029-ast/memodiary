@@ -243,7 +243,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final textField = tester.widget<TextField>(find.byKey(const Key('editor_ephemera_caption_field')));
-      expect(textField.decoration?.hintText, contains('添加插页题注...'));
+      expect(textField.decoration?.hintText, equals('添加备注...'));
 
       sheet.dispose();
     });
@@ -269,7 +269,7 @@ void main() {
       final removeBtnFinder = find.byKey(const Key('editor_remove_ephemera_btn'));
       expect(removeBtnFinder, findsOneWidget);
       expect(
-        find.bySemanticsLabel('移除插页 · Remove Ephemera Sheet'),
+        find.bySemanticsLabel('移除插页'),
         findsOneWidget,
       );
 

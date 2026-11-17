@@ -34,7 +34,7 @@ void main() {
       );
 
   final exitPaths = <String, Finder>{
-    '← back': find.byTooltip('返回 · Back'),
+    '← back': find.byTooltip('返回'),
     '✓ done': find.byKey(const Key('editor_seal_done_btn')),
   };
 

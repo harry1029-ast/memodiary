@@ -20,7 +20,8 @@ class ArtifactFishLock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '古法鱼锁: 设定岁月锦囊时光胶囊封缄之期',
+      label: '定时锁',
+      excludeSemantics: true,
       selected: isSelected,
       child: GestureDetector(
         key: const Key('chest_artifact_fish_lock'),
@@ -90,7 +91,7 @@ class ArtifactFishLock extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      '古法鱼锁',
+                      '定时锁',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontKaiti,
                         fontSize: 10.5,
@@ -263,7 +264,7 @@ class FishLockSubPanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 const Text(
-                  '岁月锦囊 · 封缄之期',
+                  '定时解锁',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 12.5,
@@ -279,7 +280,7 @@ class FishLockSubPanel extends StatelessWidget {
                   TextButton.icon(
                     key: const Key('chest_lock_clear_button'),
                     icon: const Icon(Icons.lock_open, size: 14),
-                    label: const Text('解除封缄', style: TextStyle(fontSize: 11)),
+                    label: const Text('解除锁定', style: TextStyle(fontSize: 11)),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFFFFDF85),
                       padding: const EdgeInsets.symmetric(
@@ -304,8 +305,8 @@ class FishLockSubPanel extends StatelessWidget {
 
         Text(
           isLocked
-              ? '已封缄至 ${dateFormat.format(unlockAt!)} 解封'
-              : '当前未封缄 · 随笔随览',
+              ? '将于 ${dateFormat.format(unlockAt!)} 解锁'
+              : '未锁定',
           style: TextStyle(
             fontFamily: InkDiaryTheme.fontKaiti,
             fontSize: 12,
@@ -321,12 +322,12 @@ class FishLockSubPanel extends StatelessWidget {
           children: [
             _buildLockPresetChip(
               key: const Key('chest_lock_preset_1month'),
-              label: '一月后 · 待春发',
+              label: '1个月后',
               duration: const Duration(days: 30),
             ),
             ActionChip(
               key: const Key('chest_lock_preset_newyear'),
-              label: const Text('封至元旦', style: TextStyle(fontSize: 11.5, color: Color(0xFFF5E6C8))),
+              label: const Text('到元旦', style: TextStyle(fontSize: 11.5, color: Color(0xFFF5E6C8))),
               backgroundColor: const Color(0xFF2A1812),
               side: BorderSide(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
               onPressed: () {
@@ -336,13 +337,13 @@ class FishLockSubPanel extends StatelessWidget {
             ),
             _buildLockPresetChip(
               key: const Key('chest_lock_preset_1year'),
-              label: '翌年今日 · 见旧墨',
+              label: '1年后',
               duration: const Duration(days: 365),
             ),
             ActionChip(
               key: const Key('chest_lock_preset_custom'),
               avatar: const Icon(Icons.event_outlined, size: 14, color: Color(0xFFFFDF85)),
-              label: const Text('自择良辰', style: TextStyle(fontSize: 11.5, color: Color(0xFFF5E6C8))),
+              label: const Text('自定义日期', style: TextStyle(fontSize: 11.5, color: Color(0xFFF5E6C8))),
               backgroundColor: const Color(0xFF2A1812),
               side: BorderSide(color: const Color(0xFFD4AF37).withValues(alpha: 0.3)),
               onPressed: () async {

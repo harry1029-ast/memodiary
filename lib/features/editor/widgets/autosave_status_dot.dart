@@ -8,8 +8,8 @@ import '../controllers/editor_autosave_manager.dart';
 /// bar's status line and the header band's save-state dot.
 ({String label, Color color}) autosaveStatusStyle(AutosaveStatus status, InkDiaryTokens tokens) => switch (status) {
       AutosaveStatus.saved => (label: '已保存', color: const Color(0xFF059669)),
-      AutosaveStatus.saving => (label: '存墨中...', color: const Color(0xFFD97706)),
-      AutosaveStatus.unsaved => (label: '草稿未存', color: tokens.danmo),
+      AutosaveStatus.saving => (label: '保存中...', color: const Color(0xFFD97706)),
+      AutosaveStatus.unsaved => (label: '未保存', color: tokens.danmo),
     };
 
 /// A small dot mirroring the autosave status. With [showLabel] it is followed

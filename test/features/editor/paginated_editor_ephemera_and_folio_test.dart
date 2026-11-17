@@ -77,7 +77,7 @@ void main() {
       await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('相册选撷 · Photo Gallery'));
+      await tester.tap(find.text('从相册选择照片'));
       await tester.pumpAndSettle();
 
       // The picked photo is collected into the Staging Handscroll, not onto a sheet
@@ -160,7 +160,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('相册选撷 · Photo Gallery'));
+      await tester.tap(find.text('从相册选择照片'));
       await tester.pumpAndSettle();
 
       // Preserves uninterrupted prose on Sheet 1 while the photo waits in the handscroll
@@ -351,7 +351,7 @@ void main() {
       for (int pick = 0; pick < 3; pick++) {
         await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('相册选撷 · Photo Gallery'));
+        await tester.tap(find.text('从相册选择照片'));
         await tester.pumpAndSettle();
       }
       final ids = (await database.mediaOcrDao.getMediaForEntry('ephemera_folio_entry')).map((media) => media.id).toList();

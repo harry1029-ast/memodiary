@@ -42,7 +42,7 @@ class InkDeliveryModeCards extends StatelessWidget {
     final isSelected = mode == selected;
     return MinTapTarget(
       key: Key('chest_ink_mode_card_${mode.name}'),
-      semanticLabel: '运笔模式: ${mode.title}',
+      semanticLabel: '书写模式：${mode.title}',
       selected: isSelected,
       excludeChildSemantics: true,
       stretchWidth: true,

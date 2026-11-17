@@ -38,32 +38,28 @@ class SoundscapeModal extends StatefulWidget {
 class _SoundscapeModalState extends State<SoundscapeModal> {
   static const Map<SoundscapePreset, Map<String, String>> _literatiPresets = {
     SoundscapePreset.gentleRain: {
-      'title': '空山疏雨',
-      'englishTitle': 'Gentle Rain',
-      'tag': '清心',
-      'desc': '淅淅沥沥，如松针滴翠、空阶滴沥 (Soft Rainfall)',
-      'stamp': '润',
+      'title': '雨声',
+      'tag': '自然',
+      'desc': '轻柔均匀的下雨白噪音',
+      'stamp': '雨',
     },
     SoundscapePreset.vintageLibrary: {
-      'title': '芸阁旧帙',
-      'englishTitle': 'Vintage Library',
-      'tag': '古意',
-      'desc': '书卷微翻，沉木幽香与案头薪火 (Quiet Hearth)',
-      'stamp': '幽',
+      'title': '书房白噪音',
+      'tag': '环境',
+      'desc': '安静温暖的室内环境底噪',
+      'stamp': '静',
     },
     SoundscapePreset.mechanicalKeyboard: {
-      'title': '幽居刻漏',
-      'englishTitle': 'Mechanical Study',
-      'tag': '定神',
-      'desc': '更漏沉沉，定神静虑之节拍律动 (Study Ticks)',
-      'stamp': '恒',
+      'title': '键盘敲击',
+      'tag': '节奏',
+      'desc': '柔和规律的打字敲击声',
+      'stamp': '韵',
     },
     SoundscapePreset.bambooBreeze: {
-      'title': '松风抚竹',
-      'englishTitle': 'Bamboo Breeze',
-      'tag': '超然',
-      'desc': '山谷微风，穿林拂叶之婆娑沙沙 (Breeze)',
-      'stamp': '逸',
+      'title': '竹林微风',
+      'tag': '自然',
+      'desc': '微风拂过竹叶的沙沙声',
+      'stamp': '风',
     },
   };
 
@@ -122,32 +118,19 @@ class _SoundscapeModalState extends State<SoundscapeModal> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                '砚边清韵',
-                                style: TextStyle(
-                                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: tokens.jiaomo,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Writing Sanctum Soundscapes',
-                                style: TextStyle(
-                                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                                  fontSize: 12,
-                                  color: tokens.danmo,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
                           Text(
-                            '纯净离线合成 · 凝神静虑自然音律',
+                            '背景音',
+                            style: TextStyle(
+                              fontFamily: InkDiaryTheme.fontNotoSerif,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: tokens.jiaomo,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '离线合成环境音，帮助专注写作',
                             style: TextStyle(
                               fontSize: 11,
                               color: tokens.danmo,
@@ -175,7 +158,7 @@ class _SoundscapeModalState extends State<SoundscapeModal> {
                           widget.sanctumService.stop();
                         },
                         child: Text(
-                          '停歇 · Turn Off',
+                          '关闭背景音',
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontNotoSerif,
                             fontSize: 12,

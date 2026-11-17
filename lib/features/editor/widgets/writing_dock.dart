@@ -124,7 +124,7 @@ class WritingDock extends StatelessWidget {
           _buildPrimaryToolBtn(
             key: const Key('writing_dock_format_btn'),
             icon: Icons.text_fields_rounded,
-            tooltip: '字法排印 · Formatting',
+            tooltip: '字体排版',
             isActive: isFormattingOpen,
             color: effectiveInkColor,
             activeBackground: activeBackdrop,
@@ -136,7 +136,7 @@ class WritingDock extends StatelessWidget {
           _buildPrimaryToolBtn(
             key: const Key('writing_dock_photo_btn'),
             icon: Icons.add_photo_alternate_outlined,
-            tooltip: '插入图画 · Insert Photo',
+            tooltip: '插入图片',
             isActive: false,
             color: effectiveInkColor,
             onTap: onPickImage,
@@ -145,7 +145,7 @@ class WritingDock extends StatelessWidget {
             _buildPrimaryToolBtn(
               key: const Key('writing_dock_video_btn'),
               icon: Icons.videocam_outlined,
-              tooltip: '插入短影 · Short Video (≤60s)',
+              tooltip: '插入短视频',
               isActive: false,
               color: effectiveInkColor,
               onTap: pickVideo,
@@ -159,7 +159,7 @@ class WritingDock extends StatelessWidget {
             _buildPrimaryToolBtn(
               key: const Key('writing_dock_spark_btn'),
               icon: Icons.auto_awesome_outlined,
-              tooltip: '灵感拾遗 · Thought Spark',
+              tooltip: '写作灵感',
               isActive: false,
               color: const Color(0xFFD4AF37),
               onTap: shuffleSpark,

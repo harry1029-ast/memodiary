@@ -81,7 +81,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('keepsake_close_button')), findsOneWidget);
-      expect(find.text('卷轴赏鉴 · 春江夜泊'), findsOneWidget);
+      expect(find.text('竖排预览 · 春江夜泊'), findsOneWidget);
     });
 
     testWidgets('renders right-to-left horizontal scroll with vertical columns', (tester) async {

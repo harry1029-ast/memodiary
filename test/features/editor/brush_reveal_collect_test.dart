@@ -84,7 +84,7 @@ void main() {
   Future<void> startCollecting(WidgetTester tester) async {
     await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('相册选撷 · Photo Gallery'));
+    await tester.tap(find.text('从相册选择照片'));
     await _pumpFor(tester, const Duration(milliseconds: 300));
   }
 

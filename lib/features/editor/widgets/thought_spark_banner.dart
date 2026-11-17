@@ -75,23 +75,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
               ),
               const SizedBox(width: 7),
               Text(
-                'Thought Spark',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF7D4915),
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                ' · ',
-                style: TextStyle(
-                  color: (isDark ? const Color(0xFFD4A86A) : const Color(0xFF99601D)).withValues(alpha: 0.8),
-                ),
-              ),
-              Text(
-                '灵感火花',
+                '写作灵感',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontKaiti,
                   fontSize: 13,
@@ -108,7 +92,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 icon: Icon(Icons.refresh, color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF99601D)),
-                tooltip: '换一则灵感',
+                tooltip: '换一条',
                 onPressed: _shuffle,
               ),
               const SizedBox(width: 4),
@@ -119,7 +103,7 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 icon: Icon(Icons.close, color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF99601D)),
-                tooltip: '隐去灵感',
+                tooltip: '关闭',
                 onPressed: widget.onDismiss,
               ),
             ],
@@ -163,22 +147,12 @@ class _ThoughtSparkBannerState extends State<ThoughtSparkBanner> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      '由此落墨 · ',
+                      '使用此提示',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontKaiti,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF7D4915),
-                      ),
-                    ),
-                    Text(
-                      'Use Prompt',
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontNotoSerif,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? const Color(0xFFD4A86A) : const Color(0xFF7D4915),
-                        letterSpacing: 0.4,
                       ),
                     ),
                   ],

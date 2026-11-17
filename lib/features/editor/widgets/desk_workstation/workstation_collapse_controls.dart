@@ -11,7 +11,7 @@ class WorkstationPullTab extends StatelessWidget {
   const WorkstationPullTab({super.key, required this.onCollapse});
 
   static const double kTargetSize = 44.0;
-  static const String kSemanticLabel = '收起画案';
+  static const String kSemanticLabel = '收起待选区';
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +65,9 @@ class WorkstationRestorePill extends StatelessWidget {
 
   const WorkstationRestorePill({super.key, required this.stagedCount, required this.onRestore});
 
-  static const String kSemanticLabel = '展开画案';
+  static const String kSemanticLabel = '展开待选区';
 
-  String get _label => stagedCount == 0 ? '锦袱合卷' : '待贴画卷已收起 · 待贴 $stagedCount 影';
+  String get _label => stagedCount == 0 ? '待选照片' : '待选照片已收起 · $stagedCount 项';
 
   @override
   Widget build(BuildContext context) {

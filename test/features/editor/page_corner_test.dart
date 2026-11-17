@@ -134,13 +134,13 @@ void main() {
     expect(tester.getRect(find.byKey(const Key('editor_page_corner_fold_next'))).right, closeTo(cardRect.right, 0.5));
   });
 
-  testWidgets('the corners are announced as 上卷 and 下卷 with the target sheet number', (tester) async {
+  testWidgets('the corners are announced as 上一页 and 下一页 with the target sheet number', (tester) async {
     final semanticsHandle = tester.ensureSemantics();
     await openEditor(tester);
     await tapCorner(tester, _nextCorner);
 
-    expect(find.bySemanticsLabel('上卷 · 第 1 页'), findsOneWidget);
-    expect(find.bySemanticsLabel('下卷 · 第 3 页'), findsOneWidget);
+    expect(find.bySemanticsLabel('上一页：第 1 页'), findsOneWidget);
+    expect(find.bySemanticsLabel('下一页：第 3 页'), findsOneWidget);
     semanticsHandle.dispose();
   });
 

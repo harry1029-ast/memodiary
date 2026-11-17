@@ -46,7 +46,7 @@ class KeepsakeMediaCard extends StatelessWidget {
 
     return Semantics(
       container: true,
-      label: isVideo ? '短视频画幅: ${caption ?? "无题跋"}' : '贴片拓影: ${caption ?? "无题跋"}',
+      label: isVideo ? '视频：${caption ?? "无备注"}' : '照片：${caption ?? "无备注"}',
       child: Container(
         width: cardWidth,
         margin: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 24.0),
@@ -164,7 +164,7 @@ class KeepsakeMediaCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              isVideo ? '短视频' : '图像',
+              isVideo ? '视频' : '照片',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontKaiti,
                 fontSize: 10,

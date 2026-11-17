@@ -139,7 +139,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Initial font size is 16pt
-      expect(find.text('字形大小 (16pt)'), findsOneWidget);
+      expect(find.text('字号 (16pt)'), findsOneWidget);
 
       // Drag font size slider to 22pt (max is 28, min is 12)
       final sliderFinder = find.byKey(const Key('chest_font_size_slider'));
@@ -152,7 +152,7 @@ void main() {
 
       // Symptom 2: The font size text MUST update to 22pt immediately
       expect(
-        find.text('字形大小 (22pt)'),
+        find.text('字号 (22pt)'),
         findsOneWidget,
         reason: 'Font size label must reflect new value without reopening drawer',
       );

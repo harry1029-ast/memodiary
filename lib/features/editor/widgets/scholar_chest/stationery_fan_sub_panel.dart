@@ -100,7 +100,7 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Sub-panel Header with Title, Poetic Subtitle & Action
+        // Sub-panel Header with Title & Action
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -110,25 +110,12 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
                   Icon(Icons.auto_stories, size: 16, color: Color(0xFFFFDF85)),
                   SizedBox(width: 6),
                   Text(
-                    '文房雅笺 · 素笺谱系',
+                    '信纸模板',
                     style: TextStyle(
                       fontFamily: InkDiaryTheme.fontNotoSerif,
                       fontSize: 12.5,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFFF3D99B),
-                    ),
-                  ),
-                  SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      '“笺换风骨，意蕴随迁”',
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontFamily: InkDiaryTheme.fontKaiti,
-                        fontSize: 11,
-                        color: Color(0xFFD4C5B0),
-                      ),
                     ),
                   ),
                 ],
@@ -155,7 +142,7 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
                         Icon(Icons.add, size: 12, color: Color(0xFFFFDF85)),
                         SizedBox(width: 3),
                         Text(
-                          '定制雅笺',
+                          '新建信纸',
                           style: TextStyle(
                             fontSize: 10.5,
                             fontWeight: FontWeight.w600,
@@ -173,7 +160,7 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
                     onTap: widget.onClose,
                     child: Semantics(
                       button: true,
-                      label: '收拢面板',
+                      label: '关闭面板',
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         color: Colors.transparent,
@@ -300,7 +287,7 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
                                         borderRadius: BorderRadius.circular(3),
                                       ),
                                       child: Text(
-                                        templateItem.backgroundType,
+                                        templateStyle.type.label,
                                         style: const TextStyle(
                                           fontSize: 8,
                                           color: Color(0xFF68645E),
@@ -317,7 +304,7 @@ class _StationeryFanSubPanelState extends State<StationeryFanSubPanel> {
                         SizedBox(
                           width: 86,
                           child: Text(
-                            templateItem.name,
+                            displayTemplateName(templateItem),
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

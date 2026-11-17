@@ -104,7 +104,7 @@ class _TypographySheetState extends State<TypographySheet> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Typography Settings',
+                            '字体排版',
                             style: TextStyle(
                               fontFamily: InkDiaryTheme.fontNotoSerif,
                               fontSize: 18,
@@ -113,24 +113,11 @@ class _TypographySheetState extends State<TypographySheet> {
                               letterSpacing: 0.5,
                             ),
                           ),
-                          Text(
-                            ' · ',
-                            style: TextStyle(color: tokens.danmo),
-                          ),
-                          Text(
-                            '字法排印',
-                            style: TextStyle(
-                              fontFamily: InkDiaryTheme.fontKaiti,
-                              fontSize: 14,
-                              color: tokens.nongmo,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '定制案头抚卷与落墨之版式规制 (100% 离线文骨字库)',
+                        '调整正文字体、字号与行距',
                         style: TextStyle(
                           fontSize: 11,
                           color: tokens.danmo,
@@ -139,49 +126,19 @@ class _TypographySheetState extends State<TypographySheet> {
                     ],
                   ),
                 ),
-                // Traditional Seal Stamp
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: tokens.cinnabarWash,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: tokens.cinnabar, width: 1),
-                  ),
-                  child: Text(
-                    '墨記\n雅藏',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: tokens.cinnabar,
-                      height: 1.1,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 16),
 
             // Font Family Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Font Family',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: tokens.jiaomo,
-                  ),
-                ),
-                Text(
-                  '体式字骨 · 离线字库',
-                  style: TextStyle(fontSize: 11, color: tokens.danmo),
-                ),
-              ],
+            Text(
+              '字体',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: tokens.jiaomo,
+              ),
             ),
             const SizedBox(height: 10),
 
@@ -291,7 +248,7 @@ class _TypographySheetState extends State<TypographySheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Font Size',
+                  '字号',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 13,
@@ -310,7 +267,7 @@ class _TypographySheetState extends State<TypographySheet> {
                     ),
                   ),
                   child: Text(
-                    '${_current.fontSize.toInt()} 级 · 笔触大小',
+                    '${_current.fontSize.toInt()} pt',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -346,7 +303,7 @@ class _TypographySheetState extends State<TypographySheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Line Spacing',
+                  '行距',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 13,
@@ -365,7 +322,7 @@ class _TypographySheetState extends State<TypographySheet> {
                     ),
                   ),
                   child: Text(
-                    '${_current.lineSpacing.toStringAsFixed(2)} 倍 · 疏密得宜',
+                    '${_current.lineSpacing.toStringAsFixed(2)} 倍',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -411,7 +368,7 @@ class _TypographySheetState extends State<TypographySheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '段首留白 · 双格空缩',
+                        '段落首行缩进',
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontNotoSerif,
                           fontSize: 13,
@@ -421,7 +378,7 @@ class _TypographySheetState extends State<TypographySheet> {
                       ),
                       const SizedBox(height: 1),
                       Text(
-                        '遵循汉字经典两格缩进规度',
+                        '每段开头自动空两格',
                         style: TextStyle(
                           fontSize: 11,
                           color: tokens.danmo,
@@ -437,7 +394,7 @@ class _TypographySheetState extends State<TypographySheet> {
                         _indentFirstLine = val;
                       });
                     },
-                    semanticLabel: '段首留白双格空缩',
+                    semanticLabel: '段落首行缩进',
                   ),
                 ],
               ),

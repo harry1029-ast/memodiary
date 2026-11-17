@@ -87,7 +87,7 @@ class KeyboardAccessoryRow extends StatelessWidget {
           WritingDockToolButton(
             buttonKey: const Key('keyboard_accessory_format_btn'),
             icon: _TtGlyph(color: inkColor),
-            tooltip: '字法排印 · Formatting',
+            tooltip: '字体排版',
             isActive: isFormattingOpen,
             activeBackground: tokens.agedFiber.withValues(alpha: isPaperDark ? 0.65 : 0.85),
             minHeight: KeyboardAccessoryRow.kRowHeight,

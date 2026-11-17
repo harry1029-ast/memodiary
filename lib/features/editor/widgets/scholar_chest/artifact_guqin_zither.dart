@@ -63,7 +63,8 @@ class _ArtifactGuqinZitherState extends State<ArtifactGuqinZither>
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '桐木古琴: 调节书斋清音与琴韵背景音',
+      label: '背景音',
+      excludeSemantics: true,
       selected: widget.isSelected,
       child: GestureDetector(
         key: const Key('chest_artifact_guqin_zither'),
@@ -129,7 +130,7 @@ class _ArtifactGuqinZitherState extends State<ArtifactGuqinZither>
                           ),
                         ),
                         child: Text(
-                          '桐木古琴',
+                          '背景音',
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontKaiti,
                             fontSize: 11,
@@ -307,7 +308,7 @@ class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
                 ),
                 const SizedBox(width: 6),
                 const Text(
-                  '书斋清音 · 琴韵自然',
+                  '背景音',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 12.5,
@@ -323,7 +324,7 @@ class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
                   TextButton.icon(
                     key: const Key('chest_soundscape_stop_button'),
                     icon: const Icon(Icons.stop_circle_outlined, size: 14),
-                    label: const Text('停歇清音', style: TextStyle(fontSize: 11)),
+                    label: const Text('关闭背景音', style: TextStyle(fontSize: 11)),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFFFFDF85),
                       padding: const EdgeInsets.symmetric(
@@ -354,10 +355,10 @@ class _GuqinZitherSubPanelState extends State<GuqinZitherSubPanel> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildPresetChip(key: const Key('chest_soundscape_chip_rain'), label: '蕉窗听雨', preset: SoundscapePreset.gentleRain, activePreset: activePreset),
-            _buildPresetChip(key: const Key('chest_soundscape_chip_wind'), label: '深山松风', preset: SoundscapePreset.bambooBreeze, activePreset: activePreset),
-            _buildPresetChip(key: const Key('chest_soundscape_chip_stream'), label: '芸窗缃帙', preset: SoundscapePreset.vintageLibrary, activePreset: activePreset),
-            _buildPresetChip(key: const Key('chest_soundscape_chip_bell'), label: '砚池墨渧', preset: SoundscapePreset.mechanicalKeyboard, activePreset: activePreset),
+            _buildPresetChip(key: const Key('chest_soundscape_chip_rain'), label: '雨声', preset: SoundscapePreset.gentleRain, activePreset: activePreset),
+            _buildPresetChip(key: const Key('chest_soundscape_chip_wind'), label: '竹林微风', preset: SoundscapePreset.bambooBreeze, activePreset: activePreset),
+            _buildPresetChip(key: const Key('chest_soundscape_chip_stream'), label: '书房白噪音', preset: SoundscapePreset.vintageLibrary, activePreset: activePreset),
+            _buildPresetChip(key: const Key('chest_soundscape_chip_bell'), label: '键盘敲击', preset: SoundscapePreset.mechanicalKeyboard, activePreset: activePreset),
           ],
         ),
         const SizedBox(height: 12),

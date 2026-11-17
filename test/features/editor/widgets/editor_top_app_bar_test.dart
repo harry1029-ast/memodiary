@@ -45,8 +45,11 @@ void main() {
         ),
       );
 
-      expect(find.byTooltip('返回 · Back'), findsOneWidget);
-      await tester.tap(find.byTooltip('返回 · Back'));
+      expect(find.byTooltip('返回'), findsOneWidget);
+      expect(find.byTooltip('竖排预览'), findsOneWidget);
+      expect(find.byTooltip('工具箱'), findsOneWidget);
+      expect(find.byTooltip('完成'), findsOneWidget);
+      await tester.tap(find.byTooltip('返回'));
       expect(savedAndExited, isTrue);
 
       expect(find.byKey(const Key('top_bar_keepsake_scroll_button')), findsOneWidget);
@@ -85,11 +88,11 @@ void main() {
 
       autosaveStatusNotifier.value = AutosaveStatus.saving;
       await tester.pump();
-      expect(find.text('存墨中...'), findsOneWidget);
+      expect(find.text('保存中...'), findsOneWidget);
 
       autosaveStatusNotifier.value = AutosaveStatus.unsaved;
       await tester.pump();
-      expect(find.text('草稿未存'), findsOneWidget);
+      expect(find.text('未保存'), findsOneWidget);
     });
 
     testWidgets('shows soundscape pill when audio is playing and triggers guqin zither artifact', (tester) async {
@@ -120,7 +123,7 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const Key('top_bar_soundscape_pill')), findsOneWidget);
-      expect(find.text('清音'), findsOneWidget);
+      expect(find.text('背景音'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('top_bar_soundscape_pill')));
       expect(openedArtifact, equals(ScholarArtifactType.guqinZither));
@@ -165,9 +168,9 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byKey(const Key('top_bar_lock_pill')), findsOneWidget);
-      expect(find.text('封缄'), findsOneWidget);
+      expect(find.text('定时锁'), findsOneWidget);
 
-      final innerContext = tester.element(find.text('封缄'));
+      final innerContext = tester.element(find.text('定时锁'));
       expect(
         MediaQuery.textScalerOf(innerContext).scale(10.0),
         lessThanOrEqualTo(13.001),

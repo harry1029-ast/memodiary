@@ -80,14 +80,14 @@ void main() {
   Future<void> collectPhoto(WidgetTester tester) async {
     await tester.tap(find.byKey(const Key('writing_dock_photo_btn')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('相册选撷 · Photo Gallery'));
+    await tester.tap(find.text('从相册选择照片'));
     await tester.pumpAndSettle();
   }
 
   Future<void> collectVideo(WidgetTester tester) async {
     await tester.tap(find.byKey(const Key('writing_dock_video_btn')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('相册选取短影 · Video Gallery (≤60s)'));
+    await tester.tap(find.text('从相册选择视频（≤60秒）'));
     await tester.pumpAndSettle();
   }
 
@@ -282,8 +282,8 @@ void main() {
       expect(fanSize.width, greaterThanOrEqualTo(44));
       expect(fanSize.height, greaterThanOrEqualTo(44));
 
-      expect(find.bySemanticsLabel(RegExp(r'贴至本页.*第 1 页')), findsOneWidget);
-      expect(find.bySemanticsLabel('本页夹页影札 1 枚，轻触展开'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'添加到本页.*第 1 页')), findsOneWidget);
+      expect(find.bySemanticsLabel('本页照片 1 项，点击展开'), findsOneWidget);
       semantics.dispose();
     });
   });

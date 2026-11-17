@@ -179,7 +179,7 @@ class _TuckedPrintsFanState extends State<TuckedPrintsFan> with TickerProviderSt
       maxScaleFactor: 1.3,
       child: Semantics(
         button: true,
-        label: '本页夹页影札 ${items.length} 枚，轻触展开',
+        label: '本页照片 ${items.length} 项，点击展开',
         onTap: widget.onTap,
         excludeSemantics: true,
         child: GestureDetector(

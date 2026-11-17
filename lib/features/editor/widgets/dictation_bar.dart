@@ -128,7 +128,7 @@ class _DictationBarState extends State<DictationBar>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'Listening to voice...',
+                  '正在语音听写...',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -136,7 +136,7 @@ class _DictationBarState extends State<DictationBar>
                   ),
                 ),
                 Text(
-                  _interimText.isEmpty ? 'Speak naturally...' : _interimText,
+                  _interimText.isEmpty ? '请开始说话...' : _interimText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -153,14 +153,14 @@ class _DictationBarState extends State<DictationBar>
           IconButton(
             icon: const Icon(Icons.check_circle, color: Colors.green, size: 28),
             onPressed: _handleDone,
-            tooltip: 'Insert & Finish',
+            tooltip: '完成并插入',
           ),
 
           // Cancel Button
           IconButton(
             icon: const Icon(Icons.close, color: Colors.grey, size: 24),
             onPressed: _handleCancel,
-            tooltip: 'Cancel Dictation',
+            tooltip: '取消听写',
           ),
         ],
       ),

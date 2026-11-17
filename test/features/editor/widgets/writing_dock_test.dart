@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
+import 'package:memodiary/features/editor/widgets/keyboard_accessory_row.dart';
 import 'package:memodiary/features/editor/widgets/writing_dock.dart';
 
 void main() {
@@ -157,7 +159,39 @@ void main() {
       expect(find.text('〘注〙'), findsOneWidget);
 
       final iconBtn = tester.widget<IconButton>(noteBtnFinder);
-      expect(iconBtn.tooltip, equals('双行夹注 · Interlinear Note'));
+      expect(iconBtn.tooltip, equals('夹注'));
+
+      for (final expectedTooltip in const [
+        '加粗',
+        '斜体',
+        '下划线',
+        '一级标题',
+        '二级标题',
+        '引用',
+        '无序列表',
+        '有序列表',
+        '夹注',
+      ]) {
+        expect(find.byTooltip(expectedTooltip), findsOneWidget, reason: expectedTooltip);
+      }
+    });
+
+    testWidgets('primary tools expose plain modern Chinese tooltips', (tester) async {
+      await tester.pumpWidget(buildTestWidget(
+        onPickVideo: () {},
+        onShuffleSpark: () {},
+      ));
+      await tester.pumpAndSettle();
+
+      for (final expectedTooltip in const [
+        '字体排版',
+        '插入图片',
+        '插入短视频',
+        '语音听写',
+        '写作灵感',
+      ]) {
+        expect(find.byTooltip(expectedTooltip), findsOneWidget, reason: expectedTooltip);
+      }
     });
 
     testWidgets('tapping interlinear note at collapsed cursor inserts {夹注:} and positions cursor inside at offset + 4', (tester) async {
@@ -226,6 +260,58 @@ void main() {
       await tester.tap(find.byKey(const Key('writing_dock_format_btn')));
       await tester.pumpAndSettle();
       expect(find.text('B'), findsOneWidget);
+    });
+
+    testWidgets('EditorToolbar and KeyboardAccessoryRow expose plain Chinese tooltips', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: Scaffold(
+            body: Column(
+              children: [
+                EditorToolbar(
+                  controller: controller,
+                  onPickImage: () {},
+                  onPickVideo: () {},
+                  onToggleDictation: () {},
+                  onOpenTypography: () {},
+                  onOpenTemplates: () {},
+                  onOpenSoundscapes: () {},
+                ),
+                KeyboardAccessoryRow(
+                  controller: controller,
+                  onToggleDictation: () {},
+                  isWritingDockVisible: true,
+                  onToggleWritingDock: () {},
+                  backgroundColor: Colors.white,
+                  inkColor: Colors.black,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final expectedTooltip in const [
+        '加粗',
+        '斜体',
+        '下划线',
+        '删除线',
+        '一级标题',
+        '二级标题',
+        '引用',
+        '无序列表',
+        '有序列表',
+        '插入图片',
+        '插入短视频',
+        '信纸模板',
+        '背景音',
+      ]) {
+        expect(find.byTooltip(expectedTooltip), findsOneWidget, reason: expectedTooltip);
+      }
+      expect(find.byTooltip('字体排版'), findsNWidgets(2));
+      expect(find.byTooltip('语音听写'), findsNWidgets(2));
     });
   });
 }

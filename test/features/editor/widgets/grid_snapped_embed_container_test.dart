@@ -137,15 +137,15 @@ void main() {
       await tester.tap(captionBtn);
       await tester.pumpAndSettle();
 
-      expect(find.text('题跋批注 · Caption'), findsOneWidget);
+      expect(find.text('照片备注'), findsOneWidget);
       final captionInput = find.byKey(const Key('media_card_caption_input'));
       expect(captionInput, findsOneWidget);
-      await tester.enterText(captionInput, '新赋题跋 · 晴川暮雪');
+      await tester.enterText(captionInput, '晴川暮雪');
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('media_card_caption_save_button')));
       await tester.pumpAndSettle();
-      expect(changedCaption, equals('新赋题跋 · 晴川暮雪'));
+      expect(changedCaption, equals('晴川暮雪'));
 
       // 3. Test remove action
       final removeBtn = find.byKey(const Key('media_card_remove_button'));

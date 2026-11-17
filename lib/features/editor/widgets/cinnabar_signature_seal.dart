@@ -73,7 +73,7 @@ class CinnabarSignatureSeal extends StatelessWidget {
     );
 
     return Semantics(
-      label: '落款朱砂印: $text',
+      label: '签名印章：$text',
       container: true,
       excludeSemantics: true,
       child: sealWidget,

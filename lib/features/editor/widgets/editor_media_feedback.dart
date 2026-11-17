@@ -23,7 +23,7 @@ class EditorMediaFeedback {
       onMount: (mediaId) async {
         onDeskInteraction?.call();
         final didMount = await binding.mountMedia(mediaId);
-        if (!didMount && context.mounted) _show(context, const SnackBar(content: Text('本页已满三影')));
+        if (!didMount && context.mounted) _show(context, const SnackBar(content: Text('本页已满 3 项')));
       },
       onErase: (mediaId) {
         onDeskInteraction?.call();
@@ -31,7 +31,7 @@ class EditorMediaFeedback {
         _show(
           context,
           SnackBar(
-            content: const Text('已舍弃一影'),
+            content: const Text('已移除'),
             duration: EditorMediaBinding.kEraseUndoWindow,
             persist: false,
             action: SnackBarAction(label: '撤销', onPressed: () => binding.undoErase(mediaId)),
@@ -56,7 +56,7 @@ class EditorMediaFeedback {
       context,
       SnackBar(
         key: const Key('overflow_unmount_snackbar'),
-        content: Text('末页已满三影 · ${unmountedItems.length} 影已揭回画卷'),
+        content: Text('末页已满 3 项，${unmountedItems.length} 项已移回待选'),
       ),
     );
   }

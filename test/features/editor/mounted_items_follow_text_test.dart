@@ -215,7 +215,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('overflow_unmount_snackbar')), findsOneWidget);
-      expect(find.textContaining('3 影已揭回画卷'), findsOneWidget);
+      expect(find.textContaining('3 项已移回待选'), findsOneWidget);
       expect(find.textContaining(' / 2 页'), findsOneWidget, reason: 'no media-only sheet');
       await goToSheet(tester, 2, 2);
       for (final mediaId in ['a', 'b', 'c']) {

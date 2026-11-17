@@ -18,7 +18,8 @@ class ArtifactBrushMountain extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: '青花笔架: 调整字体、字号、行距与墨色',
+      label: '排版',
+      excludeSemantics: true,
       selected: isSelected,
       child: GestureDetector(
         key: const Key('chest_artifact_brush_mountain'),
@@ -84,7 +85,7 @@ class ArtifactBrushMountain extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      '青花笔架',
+                      '排版',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontKaiti,
                         fontSize: 10.5,
@@ -222,7 +223,7 @@ class BrushMountainSubPanel extends StatelessWidget {
                 const Icon(Icons.text_fields, size: 16, color: Color(0xFFFFDF85)),
                 const SizedBox(width: 6),
                 const Text(
-                  '字法墨韵 · 笔意规制',
+                  '排版设置',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 12.5,
@@ -243,7 +244,7 @@ class BrushMountainSubPanel extends StatelessWidget {
                     size: 18,
                     color: const Color(0xFFFFDF85),
                   ),
-                  tooltip: '诗意居中排印',
+                  tooltip: '居中对齐',
                   onPressed: onToggleAlignment,
                 ),
                 if (onClose != null) ...[
@@ -263,7 +264,7 @@ class BrushMountainSubPanel extends StatelessWidget {
         Row(
           children: [
             const Text(
-              '墨宝字型',
+              '字体',
               style: TextStyle(fontSize: 11.5, color: Color(0xFFD4C5B0)),
             ),
             const SizedBox(width: 12),
@@ -287,11 +288,11 @@ class BrushMountainSubPanel extends StatelessWidget {
                     items: [
                       DropdownMenuItem(
                         value: InkDiaryTheme.fontNotoSerif,
-                        child: Text('思源雅宋 (Noto Serif)', style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: const Color(0xFFF5E6C8))),
+                        child: Text('思源宋体', style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, color: const Color(0xFFF5E6C8))),
                       ),
                       DropdownMenuItem(
                         value: InkDiaryTheme.fontKaiti,
-                        child: Text('古法楷书 (Kaiti)', style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, color: const Color(0xFFF5E6C8))),
+                        child: Text('楷体', style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, color: const Color(0xFFF5E6C8))),
                       ),
                     ],
                     onChanged: (selectedFont) {
@@ -310,7 +311,7 @@ class BrushMountainSubPanel extends StatelessWidget {
         // Font Size Slider
         Row(
           children: [
-            Text('字形大小 (${typography.fontSize.toInt()}pt)', style: const TextStyle(fontSize: 11, color: Color(0xFFD4C5B0))),
+            Text('字号 (${typography.fontSize.toInt()}pt)', style: const TextStyle(fontSize: 11, color: Color(0xFFD4C5B0))),
             Expanded(
               child: Slider(
                 key: const Key('chest_font_size_slider'),
@@ -329,7 +330,7 @@ class BrushMountainSubPanel extends StatelessWidget {
         // Line Spacing Slider
         Row(
           children: [
-            Text('行间高距 (${typography.lineSpacing.toStringAsFixed(1)}x)', style: const TextStyle(fontSize: 11, color: Color(0xFFD4C5B0))),
+            Text('行距 (${typography.lineSpacing.toStringAsFixed(1)}x)', style: const TextStyle(fontSize: 11, color: Color(0xFFD4C5B0))),
             Expanded(
               child: Slider(
                 key: const Key('chest_line_spacing_slider'),
@@ -347,12 +348,12 @@ class BrushMountainSubPanel extends StatelessWidget {
 
         // Ink Tone Selection
         const SizedBox(height: 4),
-        const Text('墨色韵调', style: TextStyle(fontSize: 11.5, color: Color(0xFFD4C5B0))),
+        const Text('文字颜色', style: TextStyle(fontSize: 11.5, color: Color(0xFFD4C5B0))),
         const SizedBox(height: 4),
         Row(
           children: [
             _buildInkToneChip(
-              label: '焦墨',
+              label: '黑色',
               color: const Color(0xFF1F1D1A),
               keyName: 'chest_ink_tone_jiaomo',
               isSelected: typography.textColor == const Color(0xFF1F1D1A) || typography.textColor == null,
@@ -360,7 +361,7 @@ class BrushMountainSubPanel extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             _buildInkToneChip(
-              label: '朱砂',
+              label: '朱红',
               color: const Color(0xFFB83B2E),
               keyName: 'chest_ink_tone_cinnabar',
               isSelected: typography.textColor == const Color(0xFFB83B2E),
@@ -368,7 +369,7 @@ class BrushMountainSubPanel extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             _buildInkToneChip(
-              label: '竹青',
+              label: '墨绿',
               color: const Color(0xFF2F5241),
               keyName: 'chest_ink_tone_bamboo',
               isSelected: typography.textColor == const Color(0xFF2F5241),

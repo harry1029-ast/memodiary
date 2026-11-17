@@ -133,7 +133,7 @@ void main() {
       )));
       await tester.pumpAndSettle();
 
-      expect(find.bySemanticsLabel('贴至本页：待贴第 2 影 → 第 3 页'), findsOneWidget);
+      expect(find.bySemanticsLabel('添加到本页：第 2 项 → 第 3 页'), findsOneWidget);
       semantics.dispose();
     });
   });

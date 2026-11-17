@@ -71,7 +71,7 @@ void main() {
     await tester.tap(find.byKey(const Key('handscroll_mount_seeded_3')));
     await tester.pumpAndSettle();
 
-    expect(find.text('本页已满三影'), findsOneWidget);
+    expect(find.text('本页已满 3 项'), findsOneWidget);
     expect(tuckedPrint('seeded_3'), findsNothing);
     expect(sheet.focusNode.hasFocus, isFalse);
     expect(inputCalls(tester), isNot(contains('TextInput.show')));

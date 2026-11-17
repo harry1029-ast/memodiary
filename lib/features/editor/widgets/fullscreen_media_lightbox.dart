@@ -181,7 +181,7 @@ class _FullscreenMediaLightboxState extends State<FullscreenMediaLightbox> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          activeItem.mediaType == EphemeraMediaType.video ? '随文短影' : '随文影札',
+                          activeItem.mediaType == EphemeraMediaType.video ? '视频' : '照片',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
@@ -213,7 +213,7 @@ class _FullscreenMediaLightboxState extends State<FullscreenMediaLightbox> {
                   IconButton(
                     key: const Key('fullscreen_lightbox_close_button'),
                     icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                    tooltip: '关闭 · Close',
+                    tooltip: '关闭',
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],

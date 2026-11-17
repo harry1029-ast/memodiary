@@ -73,7 +73,7 @@ class GhostPromptView extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '由此题落墨 · Adopt Prompt',
+                        '使用此提示',
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontKaiti,
                           fontSize: 12,

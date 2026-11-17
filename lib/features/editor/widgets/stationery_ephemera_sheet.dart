@@ -339,7 +339,7 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
       ),
       decoration: InputDecoration(
         isDense: true,
-        hintText: '添加插页题注... · Add caption...',
+        hintText: '添加备注...',
         hintStyle: TextStyle(
           fontSize: 12.0,
           fontStyle: FontStyle.italic,
@@ -359,7 +359,7 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
     return Align(
       alignment: Alignment.center,
       child: Semantics(
-        label: '移除插页 · Remove Ephemera Sheet',
+        label: '移除插页',
         button: true,
         container: true,
         excludeSemantics: true,
@@ -368,7 +368,7 @@ class _StationeryEphemeraSheetState extends State<StationeryEphemeraSheet> {
           onPressed: widget.onDelete,
           icon: const Icon(Icons.delete_outline_rounded, size: 16),
           label: const Text(
-            '移除插页 · Remove Ephemera Sheet',
+            '移除插页',
             style: TextStyle(fontSize: 11),
           ),
           style: TextButton.styleFrom(
