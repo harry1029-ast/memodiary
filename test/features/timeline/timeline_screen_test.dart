@@ -170,7 +170,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(WeeklyReviewScreen), findsOneWidget);
-      expect(find.text('Weekly Review'), findsOneWidget);
+      expect(find.text('每周复盘'), findsOneWidget);
     });
 
     testWidgets('AppBar renders 3 octagonal medallions without back arrow or albums overflow', (WidgetTester tester) async {
