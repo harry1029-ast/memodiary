@@ -408,7 +408,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('album_pdf_preview_sheet')), findsOneWidget);
-    expect(find.text('共 3 页画幅'), findsOneWidget);
+    expect(find.text('导出画册 PDF'), findsOneWidget);
+    expect(find.text('共 3 页'), findsOneWidget);
 
     // Select Square format
     await tester.tap(find.byKey(const Key('pdf_format_square')));
@@ -496,7 +497,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('album_pdf_preview_sheet')), findsOneWidget);
-    expect(find.text('共 4 页画幅'), findsOneWidget);
+    expect(find.text('导出画册 PDF'), findsOneWidget);
+    expect(find.text('共 4 页'), findsOneWidget);
 
     // Select 2-Page Bound Spread format
     await tester.tap(find.byKey(const Key('pdf_format_bound_spread')));

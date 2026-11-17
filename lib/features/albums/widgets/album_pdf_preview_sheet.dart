@@ -209,7 +209,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              '导出旅行影像纪念册 PDF',
+              '导出画册 PDF',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 18,
@@ -219,7 +219,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
             ),
             const SizedBox(height: 6),
             Text(
-              '矢量宣纸装帧 · 双线书页边栏 · 朱砂印章',
+              '本地生成，支持保存到手机或直接分享打印',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 12,
@@ -235,13 +235,13 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                 children: [
                   InkMetadataPill(
                     icon: Icons.auto_stories_outlined,
-                    label: '共 ${_resolvedDoc.pages.length + 2} 页画幅',
+                    label: '共 ${_resolvedDoc.pages.length + 2} 页',
                     isAccent: true,
                     maxWidth: 150,
                   ),
-                  InkMetadataPill(
+                  const InkMetadataPill(
                     icon: Icons.lock_outline,
-                    label: '100% 离线合成',
+                    label: '离线生成',
                     maxWidth: 140,
                   ),
                 ],
@@ -249,7 +249,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              '选择画册开本',
+              '选择页面规格',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 13,
@@ -266,7 +266,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                     format: AlbumPdfPageFormat.a4Landscape,
                     key: const Key('pdf_format_a4_landscape'),
                     icon: Icons.crop_landscape,
-                    title: 'A4 横版画册',
+                    title: 'A4 横版',
                     subtitle: '297 × 210 mm',
                   ),
                 ),
@@ -277,7 +277,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                     format: AlbumPdfPageFormat.square,
                     key: const Key('pdf_format_square'),
                     icon: Icons.crop_square,
-                    title: '方册纪念本',
+                    title: '方形画册',
                     subtitle: '210 × 210 mm',
                   ),
                 ),
@@ -289,8 +289,8 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
               format: AlbumPdfPageFormat.boundSpread,
               key: const Key('pdf_format_bound_spread'),
               icon: Icons.menu_book_outlined,
-              title: '双页跨页装帧',
-              subtitle: '420 × 210 mm · 仿真书脊',
+              title: '双页跨页',
+              subtitle: '420 × 210 mm · 跨页排版',
             ),
             const SizedBox(height: 20),
             if (_isGenerating)
@@ -309,7 +309,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      '正在编排宣纸画册...',
+                      '正在生成 PDF...',
                       style: TextStyle(
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 13,
@@ -332,7 +332,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                         color: tokens.nongmo,
                       ),
                       label: Text(
-                        '保存至本地',
+                        '保存到本地',
                         style: TextStyle(
                           fontFamily: InkDiaryTheme.fontNotoSerif,
                           color: tokens.nongmo,

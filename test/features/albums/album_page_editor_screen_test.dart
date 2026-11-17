@@ -324,7 +324,10 @@ void main() {
 
     // 1. Page 1 is empty, so Collection Box drawer auto-opens
     expect(find.byType(RemovedPhotosDrawer), findsOneWidget);
-    expect(find.textContaining('收集箱 · Collection Box (7)'), findsOneWidget);
+    expect(find.text('收集箱 (7)'), findsNWidgets(2));
+    expect(find.text('添加'), findsOneWidget);
+    expect(find.text('背景'), findsOneWidget);
+    expect(find.text('版式'), findsOneWidget);
     expect(find.text('放入本页'), findsWidgets);
     expect(
       find.byKey(const Key('collection_box_horizontal_list')),
@@ -372,7 +375,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     // SnackBar appears warning about the 6-photo maximum limit
-    expect(find.textContaining('当前书页照片已满 (最多6张)'), findsOneWidget);
+    expect(find.textContaining('当前页照片已满（最多 6 张）'), findsOneWidget);
     expect(controller.selectedPage!.photoSlots.length, 6);
     expect(controller.removedPhotoIds.length, 1);
 

@@ -226,7 +226,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                       ? tokens.jiaomo
                       : tokens.qingmo.withValues(alpha: 0.45),
                 ),
-                tooltip: '撤销 (Undo)',
+                tooltip: '撤销',
                 onPressed: ctrl.canUndo ? ctrl.undo : null,
               ),
               IconButton(
@@ -238,7 +238,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                       ? tokens.jiaomo
                       : tokens.qingmo.withValues(alpha: 0.45),
                 ),
-                tooltip: '重做 (Redo)',
+                tooltip: '重做',
                 onPressed: ctrl.canRedo ? ctrl.redo : null,
               ),
               IconButton(
@@ -248,7 +248,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
                   size: 20,
                   color: tokens.nongmo,
                 ),
-                tooltip: '沉浸翻阅模式',
+                tooltip: '浏览画册',
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
@@ -324,7 +324,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
             child: _OverviewDockButton(
               buttonKey: const Key('book_overview_add_button'),
               icon: Icons.add,
-              label: 'Add',
+              label: '添加',
               tokens: tokens,
               onTap: _handleOpenAddSheet,
             ),
@@ -333,7 +333,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
             child: _OverviewDockButton(
               buttonKey: const Key('book_overview_arrange_button'),
               icon: Icons.grid_view_outlined,
-              label: 'Arrange',
+              label: '排序',
               tokens: tokens,
               onTap: _handleOpenArrangeSheet,
             ),
@@ -342,7 +342,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
             child: _OverviewDockButton(
               buttonKey: const Key('book_overview_options_button'),
               icon: Icons.style_outlined,
-              label: 'Options',
+              label: '主题',
               tokens: tokens,
               onTap: _handleOpenOptionsSheet,
             ),
@@ -362,7 +362,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
             onPressed: _handleContinueToExport,
             icon: const Icon(Icons.arrow_forward, size: 15),
             label: const Text(
-              'Continue',
+              '导出',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 12,

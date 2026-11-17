@@ -100,6 +100,12 @@ void main() {
 
     // Initially 1 synthesized page for 2 photos (Cover + Page 1 on spread 0)
     expect(find.textContaining('共 1 页'), findsOneWidget);
+    expect(find.text('封面'), findsOneWidget);
+    expect(find.text('第 1 页'), findsOneWidget);
+    expect(find.text('添加'), findsOneWidget);
+    expect(find.text('排序'), findsOneWidget);
+    expect(find.text('主题'), findsOneWidget);
+    expect(find.text('导出'), findsOneWidget);
     expect(find.byKey(const Key('spread_spine_crease_0')), findsOneWidget);
 
     // Undo and Redo buttons are initially disabled
@@ -108,7 +114,7 @@ void main() {
     );
     expect(undoBtn.onPressed, isNull);
 
-    // Tap '+ Add' -> '新增空白内页'
+    // Tap '添加' -> '添加空白页'
     await tester.tap(find.byKey(const Key('book_overview_add_button')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('overview_add_blank_page')));
@@ -126,10 +132,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('共 2 页'), findsOneWidget);
 
-    // Open 'Options' -> ThemesAndStyleSheet and apply 'Jardin' theme
+    // Open '主题' -> ThemesAndStyleSheet and apply '东方花苑' theme
     await tester.tap(find.byKey(const Key('book_overview_options_button')));
     await tester.pumpAndSettle();
     expect(find.byType(ThemesAndStyleSheet), findsOneWidget);
+    expect(find.text('水墨丹青'), findsOneWidget);
+    expect(find.text('东方花苑'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('apply_theme_jardin')));
     await tester.pumpAndSettle();
@@ -143,7 +151,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AlbumPageEditorScreen), findsOneWidget);
-    expect(find.text('Page 1 / 2'), findsOneWidget);
+    expect(find.text('第 1 / 2 页'), findsOneWidget);
 
     await tearDownAlbumScreen(tester);
   });
@@ -188,41 +196,41 @@ void main() {
     await tester.pumpAndSettle();
 
     // With 1 page (Spread 0: Cover + Page 1), Spread 1 is a trailing spread
-    // with "+ 新增书页" on the LEFT side (Page 2).
+    // with "+ 添加一页" on the LEFT side (Page 2).
     expect(find.textContaining('共 1 页'), findsOneWidget);
     expect(
       find.byKey(const Key('spread_1_add_left_page_button')),
       findsOneWidget,
     );
-    expect(find.text('待添加 · Page 2'), findsOneWidget);
+    expect(find.text('待添加 · 第 2 页'), findsOneWidget);
 
     // Tap the left-side button on Spread 1 to add Page 2
     await tester.tap(find.byKey(const Key('spread_1_add_left_page_button')));
     await tester.pumpAndSettle();
 
-    // Now 2 pages: Spread 1 has Page 2 on left, and "+ 新增书页" on the RIGHT side (Image 1)
+    // Now 2 pages: Spread 1 has Page 2 on left, and "+ 添加一页" on the RIGHT side (Image 1)
     expect(find.textContaining('共 2 页'), findsOneWidget);
     expect(
       find.byKey(const Key('spread_1_add_right_page_button')),
       findsOneWidget,
     );
-    expect(find.text('Page 2'), findsOneWidget);
-    expect(find.text('卷尾留白 · Endpaper'), findsOneWidget);
+    expect(find.text('第 2 页'), findsOneWidget);
+    expect(find.text('封底'), findsOneWidget);
 
     // Tap the right-side button on Spread 1 to add Page 3
     await tester.tap(find.byKey(const Key('spread_1_add_right_page_button')));
     await tester.pumpAndSettle();
 
     // Now 3 pages (Image 2): Spread 1 has Page 2 and Page 3.
-    // Trailing Spread 2 is generated with "+ 新增书页" on the LEFT side!
+    // Trailing Spread 2 is generated with "+ 添加一页" on the LEFT side!
     expect(find.textContaining('共 3 页'), findsOneWidget);
-    expect(find.text('Page 2'), findsOneWidget);
-    expect(find.text('Page 3'), findsOneWidget);
+    expect(find.text('第 2 页'), findsOneWidget);
+    expect(find.text('第 3 页'), findsOneWidget);
     expect(
       find.byKey(const Key('spread_2_add_left_page_button')),
       findsOneWidget,
     );
-    expect(find.text('待添加 · Page 4'), findsOneWidget);
+    expect(find.text('待添加 · 第 4 页'), findsOneWidget);
 
     // And the right side of Spread 2 is an inactive endpaper displaying '拾光印记'
     expect(
@@ -234,9 +242,9 @@ void main() {
     await tester.tap(find.byKey(const Key('spread_2_add_left_page_button')));
     await tester.pumpAndSettle();
 
-    // Now 4 pages: Spread 2 has Page 4 on the left, and "+ 新增书页" activates on the RIGHT side
+    // Now 4 pages: Spread 2 has Page 4 on the left, and "+ 添加一页" activates on the RIGHT side
     expect(find.textContaining('共 4 页'), findsOneWidget);
-    expect(find.text('Page 4'), findsOneWidget);
+    expect(find.text('第 4 页'), findsOneWidget);
     expect(
       find.byKey(const Key('spread_2_add_right_page_button')),
       findsOneWidget,

@@ -58,7 +58,7 @@ void main() {
       await tester.tap(find.byKey(const Key('open_annotation_btn')));
       await tester.pumpAndSettle();
 
-      expect(find.text('写影札'), findsOneWidget);
+      expect(find.text('照片备注'), findsWidgets);
 
       // Set photo[1] as collection cover
       await tester.tap(find.byKey(const Key('annotation_set_cover')));
