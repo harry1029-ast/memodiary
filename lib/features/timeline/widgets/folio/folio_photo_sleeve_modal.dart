@@ -79,7 +79,7 @@ class FolioPhotoSleeveModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleText = entryTitle.isNotEmpty ? entryTitle : '无题手稿';
+    final titleText = entryTitle.isNotEmpty ? entryTitle : '无题';
 
     return Center(
       child: Material(
@@ -129,7 +129,7 @@ class FolioPhotoSleeveModal extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '🗂️ 拾光集锦匣 · 《$titleText》随文影札总览',
+                '《$titleText》照片总览',
                 style: const TextStyle(
                   fontSize: 14.5,
                   fontWeight: FontWeight.bold,
@@ -139,7 +139,7 @@ class FolioPhotoSleeveModal extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '共收录 ${photos.length} 帧影札 · 点击可展读大图或跳至对应正文页',
+                '共 ${photos.length} 张照片 · 点击查看大图或跳至对应页',
                 style: const TextStyle(
                   fontSize: 11.0,
                   color: Color(0xFFA8A29E),
@@ -151,7 +151,7 @@ class FolioPhotoSleeveModal extends StatelessWidget {
         IconButton(
           key: const Key('folio_sleeve_modal_close_button'),
           onPressed: () => Navigator.of(context).pop(),
-          tooltip: '关闭画匣总览',
+          tooltip: '关闭',
           icon: const Icon(Icons.close, size: 20, color: Color(0xFFA8A29E)),
         ),
       ],
@@ -161,7 +161,7 @@ class FolioPhotoSleeveModal extends StatelessWidget {
   Widget _buildEmptyState() {
     return const Center(
       child: Text(
-        '此卷尚无随文影札',
+        '暂无照片',
         style: TextStyle(fontSize: 13, color: Color(0xFFA8A29E)),
       ),
     );
@@ -198,7 +198,7 @@ class FolioPhotoSleeveModal extends StatelessWidget {
           Expanded(
             child: Semantics(
               button: true,
-              label: '放大展读影札 ${photo.title}',
+              label: '查看大图 ${photo.title}',
               child: GestureDetector(
                 key: Key('folio_sleeve_thumb_${photo.pageNumber}'),
                 onTap: () => _handleLightboxOpen(context, photo),
@@ -252,7 +252,7 @@ class FolioPhotoSleeveModal extends StatelessWidget {
                 key: Key('folio_sleeve_lightbox_${photo.pageNumber}'),
                 onTap: () => _handleLightboxOpen(context, photo),
                 child: const Text(
-                  '🔍 放大展读',
+                  '查看大图',
                   style: TextStyle(
                     fontSize: 10.0,
                     fontWeight: FontWeight.w600,
@@ -267,7 +267,7 @@ class FolioPhotoSleeveModal extends StatelessWidget {
                   onJumpToPage?.call(photo.targetLeafIndex);
                 },
                 child: const Text(
-                  '跳至该页 ➔',
+                  '跳至该页',
                   style: TextStyle(
                     fontSize: 10.0,
                     fontWeight: FontWeight.w600,

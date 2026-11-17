@@ -127,7 +127,7 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
                                       const SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
-                                          '案头卷宗',
+                                          '日记',
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
@@ -155,7 +155,7 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
                                           ),
                                         ),
                                         child: Text(
-                                          '共 $totalFilteredCount 卷',
+                                          '共 $totalFilteredCount 篇',
                                           style: TextStyle(
                                             fontFamily: InkDiaryTheme.fontNotoSerif,
                                             fontSize: 10,
@@ -176,8 +176,8 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
                                     key: const Key('timeline_charm_filter_button'),
                                     label: charmSummary,
                                     semanticLabel: hasActiveCharms
-                                        ? '笺签筛选，当前已选：$charmSummary'
-                                        : '笺签筛选，当前全部笺签',
+                                        ? '筛选，当前已选：$charmSummary'
+                                        : '筛选',
                                     isAccent: hasActiveCharms,
                                     ensureMinTapTarget: true,
                                     leading: Icon(

@@ -150,21 +150,6 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
                     painter: BrassCornerBracketsPainter(
                       brassColor: palette.brassGold,
                     ),
-                    child: Center(
-                      child: MediaQuery.withClampedTextScaling(
-                        maxScaleFactor: 1.15,
-                        child: Text(
-                          '文房书案 · 案头卷宗',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 7.5,
-                            letterSpacing: 1.8,
-                            color: palette.brassGold.withValues(alpha: 0.85),
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ),
               ],

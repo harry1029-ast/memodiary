@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/shapes/classical_chinese_borders.dart';
 
+/// Formats a Gregorian day of the month (1-31) with the `日` suffix
+/// (e.g. 1 -> '1日', 25 -> '25日', 31 -> '31日').
+String formatGregorianDay(int day) => '$day日';
+
 /// Converts a calendar day of the month (1-31) into traditional Chinese numeral phrasing
 /// (e.g. 1 -> '初一', 10 -> '初十', 15 -> '十五', 20 -> '二十', 25 -> '廿五', 31 -> '三十一').
 String formatTraditionalChineseDay(int day) {
@@ -42,6 +46,7 @@ class TimelineDateSpineItem extends StatelessWidget {
   final bool isLast;
   final bool isHighlighted;
   final bool connectFromTop;
+  final bool useLunarDay;
   final VoidCallback? onTapBadge;
 
   const TimelineDateSpineItem({
@@ -52,6 +57,7 @@ class TimelineDateSpineItem extends StatelessWidget {
     this.isLast = false,
     this.isHighlighted = false,
     this.connectFromTop = false,
+    this.useLunarDay = false,
     this.onTapBadge,
   });
 
@@ -213,9 +219,11 @@ class TimelineDateSpineItem extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 1.0),
-                // Traditional Chinese day numeral
+                // Day numeral (Gregorian by default; traditional lunar when toggled)
                 Text(
-                  formatTraditionalChineseDay(date.day),
+                  useLunarDay
+                      ? formatTraditionalChineseDay(date.day)
+                      : formatGregorianDay(date.day),
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,

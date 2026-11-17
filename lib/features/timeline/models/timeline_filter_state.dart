@@ -164,10 +164,10 @@ class TimelineFilterState {
     );
   }
 
-  /// Summarizes active charm/tag selections for the `Chronicle Desk` Begonia plaque,
-  /// returning `'全部笺签'` when no charm filters are set.
+  /// Summarizes active tag selections for the Chronicle Desk filter button,
+  /// returning `'筛选'` when no tag filters are set.
   String charmSummaryLabel() {
-    if (!hasActiveCharmFilters) return '全部笺签';
+    if (!hasActiveCharmFilters) return '筛选';
     final parts = <String>[];
     if (mood != null) {
       for (final option in JournalLetterheadUtils.moodOptions) {
@@ -185,9 +185,9 @@ class TimelineFilterState {
         }
       }
     }
-    if (hasMediaOnly) parts.add('含图影');
-    if (weeklyReviewOnly) parts.add('周志复盘');
-    return parts.isEmpty ? '全部笺签' : parts.join(' · ');
+    if (hasMediaOnly) parts.add('含照片');
+    if (weeklyReviewOnly) parts.add('每周复盘');
+    return parts.isEmpty ? '筛选' : parts.join(' · ');
   }
 
   /// Clears all date and charm filters while preserving [sortOrder].

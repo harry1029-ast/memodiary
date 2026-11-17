@@ -16,7 +16,7 @@ class FolioMetadataFormatter {
   }) {
     final match = VerticalTypographyMapper.interlinearRegex.firstMatch(plainText);
     if (match != null && match.group(1)?.isNotEmpty == true) {
-      return '眉批夹注：${match.group(1)!.trim()}';
+      return '批注：${match.group(1)!.trim()}';
     }
     return null;
   }
@@ -29,38 +29,14 @@ class FolioMetadataFormatter {
     return monthDay == null ? lunar.yearName : '${lunar.yearName} · $monthDay';
   }
 
-  /// Formats Gregorian date with classical Shichen & Ke, e.g. `2026.11.23 · 亥时初刻`.
+  /// Formats Gregorian date with 24-hour `HH:mm` time, e.g. `2026.11.23 · 21:15`.
   static String formatGregorianDate(DateTime date) {
     final year = date.year;
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
-    final timeStr = _timeToShichenKe(date);
-    return '$year.$month.$day · $timeStr';
-  }
-
-  static String _timeToShichenKe(DateTime date) {
-    const shichenNames = [
-      '子时',
-      '丑时',
-      '寅时',
-      '卯时',
-      '辰时',
-      '巳时',
-      '午时',
-      '未时',
-      '申时',
-      '酉时',
-      '戌时',
-      '亥时',
-    ];
-    final hourIndex = ((date.hour + 1) ~/ 2) % 12;
-    final shichen = shichenNames[hourIndex];
-
-    const keNames = ['初刻', '一刻', '二刻', '三刻'];
-    final keIndex = (date.minute ~/ 15).clamp(0, 3);
-    final ke = keNames[keIndex];
-
-    return '$shichen$ke';
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$year.$month.$day · $hour:$minute';
   }
 
   /// Pads seal inscription to exactly 4 characters with '印' if shorter.

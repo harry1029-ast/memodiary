@@ -146,7 +146,7 @@ class MonthIndexChip extends StatelessWidget {
 
     return MinTapTarget(
       materialKey: containerKey,
-      semanticLabel: '$month月${hasEntries ? '，有卷宗' : ''}',
+      semanticLabel: '$month月${hasEntries ? '，有日记' : ''}',
       selected: isActive,
       onTap: onTap,
       child: Container(

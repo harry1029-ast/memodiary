@@ -21,39 +21,23 @@ class TimelineOnboardingEmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CinnabarSealBadge(
-            text: '素宣\n待书',
+            text: '暂无\n日记',
             size: 64,
           ),
           const SizedBox(height: 20),
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            children: [
-              Text(
-                '素宣待书',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                'No Diary Entries Yet',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: tokens.danmo,
-                ),
-              ),
-            ],
+          Text(
+            '暂无日记',
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: tokens.jiaomo,
+              letterSpacing: 0.5,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
-            '尚无墨痕存卷。记录当下的呼吸、微小的吉光、或沉潜的心绪。\n所有文字图影均安全封存于本地密匣。',
+            '还没有写过日记。记录当下的生活与心情，所有内容均保存在本地设备。',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontLiterata,
@@ -66,15 +50,7 @@ class TimelineOnboardingEmptyState extends StatelessWidget {
           FilledButton.icon(
             onPressed: onCreateEntry,
             icon: const Icon(Icons.brush_rounded, size: 16),
-            label: const Wrap(
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 4,
-              children: [
-                Text('写下第一卷'),
-                Text('Write Your First Entry'),
-              ],
-            ),
+            label: const Text('写第一篇日记'),
           ),
         ],
       ),
@@ -110,7 +86,7 @@ class TimelineErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              '墨卷读取未畅',
+              '加载失败',
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 17,

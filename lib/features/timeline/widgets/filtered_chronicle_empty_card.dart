@@ -46,7 +46,7 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            '此岁时检目下暂无案头卷宗',
+            '当前筛选条件下暂无日记',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontNotoSerif,
@@ -57,7 +57,7 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '可调整上方岁时检目或笺签筛选，或一键恢复全卷',
+            '可调整上方日期或标签筛选，或清除全部筛选',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
@@ -74,7 +74,7 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             ),
             child: Text(
-              '清除筛选 ($totalActiveInDb 卷)',
+              '清除筛选 ($totalActiveInDb 篇)',
               style: const TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 12.5,

@@ -284,12 +284,12 @@ void main() {
       expect(find.text('甲辰年二月十六'), findsOneWidget);
       expect(find.text('2026.03.25'), findsOneWidget);
       expect(find.text('雨过天晴'), findsOneWidget);
-      expect(find.text('愉快'), findsOneWidget);
+      expect(find.text('开心'), findsOneWidget);
       expect(find.text('竹窗听雨，泥炉温茶，忽见远山出岫。'), findsOneWidget);
-      expect(find.text('泥金和纸胶带 · 拾光·珍藏拓影'), findsOneWidget);
-      expect(find.text('轻翻展读正文 ⇢'), findsOneWidget);
+      expect(find.text('拾光日记'), findsOneWidget);
+      expect(find.text('翻到正文 ›'), findsOneWidget);
 
-      await tester.tap(find.text('轻翻展读正文 ⇢'));
+      await tester.tap(find.text('翻到正文 ›'));
       expect(forwardTapped, isTrue);
     });
 
@@ -318,9 +318,9 @@ void main() {
       );
 
       expect(find.text('第12周工作与生活复盘'), findsOneWidget);
-      expect(find.text('周报 · 第12周'), findsOneWidget);
-      expect(find.text('「此卷留白，静待泼墨」'), findsOneWidget);
-      expect(find.text('卷末 · 静候落笔'), findsOneWidget);
+      expect(find.text('第12周复盘'), findsOneWidget);
+      expect(find.text('这篇日记暂无正文'), findsOneWidget);
+      expect(find.text('共 1 页'), findsOneWidget);
     });
 
     testWidgets('gracefully renders hero image when heroPhotoPath is provided', (tester) async {
@@ -388,7 +388,7 @@ void main() {
       );
 
       expect(find.text('《西湖记游》 · 第 2 页'), findsOneWidget);
-      expect(find.text('乌丝栏 · 横排'), findsOneWidget);
+      expect(find.text('横线 · 横排'), findsOneWidget);
       expect(find.text('六桥烟柳'), findsOneWidget);
       expect(find.textContaining('苏堤春晓'), findsOneWidget);
     });
@@ -428,7 +428,7 @@ void main() {
 
       // 1. Lined (with margin rule -> 32px left clearance)
       await pumpBodyLeaf(FolioSubstrateTheme.xuan);
-      expect(find.text('乌丝栏 · 横排'), findsOneWidget);
+      expect(find.text('横线 · 横排'), findsOneWidget);
       expect(
         tester.getTopLeft(find.text('首行正文不越红线。')).dx - tester.getTopLeft(paperHeartFinder).dx,
         equals(32.0),
@@ -436,7 +436,7 @@ void main() {
 
       // 2. Obsidian Night (with margin rule -> 32px left clearance)
       await pumpBodyLeaf(FolioSubstrateTheme.obsidian);
-      expect(find.text('乌丝栏 · 横排'), findsOneWidget);
+      expect(find.text('横线 · 横排'), findsOneWidget);
       expect(
         tester.getTopLeft(find.text('首行正文不越红线。')).dx - tester.getTopLeft(paperHeartFinder).dx,
         equals(32.0),
@@ -445,7 +445,7 @@ void main() {
       // 3. Other template background types in faithfulOriginal (20px symmetric padding + matching label)
       final expectedCases = <(TemplateBackgroundType, String)>[
         (TemplateBackgroundType.paperTexture, '牛皮纸 · 横排'),
-        (TemplateBackgroundType.color, '素笺 · 横排'),
+        (TemplateBackgroundType.color, '纯色 · 横排'),
         (TemplateBackgroundType.grid, '方格 · 横排'),
         (TemplateBackgroundType.dotGrid, '点阵 · 横排'),
       ];
@@ -529,7 +529,7 @@ void main() {
       );
 
       expect(find.text('《兰亭序录》 · 第 3 页'), findsOneWidget);
-      expect(find.text('朱丝栏 · 竖排'), findsOneWidget);
+      expect(find.text('朱丝竖排'), findsOneWidget);
       expect(find.text('永'), findsOneWidget);
       expect(find.text('和'), findsOneWidget);
       expect(find.text('岁'), findsOneWidget);
@@ -568,7 +568,7 @@ void main() {
       );
 
       expect(find.text('晨曦中的断桥残雪'), findsOneWidget);
-      expect(find.text('珍藏拓影 · 插页'), findsOneWidget);
+      expect(find.text('插图页'), findsOneWidget);
       expect(find.byType(Image), findsOneWidget);
 
       // Ephemera Video
@@ -595,7 +595,7 @@ void main() {
       );
 
       expect(find.text('南屏晚钟实录'), findsOneWidget);
-      expect(find.text('动态拓片 · 影印'), findsOneWidget);
+      expect(find.text('视频插页'), findsOneWidget);
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
       expect(find.byType(FolioCinnabarSealWidget), findsOneWidget);
     });

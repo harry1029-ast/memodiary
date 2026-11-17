@@ -126,7 +126,7 @@ class _ThreadBoundFolioScreenState extends State<ThreadBoundFolioScreen> {
   Widget build(BuildContext context) {
     final entry = widget.entry;
     final dateBreadcrumb = DateFormat('yyyy.MM.dd').format(entry.entryDate);
-    final displayTitle = (entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : '无题手稿';
+    final displayTitle = (entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : '无题';
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0908),

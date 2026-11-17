@@ -17,18 +17,18 @@ enum ReadingPerspective {
 
   /// Chinese display label for perspective selector.
   String get label => switch (this) {
-        ReadingPerspective.faithfulOriginal => '忠实原貌',
-        ReadingPerspective.vermilionVertical => '朱丝古刻',
-        ReadingPerspective.genkoManuscript => '原稿墨格',
-        ReadingPerspective.obsidianNight => '松烟夜卷',
+        ReadingPerspective.faithfulOriginal => '原样',
+        ReadingPerspective.vermilionVertical => '朱丝竖排',
+        ReadingPerspective.genkoManuscript => '方格竖排',
+        ReadingPerspective.obsidianNight => '暗夜横排',
       };
 
   /// Concise subtitle explaining the presentation without bloated flavor text.
   String get subtitle => switch (this) {
-        ReadingPerspective.faithfulOriginal => '遵循手稿原定信笺格式',
-        ReadingPerspective.vermilionVertical => '十列朱丝栏古籍竖排',
-        ReadingPerspective.genkoManuscript => '十六行原稿纸朱墨方格',
-        ReadingPerspective.obsidianNight => '玄石金粉暗夜沉浸横排',
+        ReadingPerspective.faithfulOriginal => '按日记原信纸显示',
+        ReadingPerspective.vermilionVertical => '竖排红线',
+        ReadingPerspective.genkoManuscript => '竖排方格',
+        ReadingPerspective.obsidianNight => '深色横排',
       };
 
   /// The ruling layout associated with this perspective.
@@ -201,9 +201,9 @@ class FolioSubstrateTheme {
     );
   }
 
-  /// Classical Raw Xuan paper substrate (`生宣纸`).
+  /// Classical Raw Xuan paper substrate (`宣纸`).
   static const FolioSubstrateTheme xuan = FolioSubstrateTheme(
-    label: '生宣纸',
+    label: '宣纸',
     pageBg: Color(0xFFFAF7F0),
     pageBackBg: Color(0xFFF3EFE4),
     inkPrimary: Color(0xFF231F1C),
@@ -214,9 +214,9 @@ class FolioSubstrateTheme {
     isDark: false,
   );
 
-  /// Cold Gold speckled paper substrate (`冷金笺`).
+  /// Cold Gold speckled paper substrate (`洒金`).
   static const FolioSubstrateTheme coldGold = FolioSubstrateTheme(
-    label: '冷金笺',
+    label: '洒金',
     pageBg: Color(0xFFF5EFE0),
     pageBackBg: Color(0xFFEDE4CE),
     inkPrimary: Color(0xFF241D16),
@@ -227,9 +227,9 @@ class FolioSubstrateTheme {
     isDark: false,
   );
 
-  /// Obsidian dark gold night paper substrate (`松烟夜墨`).
+  /// Obsidian dark gold night paper substrate (`暗夜`).
   static const FolioSubstrateTheme obsidian = FolioSubstrateTheme(
-    label: '松烟夜墨',
+    label: '暗夜',
     pageBg: Color(0xFF1B1D20),
     pageBackBg: Color(0xFF15171A),
     inkPrimary: Color(0xFFE6E1D8),

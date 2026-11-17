@@ -66,48 +66,48 @@ void main() {
   }
 
   group('FolioCoverShowcase Adaptive Mounting Tests', () {
-    testWidgets('renders Single Hero Artwork (单幅立轴画心) with brass pin for N = 1', (tester) async {
+    testWidgets('renders Single Hero Artwork with brass pin for N = 1', (tester) async {
       final leaf = createMockCoverLeaf(photoCount: 1);
       await pumpCoverShowcase(tester, leaf: leaf);
 
       // Verify Washi Tape Label for N=1
-      expect(find.text('泥金和纸胶带 · 拾光·单幅立轴画心'), findsOneWidget);
+      expect(find.text('封面照片'), findsOneWidget);
 
       // Verify Single Hero Mount widget and Antique Brass Pin
       expect(find.byKey(const Key('folio_cover_single_hero')), findsOneWidget);
       expect(find.byKey(const Key('folio_cover_antique_brass_pin')), findsOneWidget);
-      expect(find.text('P1 · 独幅立轴'), findsOneWidget);
+      expect(find.text('P1'), findsOneWidget);
       expect(find.text('西湖秋月 1'), findsOneWidget);
       expect(find.text('平湖秋月 · 荷塘微风 1'), findsOneWidget);
     });
 
-    testWidgets('renders Symmetrical Vertical Diptych (双屏对幅册页) with inner shadows for N = 2', (tester) async {
+    testWidgets('renders Symmetrical Vertical Diptych with inner shadows for N = 2', (tester) async {
       final leaf = createMockCoverLeaf(photoCount: 2);
       await pumpCoverShowcase(tester, leaf: leaf, theme: FolioSubstrateTheme.coldGold);
 
       // Verify Washi Tape Label for N=2
-      expect(find.text('泥金和纸胶带 · 拾光·双屏对幅册页'), findsOneWidget);
+      expect(find.text('双图封面'), findsOneWidget);
 
       // Verify Vertical Diptych container and two split leaves
       expect(find.byKey(const Key('folio_cover_vertical_diptych')), findsOneWidget);
       expect(find.byKey(const Key('folio_cover_diptych_p1')), findsOneWidget);
       expect(find.byKey(const Key('folio_cover_diptych_p2')), findsOneWidget);
 
-      expect(find.text('P1 · 上卷'), findsOneWidget);
-      expect(find.text('P2 · 下卷'), findsOneWidget);
+      expect(find.text('P1'), findsOneWidget);
+      expect(find.text('P2'), findsOneWidget);
       expect(find.text('西湖秋月 1'), findsOneWidget);
       expect(find.text('西湖秋月 2'), findsOneWidget);
 
       // Verify compact sleeve bar for N=2
-      expect(find.text('🗂️ 拾光画匣 · 已收录 2 帧随文影札'), findsOneWidget);
+      expect(find.text('共 2 张照片'), findsOneWidget);
     });
 
-    testWidgets('renders Asymmetrical Album Collage (三景斗方拼贴) for N = 3', (tester) async {
+    testWidgets('renders Asymmetrical Album Collage for N = 3', (tester) async {
       final leaf = createMockCoverLeaf(photoCount: 3);
       await pumpCoverShowcase(tester, leaf: leaf, theme: FolioSubstrateTheme.obsidian);
 
       // Verify Washi Tape Label for N=3
-      expect(find.text('泥金和纸胶带 · 拾光·三景斗方册页'), findsOneWidget);
+      expect(find.text('三图拼贴'), findsOneWidget);
 
       // Verify Asymmetrical Collage container and 3 leaves
       expect(find.byKey(const Key('folio_cover_asymmetrical_collage')), findsOneWidget);
@@ -115,34 +115,33 @@ void main() {
       expect(find.byKey(const Key('folio_cover_collage_p2')), findsOneWidget);
       expect(find.byKey(const Key('folio_cover_collage_p3')), findsOneWidget);
 
-      expect(find.text('P1 · 首卷主景'), findsOneWidget);
-      expect(find.text('P2 · 次卷'), findsOneWidget);
-      expect(find.text('P3 · 终卷'), findsOneWidget);
+      expect(find.text('P1'), findsOneWidget);
+      expect(find.text('P2'), findsOneWidget);
+      expect(find.text('P3'), findsOneWidget);
 
       // Verify compact sleeve bar for N=3
-      expect(find.text('🗂️ 拾光画匣 · 已收录 3 帧随文影札'), findsOneWidget);
+      expect(find.text('共 3 张照片'), findsOneWidget);
     });
 
-    testWidgets('renders Hero Artwork + Stationery Pocket Sleeve (*集锦匣*) for N >= 4', (tester) async {
+    testWidgets('renders Hero Artwork + Stationery Pocket Sleeve for N >= 4', (tester) async {
       final leaf = createMockCoverLeaf(photoCount: 4);
       await pumpCoverShowcase(tester, leaf: leaf);
 
       // Verify Washi Tape Label for N>=4
-      expect(find.text('泥金和纸胶带 · 拾光·主景与藏影集锦匣'), findsOneWidget);
+      expect(find.text('照片合集'), findsOneWidget);
 
       // Verify Pocket Sleeve layout
       expect(find.byKey(const Key('folio_cover_pocket_sleeve_layout')), findsOneWidget);
       expect(find.byKey(const Key('folio_cover_pocket_hero')), findsOneWidget);
-      expect(find.text('P1 · 卷首主景画心'), findsOneWidget);
 
-      // Verify Brocade Pocket Sleeve Container
+      // Verify Pocket Sleeve Container
       expect(find.byKey(const Key('folio_cover_pocket_sleeve_container')), findsOneWidget);
-      expect(find.text('集锦匣'), findsOneWidget);
-      expect(find.text('📷 拾光画匣 · 已收录 4 枚随文影札'), findsOneWidget);
-      expect(find.text('开启画匣总览 ➔'), findsOneWidget);
+      expect(find.text('照片'), findsOneWidget);
+      expect(find.text('共 4 张照片'), findsOneWidget);
+      expect(find.text('查看全部 ›'), findsOneWidget);
 
       // Verify fanned miniature slips inside the sleeve
-      expect(find.text('P1'), findsOneWidget);
+      expect(find.text('P1'), findsNWidgets(2));
       expect(find.text('P2'), findsOneWidget);
       expect(find.text('P3'), findsOneWidget);
       expect(find.text('P4'), findsOneWidget);
@@ -203,8 +202,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Header
-      expect(find.text('🗂️ 拾光集锦匣 · 《断桥残雪》随文影札总览'), findsOneWidget);
-      expect(find.text('共收录 4 帧影札 · 点击可展读大图或跳至对应正文页'), findsOneWidget);
+      expect(find.text('《断桥残雪》照片总览'), findsOneWidget);
+      expect(find.text('共 4 张照片 · 点击查看大图或跳至对应页'), findsOneWidget);
 
       // Verify all 4 cards rendered in grid with title and date
       expect(find.text('P1 · 西湖秋月 1'), findsOneWidget);
@@ -216,11 +215,13 @@ void main() {
       // Verify lightbox and jump actions exist
       expect(find.byKey(const Key('folio_sleeve_lightbox_1')), findsOneWidget);
       expect(find.byKey(const Key('folio_sleeve_jump_1')), findsOneWidget);
+      expect(find.text('查看大图'), findsNWidgets(4));
+      expect(find.text('跳至该页'), findsNWidgets(4));
 
       // Close modal
       await tester.tap(find.byKey(const Key('folio_sleeve_modal_close_button')));
       await tester.pumpAndSettle();
-      expect(find.text('🗂️ 拾光集锦匣 · 《断桥残雪》随文影札总览'), findsNothing);
+      expect(find.text('《断桥残雪》照片总览'), findsNothing);
     });
 
     testWidgets('navigates to target page when Jump button is tapped in modal', (tester) async {
@@ -259,17 +260,17 @@ void main() {
 
       expect(jumpedIndex, equals(2));
       // Modal should be closed
-      expect(find.text('🗂️ 拾光集锦匣 · 《断桥残雪》随文影札总览'), findsNothing);
+      expect(find.text('《断桥残雪》照片总览'), findsNothing);
     });
   });
 
   group('FolioFrontispiecePage Adaptive Integration Tests', () {
     testWidgets('adapts title banner badge according to photo count N', (tester) async {
       for (final (count, expectedBadge) in [
-        (1, '单幅画心 · 1帧'),
-        (2, '双屏对幅 · 2帧'),
-        (3, '三景册页 · 3帧'),
-        (4, '集锦画匣 · 4帧'),
+        (1, '1 张照片'),
+        (2, '2 张照片'),
+        (3, '3 张照片'),
+        (4, '共 4 张照片'),
       ]) {
         final leaf = createMockCoverLeaf(photoCount: count);
 
@@ -284,7 +285,7 @@ void main() {
           ),
         );
 
-        expect(find.text(expectedBadge), findsOneWidget);
+        expect(find.text(expectedBadge), findsWidgets);
       }
     });
 
@@ -303,10 +304,10 @@ void main() {
       );
 
       // Tap the adaptive badge in title banner
-      await tester.tap(find.text('集锦画匣 · 4帧'));
+      await tester.tap(find.text('共 4 张照片').first);
       await tester.pumpAndSettle();
 
-      expect(find.text('🗂️ 拾光集锦匣 · 《断桥残雪》随文影札总览'), findsOneWidget);
+      expect(find.text('《断桥残雪》照片总览'), findsOneWidget);
     });
   });
 }

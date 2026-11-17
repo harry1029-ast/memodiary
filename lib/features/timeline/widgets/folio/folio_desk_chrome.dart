@@ -82,7 +82,7 @@ class FolioTopChrome extends StatelessWidget {
                       size: 20,
                       color: isPlaying ? const Color(0xFFB83B2E) : const Color(0xFFB3ADA3),
                     ),
-                    tooltip: '砚边琴韵',
+                    tooltip: '背景音',
                     onPressed: () {
                       SoundscapeModal.show(
                         context: context,
@@ -130,7 +130,7 @@ class FolioTopChrome extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        isEntryLocked ? '解除私密封缄' : '私密封存',
+                        isEntryLocked ? '解除锁定' : '加密锁定',
                         style: const TextStyle(color: Color(0xFFE6E1D8)),
                       ),
                     ],
@@ -143,7 +143,7 @@ class FolioTopChrome extends StatelessWidget {
                     children: [
                       Icon(Icons.picture_as_pdf_outlined, size: 18, color: Color(0xFFE6E1D8)),
                       SizedBox(width: 10),
-                      Text('导出宣纸 PDF', style: TextStyle(color: Color(0xFFE6E1D8))),
+                      Text('导出 PDF', style: TextStyle(color: Color(0xFFE6E1D8))),
                     ],
                   ),
                 ),
@@ -154,7 +154,7 @@ class FolioTopChrome extends StatelessWidget {
                     children: [
                       Icon(Icons.description_outlined, size: 18, color: Color(0xFFE6E1D8)),
                       SizedBox(width: 10),
-                      Text('纯文归档', style: TextStyle(color: Color(0xFFE6E1D8))),
+                      Text('导出纯文本', style: TextStyle(color: Color(0xFFE6E1D8))),
                     ],
                   ),
                 ),
@@ -166,7 +166,7 @@ class FolioTopChrome extends StatelessWidget {
                     children: [
                       Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red.shade400),
                       const SizedBox(width: 10),
-                      Text('移入岁暮拾遗', style: TextStyle(color: Colors.red.shade400)),
+                      Text('移入回收站', style: TextStyle(color: Colors.red.shade400)),
                     ],
                   ),
                 ),
@@ -326,7 +326,7 @@ class FolioBottomDock extends StatelessWidget {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             ),
                             icon: const Icon(Icons.edit_outlined, size: 13),
-                            label: const Text('落墨修改', style: TextStyle(fontSize: 12)),
+                            label: const Text('编辑', style: TextStyle(fontSize: 12)),
                           ),
                         ],
                       ),

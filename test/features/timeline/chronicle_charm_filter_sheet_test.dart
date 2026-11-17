@@ -65,10 +65,12 @@ void main() {
         );
 
         expect(find.byType(ChronicleCharmFilterSheet), findsOneWidget);
-        expect(find.text('心绪'), findsOneWidget);
-        expect(find.text('天时'), findsOneWidget);
-        expect(find.text('含图影'), findsOneWidget);
-        expect(find.text('周志复盘'), findsOneWidget);
+        expect(find.text('筛选'), findsOneWidget);
+        expect(find.text('心情'), findsOneWidget);
+        expect(find.text('天气'), findsOneWidget);
+        expect(find.text('含照片'), findsOneWidget);
+        expect(find.text('每周复盘'), findsOneWidget);
+        expect(find.text('清除筛选'), findsOneWidget);
         expect(find.byIcon(Icons.check_rounded), findsNothing);
 
         // Toggle Mood: 欢欣 (5)
@@ -196,11 +198,11 @@ void main() {
           );
         }
 
-        expect(find.bySemanticsLabel(RegExp('心绪：喜悦')), findsOneWidget);
-        expect(find.bySemanticsLabel(RegExp('天时：晴天')), findsOneWidget);
-        expect(find.bySemanticsLabel(RegExp('含图影')), findsOneWidget);
-        expect(find.bySemanticsLabel(RegExp('周志复盘')), findsOneWidget);
-        expect(find.bySemanticsLabel(RegExp('重置笺签')), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('心情：喜悦')), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('天气：晴天')), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('含照片')), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('每周复盘')), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('清除筛选')), findsOneWidget);
       },
     );
   });

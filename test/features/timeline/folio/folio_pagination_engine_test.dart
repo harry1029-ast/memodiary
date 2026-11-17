@@ -69,15 +69,14 @@ void main() {
       );
 
       final gregorian = FolioMetadataFormatter.formatGregorianDate(testDate);
-      expect(gregorian, contains('2026.11.23'));
-      expect(gregorian, contains('亥时一刻'));
+      expect(gregorian, equals('2026.11.23 · 21:15'));
     });
 
     test('extracts opening reflection only from explicit {夹注:...}', () {
       final reflection1 = FolioMetadataFormatter.extractOpeningReflection(
         plainText: '晚来天欲雪{夹注:孤灯疾书见闻}，室内小炉温茶。',
       );
-      expect(reflection1, equals('眉批夹注：孤灯疾书见闻'));
+      expect(reflection1, equals('批注：孤灯疾书见闻'));
 
       final reflection2 = FolioMetadataFormatter.extractOpeningReflection(
         plainText: '暮秋听雨小记\n窗外梧桐叶落声渐密。',
@@ -88,22 +87,33 @@ void main() {
   });
 
   group('ReadingPerspective & Substrate Themes', () {
+    test('exposes plain Chinese perspective labels and subtitles', () {
+      expect(ReadingPerspective.faithfulOriginal.label, equals('原样'));
+      expect(ReadingPerspective.faithfulOriginal.subtitle, equals('按日记原信纸显示'));
+      expect(ReadingPerspective.vermilionVertical.label, equals('朱丝竖排'));
+      expect(ReadingPerspective.vermilionVertical.subtitle, equals('竖排红线'));
+      expect(ReadingPerspective.genkoManuscript.label, equals('方格竖排'));
+      expect(ReadingPerspective.genkoManuscript.subtitle, equals('竖排方格'));
+      expect(ReadingPerspective.obsidianNight.label, equals('暗夜横排'));
+      expect(ReadingPerspective.obsidianNight.subtitle, equals('深色横排'));
+    });
+
     test('resolves themes correctly across perspectives', () {
       final faithful = ReadingPerspective.faithfulOriginal.resolveTheme();
       expect(faithful.isDark, isFalse);
-      expect(faithful.label, equals('生宣纸'));
+      expect(faithful.label, equals('宣纸'));
 
       final vermilion = ReadingPerspective.vermilionVertical.resolveTheme();
-      expect(vermilion.label, equals('生宣纸'));
+      expect(vermilion.label, equals('宣纸'));
       expect(ReadingPerspective.vermilionVertical.rulingLayout, equals(FolioRulingLayout.vermilionVertical));
 
       final genko = ReadingPerspective.genkoManuscript.resolveTheme();
-      expect(genko.label, equals('冷金笺'));
+      expect(genko.label, equals('洒金'));
       expect(genko.showGoldFlecks, isTrue);
       expect(ReadingPerspective.genkoManuscript.rulingLayout, equals(FolioRulingLayout.genkoVertical));
 
       final obsidian = ReadingPerspective.obsidianNight.resolveTheme();
-      expect(obsidian.label, equals('松烟夜墨'));
+      expect(obsidian.label, equals('暗夜'));
       expect(obsidian.isDark, isTrue);
       expect(ReadingPerspective.obsidianNight.rulingLayout, equals(FolioRulingLayout.faithfulHorizontal));
     });

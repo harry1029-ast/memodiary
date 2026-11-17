@@ -96,7 +96,7 @@ void main() {
 
       // Verify title & helper text
       expect(find.text('竹窗听雨图'), findsOneWidget);
-      expect(find.text('✥ 拖拽 / 点展读'), findsOneWidget);
+      expect(find.text('拖动 / 点击放大'), findsOneWidget);
       expect(find.text('P1'), findsOneWidget);
 
       // Verify brass paperclip and gold washi tape widgets
@@ -320,7 +320,7 @@ void main() {
 
       // Initially visible
       expect(find.byType(FolioPolaroidMiniCard), findsOneWidget);
-      expect(find.text('👁️ 隐藏微笺'), findsOneWidget);
+      expect(find.text('隐藏照片卡片'), findsOneWidget);
 
       // Tap hide button on card
       await tester.tap(find.byKey(const Key('folio_polaroid_hide_button')));
@@ -328,7 +328,7 @@ void main() {
 
       // Card is hidden, pill switches to restore mode
       expect(find.byType(FolioPolaroidMiniCard), findsNothing);
-      expect(find.text('📌 展开微笺'), findsOneWidget);
+      expect(find.text('显示照片卡片'), findsOneWidget);
 
       // Tap restore pill to expand
       await tester.tap(find.byKey(const Key('folio_ephemera_restore_pill')));
@@ -336,7 +336,7 @@ void main() {
 
       // Card is visible again
       expect(find.byType(FolioPolaroidMiniCard), findsOneWidget);
-      expect(find.text('👁️ 隐藏微笺'), findsOneWidget);
+      expect(find.text('隐藏照片卡片'), findsOneWidget);
     });
 
     testWidgets('tapping card opens FullscreenMediaLightbox', (tester) async {
@@ -427,7 +427,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Navigate to content page (Page 2)
-      await tester.tap(find.text('轻翻展读正文 ⇢'), warnIfMissed: false);
+      await tester.tap(find.text('翻到正文 ›'), warnIfMissed: false);
       await tester.pumpAndSettle();
 
       final cardFinder = find.byType(FolioPolaroidMiniCard);

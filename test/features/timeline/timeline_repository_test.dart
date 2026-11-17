@@ -139,7 +139,7 @@ void main() {
       final sealedItem = TimelineEntryItem(entry: sealedEntry);
       expect(sealedItem.isSealedTimeCapsule, isTrue);
       expect(sealedItem.timeUntilUnlock!.inDays, greaterThanOrEqualTo(4));
-      expect(sealedItem.remainingUnlockTimeFormatted, contains('days'));
+      expect(sealedItem.remainingUnlockTimeFormatted, contains('天'));
 
       // Unlocked capsule (unlockAt was yesterday)
       final unlockedEntry = Entry(
@@ -494,11 +494,11 @@ void main() {
         sortOrder: TimelineSortOrder.oldestFirst,
       );
       expect(empty.hasActiveCharmFilters, isFalse);
-      expect(empty.charmSummaryLabel(), equals('全部笺签'));
+      expect(empty.charmSummaryLabel(), equals('筛选'));
 
       final moodAndMedia = empty.copyWith(mood: 5, hasMediaOnly: true);
       expect(moodAndMedia.hasActiveCharmFilters, isTrue);
-      expect(moodAndMedia.charmSummaryLabel(), equals('喜悦 · 含图影'));
+      expect(moodAndMedia.charmSummaryLabel(), equals('喜悦 · 含照片'));
 
       final allCharms = empty.copyWith(
         mood: 3,
@@ -508,13 +508,13 @@ void main() {
       );
       expect(
         allCharms.charmSummaryLabel(),
-        equals('平静 · 下雨 · 含图影 · 周志复盘'),
+        equals('平静 · 下雨 · 含照片 · 每周复盘'),
       );
 
       // resetCharms clears only charm attributes while preserving date & sort
       final charmsReset = allCharms.resetCharms();
       expect(charmsReset.hasActiveCharmFilters, isFalse);
-      expect(charmsReset.charmSummaryLabel(), equals('全部笺签'));
+      expect(charmsReset.charmSummaryLabel(), equals('筛选'));
       expect(charmsReset.year, equals(2026));
       expect(charmsReset.month, equals(11));
       expect(charmsReset.xun, equals(TimelineXun.shang));

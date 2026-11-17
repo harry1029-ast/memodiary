@@ -25,16 +25,9 @@ class TimeCapsuleCard extends StatelessWidget {
     final tokens = context.inkTokens;
     final palette = FoldedXuanSlipPalette.of(context);
     final unlockDate = item.entry.unlockAt;
-    String unlockDateStr;
-    try {
-      unlockDateStr = unlockDate != null
-          ? DateFormat('yyyy年M月d日 HH:mm', 'zh_CN').format(unlockDate)
-          : '未指定时日';
-    } catch (_) {
-      unlockDateStr = unlockDate != null
-          ? DateFormat('yyyy-MM-dd HH:mm').format(unlockDate)
-          : '未指定时日';
-    }
+    final unlockDateStr = unlockDate != null
+        ? DateFormat('yyyy年M月d日').format(unlockDate)
+        : '未指定日期';
 
     final now = DateTime.now();
     final remainingDays = unlockDate != null
@@ -82,25 +75,14 @@ class TimeCapsuleCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text.rich(
-                      TextSpan(
-                        style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif),
-                        children: [
-                          TextSpan(
-                            text: 'TIME CAPSULE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: tokens.cinnabar,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          const WidgetSpan(child: SizedBox(width: 4)),
-                          TextSpan(
-                            text: '时光胶囊 · 封缄书',
-                            style: TextStyle(fontSize: 11, color: tokens.danmo),
-                          ),
-                        ],
+                    Text(
+                      '时间胶囊',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.cinnabar,
+                        letterSpacing: 0.6,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -128,7 +110,7 @@ class TimeCapsuleCard extends StatelessWidget {
               MediaQuery.withClampedTextScaling(
                 maxScaleFactor: 1.25,
                 child: CinnabarSealBadge.compact(
-                  text: '封存中',
+                  text: '待解锁',
                   size: 22,
                   isWashVariant: false,
                 ),
@@ -147,7 +129,9 @@ class TimeCapsuleCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '封存至 $unlockDateStr · Unlocks in $remainingDays days (距启缄尚有 $remainingDays 天)',
+                  unlockDate != null
+                      ? '将于 $unlockDateStr 解锁 · 还有 $remainingDays 天解锁'
+                      : '待解锁',
                   style: TextStyle(
                     fontFamily: InkDiaryTheme.fontNotoSerif,
                     fontSize: 11.5,
@@ -180,11 +164,11 @@ class TimeCapsuleCard extends StatelessWidget {
           children: [
             Icon(Icons.lock_rounded, color: tokens.cinnabar, size: 20),
             const SizedBox(width: 8),
-            const Flexible(child: Text('Time Capsule Sealed')),
+            const Flexible(child: Text('时间胶囊待解锁')),
           ],
         ),
         content: Text(
-          '此墨稿已被时光密缄，需静候至 $unlockDateStr 方能启卷阅览。在此之前，笔墨均处于硬件级密匣封存，不可窥看。',
+          '这篇日记将于 $unlockDateStr 解锁。在此之前内容保持加密锁定，暂无法查看。',
           style: TextStyle(
             fontFamily: InkDiaryTheme.fontLiterata,
             height: 1.6,
@@ -194,7 +178,7 @@ class TimeCapsuleCard extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Keep Waiting'),
+            child: const Text('知道了'),
           ),
         ],
       ),

@@ -36,15 +36,15 @@ class FolioPageJumpSheet extends StatelessWidget {
 
   String _leafLabel(FolioLeaf leaf, int index) {
     if (leaf is FolioFrontispieceCoverLeaf) {
-      return '扉页 · 题跋与气象';
+      return '封面';
     }
     if (leaf is FolioTippedInEphemeraLeaf) {
-      return leaf.mediaType == 'video' ? '插页 · 影像珍藏' : '插页 · 拓影图画';
+      return leaf.mediaType == 'video' ? '视频插页' : '插图页';
     }
     if (leaf is FolioContentBodyLeaf) {
-      return leaf.isConcludingLeaf ? '末卷 · 落款题印' : '正卷 · 第 ${leaf.pageIndexInContent} 节';
+      return '正文第 ${leaf.pageIndexInContent} 页';
     }
-    return '手稿第 ${index + 1} 页';
+    return '第 ${index + 1} 页';
   }
 
   @override
@@ -86,7 +86,7 @@ class FolioPageJumpSheet extends StatelessWidget {
               const Icon(Icons.menu_book_outlined, size: 16, color: Color(0xFFD4AF37)),
               const SizedBox(width: 8),
               Text(
-                '展卷索引 · 翻转至特定页',
+                '目录跳转',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontSize: 15,

@@ -42,8 +42,8 @@ class FolioCoverShowcase extends StatelessWidget {
                   id: 'hero',
                   relativePath: leaf.heroPhotoPath!,
                   mediaType: EphemeraMediaType.fromEmbedKey(leaf.heroMediaType ?? 'image'),
-                  title: '随文画心',
-                  caption: '随文影札 · 封面画心',
+                  title: '封面照片',
+                  caption: '封面照片',
                   date: leaf.gregorianDate,
                   pageNumber: 1,
                   targetLeafIndex: 1,
@@ -81,11 +81,11 @@ class FolioCoverShowcase extends StatelessWidget {
 
   Widget _buildTopWashiTape(int photoCount) {
     final tapeText = switch (photoCount) {
-      0 => '泥金和纸胶带 · 拾光·珍藏拓影',
-      1 => '泥金和纸胶带 · 拾光·单幅立轴画心',
-      2 => '泥金和纸胶带 · 拾光·双屏对幅册页',
-      3 => '泥金和纸胶带 · 拾光·三景斗方册页',
-      _ => '泥金和纸胶带 · 拾光·主景与藏影集锦匣',
+      0 => '拾光日记',
+      1 => '封面照片',
+      2 => '双图封面',
+      3 => '三图拼贴',
+      _ => '照片合集',
     };
 
     return Transform.rotate(
@@ -167,7 +167,7 @@ class FolioCoverShowcase extends StatelessWidget {
       photo: photo,
       theme: theme,
       mediaService: mediaService,
-      badgeText: 'P1 · 独幅立轴',
+      badgeText: 'P1',
       showCaptionBar: true,
       isCenteredCaption: true,
       showAntiqueBrassPin: true,
@@ -190,7 +190,7 @@ class FolioCoverShowcase extends StatelessWidget {
             photo: photo1,
             theme: theme,
             mediaService: mediaService,
-            badgeText: 'P1 · 上卷',
+            badgeText: 'P1',
             showCaptionBar: true,
             showInnerShadow: true,
             onTap: () => onPhotoTap?.call(photo1),
@@ -204,7 +204,7 @@ class FolioCoverShowcase extends StatelessWidget {
             photo: photo2,
             theme: theme,
             mediaService: mediaService,
-            badgeText: 'P2 · 下卷',
+            badgeText: 'P2',
             showCaptionBar: true,
             showInnerShadow: true,
             onTap: () => onPhotoTap?.call(photo2),
@@ -231,7 +231,7 @@ class FolioCoverShowcase extends StatelessWidget {
             photo: heroPhoto,
             theme: theme,
             mediaService: mediaService,
-            badgeText: 'P1 · 首卷主景',
+            badgeText: 'P1',
             showCaptionBar: true,
             onTap: () => onPhotoTap?.call(heroPhoto),
             atmosphereRealm: leaf.sceneryAtmosphere.realm,
@@ -248,7 +248,7 @@ class FolioCoverShowcase extends StatelessWidget {
                   photo: photo2,
                   theme: theme,
                   mediaService: mediaService,
-                  badgeText: 'P2 · 次卷',
+                  badgeText: 'P2',
                   showCaptionBar: false,
                   onTap: () => onPhotoTap?.call(photo2),
                   atmosphereRealm: leaf.sceneryAtmosphere.realm,
@@ -261,7 +261,7 @@ class FolioCoverShowcase extends StatelessWidget {
                   photo: photo3,
                   theme: theme,
                   mediaService: mediaService,
-                  badgeText: 'P3 · 终卷',
+                  badgeText: 'P3',
                   showCaptionBar: false,
                   onTap: () => onPhotoTap?.call(photo3),
                   atmosphereRealm: leaf.sceneryAtmosphere.realm,
@@ -291,7 +291,7 @@ class FolioCoverShowcase extends StatelessWidget {
             photo: heroPhoto,
             theme: theme,
             mediaService: mediaService,
-            badgeText: 'P1 · 卷首主景画心',
+            badgeText: 'P1',
             showCaptionBar: true,
             onTap: () => onPhotoTap?.call(heroPhoto),
             atmosphereRealm: leaf.sceneryAtmosphere.realm,
@@ -327,7 +327,7 @@ class FolioCoverShowcase extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              '🗂️ 拾光画匣 · 已收录 $photoCount 帧随文影札',
+              '共 $photoCount 张照片',
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w500,
@@ -335,7 +335,7 @@ class FolioCoverShowcase extends StatelessWidget {
               ),
             ),
             Text(
-              '展匣总览 ➔',
+              '查看全部 ›',
               style: TextStyle(
                 fontSize: 10.0,
                 fontWeight: FontWeight.w600,

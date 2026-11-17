@@ -116,7 +116,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
     final enteredPin = _pinController.text.trim();
     if (enteredPin.isEmpty) {
-      setState(() => _pinError = '请输入印匣密码');
+      setState(() => _pinError = '请输入密码');
       return;
     }
 
@@ -135,13 +135,13 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         _pinController.clear();
       });
     } else {
-      setState(() => _pinError = 'Incorrect PIN');
+      setState(() => _pinError = '密码错误');
     }
   }
 
   Future<void> _handleUnlockWithBiometrics() async {
     final authenticated = await _authService.authenticateBiometric(
-      localizedReason: '解锁私密手稿',
+      localizedReason: '解锁私密日记',
     );
     if (authenticated && mounted) {
       HapticFeedback.lightImpact();
@@ -163,7 +163,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已解除私密封缄')),
+          const SnackBar(content: Text('已解除锁定')),
         );
       }
       return;
@@ -173,14 +173,14 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     final pin = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('私密封缄 · Lock Entry'),
+        title: const Text('加密锁定'),
         content: TextField(
           key: const Key('lock_entry_pin_input'),
           controller: pinInputController,
           keyboardType: TextInputType.number,
           obscureText: true,
           maxLength: 6,
-          decoration: const InputDecoration(labelText: '设定 4-6 位密码', border: OutlineInputBorder()),
+          decoration: const InputDecoration(labelText: '设置 4–6 位密码', border: OutlineInputBorder()),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
@@ -190,7 +190,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               final text = pinInputController.text.trim();
               if (text.length >= 4) Navigator.pop(dialogContext, text);
             },
-            child: const Text('落锁封存'),
+            child: const Text('确定锁定'),
           ),
         ],
       ),
@@ -276,14 +276,14 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Move to Recycle Bin?'),
-        content: const Text('此手稿将移入回收站，30 天内仍可完好还原，逾期将彻底化作飞灰。'),
+        title: const Text('移入回收站？'),
+        content: const Text('这篇日记将移入回收站，30 天内可恢复，逾期将彻底删除。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('保留手稿')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('取消')),
           FilledButton.tonal(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(foregroundColor: Colors.red.shade700),
-            child: const Text('Move to Bin'),
+            child: const Text('移入回收站'),
           ),
         ],
       ),
@@ -316,7 +316,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               ),
               const SizedBox(height: 18),
               Text(
-                'This Diary Entry is Locked',
+                '这篇日记已锁定',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontSize: 18,
@@ -326,7 +326,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                '此卷已落锁封存。请输入印匣密码或验证指纹，方可展卷阅览。',
+                '请输入密码或验证生物识别后查看。',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 13, color: tokens.danmo),
               ),
@@ -342,7 +342,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                   maxLength: 6,
                   onSubmitted: (_) => _handleUnlockWithPin(),
                   decoration: InputDecoration(
-                    hintText: '输入印匣密码',
+                    hintText: '输入密码',
                     errorText: _pinError,
                     counterText: '',
                     filled: true,
@@ -360,14 +360,14 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 onPressed: _handleUnlockWithPin,
                 style: FilledButton.styleFrom(backgroundColor: tokens.jiaomo, foregroundColor: tokens.xuanGround),
                 icon: const Icon(Icons.key_rounded, size: 16),
-                label: const Text('启封展卷'),
+                label: const Text('解锁查看'),
               ),
               const SizedBox(height: 8),
               TextButton.icon(
                 key: const Key('entry_unlock_biometric_btn'),
                 onPressed: _handleUnlockWithBiometrics,
                 icon: Icon(Icons.fingerprint_rounded, color: tokens.cinnabar),
-                label: Text('生物指纹解印', style: TextStyle(color: tokens.cinnabar)),
+                label: Text('生物识别解锁', style: TextStyle(color: tokens.cinnabar)),
               ),
             ],
           ),
@@ -393,7 +393,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         backgroundColor: const Color(0xFF0A0908),
         appBar: AppBar(backgroundColor: const Color(0xFF0A0908), leading: const BackButton(color: Color(0xFFE6E1D8))),
         body: Center(
-          child: Text('未找到对应日记手稿', style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, color: tokens.danmo, fontSize: 15)),
+          child: Text('未找到该日记', style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, color: tokens.danmo, fontSize: 15)),
         ),
       );
     }

@@ -30,7 +30,7 @@ class FolioPocketSleeveContainer extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '开启拾光画匣总览',
+      label: '查看全部照片',
       child: GestureDetector(
         key: const Key('folio_cover_pocket_sleeve_container'),
         onTap: onTap,
@@ -72,7 +72,7 @@ class FolioPocketSleeveContainer extends StatelessWidget {
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: const Text(
-                          '集锦匣',
+                          '照片',
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
@@ -82,7 +82,7 @@ class FolioPocketSleeveContainer extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '📷 拾光画匣 · 已收录 ${photos.length} 枚随文影札',
+                        '共 ${photos.length} 张照片',
                         style: TextStyle(
                           fontSize: 10.5,
                           fontWeight: FontWeight.w600,
@@ -92,7 +92,7 @@ class FolioPocketSleeveContainer extends StatelessWidget {
                     ],
                   ),
                   Text(
-                    '开启画匣总览 ➔',
+                    '查看全部 ›',
                     style: TextStyle(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w600,
