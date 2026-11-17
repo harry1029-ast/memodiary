@@ -11,6 +11,7 @@ import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
 import '../../../core/theme/widgets/xuan_paper_card.dart';
 import '../../editor/screens/entry_editor_screen.dart';
+import '../../editor/widgets/journal_letterhead_models.dart';
 import '../../timeline/models/timeline_entry_item.dart';
 import '../../timeline/screens/entry_detail_screen.dart';
 import '../../timeline/widgets/entry_summary_card.dart';
@@ -137,7 +138,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
         id: newId,
         notebookId: notebookId,
         templateId: 'template_weekly_review',
-        title: Value('第$_weekNumber周 · 周志复盘'),
+        title: Value('第$_weekNumber周复盘'),
         contentDelta: jsonEncode([
           {'insert': '\n'}
         ]),
@@ -260,42 +261,15 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
           tooltip: '返回',
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '周志复盘',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: tokens.jiaomo,
-                    letterSpacing: 2.0,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Weekly Review',
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                    fontSize: 12,
-                    color: tokens.danmo,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              'WEEKLY RETROSPECTIVE',
-              style: TextStyle(
-                fontSize: 9,
-                color: tokens.danmo,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
+        title: Text(
+          '每周复盘',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: tokens.jiaomo,
+            letterSpacing: 1.5,
+          ),
         ),
         centerTitle: true,
         actions: [
@@ -352,29 +326,15 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                   ),
                   Column(
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Week $_weekNumber, $_year',
-                            key: const Key('week_header_title'),
-                            style: TextStyle(
-                              fontFamily: InkDiaryTheme.fontNotoSerif,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: tokens.jiaomo,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '(第$_weekNumber周)',
-                            style: TextStyle(
-                              fontFamily: InkDiaryTheme.fontKaiti,
-                              fontSize: 12,
-                              color: tokens.danmo,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        '$_year年 第$_weekNumber周',
+                        key: const Key('week_header_title'),
+                        style: TextStyle(
+                          fontFamily: InkDiaryTheme.fontNotoSerif,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: tokens.jiaomo,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -419,36 +379,23 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
 
                         // Section Title: Daily Logs Flow
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 3.5,
-                                  height: 15,
-                                  decoration: BoxDecoration(
-                                    color: tokens.cinnabar,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                                const SizedBox(width: 7),
-                                Text(
-                                  '一候七日 · 每日随笔',
-                                  style: TextStyle(
-                                    fontFamily: InkDiaryTheme.fontNotoSerif,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: tokens.jiaomo,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                              ],
+                            Container(
+                              width: 3.5,
+                              height: 15,
+                              decoration: BoxDecoration(
+                                color: tokens.cinnabar,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
+                            const SizedBox(width: 7),
                             Text(
-                              'MONDAY – SUNDAY',
+                              '本周每日记录',
                               style: TextStyle(
-                                fontSize: 10,
-                                color: tokens.danmo,
+                                fontFamily: InkDiaryTheme.fontNotoSerif,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: tokens.jiaomo,
                                 letterSpacing: 1.0,
                               ),
                             ),
@@ -485,32 +432,18 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
         children: [
           Icon(Icons.edit_note, color: tokens.cinnabar, size: 20),
           const SizedBox(width: 8),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$dailyEntriesCount 卷墨稿',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.jiaomo,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '$dailyEntriesCount ${dailyEntriesCount == 1 ? "Entry" : "Entries"}',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 11,
-                  color: tokens.danmo,
-                ),
-              ),
-            ],
+          Text(
+            '$dailyEntriesCount 篇日记',
+            style: TextStyle(
+              fontFamily: InkDiaryTheme.fontNotoSerif,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: tokens.jiaomo,
+            ),
           ),
           const SizedBox(width: 8),
           Text(
-            dailyEntriesCount > 0 ? '· 秋思已成章' : '· 暂无录存',
+            dailyEntriesCount > 0 ? '· 本周已记录' : '· 本周暂无记录',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontKaiti,
               fontSize: 12,
@@ -555,24 +488,9 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CinnabarSealBadge(
-                    text: hasDebrief ? 'W$_weekNumber 复盘已毕' : 'W$_weekNumber 待复盘',
-                    isRound: false,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    hasDebrief ? 'W$_weekNumber Debrief Completed' : 'W$_weekNumber Debrief Pending',
-                    style: TextStyle(
-                      fontFamily: InkDiaryTheme.fontNotoSerif,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: tokens.danmo,
-                    ),
-                  ),
-                ],
+              CinnabarSealBadge(
+                text: hasDebrief ? '已完成' : '未完成',
+                isRound: false,
               ),
               FilledButton.icon(
                 key: const Key('weekly_debrief_action_button'),
@@ -587,19 +505,9 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                   hasDebrief ? Icons.auto_stories : Icons.rate_review_outlined,
                   size: 15,
                 ),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      hasDebrief ? '阅览周述' : '落墨启撰',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      hasDebrief ? 'View Review' : 'Start Review',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                label: Text(
+                  hasDebrief ? '查看复盘' : '写本周复盘',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -608,7 +516,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
           Text(
             hasDebrief && (_weeklyDebrief!.title?.trim().isNotEmpty ?? false)
                 ? _weeklyDebrief!.title!.trim()
-                : '第$_weekNumber周 · 凝思复盘录',
+                : '第$_weekNumber周复盘',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontNotoSerif,
               fontSize: 16,
@@ -620,7 +528,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
           Text(
             hasDebrief && _weeklyDebrief!.plainText.trim().isNotEmpty
                 ? _weeklyDebrief!.plainText.trim()
-                : '草木渐深，砚池微凉。提炼本周要事、心境起伏与所获体悟，以墨凝思。',
+                : '回顾本周写下的点滴、心情变化与收获，写一份本周总结。',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -632,7 +540,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Metaphor gauge progress
+          // Progress gauge
           Row(
             children: [
               Expanded(
@@ -648,7 +556,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
               ),
               const SizedBox(width: 10),
               Text(
-                '节候律动 $dailyEntriesCount/7',
+                '本周记录 $dailyEntriesCount/7',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontKaiti,
                   fontSize: 11,
@@ -663,7 +571,8 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
   }
 
   Widget _buildDaySection(InkDiaryTokens tokens, DateTime day, List<Entry> dayEntries) {
-    final dayLabel = DateFormat('M月d日 · EEEE').format(day);
+    final weekday = JournalLetterheadUtils.chineseWeekdays[day.weekday - 1];
+    final dayLabel = '${day.month}月${day.day}日 · $weekday';
 
     return Container(
       key: Key('weekday_card_${day.weekday}'),
@@ -714,7 +623,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
               IconButton(
                 key: Key('add_entry_day_${day.weekday}'),
                 icon: Icon(Icons.add_circle_outline, size: 18, color: tokens.danmo),
-                tooltip: '添笔本日日志',
+                tooltip: '添加日记',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => _handleAddEntryForDate(day),
               ),
@@ -724,7 +633,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(
-                '今日虚白，未有染毫',
+                '今日暂无记录',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontKaiti,
                   fontSize: 12,
@@ -779,7 +688,7 @@ class _WeeklyReviewScreenState extends State<WeeklyReviewScreen> {
                                     Icon(Icons.lock_clock, size: 12, color: tokens.cinnabar),
                                     const SizedBox(width: 4),
                                     Text(
-                                      '封缄胶囊',
+                                      '时间胶囊',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,

@@ -43,21 +43,13 @@ class EventSuggestionChips extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                '灵犀物候联想',
+                '常用主题',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: tokens.cinnabar,
                   letterSpacing: 0.5,
-                ),
-              ),
-              Text(
-                ' · 依笔意析出',
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontKaiti,
-                  fontSize: 11,
-                  color: tokens.danmo,
                 ),
               ),
             ],

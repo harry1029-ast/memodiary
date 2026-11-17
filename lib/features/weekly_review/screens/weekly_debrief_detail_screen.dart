@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart' as quill;
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/database/app_database.dart';
@@ -11,6 +10,7 @@ import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
 import '../../../core/theme/widgets/xuan_paper_card.dart';
 import '../../editor/models/typography_settings.dart';
 import '../../editor/screens/entry_editor_screen.dart';
+import '../../editor/widgets/journal_letterhead_models.dart';
 import '../../editor/widgets/mount_marker_embed_builder.dart';
 import '../../editor/widgets/sandboxed_image_embed_builder.dart';
 import '../../editor/widgets/sandboxed_video_embed_builder.dart';
@@ -127,11 +127,11 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
   Future<void> _handleShare() async {
     final title = _debrief.title?.trim().isNotEmpty == true
         ? '${_debrief.title!.trim()}\n\n'
-        : '第${widget.weekNumber}周 · 周志复盘\n\n';
+        : '第${widget.weekNumber}周复盘\n\n';
     final shareText = '$title${_debrief.plainText}';
 
     await SharePlus.instance.share(
-      ShareParams(text: shareText, subject: '第${widget.weekNumber}周 复盘长卷'),
+      ShareParams(text: shareText, subject: '第${widget.weekNumber}周复盘'),
     );
   }
 
@@ -167,34 +167,21 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
           tooltip: '返回',
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              '周述长卷',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: tokens.jiaomo,
-                letterSpacing: 2.0,
-              ),
-            ),
-            Text(
-              'WEEKLY DEBRIEF · NO. ${widget.weekNumber}',
-              style: TextStyle(
-                fontSize: 10,
-                color: tokens.danmo,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
+        title: Text(
+          '每周复盘',
+          style: TextStyle(
+            fontFamily: InkDiaryTheme.fontNotoSerif,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: tokens.jiaomo,
+            letterSpacing: 1.5,
+          ),
         ),
         centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(Icons.style_outlined, color: tokens.nongmo),
-            tooltip: '更换信笺',
+            tooltip: '切换信纸',
             onPressed: () async {
               final templates =
                   await widget.database.templatesDao.getAllTemplates();
@@ -270,7 +257,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                '${widget.year}年 · 周述复盘',
+                                '${widget.year}年 · 每周复盘',
                                 style: TextStyle(
                                   fontFamily: InkDiaryTheme.fontKaiti,
                                   fontSize: 12,
@@ -284,7 +271,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                           Text(
                             (_debrief.title?.trim().isNotEmpty ?? false)
                                 ? _debrief.title!.trim()
-                                : '第${widget.weekNumber}周 · 凝思复盘录',
+                                : '第${widget.weekNumber}周复盘',
                             style: TextStyle(
                               fontFamily: InkDiaryTheme.fontNotoSerif,
                               fontSize: 20,
@@ -294,7 +281,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            DateFormat('M月d日 EEEE 结撰').format(_debrief.entryDate),
+                            '${_debrief.entryDate.month}月${_debrief.entryDate.day}日 · ${JournalLetterheadUtils.chineseWeekdays[_debrief.entryDate.weekday - 1]}',
                             style: TextStyle(
                               fontFamily: InkDiaryTheme.fontKaiti,
                               fontSize: 12,
@@ -304,7 +291,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                         ],
                       ),
                     ),
-                    const CinnabarSealBadge(text: '复盘已讫', isRound: false),
+                    const CinnabarSealBadge(text: '已完成', isRound: false),
                   ],
                 ),
               ),
@@ -326,7 +313,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '周度提炼 · 墨核',
+                          '本周概览',
                           style: TextStyle(
                             fontFamily: InkDiaryTheme.fontNotoSerif,
                             fontSize: 14,
@@ -334,11 +321,6 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                             color: tokens.jiaomo,
                             letterSpacing: 1.0,
                           ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          'SUMMARY',
-                          style: TextStyle(fontSize: 10, color: tokens.danmo, letterSpacing: 1.0),
                         ),
                       ],
                     ),
@@ -348,9 +330,9 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildMetricTile('${widget.weekEntries.length}', '篇佳构', tokens),
-                        _buildMetricTile('$totalWords', '言心迹', tokens),
-                        _buildMetricTile('${widget.weekEntries.length}/7', '着墨节律', tokens),
+                        _buildMetricTile('${widget.weekEntries.length}', '篇日记', tokens),
+                        _buildMetricTile('$totalWords', '字', tokens),
+                        _buildMetricTile('${widget.weekEntries.length}/7', '写作天数', tokens),
                       ],
                     ),
                   ],
@@ -365,28 +347,14 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          '壹',
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: tokens.cinnabar,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '拾得 · 所获与微光',
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: tokens.jiaomo,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      '本周总结',
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontNotoSerif,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: tokens.jiaomo,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     quill.QuillEditor(
@@ -436,7 +404,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
               children: [
                 TextButton.icon(
                   icon: Icon(Icons.share_outlined, color: tokens.nongmo, size: 18),
-                  label: Text('长卷分享', style: TextStyle(color: tokens.jiaomo)),
+                  label: Text('分享', style: TextStyle(color: tokens.jiaomo)),
                   onPressed: _handleShare,
                 ),
                 FilledButton.icon(
@@ -446,7 +414,7 @@ class _WeeklyDebriefDetailScreenState extends State<WeeklyDebriefDetailScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                   icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: const Text('续修复盘'),
+                  label: const Text('继续编辑'),
                   onPressed: _handleEdit,
                 ),
               ],

@@ -108,7 +108,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('未能载入照片'), findsOneWidget);
+      expect(find.text('无法加载照片'), findsOneWidget);
     });
   });
 

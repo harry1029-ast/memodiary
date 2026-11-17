@@ -23,11 +23,11 @@ class SearchFilterChips extends StatelessWidget {
   String _getDateChipLabel() {
     switch (filters.dateType) {
       case DateFilterType.all:
-        return '时日: 全部';
+        return '时间: 全部';
       case DateFilterType.thisWeek:
-        return '时日: 本周';
+        return '时间: 本周';
       case DateFilterType.thisMonth:
-        return '时日: 本月';
+        return '时间: 本月';
       case DateFilterType.custom:
         final start = filters.customStart != null
             ? DateFormat('MM/dd').format(filters.customStart!)
@@ -35,7 +35,7 @@ class SearchFilterChips extends StatelessWidget {
         final end = filters.customEnd != null
             ? DateFormat('MM/dd').format(filters.customEnd!)
             : '?';
-        return '时日: $start-$end';
+        return '时间: $start-$end';
     }
   }
 
@@ -53,25 +53,25 @@ class SearchFilterChips extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: const Text('全部时日 · All Time'),
+              title: const Text('全部时间'),
               leading: const Icon(Icons.all_inclusive),
               selected: filters.dateType == DateFilterType.all,
               onTap: () => Navigator.pop(ctx, DateFilterType.all),
             ),
             ListTile(
-              title: const Text('本周墨痕 · This Week'),
+              title: const Text('本周'),
               leading: const Icon(Icons.view_week_outlined),
               selected: filters.dateType == DateFilterType.thisWeek,
               onTap: () => Navigator.pop(ctx, DateFilterType.thisWeek),
             ),
             ListTile(
-              title: const Text('当月册卷 · This Month'),
+              title: const Text('本月'),
               leading: const Icon(Icons.calendar_month_outlined),
               selected: filters.dateType == DateFilterType.thisMonth,
               onTap: () => Navigator.pop(ctx, DateFilterType.thisMonth),
             ),
             ListTile(
-              title: const Text('自定义日期区间... · Custom Range'),
+              title: const Text('自定义日期范围...'),
               leading: const Icon(Icons.date_range_outlined),
               selected: filters.dateType == DateFilterType.custom,
               onTap: () => Navigator.pop(ctx, DateFilterType.custom),
@@ -131,7 +131,7 @@ class SearchFilterChips extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '按心境感怀筛选',
+                '按心情筛选',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontSize: 16,
@@ -141,7 +141,7 @@ class SearchFilterChips extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               ListTile(
-                title: const Text('全部心境'),
+                title: const Text('全部心情'),
                 leading: const Icon(Icons.clear_all),
                 selected: filters.mood == null,
                 onTap: () {
@@ -185,7 +185,7 @@ class SearchFilterChips extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '按物候天候筛选',
+                '按天气筛选',
                 style: TextStyle(
                   fontFamily: InkDiaryTheme.fontNotoSerif,
                   fontSize: 16,
@@ -195,7 +195,7 @@ class SearchFilterChips extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               ListTile(
-                title: const Text('全部天候'),
+                title: const Text('全部天气'),
                 leading: const Icon(Icons.clear_all),
                 selected: filters.weather == null,
                 onTap: () {
@@ -222,10 +222,20 @@ class SearchFilterChips extends StatelessWidget {
     );
   }
 
+  String? _resolveWeatherLabel(String? weatherValue) {
+    if (weatherValue == null || weatherValue.isEmpty) return null;
+    for (final option in JournalLetterheadUtils.weatherOptions) {
+      if (option.value == weatherValue) {
+        return option.label;
+      }
+    }
+    return weatherValue;
+  }
+
   @override
   Widget build(BuildContext context) {
     final moodEmoji = filters.mood != null ? EntrySummaryCard.moodEmojis[filters.mood!] : null;
-    final weatherLabel = filters.weather;
+    final weatherLabel = _resolveWeatherLabel(filters.weather);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -237,13 +247,13 @@ class SearchFilterChips extends StatelessWidget {
             InkMetadataPill(
               key: const Key('reset_filters_pill'),
               icon: Icons.close,
-              label: '重置检索',
+              label: '重置筛选',
               isAccent: true,
               onTap: () {
                 HapticFeedback.lightImpact();
                 onFiltersChanged(const SearchFilters());
               },
-              semanticLabel: '重置所有检索筛选',
+              semanticLabel: '重置所有筛选条件',
             ),
             const SizedBox(width: 8),
           ],
@@ -264,10 +274,10 @@ class SearchFilterChips extends StatelessWidget {
             key: const Key('search_mood_filter_pill'),
             emoji: moodEmoji,
             icon: moodEmoji == null ? Icons.mood_outlined : null,
-            label: filters.mood != null ? '心境: $moodEmoji' : '心境: 全部',
+            label: filters.mood != null ? '心情: $moodEmoji' : '心情: 全部',
             isAccent: filters.mood != null,
             onTap: () => _showMoodPicker(context),
-            semanticLabel: '按心境筛选',
+            semanticLabel: '按心情筛选',
           ),
           const SizedBox(width: 8),
 
@@ -275,10 +285,10 @@ class SearchFilterChips extends StatelessWidget {
           InkMetadataPill(
             key: const Key('search_weather_filter_pill'),
             icon: Icons.wb_sunny_outlined,
-            label: weatherLabel != null ? '天候: $weatherLabel' : '天候: 全部',
+            label: weatherLabel != null ? '天气: $weatherLabel' : '天气: 全部',
             isAccent: filters.weather != null,
             onTap: () => _showWeatherPicker(context),
-            semanticLabel: '按天候筛选',
+            semanticLabel: '按天气筛选',
           ),
           const SizedBox(width: 8),
 
@@ -286,13 +296,13 @@ class SearchFilterChips extends StatelessWidget {
           InkMetadataPill(
             key: const Key('search_has_image_filter_pill'),
             icon: Icons.photo_outlined,
-            label: '附画卷',
+            label: '含照片',
             isAccent: filters.hasImage,
             onTap: () {
               HapticFeedback.lightImpact();
               onFiltersChanged(filters.copyWith(hasImage: !filters.hasImage));
             },
-            semanticLabel: '仅看附画卷日记',
+            semanticLabel: '仅看含照片日记',
           ),
           const SizedBox(width: 8),
 
@@ -300,13 +310,13 @@ class SearchFilterChips extends StatelessWidget {
           InkMetadataPill(
             key: const Key('search_weekly_review_filter_pill'),
             icon: Icons.rate_review_outlined,
-            label: '温故复盘',
+            label: '每周复盘',
             isAccent: filters.weeklyReviewOnly,
             onTap: () {
               HapticFeedback.lightImpact();
               onFiltersChanged(filters.copyWith(weeklyReviewOnly: !filters.weeklyReviewOnly));
             },
-            semanticLabel: '仅看温故复盘日记',
+            semanticLabel: '仅看每周复盘',
           ),
         ],
       ),

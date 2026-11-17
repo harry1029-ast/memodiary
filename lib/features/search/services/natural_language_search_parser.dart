@@ -6,6 +6,7 @@ enum ConstraintKind {
   dateRange,
   weeklyReview,
   hasImage,
+  mood,
   weather,
 }
 
@@ -28,6 +29,7 @@ class ParsedSearchQuery {
   final String keywords;
   final DateTime? startDate;
   final DateTime? endDate;
+  final int? mood;
   final String? weather;
   final bool weeklyReviewOnly;
   final bool hasImage;
@@ -38,6 +40,7 @@ class ParsedSearchQuery {
     required this.keywords,
     this.startDate,
     this.endDate,
+    this.mood,
     this.weather,
     this.weeklyReviewOnly = false,
     this.hasImage = false,
@@ -55,6 +58,7 @@ class ParsedSearchQuery {
           : base.dateType,
       customStart: startDate ?? base.customStart,
       customEnd: endDate ?? base.customEnd,
+      mood: mood ?? base.mood,
       weather: weather ?? base.weather,
       hasImage: hasImage ? true : base.hasImage,
       weeklyReviewOnly: weeklyReviewOnly ? true : base.weeklyReviewOnly,
@@ -109,6 +113,22 @@ class NaturalLanguageSearchParser {
     'dec': 12,
   };
 
+  static const Map<int, String> _moodLabels = {
+    1: '低落',
+    2: '疲惫',
+    3: '平静',
+    4: '开心',
+    5: '喜悦',
+  };
+
+  static const Map<String, String> _weatherLabels = {
+    'sunny': '晴天',
+    'cloudy': '多云',
+    'rainy': '下雨',
+    'windy': '大风',
+    'snowy': '下雪',
+  };
+
   /// Parses [query] relative to [now] (defaults to `DateTime.now()`).
   /// Any [ConstraintKind] present in [ignoredKinds] will not be extracted,
   /// allowing users to dismiss "Understood as" chips and fall back to literal text search.
@@ -130,6 +150,7 @@ class NaturalLanguageSearchParser {
     DateTime? endDate;
     bool weeklyReviewOnly = false;
     bool hasImage = false;
+    int? mood;
     String? weather;
 
     // 1. Temporal & Holiday Extraction
@@ -152,7 +173,7 @@ class NaturalLanguageSearchParser {
     // 2. Category: Weekly Review
     if (!ignoredKinds.contains(ConstraintKind.weeklyReview)) {
       final weeklyRegex = RegExp(
-        r'(所有周记|全部周记|周记|周报|all\s+weekly\s+reviews?|weekly\s+reviews?)',
+        r'(所有每周复盘|全部每周复盘|每周复盘|周志复盘|所有周记|全部周记|周记|周报|all\s+weekly\s+reviews?|weekly\s+reviews?)',
         caseSensitive: false,
       );
       final match = weeklyRegex.firstMatch(working);
@@ -164,7 +185,7 @@ class NaturalLanguageSearchParser {
           DetectedConstraint(
             kind: ConstraintKind.weeklyReview,
             matchedText: matchedStr,
-            label: 'Weekly Review',
+            label: '每周复盘',
           ),
         );
       }
@@ -173,7 +194,7 @@ class NaturalLanguageSearchParser {
     // 3. Media: Has Image / Photos
     if (!ignoredKinds.contains(ConstraintKind.hasImage)) {
       final imageRegex = RegExp(
-        r'(带图片的?|有图片的?|带照片的?|有照片的?|带图的?|有图的?|with\s+photos?|with\s+pictures?|with\s+images?)',
+        r'(含照片的?|附画卷的?|带图片的?|有图片的?|带照片的?|有照片的?|带图的?|有图的?|with\s+photos?|with\s+pictures?|with\s+images?)',
         caseSensitive: false,
       );
       final match = imageRegex.firstMatch(working);
@@ -185,29 +206,47 @@ class NaturalLanguageSearchParser {
           DetectedConstraint(
             kind: ConstraintKind.hasImage,
             matchedText: matchedStr,
-            label: 'With Photos',
+            label: '含照片',
           ),
         );
       }
     }
 
-    // 4. Weather Extraction
+    // 4. Mood Extraction (plain and legacy terms)
+    if (!ignoredKinds.contains(ConstraintKind.mood)) {
+      final moodMatch = _extractMood(working);
+      if (moodMatch != null) {
+        mood = moodMatch.moodValue;
+        working = moodMatch.remaining;
+        final moodLabel = _moodLabels[mood] ?? '$mood';
+        detected.add(
+          DetectedConstraint(
+            kind: ConstraintKind.mood,
+            matchedText: moodMatch.matchedText,
+            label: '心情: $moodLabel',
+          ),
+        );
+      }
+    }
+
+    // 5. Weather Extraction (plain and legacy terms)
     if (!ignoredKinds.contains(ConstraintKind.weather)) {
       final weatherMatch = _extractWeather(working);
       if (weatherMatch != null) {
         weather = weatherMatch.weatherValue;
         working = weatherMatch.remaining;
+        final weatherLabel = _weatherLabels[weather] ?? weather;
         detected.add(
           DetectedConstraint(
             kind: ConstraintKind.weather,
             matchedText: weatherMatch.matchedText,
-            label: 'Weather: $weather',
+            label: '天气: $weatherLabel',
           ),
         );
       }
     }
 
-    // 5. Strip conversational stop-phrases ONLY if at least one constraint was detected
+    // 6. Strip conversational stop-phrases ONLY if at least one constraint was detected
     if (detected.isNotEmpty) {
       working = _stripStopPhrases(working);
     }
@@ -221,6 +260,7 @@ class NaturalLanguageSearchParser {
       keywords: cleanedKeywords,
       startDate: startDate,
       endDate: endDate,
+      mood: mood,
       weather: weather,
       weeklyReviewOnly: weeklyReviewOnly,
       hasImage: hasImage,
@@ -564,14 +604,37 @@ class NaturalLanguageSearchParser {
     return null;
   }
 
+  static _MoodExtraction? _extractMood(String input) {
+    final moodPatterns = <(RegExp, int)>[
+      (RegExp(r'(低落|沉郁)'), 1),
+      (RegExp(r'(疲惫|倦怠)'), 2),
+      (RegExp(r'(平静|静穆)'), 3),
+      (RegExp(r'(开心|怡然)'), 4),
+      (RegExp(r'(喜悦|欢欣)'), 5),
+    ];
+
+    for (final (regex, value) in moodPatterns) {
+      final match = regex.firstMatch(input);
+      if (match != null) {
+        final matched = match.group(0)!;
+        return _MoodExtraction(
+          moodValue: value,
+          matchedText: matched,
+          remaining: input.replaceFirst(matched, ' '),
+        );
+      }
+    }
+    return null;
+  }
+
   static _WeatherExtraction? _extractWeather(String input) {
     // 1. Multi-character Chinese & English weather words (safe to match anywhere)
     final multiCharPatterns = <(RegExp, String)>[
-      (RegExp(r'(晴天|晴朗|\bsunny\b)', caseSensitive: false), 'sunny'),
-      (RegExp(r'(雨天|下雨|大雨|小雨|暴雨|\brainy\b)', caseSensitive: false), 'rainy'),
-      (RegExp(r'(多云|阴天|\bcloudy\b)', caseSensitive: false), 'cloudy'),
-      (RegExp(r'(雪天|下雪|大雪|小雪|\bsnowy\b)', caseSensitive: false), 'snowy'),
-      (RegExp(r'(大风|刮风|微风|\bwindy\b)', caseSensitive: false), 'windy'),
+      (RegExp(r'(晴天|晴朗|晴明|\bsunny\b)', caseSensitive: false), 'sunny'),
+      (RegExp(r'(雨天|下雨|润雨|大雨|小雨|暴雨|\brainy\b)', caseSensitive: false), 'rainy'),
+      (RegExp(r'(多云|阴天|阴翳|\bcloudy\b)', caseSensitive: false), 'cloudy'),
+      (RegExp(r'(雪天|下雪|凝雪|大雪|小雪|\bsnowy\b)', caseSensitive: false), 'snowy'),
+      (RegExp(r'(大风|刮风|微风|朔风|\bwindy\b)', caseSensitive: false), 'windy'),
     ];
 
     for (final (regex, value) in multiCharPatterns) {
@@ -667,6 +730,18 @@ class _WeatherExtraction {
 
   const _WeatherExtraction({
     required this.weatherValue,
+    required this.matchedText,
+    required this.remaining,
+  });
+}
+
+class _MoodExtraction {
+  final int moodValue;
+  final String matchedText;
+  final String remaining;
+
+  const _MoodExtraction({
+    required this.moodValue,
     required this.matchedText,
     required this.remaining,
   });

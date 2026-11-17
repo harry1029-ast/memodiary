@@ -149,6 +149,54 @@ void main() {
       expect(dismissedWeather.weather, isNull);
       expect(dismissedWeather.keywords, '雨天');
     });
+
+    test('matches both plain and legacy mood and weather keywords with plain Chinese summary labels', () {
+      // Plain mood & weather
+      final plain = parser.parse('今年国庆 喜悦 下雨 含照片 每周复盘', now: refNow);
+      expect(plain.mood, 5);
+      expect(plain.weather, 'rainy');
+      expect(plain.hasImage, isTrue);
+      expect(plain.weeklyReviewOnly, isTrue);
+      expect(plain.keywords, isEmpty);
+      expect(
+        plain.detected.map((c) => c.label).toList(),
+        containsAll(['心情: 喜悦', '天气: 下雨', '含照片', '每周复盘']),
+      );
+
+      // Legacy mood & weather terms remain matched
+      final legacyCases = <(String query, int? mood, String? weather, String expectedLabel)>[
+        ('欢欣', 5, null, '心情: 喜悦'),
+        ('怡然', 4, null, '心情: 开心'),
+        ('静穆', 3, null, '心情: 平静'),
+        ('倦怠', 2, null, '心情: 疲惫'),
+        ('沉郁', 1, null, '心情: 低落'),
+        ('晴明', null, 'sunny', '天气: 晴天'),
+        ('阴翳', null, 'cloudy', '天气: 多云'),
+        ('润雨', null, 'rainy', '天气: 下雨'),
+        ('朔风', null, 'windy', '天气: 大风'),
+        ('凝雪', null, 'snowy', '天气: 下雪'),
+      ];
+
+      for (final (query, expectedMood, expectedWeather, expectedLabel) in legacyCases) {
+        final parsed = parser.parse(query, now: refNow);
+        expect(parsed.mood, expectedMood, reason: 'mood mismatch for $query');
+        expect(parsed.weather, expectedWeather, reason: 'weather mismatch for $query');
+        expect(parsed.detected.single.label, expectedLabel, reason: 'label mismatch for $query');
+        expect(parsed.keywords, isEmpty, reason: 'keywords should be empty for $query');
+      }
+
+      // Mood applyTo and ignoredKinds
+      final applied = parser.parse('开心', now: refNow).applyTo(const SearchFilters());
+      expect(applied.mood, 4);
+
+      final dismissedMood = parser.parse(
+        '开心 旅行',
+        now: refNow,
+        ignoredKinds: {ConstraintKind.mood},
+      );
+      expect(dismissedMood.mood, isNull);
+      expect(dismissedMood.keywords, '开心 旅行');
+    });
   });
 
   group('AppDatabase — Chinese Substring (LIKE + FTS5) Search Fallback', () {
