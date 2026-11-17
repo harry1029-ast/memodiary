@@ -17,8 +17,8 @@ The full-screen interactive modal displaying the complete 3:2 living Shanshui pa
 _Avoid_: Fullscreen canvas, scenery dialog, zoom view
 
 **Scenery Realm**:
-The spatial setting dimension (`ShanshuiRealm`) rendered inside the Shanshui Scenery Card and Contemplation View across three classical domains: **Nature** (`nature` · 林泉 wilderness), **Indoor** (`indoor` · 雅室 scholar tea hall), and **Outdoor** (`outdoor` · 市井 ancient market street), either inferred automatically from recent accessible entries (`随文入境`) or pinned manually by the diarist.
-_Avoid_: Scene mode, location theme, indoor/outdoor toggle
+The spatial setting dimension (`ShanshuiRealm`) rendered inside the Shanshui Scenery Card and Contemplation View across three domains—**Nature** (`山水`), **Indoor** (`室内`), and **Outdoor** (`街市`)—either inferred automatically from recent entries (`自动`) or pinned manually by the diarist.
+_Avoid_: Scene mode, location theme, indoor/outdoor toggle, 随文入境, 林泉, 雅室, 市井
 
 **Photobook Document**:
 The canonical document model (`AlbumStudioDocument`) representing an editable travel photobook, containing ordered studio pages, layout slot assignments, background styling, and unplaced photo tray references.
@@ -65,8 +65,8 @@ The user-triggered, pauseable/resumable maintenance routine (`OcrQueueManager.ru
 _Avoid_: Background library scanner, batch OCR job
 
 **Scholar's Stationery Chest**:
-The bottom modal drawer (`ScholarChestDrawer`) modeled after an antique Chinese scholar's brocade box with crimson velvet lining, consolidating the diarist's secondary writing tools into tangible physical artifacts.
-_Avoid_: Tools drawer, utility tray, stationery menu, bottom sheet modal
+The bottom modal drawer (`ScholarChestDrawer`) styled as a scholar's brocade box, consolidating the diarist's secondary editor tools under direct functional labels (`信纸`, `排版`, `背景音`, `定时锁`, `笔刷动画`).
+_Avoid_: Tools drawer, utility tray, stationery menu, bottom sheet modal, 叠印花笺, 青花笔架, 桐木古琴, 古法鱼锁, 双管毛笔
 
 **Stationery Artifact**:
 An interactive skeuomorphic control inside the Scholar's Stationery Chest representing a functional subsystem (Fanned Stationery, Porcelain Brush Mountain, Guqin Zither, Brass Fish Lock, and Twin Bamboo Brushes).
@@ -113,12 +113,12 @@ A dedicated illustration leaf (`TippedInEphemeraLeaf`) interleaved within the pa
 _Avoid_: Image page, media slide, photo leaf
 
 **Reading Perspective**:
-The ephemeral, non-destructive presentation mode (`ReadingPerspective`) in the Thread-Bound Folio allowing the diarist to contemplate an entry in alternative classical formats (e.g., `朱丝竖排` vermilion vertical, `原稿墨格` manuscript grid, `松烟夜卷` obsidian gold rubbing) while defaulting faithfully to the entry's saved stationery template (`忠实原貌` faithful original).
-_Avoid_: Template editor, style picker, theme switcher
+The ephemeral, non-destructive presentation mode (`ReadingPerspective`) in the Thread-Bound Folio allowing the diarist to view an entry in alternative layouts (`朱丝竖排`, `方格竖排`, `暗夜横排`) while defaulting to the entry's saved stationery template (`原样`).
+_Avoid_: Template editor, style picker, theme switcher, 忠实原貌, 朱丝古刻, 原稿墨格, 松烟夜卷
 
 **Interlinear Sub-Note**:
-The classical Chinese annotation format (`双行夹注` · Jiāzhù) rendering commentary as two parallel sub-columns of small-scale characters within a single column stride, parsed from `{夹注:...}` syntax.
-_Avoid_: Side note, footnote, inline comment
+A user-authored annotation (`夹注` / `批注`, written with `{夹注:...}` syntax) rendered either on the Folio cover or as two small parallel sub-columns in vertical calligraphy mode.
+_Avoid_: Side note, footnote, inline comment, 双行夹注, 眉批夹注
 
 **Stationery Sheet**:
 The discrete, integer-locked editing page (`StationerySheet` · 信笺书页) inside the paginated entry editor, conforming to the active template's ruling capacity without infinite vertical scrolling.
@@ -133,20 +133,20 @@ The paired reverse pagination mechanism (`SpillBack` · 退行合叶) triggered 
 _Avoid_: Reverse spill, sheet merge, backspace collapse
 
 **Staging Handscroll**:
-The single entry-wide handscroll (待贴画卷) resting on the desk below the Stationery Sheets, holding collected photos and videos that have not yet been mounted onto any sheet. Rolled closed when empty.
-_Avoid_: Media tray, global tray, upload queue, gallery
+The single entry-wide media tray resting below the Stationery Sheets, holding collected photos (`照片`) and videos (`视频`) not yet added to a specific sheet (`待选照片`).
+_Avoid_: Media tray, global tray, upload queue, gallery, 待贴画卷, 影札, 短影
 
 **Tucked Prints**:
-The up to three mounted photos or videos (夹页影札) belonging to one Stationery Sheet, slipped behind it so that only their tops peek out above its top edge, outside the Paper Heart, so the sheet's line capacity never changes. They follow the passage of text they were mounted beside, not a fixed page number.
-_Avoid_: Sheet Mount Strip, Media & Keepsake Tray, sheet tray, attachment bar
+The up to three mounted photos or videos (`本页照片`) belonging to one Stationery Sheet, tucked behind its top edge outside the Paper Heart so line capacity never changes.
+_Avoid_: Sheet Mount Strip, Media & Keepsake Tray, sheet tray, attachment bar, 夹页影札
 
 **Collect**:
-To bring a new photo or video into the Staging Handscroll (入卷), accompanied by the Brush Reveal.
-_Avoid_: Upload, import, attach
+To bring a new photo or video into the Staging Handscroll (`添加到待选`), accompanied by the Brush Reveal.
+_Avoid_: Upload, import, attach, 入卷
 
 **Mount / Unmount**:
-To move an item from the Staging Handscroll onto a Stationery Sheet as one of its Tucked Prints (贴至本页), or to return it from the sheet back to the handscroll (揭回画卷). An item is mounted on at most one sheet at a time.
-_Avoid_: Assign, pin, link, copy
+To move an item from the Staging Handscroll onto a Stationery Sheet (`添加到本页`), or return it from the sheet back to the handscroll (`移回待选`). An item is mounted on at most one sheet at a time.
+_Avoid_: Assign, pin, link, copy, 贴至本页, 揭回画卷, 揭回
 
 **Brush Reveal**:
 The one-time splash-ink animation (泼墨显影) in which a brush paints a newly collected item into the Staging Handscroll, first as monochrome ink wash and then blooming into full colour.
@@ -173,37 +173,53 @@ The carved cinnabar seal (岁时印) in the Journal Letterhead giving the entry'
 _Avoid_: Date stamp, calendar badge, lunar chip
 
 **Weather Charm / Mood Charm**:
-The vertical calligraphy tags (天时笺 / 心绪笺) hanging in the Journal Letterhead that show and set the entry's weather and mood.
-_Avoid_: Weather chip, mood chip, metadata tag
+The vertical tags hanging in the Journal Letterhead showing and setting weather (`晴天`, `多云`, `下雨`, `大风`, `下雪`) and mood (`低落`, `疲惫`, `平静`, `开心`, `喜悦`).
+_Avoid_: Weather chip, mood chip, metadata tag, 天时笺, 心绪笺, 沉郁, 倦怠, 静穆, 怡然, 欢欣, 晴明, 阴翳, 润雨, 朔风, 凝雪
 
 **Window Sill Ledge**:
-The carved wooden sill and brass-bracketed ledge (窗台案沿) separating the upper Shanshui Scenery Card window from the lower Chronicle Desk, bearing the four study ornaments (案沿清供: pine bonsai, brush stand, brass candlestick, and celadon incense burner).
+The carved wooden sill and brass-bracketed ledge (窗台案沿) separating the upper Shanshui Scenery Card window from the lower Chronicle Desk, bearing the four study ornaments (pine bonsai, brush stand, brass candlestick, and celadon incense burner).
 _Avoid_: Divider bar, desk lip, ornament shelf
 
 **Chronicle Desk**:
-The lower timeline workspace surface (案头卷匣) housing the Date Index Tray, Charm Filter, and the vertical timeline spine of diary entries.
-_Avoid_: Bottom container, entry list box, timeline background
+The lower timeline workspace surface (`日记`) housing the Date Index Tray, mood/weather filter (`筛选`), and vertical timeline spine of diary entries.
+_Avoid_: Bottom container, entry list box, timeline background, 案头卷匣, 案头卷宗, 素宣待书, 笺签筛选
 
 **Date Index Tray**:
-The three-row chronological filter and sorter header (案头岁时检目) docked at the top of the Chronicle Desk, filtering entries by Year (纪年), Month (月令), and progressively disclosed Ten-Day Period (三旬: 上旬, 中旬, 下旬).
-_Avoid_: Date navbar, calendar filter bar, date chips
+The three-row chronological filter and sorter header docked at the top of the Chronicle Desk, filtering by Year, Month, and Ten-Day Period (`上旬`, `中旬`, `下旬` — `1–10日`, `11–20日`, `21日–月底` by default, or `初一–初十`, `十一–二十`, `廿一–月底` in lunar mode).
+_Avoid_: Date navbar, calendar filter bar, date chips, 案头岁时检目, 纪年, 月令, 三旬
 
 **Wet-Mounted Thumbnail**:
-The silk-brocade bordered media preview (册页平裱) with mitered corner seams displayed inside a timeline entry card.
+The silk-brocade bordered media preview with mitered corner seams displayed inside a timeline entry card.
 _Avoid_: Photo thumbnail, Polaroid preview, image box
 
 **Twin Bamboo Brushes**:
-The pair of spotted-bamboo calligraphy brushes (双管毛笔) resting in the top groove of the Scholar's Stationery Chest, governing the diarist's live writing choreography, bristle elasticity, and writing cadence.
-_Avoid_: Twin brushes placeholder, brush toggle, animation menu
+The pair of bamboo calligraphy brushes in the Scholar's Stationery Chest (`笔刷动画`) governing live writing choreography, bristle stiffness (`狼毫 (偏硬)`, `兼毫 (适中)`, `羊毫 (偏软)`), and writing cadence.
+_Avoid_: Twin brushes placeholder, brush toggle, animation menu, 双管毛笔
 
 **Ink Choreography**:
-The live stroke-by-stroke wet-ink and brush writing animation (挥毫落墨) that draws newly written characters onto a Stationery Sheet before settling into dry printed ink. Distinct from Brush Reveal, which unveils collected photos and videos in the Staging Handscroll.
-_Avoid_: Brush Reveal, typing effect, text animation, stroke effect
+The live stroke-by-stroke wet-ink and brush writing animation (`逐笔书写`, `同时书写`, `仅墨迹`, `无动画`) that draws newly written characters onto a Stationery Sheet. Distinct from Brush Reveal, which unveils collected media in the Staging Handscroll.
+_Avoid_: Brush Reveal, typing effect, text animation, stroke effect, 单笔连绵, 并笔齐书, 见墨不见笔, 敛锋静书
 
 **Airborne Silk Trace**:
-The faint dashed ink filament and lifted brush arc (提笔游丝) connecting the final stroke of one character to the opening stroke of the next during continuous single-brush writing.
+The faint dashed ink filament and lifted brush arc connecting the final stroke of one character to the opening stroke of the next during continuous single-brush writing.
 _Avoid_: Transit line, cursor trail, jump path
 
 **Trial Rice-Grid**:
-The miniature rice-paper practice square (米字格试笔窗) inside the Twin Bamboo Brushes compartment of the Scholar's Stationery Chest for testing stroke choreography and bristle feel on sample characters.
+The miniature rice-paper practice square inside the Twin Bamboo Brushes compartment of the Scholar's Stationery Chest for testing stroke choreography and bristle feel on sample characters.
 _Avoid_: Focus stage, magnifier box, preview widget
+
+**Recycle Bin**:
+The soft-delete holding area (`回收站`) retaining deleted entries for 30 days before permanent purge (`恢复`, `彻底删除`, `清空回收站`).
+_Avoid_: 岁暮拾遗, 复墨还案, 焚稿归尘, 焚稿净匣
+
+**Time Capsule**:
+An entry locked until a chosen future unlock date (`时间胶囊` / `定时解锁`, state `待解锁`).
+_Avoid_: 岁月锦囊, 封缄书, 古法鱼锁
+
+**Weekly Review**:
+The weekly reflection summary and 7-day activity overview (`每周复盘` / `本周每日记录`, default title `第N周复盘`).
+_Avoid_: 周志复盘, 一候七日, 节候律动
+
+**Writing Analytics**:
+Quantitative writing metrics (`写作统计`: `总篇数`, `总字数`, `当前连续写作`, `最长连续写作`).
+_Avoid_: 研墨统计, 挥毫字数, 当下连墨, 最长持砚
