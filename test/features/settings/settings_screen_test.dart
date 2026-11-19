@@ -107,7 +107,7 @@ void main() {
 
       // Verify Privacy Declaration Card
       expect(find.text('完全离线 · 本地隐私保护'), findsOneWidget);
-      expect(find.textContaining('拾光日记全程离线运行'), findsOneWidget);
+      expect(find.textContaining('云皓日记全程离线运行'), findsOneWidget);
       expect(find.text('100% Offline & Private'), findsNothing);
 
       // Verify Permissions Listed

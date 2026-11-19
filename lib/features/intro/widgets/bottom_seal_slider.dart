@@ -6,12 +6,14 @@ class BottomSealSlider extends StatelessWidget {
   final double progress; // 0.0 to 1.0
   final ValueChanged<double> onProgressChanged;
   final VoidCallback onToggle;
+  final bool isNight;
 
   const BottomSealSlider({
     super.key,
     required this.progress,
     required this.onProgressChanged,
     required this.onToggle,
+    this.isNight = false,
   });
 
   @override
@@ -58,9 +60,12 @@ class BottomSealSlider extends StatelessWidget {
             height: 52,
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: const Color(0xFFF6F2E9).withValues(alpha: 0.92),
+              color: isNight ? const Color(0xD6182234) : const Color(0xEBF5F1E8),
               borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: const Color(0xFFC9BDA6), width: 1.2),
+              border: Border.all(
+                color: isNight ? const Color(0x5991ACD6) : const Color(0xD9C4B8A2),
+                width: 1.2,
+              ),
               boxShadow: const [
                 BoxShadow(
                   color: Color(0x1F1C1914),
@@ -107,11 +112,11 @@ class BottomSealSlider extends StatelessWidget {
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.3,
-                          color: Color(0xFF2B2620),
+                          color: isNight ? const Color(0xFFE8EEF8) : const Color(0xFF2B2620),
                           fontFamily: 'Noto Serif SC',
                         ),
                       ),

@@ -1665,7 +1665,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            '拾光日记全程离线运行，没有任何云端服务器。所有日记内容、排版格式与照片视频均仅保存在您的设备本地，无后台上传或第三方追踪，并通过 SQLCipher AES-256 全库加密保护您的数据安全。',
+            '云皓日记全程离线运行，没有任何云端服务器。所有日记内容、排版格式与照片视频均仅保存在您的设备本地，无后台上传或第三方追踪，并通过 SQLCipher AES-256 全库加密保护您的数据安全。',
             style: TextStyle(
               fontFamily: InkDiaryTheme.fontKaiti,
               fontSize: 12,

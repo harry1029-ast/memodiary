@@ -286,7 +286,7 @@ void main() {
       expect(find.text('雨过天晴'), findsOneWidget);
       expect(find.text('开心'), findsOneWidget);
       expect(find.text('竹窗听雨，泥炉温茶，忽见远山出岫。'), findsOneWidget);
-      expect(find.text('拾光日记'), findsOneWidget);
+      expect(find.text('云皓日记'), findsOneWidget);
       expect(find.text('翻到正文 ›'), findsOneWidget);
 
       await tester.tap(find.text('翻到正文 ›'));

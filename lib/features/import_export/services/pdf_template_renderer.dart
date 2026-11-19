@@ -352,7 +352,7 @@ class PdfTemplateRenderer {
     final dateStr = DateFormat('yyyy-MM-dd').format(entry.entryDate);
     final rawTitle = (entry.title?.trim().isNotEmpty ?? false)
         ? entry.title!.trim()
-        : '拾光日记';
+        : '云皓日记';
     final title = fontResolver.sanitizeText(rawTitle);
 
     return pw.Container(
@@ -402,7 +402,7 @@ class PdfTemplateRenderer {
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
           pw.Text(
-            fontResolver.sanitizeText('拾光日记 · 本地离线私密存储'),
+            fontResolver.sanitizeText('云皓日记 · 本地离线私密存储'),
             style: pw.TextStyle(
               font: fontResolver.regularFont,
               fontSize: 8,

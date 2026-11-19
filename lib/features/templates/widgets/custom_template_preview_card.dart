@@ -151,7 +151,7 @@ class CustomTemplatePreviewCard extends StatelessWidget {
                           const SizedBox(height: 6),
                           Expanded(
                             child: Text(
-                              '微风轻拂，记录今天发生的点滴小事。\n拾光日记，留住值得珍藏的时光。',
+                              '微风轻拂，记录今天发生的点滴小事。\n云皓日记，留住值得珍藏的时光。',
                               style: TextStyle(
                                 fontFamily: activeFont ?? 'serif',
                                 fontFamilyFallback: const [

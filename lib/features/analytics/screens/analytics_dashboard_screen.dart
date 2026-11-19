@@ -21,7 +21,7 @@ class AnalyticsDashboardScreen extends StatefulWidget {
 
   /// Formats a plain Chinese writing statistics summary for sharing.
   static String formatShareSummary(WritingStats stats) {
-    return '【拾光日记 · 写作统计】\n'
+    return '【云皓日记 · 写作统计】\n'
         '总篇数：${stats.totalEntries} 篇\n'
         '总字数：${stats.totalWords} 字\n'
         '当前连续写作：${stats.currentStreakDays} 天\n'
@@ -62,7 +62,7 @@ class _AnalyticsDashboardScreenState extends State<AnalyticsDashboardScreen> {
     final text = AnalyticsDashboardScreen.formatShareSummary(_stats!);
 
     await SharePlus.instance.share(
-      ShareParams(text: text, subject: '拾光日记 · 写作统计'),
+      ShareParams(text: text, subject: '云皓日记 · 写作统计'),
     );
   }
 

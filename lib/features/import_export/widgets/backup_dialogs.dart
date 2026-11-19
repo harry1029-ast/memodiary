@@ -140,7 +140,7 @@ class _CreateBackupDialogState extends State<CreateBackupDialog> {
           await SharePlus.instance.share(
             ShareParams(
               files: [XFile(result.file.path)],
-              subject: '拾光日记全量备份 ($fileName)',
+              subject: '云皓日记全量备份 ($fileName)',
             ),
           );
         }

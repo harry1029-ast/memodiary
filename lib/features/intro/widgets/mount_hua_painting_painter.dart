@@ -81,11 +81,11 @@ class MountHuaPaintingPainter extends CustomPainter {
       fontFamily: 'Noto Serif SC',
     );
 
-    // Line 1: 太華千尋拔地起
-    _drawVerticalText(canvas, '太華千尋拔地起', textStyle1, size.width * 0.10, size.height * 0.08);
+    // Line 1: 云伴皓光落墨成歌
+    _drawVerticalText(canvas, '云伴皓光落墨成歌', textStyle1, size.width * 0.10, size.height * 0.08);
 
-    // Line 2: 一卷私語一卷山河
-    _drawVerticalText(canvas, '一卷私語一卷山河', textStyle2, size.width * 0.17, size.height * 0.11);
+    // Line 2: 一卷私语一卷山河
+    _drawVerticalText(canvas, '一卷私语一卷山河', textStyle2, size.width * 0.17, size.height * 0.11);
   }
 
   void _drawVerticalText(Canvas canvas, String text, TextStyle style, double x, double startY) {
@@ -406,7 +406,7 @@ class MountHuaPaintingPainter extends CustomPainter {
       Paint()..color = const Color(0xFFEFE6D2).withValues(alpha: 0.95),
     );
 
-    // Seal Characters: 太華 / 煙雲
+    // Seal Characters: 云皓 / 珍藏
     const sealStyle = TextStyle(
       fontSize: 6.5,
       fontWeight: FontWeight.w700,
@@ -417,7 +417,7 @@ class MountHuaPaintingPainter extends CustomPainter {
     );
 
     final tp1 = TextPainter(
-      text: const TextSpan(text: '太華\n煙雲', style: sealStyle),
+      text: const TextSpan(text: '云皓\n珍藏', style: sealStyle),
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
     )..layout();

@@ -81,7 +81,7 @@ class FolioCoverShowcase extends StatelessWidget {
 
   Widget _buildTopWashiTape(int photoCount) {
     final tapeText = switch (photoCount) {
-      0 => '拾光日记',
+      0 => '云皓日记',
       1 => '封面照片',
       2 => '双图封面',
       3 => '三图拼贴',

@@ -70,7 +70,7 @@ class TimelineAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '拾光日记',
+                      '云皓日记',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,

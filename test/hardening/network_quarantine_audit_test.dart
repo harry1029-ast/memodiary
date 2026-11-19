@@ -267,7 +267,7 @@ void main() {
         );
       });
 
-      test('Android localized strings define English MemoDiary and Chinese 拾光日记', () {
+      test('Android localized strings define English MemoDiary and Chinese 云皓日记', () {
         final enStrings = File('android/app/src/main/res/values/strings.xml');
         expect(enStrings.existsSync(), isTrue);
         expect(
@@ -278,7 +278,7 @@ void main() {
         final zhStrings = File('android/app/src/main/res/values-zh/strings.xml');
         expect(zhStrings.existsSync(), isTrue);
         expect(
-          zhStrings.readAsStringSync().contains('<string name="app_name">拾光日记</string>'),
+          zhStrings.readAsStringSync().contains('<string name="app_name">云皓日记</string>'),
           isTrue,
         );
       });
@@ -309,8 +309,8 @@ void main() {
         final zhStrings = File('ios/Runner/zh-Hans.lproj/InfoPlist.strings');
         expect(zhStrings.existsSync(), isTrue);
         final zhContent = zhStrings.readAsStringSync();
-        expect(zhContent.contains('"CFBundleDisplayName" = "拾光日记";'), isTrue);
-        expect(zhContent.contains('"CFBundleName" = "拾光日记";'), isTrue);
+        expect(zhContent.contains('"CFBundleDisplayName" = "云皓日记";'), isTrue);
+        expect(zhContent.contains('"CFBundleName" = "云皓日记";'), isTrue);
 
         // Assert strict zero network declarations in iOS Info.plist
         expect(

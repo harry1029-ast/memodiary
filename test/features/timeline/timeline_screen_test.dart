@@ -193,7 +193,7 @@ void main() {
 
       // Verify title and plain tooltips are rendered cleanly without overflow
       expect(find.text('MemoDiary'), findsOneWidget);
-      expect(find.text('拾光日记'), findsOneWidget);
+      expect(find.text('云皓日记'), findsOneWidget);
       expect(find.byTooltip('每周复盘'), findsOneWidget);
       expect(find.byTooltip('搜索'), findsOneWidget);
       expect(find.byTooltip('设置'), findsOneWidget);
@@ -231,7 +231,7 @@ void main() {
 
       // Verify title and plain tooltips are rendered cleanly without overflow
       expect(find.text('MemoDiary'), findsOneWidget);
-      expect(find.text('拾光日记'), findsOneWidget);
+      expect(find.text('云皓日记'), findsOneWidget);
       expect(find.byTooltip('每周复盘'), findsOneWidget);
       expect(find.byTooltip('搜索'), findsOneWidget);
       expect(find.byTooltip('设置'), findsOneWidget);

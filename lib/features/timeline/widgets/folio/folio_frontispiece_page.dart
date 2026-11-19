@@ -174,7 +174,7 @@ class FolioFrontispiecePage extends StatelessWidget {
               Text(
                 leaf.gregorianDate.isNotEmpty
                     ? leaf.gregorianDate
-                    : '拾光日记',
+                    : '云皓日记',
                 style: TextStyle(fontSize: 10.0, letterSpacing: 1.2, color: theme.inkSecondary),
               ),
               const SizedBox(height: 2),

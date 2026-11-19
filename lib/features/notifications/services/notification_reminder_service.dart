@@ -181,7 +181,7 @@ class NotificationReminderService {
       await _resolvedPlugin.zonedSchedule(
         dailyNotificationId,
         '今天写日记了吗',
-        '花一点时间在拾光日记记录今天的生活吧。',
+        '花一点时间在云皓日记记录今天的生活吧。',
         scheduledDate,
         details,
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

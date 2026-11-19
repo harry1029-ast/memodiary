@@ -49,8 +49,8 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
         (widget.singleEntry != null
             ? (widget.singleEntry!.title?.trim().isNotEmpty ?? false
                 ? widget.singleEntry!.title!.trim()
-                : '拾光日记')
-            : '拾光日记本');
+                : '云皓日记')
+            : '云皓日记本');
 
     final effectiveMediaService = widget.mediaService ?? MediaSandboxService();
 

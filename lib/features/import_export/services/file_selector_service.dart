@@ -75,7 +75,7 @@ class NativeFileSelectorService implements FileSelectorService {
   }) async {
     final bytes = await sourceFile.readAsBytes();
     final path = await FilePicker.saveFile(
-      dialogTitle: '保存拾光日记备份',
+      dialogTitle: '保存云皓日记备份',
       fileName: fileName,
       type: FileType.custom,
       allowedExtensions: ['mdbak'],

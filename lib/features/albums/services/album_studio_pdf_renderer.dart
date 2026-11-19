@@ -562,7 +562,7 @@ class AlbumStudioPdfRenderer {
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
                 pw.Text(
-                  resolver.sanitizeText('拾光日记 · 旅行相册'),
+                  resolver.sanitizeText('云皓日记 · 旅行相册'),
                   style: pw.TextStyle(
                     font: resolver.regularFont,
                     fontSize: 8,

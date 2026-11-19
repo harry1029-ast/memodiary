@@ -4,24 +4,29 @@ import '../../../core/calendar/lunar_calendar.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/services/ocr/ocr_queue_manager.dart';
+import '../../../core/utils/ambient_animation_utils.dart';
 import '../../albums/screens/album_collections_screen.dart';
 import '../../timeline/screens/timeline_screen.dart';
 import '../models/book_intro_folio_data.dart';
+import '../models/intro_sky_atmosphere.dart';
 import '../widgets/book_3d_stage.dart';
 import '../widgets/bottom_seal_slider.dart';
 import '../widgets/living_ink_background_painter.dart';
 
-/// The interactive 3D Book Intro opening gateway for MemoDiary.
-/// Incorporates the physical thread-bound Chinese book, living water-ink landscape,
-/// and dual interactive portals («私人日记» & «旅行画册»).
+/// The interactive 3D Book Intro opening gateway for 云皓日记.
+/// Renders a continuous 24-hour Shanshui sky synced to local time with a 1-tap
+/// Sun/Moon toggle («映月切换»), a thread-bound 3D book cover, and dual portals («私人日记» & «旅行相册»).
 class BookIntroScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
   final bool startOpened;
   final OcrQueueManager? ocrQueueManager;
 
-  /// Supplies today's date for the 私人日记 card's lunar date (defaults to now).
+  /// Supplies current local date and time for the lunar card and 24-hour sky (defaults to now).
   final DateTime Function()? clock;
+
+  /// Controls whether the continuous ambient background loop ticks (disabled under `flutter test` by default).
+  final bool? enableAmbientAnimation;
 
   const BookIntroScreen({
     super.key,
@@ -30,6 +35,7 @@ class BookIntroScreen extends StatefulWidget {
     this.startOpened = false,
     this.ocrQueueManager,
     this.clock,
+    this.enableAmbientAnimation,
   });
 
   @override
@@ -38,37 +44,43 @@ class BookIntroScreen extends StatefulWidget {
 
 class _BookIntroScreenState extends State<BookIntroScreen>
     with TickerProviderStateMixin {
-  // Continuous ticker driving atmospheric background ink animations
   late final AnimationController _ambientLoopController;
-
-  // Controller driving the 3D book leaf opening momentum
   late final AnimationController _bookFlipController;
+  late final AnimationController _timeTransitionController;
 
   double _swipeProgress = 0.0; // 0.0 (Closed) -> 1.0 (Open)
   int _lastHapticMilestone = 0;
   double _dragStartX = 0.0;
   double _dragStartProgress = 0.0;
 
-  // Dynamic context for right folio cards
+  late double _timeHours;
+  double _transitionStartHour = 21.4;
+  double _transitionDiffHour = 0.0;
+
   BookIntroFolioData _folioData = const BookIntroFolioData();
 
   @override
   void initState() {
     super.initState();
 
-    final todayLunar = LunarCalendar.fromSolar((widget.clock ?? DateTime.now)());
+    final now = (widget.clock ?? DateTime.now)();
+    _timeHours = now.hour + now.minute / 60.0;
+
+    final todayLunar = LunarCalendar.fromSolar(now);
     _folioData = _folioData.copyWith(
-      // Out of range, the year stands in as the Folio shows it (岁次丙午).
       lunarDateText: todayLunar.monthDayName ?? todayLunar.yearName,
     );
 
-    // 1. Continuous atmospheric animation loop (60s cycle)
+    final shouldAnimate =
+        shouldRunAmbientAnimation(widget.enableAmbientAnimation);
     _ambientLoopController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 60),
-    )..repeat();
+    );
+    if (shouldAnimate) {
+      _ambientLoopController.repeat();
+    }
 
-    // 2. 3D Book opening momentum controller with direct listener
     _bookFlipController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -79,9 +91,19 @@ class _BookIntroScreenState extends State<BookIntroScreen>
         });
       });
 
-    _swipeProgress = widget.startOpened ? 1.0 : 0.0;
+    _timeTransitionController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..addListener(() {
+        final curvedT = Curves.easeInOutCubic.transform(
+          _timeTransitionController.value,
+        );
+        setState(() {
+          _timeHours = (_transitionStartHour + _transitionDiffHour * curvedT) % 24.0;
+        });
+      });
 
-    // 3. Load live travel album context via AlbumsDao
+    _swipeProgress = widget.startOpened ? 1.0 : 0.0;
     _loadLatestTravelAlbum();
   }
 
@@ -114,7 +136,27 @@ class _BookIntroScreenState extends State<BookIntroScreen>
   void dispose() {
     _ambientLoopController.dispose();
     _bookFlipController.dispose();
+    _timeTransitionController.dispose();
     super.dispose();
+  }
+
+  void _toggleDayNightSky() {
+    HapticFeedback.selectionClick();
+    final isCurrentlyNight = _timeHours >= 18.0 || _timeHours < 6.0;
+    final targetHour = isCurrentlyNight ? 11.5 : 21.4;
+    _transitionStartHour = _timeHours;
+    double diff = targetHour - _transitionStartHour;
+    if (diff < 0) {
+      diff += 24.0;
+    }
+    _transitionDiffHour = diff;
+    _timeTransitionController.forward(from: 0.0);
+  }
+
+  void _openBookIfClosed() {
+    if (_swipeProgress < 0.35) {
+      _animateBookTo(1.0);
+    }
   }
 
   void _animateBookTo(double targetValue) {
@@ -136,7 +178,6 @@ class _BookIntroScreenState extends State<BookIntroScreen>
   void _onSliderProgressChanged(double newProgress) {
     _bookFlipController.value = newProgress;
 
-    // Subtle drag milestone haptics
     final currentMilestone = (newProgress * 4).floor();
     if (currentMilestone != _lastHapticMilestone) {
       _lastHapticMilestone = currentMilestone;
@@ -158,19 +199,16 @@ class _BookIntroScreenState extends State<BookIntroScreen>
   }
 
   void _onBookDragUpdate(DragUpdateDetails details) {
-    // Swiping left (decreasing dx) increases opening progress
     final totalDelta = _dragStartX - details.globalPosition.dx;
-    // 130px swipe distance for effortless light drag
     final next = (_dragStartProgress + totalDelta / 130.0).clamp(0.0, 1.0);
     _onSliderProgressChanged(next);
   }
 
   void _onBookDragEnd(DragEndDetails details) {
-    final vel = details.primaryVelocity ?? 0.0;
-    // Light flick (80px/s) to the left commits to opening; to the right commits to closing
-    if (vel < -80.0) {
+    final velocity = details.primaryVelocity ?? 0.0;
+    if (velocity < -80.0) {
       _animateBookTo(1.0);
-    } else if (vel > 80.0) {
+    } else if (velocity > 80.0) {
       _animateBookTo(0.0);
     } else if (_dragStartProgress < 0.5 && _swipeProgress >= 0.12) {
       _animateBookTo(1.0);
@@ -183,134 +221,206 @@ class _BookIntroScreenState extends State<BookIntroScreen>
     }
   }
 
-  void _navigateToPersonalDiary() {
+  void _syncTimeToClock() {
+    _timeTransitionController.stop();
+    final now = (widget.clock ?? DateTime.now)();
+    final todayLunar = LunarCalendar.fromSolar(now);
+    setState(() {
+      _timeHours = now.hour + now.minute / 60.0;
+      _folioData = _folioData.copyWith(
+        lunarDateText: todayLunar.monthDayName ?? todayLunar.yearName,
+      );
+    });
+  }
+
+  Future<void> _pushAndResetSkyOnReturn(Widget destination) async {
     HapticFeedback.lightImpact();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TimelineScreen(
-          database: widget.database,
-          mediaService: widget.mediaService,
-          ocrQueueManager: widget.ocrQueueManager,
-        ),
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => destination),
+    );
+    if (!mounted) return;
+    _syncTimeToClock();
+  }
+
+  void _navigateToPersonalDiary() {
+    _pushAndResetSkyOnReturn(
+      TimelineScreen(
+        database: widget.database,
+        mediaService: widget.mediaService,
+        ocrQueueManager: widget.ocrQueueManager,
       ),
     );
   }
 
   void _navigateToTravelAlbum() {
-    HapticFeedback.lightImpact();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AlbumCollectionsScreen(
-          database: widget.database,
-          mediaService: widget.mediaService,
-        ),
+    _pushAndResetSkyOnReturn(
+      AlbumCollectionsScreen(
+        database: widget.database,
+        mediaService: widget.mediaService,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final sky = InterpolatedIntroSky.fromHour(_timeHours);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F2E9),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // 1. LIVING INK WASH BACKGROUND CANVAS
-            Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _ambientLoopController,
-                builder: (context, _) {
-                  final elapsedSeconds = _ambientLoopController.value * 60.0;
-                  return CustomPaint(
-                    painter: LivingInkBackgroundPainter(
-                      coverOpenRatio: _swipeProgress,
-                      animationTime: elapsedSeconds,
-                    ),
-                    size: Size.infinite,
-                  );
-                },
-              ),
-            ),
+      backgroundColor: sky.nearMountain,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final celestial = CelestialOrbPosition.fromHour(
+            _timeHours,
+            Size(constraints.maxWidth, constraints.maxHeight),
+          );
 
-            // 2. FOREGROUND INTERACTION LAYER
-            Positioned.fill(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Top Main Title: 拾光日记
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        '拾光日记',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 4.5,
-                          color: Color(0xFF1C1A17),
-                          fontFamily: 'Noto Serif SC',
-                          shadows: [
-                            Shadow(
-                              color: Color(0xD9FFFFFF),
-                              blurRadius: 4,
-                              offset: Offset(0, 1),
-                            ),
-                          ],
-                        ),
+          return Stack(
+            children: [
+              // 1. DYNAMIC 24-HOUR SHANSHUI BACKGROUND CANVAS
+              Positioned.fill(
+                child: AnimatedBuilder(
+                  animation: _ambientLoopController,
+                  builder: (context, _) {
+                    final elapsedSeconds = _ambientLoopController.value * 60.0;
+                    return CustomPaint(
+                      painter: LivingInkBackgroundPainter(
+                        coverOpenRatio: _swipeProgress,
+                        animationTime: elapsedSeconds,
+                        timeHours: _timeHours,
                       ),
-                    ),
-
-                    // 3D Animated Book Stage with direct effortless swiping and tap-to-flip
-                    Expanded(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          if (_swipeProgress < 0.35) {
-                            _animateBookTo(1.0);
-                          }
-                        },
-                        onHorizontalDragStart: _onBookDragStart,
-                        onHorizontalDragUpdate: _onBookDragUpdate,
-                        onHorizontalDragEnd: _onBookDragEnd,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Book3DStage(
-                            coverOpenRatio: _swipeProgress,
-                            folioData: _folioData,
-                            onPersonalDiaryTap: _navigateToPersonalDiary,
-                            onTravelAlbumTap: _navigateToTravelAlbum,
-                            onBookTap: () {
-                              if (_swipeProgress < 0.35) {
-                                _animateBookTo(1.0);
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Bottom Seal Slider Bar
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: BottomSealSlider(
-                        progress: _swipeProgress,
-                        onProgressChanged: (val) {
-                          if (val == 0.0 || val == 1.0) {
-                            _animateBookTo(val);
-                          } else {
-                            _onSliderProgressChanged(val);
-                          }
-                        },
-                        onToggle: _toggleBookOpen,
-                      ),
-                    ),
-                  ],
+                      size: Size.infinite,
+                    );
+                  },
                 ),
               ),
-            ),
-          ],
-        ),
+
+              // 2. FOREGROUND INTERACTION LAYER
+              Positioned.fill(
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Top Main Title & Slogan: 云皓日记
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '云皓日记',
+                                style: TextStyle(
+                                  fontSize: 23,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 4.5,
+                                  color: sky.isNight
+                                      ? const Color(0xFFF4F6FA)
+                                      : const Color(0xFF1A2433),
+                                  fontFamily: 'Noto Serif SC',
+                                  fontFamilyFallback: const [
+                                    'Songti SC',
+                                    'SimSun',
+                                    'Georgia',
+                                    'serif',
+                                  ],
+                                  shadows: [
+                                    Shadow(
+                                      color: sky.isNight
+                                          ? const Color(0xBF0A101C)
+                                          : const Color(0xA6FFFFFF),
+                                      blurRadius: sky.isNight ? 14 : 8,
+                                      offset: Offset(0, sky.isNight ? 2 : 1),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '云伴皓光，收录旅途与心事',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  letterSpacing: 1.65,
+                                  color: sky.isNight
+                                      ? const Color(0xFFC5D4EC)
+                                      : const Color(0xFF3E526A),
+                                  fontFamily: 'Ma Shan Zheng',
+                                  fontFamilyFallback: const [
+                                    'Kaiti SC',
+                                    'STKaiti',
+                                    'serif',
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // 3D Animated Book Stage with direct effortless swiping and tap-to-flip
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: _openBookIfClosed,
+                            onHorizontalDragStart: _onBookDragStart,
+                            onHorizontalDragUpdate: _onBookDragUpdate,
+                            onHorizontalDragEnd: _onBookDragEnd,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Book3DStage(
+                                coverOpenRatio: _swipeProgress,
+                                folioData: _folioData,
+                                isNight: sky.isNight,
+                                lightAngleDeg: celestial.lightAngleDeg,
+                                onPersonalDiaryTap: _navigateToPersonalDiary,
+                                onTravelAlbumTap: _navigateToTravelAlbum,
+                                onBookTap: _openBookIfClosed,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Bottom Seal Slider Bar
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: BottomSealSlider(
+                            progress: _swipeProgress,
+                            isNight: sky.isNight,
+                            onProgressChanged: (val) {
+                              if (val == 0.0 || val == 1.0) {
+                                _animateBookTo(val);
+                              } else {
+                                _onSliderProgressChanged(val);
+                              }
+                            },
+                            onToggle: _toggleBookOpen,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 3. INTERACTIVE CELESTIAL SUN / MOON TOGGLE (映月切换)
+              Positioned(
+                left: celestial.x - 40,
+                top: celestial.y - 40,
+                width: 80,
+                height: 80,
+                child: Semantics(
+                  button: true,
+                  label: '映月切换',
+                  child: GestureDetector(
+                    key: const Key('intro_celestial_toggle_button'),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _toggleDayNightSky,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

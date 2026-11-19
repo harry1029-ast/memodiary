@@ -190,7 +190,7 @@ class PdfExportEngine {
     final sortedEntries = List<Entry>.from(entries)
       ..sort((first, second) => first.entryDate.compareTo(second.entryDate));
 
-    final title = resolver.sanitizeText(bookTitle ?? '拾光日记合集');
+    final title = resolver.sanitizeText(bookTitle ?? '云皓日记合集');
     final startDateStr =
         DateFormat('yyyy年M月d日').format(sortedEntries.first.entryDate);
     final endDateStr =
@@ -246,7 +246,7 @@ class PdfExportEngine {
                 ),
                 pw.SizedBox(height: 60),
                 pw.Text(
-                  resolver.sanitizeText('拾光日记 · 本地离线私密存储'),
+                  resolver.sanitizeText('云皓日记 · 本地离线私密存储'),
                   style: pw.TextStyle(
                     font: resolver.regularFont,
                     fontSize: 9,

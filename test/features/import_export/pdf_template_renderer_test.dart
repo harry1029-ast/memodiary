@@ -270,9 +270,9 @@ void main() {
 
       final headerTexts = _extractTexts(capturedHeader!);
       final footerTexts = _extractTexts(capturedFooter!);
-      expect(headerTexts, contains('拾光日记'));
+      expect(headerTexts, contains('云皓日记'));
       expect(headerTexts, isNot(contains('MemoDiary Entry')));
-      expect(footerTexts, contains('拾光日记 · 本地离线私密存储'));
+      expect(footerTexts, contains('云皓日记 · 本地离线私密存储'));
       expect(footerTexts, contains('第 1 / 1 页'));
       expect(footerTexts, isNot(contains('Page 1 of 1')));
     });

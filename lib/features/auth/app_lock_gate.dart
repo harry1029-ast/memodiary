@@ -94,7 +94,7 @@ class AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
 
   Future<void> _attemptBiometricAuth() async {
     final authenticated = await _authService.authenticateBiometric(
-      localizedReason: '解锁拾光日记',
+      localizedReason: '解锁云皓日记',
     );
     if (authenticated && mounted) {
       setState(() {
@@ -185,7 +185,7 @@ class AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
               const Icon(Icons.lock_rounded, size: 64, color: Colors.deepPurple),
               const SizedBox(height: 16),
               const Text(
-                '拾光日记已锁定',
+                '云皓日记已锁定',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),

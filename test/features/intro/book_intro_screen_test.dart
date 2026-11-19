@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/features/intro/models/intro_sky_atmosphere.dart';
 import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/features/intro/widgets/book_3d_stage.dart';
 import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
+import 'package:memodiary/features/intro/widgets/living_ink_background_painter.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_metadata_formatter.dart';
 
@@ -61,8 +63,77 @@ void main() {
     }
   }
 
+  LivingInkBackgroundPainter findBackgroundPainter(WidgetTester tester) {
+    final customPaints = tester.widgetList<CustomPaint>(find.byType(CustomPaint));
+    return customPaints
+        .map((widget) => widget.painter)
+        .whereType<LivingInkBackgroundPainter>()
+        .first;
+  }
+
+  group('IntroSkyAtmosphere Unit Tests', () {
+    test('interpolates sky phases across 晓岚 (6.0), 云岚昼 (11.5), 暮霞 (17.5), and 皓月夜 (21.4)', () {
+      final dawn = InterpolatedIntroSky.fromHour(6.0);
+      expect(dawn.mode, equals('云岚昼'));
+      expect(dawn.phaseName, contains('晓岚'));
+      expect(dawn.isNight, isFalse);
+      expect(dawn.lanternGlow, greaterThan(0.0));
+
+      final day = InterpolatedIntroSky.fromHour(11.5);
+      expect(day.mode, equals('云岚昼'));
+      expect(day.phaseName, contains('云岚昼'));
+      expect(day.isNight, isFalse);
+      expect(day.starOpacity, equals(0.0));
+      expect(day.lanternGlow, equals(0.0));
+
+      final dusk = InterpolatedIntroSky.fromHour(17.5);
+      expect(dusk.mode, equals('云岚昼'));
+      expect(dusk.phaseName, contains('暮霞'));
+      expect(dusk.isNight, isFalse);
+      expect(dusk.lanternGlow, closeTo(0.72, 0.01));
+
+      final night = InterpolatedIntroSky.fromHour(21.4);
+      expect(night.mode, equals('皓月夜'));
+      expect(night.phaseName, contains('皓月夜'));
+      expect(night.isNight, isTrue);
+      expect(night.starOpacity, greaterThan(0.8));
+      expect(night.lanternGlow, closeTo(1.0, 0.01));
+    });
+
+    test('computes scaled parabolic Sun/Moon trajectory coordinates across phases', () {
+      const canvasSize = Size(400, 812);
+
+      final dawnOrb = CelestialOrbPosition.fromHour(6.0, canvasSize);
+      expect(dawnOrb.isMoon, isFalse);
+      expect(dawnOrb.progress, closeTo(0.0, 0.001));
+      expect(dawnOrb.x, closeTo(36.0, 0.1));
+      expect(dawnOrb.y, closeTo(212.0, 0.1));
+
+      final dayOrb = CelestialOrbPosition.fromHour(11.5, canvasSize);
+      expect(dayOrb.isMoon, isFalse);
+      expect(dayOrb.progress, closeTo(5.5 / 12.0, 0.001));
+      expect(dayOrb.y, lessThan(110.0));
+      expect(dayOrb.edgeFade, equals(1.0));
+
+      final duskOrb = CelestialOrbPosition.fromHour(17.5, canvasSize);
+      expect(duskOrb.isMoon, isFalse);
+      expect(duskOrb.x, greaterThan(340.0));
+      expect(duskOrb.lightAngleDeg, greaterThan(130.0));
+
+      final nightOrb = CelestialOrbPosition.fromHour(21.4, canvasSize);
+      expect(nightOrb.isMoon, isTrue);
+      expect(nightOrb.progress, closeTo(3.4 / 12.0, 0.001));
+      expect(nightOrb.x, closeTo(36.0 + (3.4 / 12.0) * 328.0, 0.1));
+      expect(nightOrb.edgeFade, equals(1.0));
+
+      final doubledOrb = CelestialOrbPosition.fromHour(21.4, const Size(800, 1624));
+      expect(doubledOrb.x, closeTo(nightOrb.x * 2.0, 0.1));
+      expect(doubledOrb.y, closeTo(nightOrb.y * 2.0, 0.1));
+    });
+  });
+
   group('BookIntroScreen Widget Tests', () {
-    testWidgets('renders closed thread-bound book cover and slider on initial load', (tester) async {
+    testWidgets('renders closed thread-bound book cover, slogan, and slider on initial load', (tester) async {
       await pumpBookIntroScreen(
         tester,
         database: db,
@@ -70,15 +141,115 @@ void main() {
         startOpened: false,
       );
 
-      // Verify top title and slider widgets
-      expect(find.text('拾光日记'), findsOneWidget);
+      expect(find.text('云皓日记'), findsOneWidget);
+      expect(find.text('云伴皓光，收录旅途与心事'), findsOneWidget);
+      final titleWidget = tester.widget<Text>(find.text('云皓日记'));
+      final sloganWidget = tester.widget<Text>(find.text('云伴皓光，收录旅途与心事'));
+      expect(titleWidget.style?.fontFamily, equals('Noto Serif SC'));
+      expect(sloganWidget.style?.fontFamily, equals('Ma Shan Zheng'));
       expect(find.byType(BottomSealSlider), findsOneWidget);
       expect(find.byType(Book3DStage), findsOneWidget);
+      expect(find.byKey(const Key('intro_celestial_toggle_button')), findsOneWidget);
       expect(find.text('左滑翻开'), findsAtLeast(1));
       expect(find.textContaining('Swipe Left'), findsNothing);
 
-      // In closed state, vertical cover slip is preserved intact
-      expect(find.textContaining('拾\n光\n云\n笺'), findsOneWidget);
+      // In closed state, vertical cover slip renders 云皓日记
+      expect(find.textContaining('云\n皓\n日\n记'), findsOneWidget);
+    });
+
+    testWidgets('syncs initial sky mode with injected local clock (皓月夜 vs 云岚昼)', (tester) async {
+      await pumpBookIntroScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
+        clock: () => DateTime(2026, 11, 19, 21, 24),
+      );
+
+      expect(findBackgroundPainter(tester).timeHours, closeTo(21.4, 0.01));
+      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isTrue);
+      expect(tester.widget<BottomSealSlider>(find.byType(BottomSealSlider)).isNight, isTrue);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await pumpBookIntroScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
+        clock: () => DateTime(2026, 11, 19, 11, 30),
+      );
+
+      expect(findBackgroundPainter(tester).timeHours, closeTo(11.5, 0.01));
+      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isFalse);
+      expect(tester.widget<BottomSealSlider>(find.byType(BottomSealSlider)).isNight, isFalse);
+    });
+
+    testWidgets('tapping celestial toggle button animates smoothly between 皓月夜 and 云岚昼', (tester) async {
+      await pumpBookIntroScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
+        clock: () => DateTime(2026, 11, 19, 21, 24),
+      );
+
+      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isTrue);
+
+      // Tap Moon orb to transition smoothly into 云岚昼 (11.5)
+      await tester.tap(find.byKey(const Key('intro_celestial_toggle_button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 450));
+
+      final midHour = findBackgroundPainter(tester).timeHours;
+      expect(midHour, isNot(closeTo(21.4, 0.1)));
+      expect(midHour, isNot(closeTo(11.5, 0.1)));
+
+      await tester.pump(const Duration(milliseconds: 550));
+      expect(findBackgroundPainter(tester).timeHours, closeTo(11.5, 0.01));
+      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isFalse);
+      expect(tester.widget<BottomSealSlider>(find.byType(BottomSealSlider)).isNight, isFalse);
+
+      // Tap Sun orb to transition smoothly back into 皓月夜 (21.4)
+      await tester.tap(find.byKey(const Key('intro_celestial_toggle_button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1000));
+
+      expect(findBackgroundPainter(tester).timeHours, closeTo(21.4, 0.01));
+      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isTrue);
+      expect(tester.widget<BottomSealSlider>(find.byType(BottomSealSlider)).isNight, isTrue);
+    });
+
+    testWidgets('celestial toggle is temporary and resets to real-time clock when returning from diary', (tester) async {
+      await pumpBookIntroScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
+        startOpened: true,
+        clock: () => DateTime(2026, 11, 19, 21, 24),
+      );
+
+      expect(findBackgroundPainter(tester).timeHours, closeTo(21.4, 0.01));
+
+      // Temporarily toggle Moon orb to daytime (11.5)
+      await tester.tap(find.byKey(const Key('intro_celestial_toggle_button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1000));
+      expect(findBackgroundPainter(tester).timeHours, closeTo(11.5, 0.01));
+      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isFalse);
+
+      // Navigate into Personal Diary
+      await tester.tap(find.text('私人日记'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(TimelineScreen), findsOneWidget);
+
+      // Pop back to BookIntroScreen and verify sky resets to real-time clock (21.4)
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      navigator.pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(Book3DStage), findsOneWidget);
+      expect(findBackgroundPainter(tester).timeHours, closeTo(21.4, 0.01));
+      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isTrue);
+      expect(tester.widget<BottomSealSlider>(find.byType(BottomSealSlider)).isNight, isTrue);
     });
 
     testWidgets('reveals 选择栏目, 私人日记 and 旅行相册 when startOpened is true', (tester) async {
@@ -104,11 +275,10 @@ void main() {
         database: db,
         mediaService: mediaService,
         startOpened: true,
-        // Solar 2026-11-10 is lunar 十月初二 (the old helper showed 冬月初十).
+        // Solar 2026-11-10 is lunar 十月初二.
         clock: () => DateTime(2026, 11, 10, 8, 30),
       );
 
-      // The lunar date is set vertically, one character per line.
       expect(find.text('初'), findsOneWidget);
       final lunarColumn = find
           .ancestor(of: find.text('初'), matching: find.byType(Column))
@@ -130,7 +300,6 @@ void main() {
         clock: () => outOfRange,
       );
 
-      // The Folio's fallback for the same day: 岁次 plus the stem-branch year.
       expect(FolioMetadataFormatter.formatFullLunarDate(outOfRange), '岁次庚子');
       expect(find.text('次'), findsOneWidget);
       final lunarColumn = find
@@ -166,12 +335,10 @@ void main() {
         startOpened: false,
       );
 
-      // Swipe left across the book stage (effortless book-opening motion)
       await tester.drag(find.byType(Book3DStage), const Offset(-200, 0));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 900));
 
-      // After swiping left, it animates fully open
       expect(find.text('私人日记'), findsOneWidget);
       expect(find.text('旅行相册'), findsOneWidget);
     });
@@ -184,7 +351,6 @@ void main() {
         startOpened: false,
       );
 
-      // Tap bottom slider to open
       await tester.tap(find.byType(BottomSealSlider));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 900));
@@ -192,7 +358,6 @@ void main() {
       expect(find.text('私人日记'), findsOneWidget);
       expect(find.text('旅行相册'), findsOneWidget);
 
-      // Tap bottom slider again to close
       await tester.tap(find.byType(BottomSealSlider));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 900));
@@ -208,7 +373,6 @@ void main() {
         startOpened: false,
       );
 
-      // Tap directly on the closed book
       await tester.tap(find.byType(Book3DStage));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 900));
@@ -227,7 +391,6 @@ void main() {
 
       expect(find.text('私人日记'), findsOneWidget);
 
-      // Swipe right across the open book to close it
       await tester.drag(find.byType(Book3DStage), const Offset(200, 0));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 900));
@@ -243,7 +406,6 @@ void main() {
         startOpened: false,
       );
 
-      // Drag the slider handle leftwards
       await tester.drag(find.byType(BottomSealSlider), const Offset(-200, 0));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 900));

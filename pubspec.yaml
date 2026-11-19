@@ -63,3 +63,13 @@ flutter:
   assets:
     - assets/calligraphy/hanzi_strokes.bin
     - assets/calligraphy/ARPHIC_PUBLIC_LICENSE.txt
+    - assets/fonts/MaShanZheng-OFL.txt
+    - assets/fonts/NotoSerifSC-OFL.txt
+
+  fonts:
+    - family: Noto Serif SC
+      fonts:
+        - asset: assets/fonts/NotoSerifSC-Variable.ttf
+    - family: Ma Shan Zheng
+      fonts:
+        - asset: assets/fonts/MaShanZheng-Regular.ttf

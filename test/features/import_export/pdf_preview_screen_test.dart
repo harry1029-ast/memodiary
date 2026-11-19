@@ -251,7 +251,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('拾光日记'), findsOneWidget);
+      expect(find.text('云皓日记'), findsOneWidget);
     });
   });
 }
