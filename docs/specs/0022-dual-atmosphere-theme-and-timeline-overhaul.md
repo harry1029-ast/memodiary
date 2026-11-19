@@ -1,7 +1,7 @@
 ---
 id: SPEC-022
 title: Dual-Atmosphere Theme System and Yunhao Timeline Overhaul
-status: ready-for-agent
+status: completed
 created_at: 2026-11-19T23:36:00+08:00
 adr: ADR-0013
 ---
