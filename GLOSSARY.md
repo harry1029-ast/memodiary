@@ -1,4 +1,4 @@
-# MemoDiary (拾光日记)
+# MemoDiary (云皓日记)
 
 Personal offline-first diary and travel keepsake application with classical Chinese ink-and-paper aesthetics.
 
@@ -19,6 +19,10 @@ _Avoid_: Fullscreen canvas, scenery dialog, zoom view
 **Scenery Realm**:
 The spatial setting dimension (`ShanshuiRealm`) rendered inside the Shanshui Scenery Card and Contemplation View across three domains—**Nature** (`山水`), **Indoor** (`室内`), and **Outdoor** (`街市`)—either inferred automatically from recent entries (`自动`) or pinned manually by the diarist.
 _Avoid_: Scene mode, location theme, indoor/outdoor toggle, 随文入境, 林泉, 雅室, 市井
+
+**Atmosphere Theme**:
+The paired light-and-dark visual palette (`主题风格`) governing the app's woodwork, desk surfaces, and UI chrome—preset as **Yunhao** (`云皓`: `云岚昼` / `皓月夜`), **Classic** (`经典`: `宣纸胡桃` / `碑拓乌木`), or **Custom** (`自定义`: pairing any light palette `云岚昼`, `宣纸胡桃`, `淡墨暮岚` with any dark palette `皓月夜`, `碑拓乌木`, `清辉烟雨`, `花影灯火`). Orthogonal to system Appearance Mode (`跟随系统 / 浅色模式 / 深色模式`), the window's procedural Scenery Realm (`山水 / 室内 / 街市`), and entry stationery templates.
+_Avoid_: Color skin, window theme, single-mode theme
 
 **Photobook Document**:
 The canonical document model (`AlbumStudioDocument`) representing an editable travel photobook, containing ordered studio pages, layout slot assignments, background styling, and unplaced photo tray references.
