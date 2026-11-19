@@ -46,7 +46,12 @@ void main() {
     testWidgets('displays empty state when no entries exist', (WidgetTester tester) async {
       await pumpTimelineScreen(tester);
 
-      expect(find.text('MemoDiary'), findsOneWidget);
+      expect(find.text('云皓日记'), findsOneWidget);
+      expect(find.text('YUNHAO'), findsOneWidget);
+      expect(find.text('云伴皓光 · 收录旅途与心事'), findsOneWidget);
+      expect(find.text('MemoDiary'), findsNothing);
+      expect(find.text('墨记'), findsNothing);
+      expect(find.text('个人离线日记'), findsNothing);
       expect(find.text('日记'), findsOneWidget);
       expect(find.text('共 0 篇'), findsOneWidget);
       expect(find.text('暂无日记'), findsOneWidget);
@@ -191,9 +196,13 @@ void main() {
       expect(find.byKey(const Key('timeline_albums_button')), findsNothing);
       expect(find.byType(BackButton), findsNothing);
 
-      // Verify title and plain tooltips are rendered cleanly without overflow
-      expect(find.text('MemoDiary'), findsOneWidget);
+      // Verify title, back-to-cover button, and plain tooltips render cleanly
+      expect(find.byKey(const Key('timeline_back_to_cover_button')), findsOneWidget);
       expect(find.text('云皓日记'), findsOneWidget);
+      expect(find.text('YUNHAO'), findsOneWidget);
+      expect(find.text('MemoDiary'), findsNothing);
+      expect(find.text('墨记'), findsNothing);
+      expect(find.text('个人离线日记'), findsNothing);
       expect(find.byTooltip('每周复盘'), findsOneWidget);
       expect(find.byTooltip('搜索'), findsOneWidget);
       expect(find.byTooltip('设置'), findsOneWidget);
@@ -229,9 +238,13 @@ void main() {
       expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
       expect(find.byIcon(Icons.insights_rounded), findsNothing);
 
-      // Verify title and plain tooltips are rendered cleanly without overflow
-      expect(find.text('MemoDiary'), findsOneWidget);
+      // Verify title, back-to-cover button, and plain tooltips render cleanly without overflow
+      expect(find.byKey(const Key('timeline_back_to_cover_button')), findsOneWidget);
       expect(find.text('云皓日记'), findsOneWidget);
+      expect(find.text('YUNHAO'), findsOneWidget);
+      expect(find.text('MemoDiary'), findsNothing);
+      expect(find.text('墨记'), findsNothing);
+      expect(find.text('个人离线日记'), findsNothing);
       expect(find.byTooltip('每周复盘'), findsOneWidget);
       expect(find.byTooltip('搜索'), findsOneWidget);
       expect(find.byTooltip('设置'), findsOneWidget);
