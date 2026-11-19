@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/theme/atmosphere_palettes.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/widgets/window_sill_ledge.dart';
+import 'package:memodiary/features/timeline/widgets/window_sill_ornaments_painter.dart';
 
 void main() {
   group('WindowSillLedge Widget Tests', () {
@@ -149,5 +152,99 @@ void main() {
       expect(candleSize.height, greaterThanOrEqualTo(48.0));
       expect(incenseSize.height, greaterThanOrEqualTo(38.0));
     });
+
+    testWidgets(
+      'adapts sill gradient, lip highlight, and brass corner brackets across yunhaoDay, yunhaoNight, and classicWalnut with zero retired fluff text',
+      (tester) async {
+        final themesToVerify = [
+          (
+            theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.yunhaoDay),
+            expectedPalette: AtmospherePalettes.yunhaoDay,
+          ),
+          (
+            theme: InkDiaryTheme.forDarkPalette(DarkAtmospherePaletteId.yunhaoNight),
+            expectedPalette: AtmospherePalettes.yunhaoNight,
+          ),
+          (
+            theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.classicWalnut),
+            expectedPalette: AtmospherePalettes.classicWalnut,
+          ),
+        ];
+
+        for (final entry in themesToVerify) {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: entry.theme,
+              home: Scaffold(
+                body: Center(
+                  child: WindowSillLedge(
+                    isCandleLit: true,
+                    onToggleCandle: () {},
+                    enableAmbientAnimation: false,
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.textContaining('姿态'), findsNothing);
+          expect(find.textContaining('忆昔'), findsNothing);
+
+          final containers = tester
+              .widgetList<Container>(
+                find.descendant(
+                  of: find.byKey(const Key('timeline_window_sill_ledge')),
+                  matching: find.byType(Container),
+                ),
+              )
+              .where((container) => container.decoration is BoxDecoration)
+              .toList();
+
+          // First BoxDecoration container is the upper sill shelf gradient
+          final sillDecoration = containers[0].decoration! as BoxDecoration;
+          final sillGradient = sillDecoration.gradient! as LinearGradient;
+          expect(
+            sillGradient.colors,
+            equals([
+              entry.expectedPalette.sillTop,
+              entry.expectedPalette.sillBottom,
+            ]),
+          );
+          expect(
+            (sillDecoration.border! as Border).top.color,
+            equals(entry.expectedPalette.woodFrameHighlight),
+          );
+
+          // Second BoxDecoration container is the carved front lip
+          final lipDecoration = containers[1].decoration! as BoxDecoration;
+          final lipGradient = lipDecoration.gradient! as LinearGradient;
+          expect(
+            lipGradient.colors,
+            equals([
+              entry.expectedPalette.lipTop,
+              entry.expectedPalette.lipBottom,
+            ]),
+          );
+          expect(
+            (lipDecoration.border! as Border).top.color,
+            equals(entry.expectedPalette.accentSecondary.withValues(alpha: 0.42)),
+          );
+
+          final bracketsPaint = tester.widget<CustomPaint>(
+            find.descendant(
+              of: find.byWidget(containers[1]),
+              matching: find.byType(CustomPaint),
+            ),
+          );
+          final bracketsPainter =
+              bracketsPaint.painter! as BrassCornerBracketsPainter;
+          expect(
+            bracketsPainter.brassColor,
+            equals(entry.expectedPalette.accentSecondary),
+          );
+        }
+      },
+    );
   });
 }

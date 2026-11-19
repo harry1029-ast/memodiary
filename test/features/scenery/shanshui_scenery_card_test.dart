@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/theme/atmosphere_palettes.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/scenery/models/shanshui_atmosphere.dart';
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
+import 'package:memodiary/features/scenery/widgets/bamboo_blind_collapsed_bar.dart';
+import 'package:memodiary/features/scenery/widgets/bamboo_blind_pull_cord.dart';
+import 'package:memodiary/features/scenery/widgets/scenery_window_frame.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
+import 'package:memodiary/features/scenery/widgets/shanshui_scenery_painting.dart';
+import 'package:memodiary/features/scenery/widgets/xiangfei_bamboo_blind.dart';
 import '../../helpers/mock_secure_storage.dart';
 
 void main() {
@@ -24,9 +31,10 @@ void main() {
       bool? enableAmbientAnimation = false,
       bool isVisible = true,
       double width = 400,
+      ThemeData? theme,
     }) {
       return MaterialApp(
-        theme: InkDiaryTheme.light,
+        theme: theme ?? InkDiaryTheme.light,
         home: Scaffold(
           body: Center(
             child: SizedBox(
@@ -47,7 +55,7 @@ void main() {
     }
 
     testWidgets(
-      'displays realm seasonal title, seal, and 随文入境 attribution badge when inferred',
+      'expanded overlay displays time-weather, realm badge, and seal badge while omitting duplicate poetic title',
       (tester) async {
         const indoorInferredAtmosphere = ShanshuiAtmosphereState(
           realm: ShanshuiRealm.indoor,
@@ -62,8 +70,10 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Seasonal title for indoor spring: 春 · 桃夭茶寮
-        expect(find.text('春 · 桃夭茶寮'), findsOneWidget);
+        // Duplicate 4-character poetic title is omitted from expanded overlay
+        expect(find.text('春 · 桃夭茶寮'), findsNothing);
+        // Time-weather badge on the left
+        expect(find.text(indoorInferredAtmosphere.timeWeatherBadgeZh), findsOneWidget);
         // Seasonal seal for spring: 春 · 桃夭
         expect(find.text('春 · 桃夭'), findsOneWidget);
         // Attribution badge
@@ -88,8 +98,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Seasonal title for outdoor summer: 夏 · 翠峰槐夏市
-        expect(find.text('夏 · 翠峰槐夏市'), findsOneWidget);
+        // Duplicate poetic title is omitted
+        expect(find.text('夏 · 翠峰槐夏市'), findsNothing);
+        expect(find.text('夏 · 槐夏市'), findsOneWidget);
         // Realm badge displays active realm label without 自动 prefix
         expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
         expect(find.text('街市'), findsOneWidget);
@@ -97,7 +108,7 @@ void main() {
     );
 
     testWidgets(
-      'collapsed strip displays seasonal seal and realm badge',
+      'collapsed strip displays only pull-up pill and time-weather badge without realm or seasonal duplicates',
       (tester) async {
         // Pre-configure collapsed in settings
         mockStorage.data['memodiary_scenery_card_collapsed'] = 'true';
@@ -114,9 +125,14 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
-        expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
-        expect(find.text('自动 · 室内'), findsOneWidget);
-        expect(find.text('冬 · 温炉'), findsOneWidget);
+        expect(find.byKey(const Key('scenery_collapsed_blind_bar')), findsOneWidget);
+        expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
+        expect(find.text(indoorAtmosphere.timeWeatherBadgeZh), findsOneWidget);
+        expect(find.textContaining('竹帘低垂'), findsNothing);
+        expect(find.byKey(const Key('scenery_realm_badge')), findsNothing);
+        expect(find.text('自动 · 室内'), findsNothing);
+        expect(find.text(indoorAtmosphere.sealBadgeZh), findsNothing);
+        expect(find.text(indoorAtmosphere.titleZh), findsNothing);
       },
     );
 
@@ -192,8 +208,9 @@ void main() {
         expect(changedPref, equals(SceneryRealmPreference.indoor));
         expect(mockStorage.data['memodiary_scenery_realm_preference'], equals('indoor'));
 
-        // Card immediately updated
-        expect(find.text('春 · 桃夭茶寮'), findsOneWidget);
+        // Card immediately updated without duplicate poetic title
+        expect(find.text('春 · 桃夭茶寮'), findsNothing);
+        expect(find.text('春 · 桃夭'), findsOneWidget);
         expect(find.text('室内'), findsOneWidget);
       },
     );
@@ -366,8 +383,11 @@ void main() {
           tester.getSize(find.byKey(const Key('scenery_card_collapsed'))).height,
           equals(44.0),
         );
-        expect(find.textContaining('拽绳卷帘'), findsOneWidget);
-        expect(find.textContaining('竹帘低垂'), findsOneWidget);
+        expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
+        expect(find.text(atmosphere.timeWeatherBadgeZh), findsOneWidget);
+        expect(find.textContaining('竹帘低垂'), findsNothing);
+        expect(find.byKey(const Key('scenery_realm_badge')), findsNothing);
+        expect(find.text(atmosphere.sealBadgeZh), findsNothing);
         expect(mockStorage.data['memodiary_scenery_card_collapsed'], equals('true'));
 
         // Tapping the collapsed bar restores expanded state
@@ -471,7 +491,7 @@ void main() {
     );
 
     testWidgets(
-      'tapping realm badge on collapsed 44dp bar opens realm switcher without expanding window',
+      'collapsed 44dp bar omits duplicates, expands back to 16:9 where realm badge is interactive',
       (tester) async {
         mockStorage.data['memodiary_scenery_card_collapsed'] = 'true';
 
@@ -485,6 +505,19 @@ void main() {
         await tester.pumpWidget(buildTestHarness(atmosphere: atmosphere));
         await tester.pumpAndSettle();
 
+        expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
+        expect(find.textContaining('竹帘低垂'), findsNothing);
+        expect(find.byKey(const Key('scenery_realm_badge')), findsNothing);
+        expect(find.text(atmosphere.sealBadgeZh), findsNothing);
+        expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
+        expect(find.text(atmosphere.timeWeatherBadgeZh), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('scenery_collapsed_blind_bar')));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
+
         await tester.tap(find.byKey(const Key('scenery_realm_badge')));
         await tester.pumpAndSettle();
 
@@ -492,7 +525,6 @@ void main() {
         await tester.tap(find.byKey(const Key('scenery_realm_option_indoor')));
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
         expect(find.text('室内'), findsOneWidget);
       },
     );
@@ -531,7 +563,7 @@ void main() {
     );
 
     testWidgets(
-      'collapsed 44dp bar renders cleanly down to 320px width without overflow',
+      'collapsed 44dp bar renders cleanly down to 320px width and 1.3x text scale without overflow',
       (tester) async {
         mockStorage.data['memodiary_scenery_card_collapsed'] = 'true';
 
@@ -544,12 +576,17 @@ void main() {
         );
 
         await tester.pumpWidget(
-          buildTestHarness(atmosphere: atmosphere, width: 320),
+          MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+            child: buildTestHarness(atmosphere: atmosphere, width: 320),
+          ),
         );
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
         expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
+        expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
+        expect(find.text(atmosphere.timeWeatherBadgeZh), findsOneWidget);
       },
     );
 
@@ -740,6 +777,245 @@ void main() {
           tester.widget<AnimatedOpacity>(find.byKey(const Key('scenery_overlay_strip_opacity'))).opacity,
           0.0,
         );
+      },
+    );
+
+    testWidgets(
+      'expanded overlay styles single seasonal seal with sealCinnabar and SceneryWindowFrame adapts across AtmospherePalettes',
+      (tester) async {
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.fall,
+          timeOfDay: ShanshuiTimeOfDay.dusk,
+          weather: ShanshuiWeather.cloudy,
+          isJournalInferred: true,
+        );
+
+        final themesToVerify = [
+          (
+            theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.yunhaoDay),
+            expectedPalette: AtmospherePalettes.yunhaoDay,
+          ),
+          (
+            theme: InkDiaryTheme.forDarkPalette(DarkAtmospherePaletteId.yunhaoNight),
+            expectedPalette: AtmospherePalettes.yunhaoNight,
+          ),
+          (
+            theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.classicWalnut),
+            expectedPalette: AtmospherePalettes.classicWalnut,
+          ),
+        ];
+
+        for (final entry in themesToVerify) {
+          await tester.pumpWidget(
+            buildTestHarness(atmosphere: atmosphere, theme: entry.theme),
+          );
+          await tester.pumpAndSettle();
+
+          // Scenery painting and tap target remain intact
+          expect(find.byType(SceneryWindowFrame), findsOneWidget);
+          expect(find.byType(SceneryWindowOverlayStrip), findsOneWidget);
+          expect(find.byType(ShanshuiSceneryPainting), findsOneWidget);
+          expect(find.byKey(const Key('scenery_canvas_tap_target')), findsOneWidget);
+
+          // Duplicate titleZh is absent; single sealBadgeZh uses tokens.sealCinnabar
+          expect(find.text(atmosphere.titleZh), findsNothing);
+          final sealTextFinder = find.text(atmosphere.sealBadgeZh);
+          expect(sealTextFinder, findsOneWidget);
+          final sealContainer = tester.widget<Container>(
+            find.ancestor(of: sealTextFinder, matching: find.byType(Container)).first,
+          );
+          final sealDecoration = sealContainer.decoration! as BoxDecoration;
+          expect(sealDecoration.color, equals(entry.expectedPalette.sealAccent));
+
+          // SceneryWindowFrame woodwork gradient adopts woodFrameDark -> woodFrameMid
+          final frameContainer = tester.widget<Container>(
+            find.byKey(const Key('scenery_window_frame')),
+          );
+          final frameDecoration = frameContainer.decoration! as BoxDecoration;
+          final frameGradient = frameDecoration.gradient! as LinearGradient;
+          expect(
+            frameGradient.colors,
+            equals([
+              entry.expectedPalette.woodFrameDark,
+              entry.expectedPalette.woodFrameMid,
+            ]),
+          );
+
+          // BambooBlindPullCord micro-tag adopts woodFrameDark, accentSecondary, headerTitleText
+          final pullTag = tester.widget<Container>(
+            find.byKey(const Key('scenery_pull_cord_tag')),
+          );
+          final pullTagDecoration = pullTag.decoration! as BoxDecoration;
+          expect(
+            pullTagDecoration.color,
+            equals(entry.expectedPalette.woodFrameDark.withValues(alpha: 0.82)),
+          );
+          final pullTagText = tester.widget<Text>(find.text('下拉垂帘 ↓'));
+          expect(
+            pullTagText.style?.color,
+            equals(entry.expectedPalette.headerTitleText),
+          );
+        }
+      },
+    );
+
+    testWidgets(
+      'XiangfeiBambooBlind and BambooBlindCollapsedBar adopt AtmospherePalette colors across yunhaoDay, yunhaoNight, and classicWalnut',
+      (tester) async {
+        const atmosphere = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.nature,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+        );
+
+        final themesToVerify = [
+          (
+            theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.yunhaoDay),
+            expectedPalette: AtmospherePalettes.yunhaoDay,
+          ),
+          (
+            theme: InkDiaryTheme.forDarkPalette(DarkAtmospherePaletteId.yunhaoNight),
+            expectedPalette: AtmospherePalettes.yunhaoNight,
+          ),
+          (
+            theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.classicWalnut),
+            expectedPalette: AtmospherePalettes.classicWalnut,
+          ),
+        ];
+
+        CustomPainter? previousCordPainter;
+        CustomPainter? previousTasselPainter;
+        XiangfeiBambooSlatPainter? previousBlindPainter;
+
+        for (final entry in themesToVerify) {
+          // 1. Expanded blind mid-drop + pull cord painters
+          mockStorage.data['memodiary_scenery_card_collapsed'] = 'false';
+          await tester.pumpWidget(
+            buildTestHarness(atmosphere: atmosphere, theme: entry.theme),
+          );
+          await tester.pumpAndSettle();
+
+          final cordCustomPaints = tester
+              .widgetList<CustomPaint>(
+                find.descendant(
+                  of: find.byType(BambooBlindPullCord),
+                  matching: find.byType(CustomPaint),
+                ),
+              )
+              .toList();
+          expect(cordCustomPaints.length, equals(2));
+          final cordPainter = cordCustomPaints[0].painter!;
+          final tasselPainter = cordCustomPaints[1].painter!;
+          if (previousCordPainter != null) {
+            expect(cordPainter.shouldRepaint(previousCordPainter), isTrue);
+          }
+          if (previousTasselPainter != null) {
+            expect(tasselPainter.shouldRepaint(previousTasselPainter), isTrue);
+          }
+          previousCordPainter = cordPainter;
+          previousTasselPainter = tasselPainter;
+
+          // Trigger pull-cord tap to inspect unrolling XiangfeiBambooBlind
+          await tester.tap(find.byKey(const Key('scenery_pull_cord_handle')));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 250));
+
+          expect(find.byType(XiangfeiBambooBlind), findsOneWidget);
+          final blindEmblemText = tester.widget<Text>(find.text('竹帘垂落 · 静心抚卷'));
+          expect(
+            blindEmblemText.style?.color,
+            equals(entry.expectedPalette.headerTitleText),
+          );
+          final blindEmblemBox = tester.widget<Container>(
+            find
+                .ancestor(
+                  of: find.text('竹帘垂落 · 静心抚卷'),
+                  matching: find.byType(Container),
+                )
+                .first,
+          );
+          final emblemDec = blindEmblemBox.decoration! as BoxDecoration;
+          expect(
+            emblemDec.color,
+            equals(entry.expectedPalette.woodFrameDark.withValues(alpha: 0.85)),
+          );
+
+          final rollerLabel = tester.widget<Text>(find.text('湘妃竹帘'));
+          expect(
+            rollerLabel.style?.color,
+            equals(entry.expectedPalette.blindTagAccent),
+          );
+          final rollerContainer = tester.widget<Container>(
+            find
+                .ancestor(
+                  of: find.text('湘妃竹帘'),
+                  matching: find.byType(Container),
+                )
+                .first,
+          );
+          final rollerGradient =
+              (rollerContainer.decoration! as BoxDecoration).gradient!
+                  as LinearGradient;
+          expect(
+            rollerGradient.colors,
+            equals([
+              entry.expectedPalette.blindRollerTop,
+              entry.expectedPalette.blindRollerMid,
+              entry.expectedPalette.blindRollerBottom,
+            ]),
+          );
+
+          final blindPaint = tester.widget<CustomPaint>(
+            find
+                .descendant(
+                  of: find.byType(XiangfeiBambooBlind),
+                  matching: find.byType(CustomPaint),
+                )
+                .first,
+          );
+          final blindSlatPainter = blindPaint.painter! as XiangfeiBambooSlatPainter;
+          expect(blindSlatPainter.palette, equals(entry.expectedPalette));
+          if (previousBlindPainter != null) {
+            expect(blindSlatPainter.shouldRepaint(previousBlindPainter), isTrue);
+          }
+          previousBlindPainter = blindSlatPainter;
+
+          await tester.pumpAndSettle();
+
+          // 2. Collapsed BambooBlindCollapsedBar palette styling
+          expect(find.byType(BambooBlindCollapsedBar), findsOneWidget);
+          final collapsedPullText = tester.widget<Text>(find.text('拽绳卷帘 ↑'));
+          expect(
+            collapsedPullText.style?.color,
+            equals(entry.expectedPalette.blindTagAccent),
+          );
+          final collapsedPullPill = tester.widget<Container>(
+            find
+                .ancestor(
+                  of: find.text('拽绳卷帘 ↑'),
+                  matching: find.byType(Container),
+                )
+                .first,
+          );
+          final pullPillDec = collapsedPullPill.decoration! as BoxDecoration;
+          expect(
+            pullPillDec.color,
+            equals(entry.expectedPalette.woodFrameDark.withValues(alpha: 0.84)),
+          );
+
+          final collapsedWeatherText = tester.widget<Text>(
+            find.text(atmosphere.timeWeatherBadgeZh),
+          );
+          expect(
+            collapsedWeatherText.style?.color,
+            equals(entry.expectedPalette.headerTitleText),
+          );
+
+          // Unmount cleanly before next iteration
+          await tester.pumpWidget(const SizedBox.shrink());
+        }
       },
     );
   });

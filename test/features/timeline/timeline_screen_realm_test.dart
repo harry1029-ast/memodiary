@@ -80,7 +80,8 @@ void main() {
         expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
         expect(find.byKey(const Key('scenery_realm_badge')), findsOneWidget);
         expect(find.text('自动 · 室内'), findsOneWidget);
-        expect(find.text('秋 · 霜枫品茗'), findsOneWidget);
+        expect(find.text('秋 · 品茗'), findsOneWidget);
+        expect(find.text('秋 · 霜枫品茗'), findsNothing);
       },
     );
 
