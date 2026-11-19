@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/theme_settings_service.dart';
 import '../../helpers/mock_secure_storage.dart';
 import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
@@ -291,7 +295,10 @@ Visiting Dotonbori in the evening.
       await tester.pumpAndSettle();
 
       // Tap "导入文本"
-      await tester.tap(find.text('导入文本'));
+      final importTextFinder = find.text('导入文本');
+      await tester.ensureVisible(importTextFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(importTextFinder);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pumpAndSettle();
@@ -560,6 +567,202 @@ Visiting Dotonbori in the evening.
       // Card is updated
       expect(find.text('当前印章文字：春山如笑'), findsOneWidget);
       expect(await sealService.getSealText(), equals('春山如笑'));
+    });
+
+    testWidgets('主题风格 renders 云皓 (默认), 经典, 自定义 with hidden custom drawer, >=44dp tap targets, and semantics',
+        (WidgetTester tester) async {
+      final mockStorage = MockSecureStorage();
+      final themeSettings = ThemeSettingsService(storage: mockStorage);
+
+      await pumpSettingsScreen(tester, themeSettings: themeSettings);
+
+      expect(find.text('主题风格'), findsOneWidget);
+      expect(find.byKey(const Key('settings_theme_preset_yunhao')), findsOneWidget);
+      expect(find.byKey(const Key('settings_theme_preset_classic')), findsOneWidget);
+      expect(find.byKey(const Key('settings_theme_preset_custom')), findsOneWidget);
+      expect(find.text('云皓'), findsOneWidget);
+      expect(find.text('默认'), findsOneWidget);
+      expect(find.text('经典'), findsOneWidget);
+      expect(find.text('自定义'), findsOneWidget);
+      expect(find.byKey(const Key('settings_custom_palette_drawer')), findsNothing);
+
+      for (final keyName in const [
+        'settings_theme_mode_system',
+        'settings_theme_mode_light',
+        'settings_theme_mode_dark',
+        'settings_theme_preset_yunhao',
+        'settings_theme_preset_classic',
+        'settings_theme_preset_custom',
+      ]) {
+        expect(tester.getSize(find.byKey(Key(keyName))).height, greaterThanOrEqualTo(44.0), reason: keyName);
+      }
+
+      expect(
+        tester.getSemantics(find.byKey(const Key('settings_theme_preset_yunhao'))),
+        isSemantics(isSelected: true),
+      );
+      expect(
+        tester.getSemantics(find.byKey(const Key('settings_theme_preset_classic'))),
+        isSemantics(isSelected: false),
+      );
+
+      await tester.tap(find.byKey(const Key('settings_theme_preset_classic')));
+      await tester.pumpAndSettle();
+
+      expect(themeSettings.configNotifier.value.preset, equals(AtmosphereThemePreset.classic));
+      expect(mockStorage.data['memodiary_atmosphere_preset'], equals('classic'));
+      expect(find.byKey(const Key('settings_custom_palette_drawer')), findsNothing);
+    });
+
+    testWidgets('selecting 自定义 reveals 3 Light + 4 Dark palettes, persists selections, and remembers pair across preset switches',
+        (WidgetTester tester) async {
+      final mockStorage = MockSecureStorage();
+      final themeSettings = ThemeSettingsService(storage: mockStorage);
+
+      await pumpSettingsScreen(tester, themeSettings: themeSettings);
+
+      await tester.tap(find.byKey(const Key('settings_theme_preset_custom')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('settings_custom_palette_drawer')), findsOneWidget);
+      expect(find.text('浅色色板'), findsOneWidget);
+      expect(find.text('深色色板'), findsOneWidget);
+
+      for (final keyName in const [
+        'settings_light_palette_yunhaoDay',
+        'settings_light_palette_classicWalnut',
+        'settings_light_palette_mistyTwilight',
+        'settings_dark_palette_yunhaoNight',
+        'settings_dark_palette_classicEbony',
+        'settings_dark_palette_silveryRain',
+        'settings_dark_palette_blossomLantern',
+      ]) {
+        final finder = find.byKey(Key(keyName));
+        expect(finder, findsOneWidget, reason: keyName);
+        expect(tester.getSize(finder).height, greaterThanOrEqualTo(44.0), reason: keyName);
+      }
+
+      expect(find.text('云岚昼'), findsOneWidget);
+      expect(find.text('宣纸胡桃'), findsOneWidget);
+      expect(find.text('淡墨暮岚'), findsOneWidget);
+      expect(find.text('皓月夜'), findsOneWidget);
+      expect(find.text('碑拓乌木'), findsOneWidget);
+      expect(find.text('清辉烟雨'), findsOneWidget);
+      expect(find.text('花影灯火'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('settings_light_palette_mistyTwilight')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('settings_dark_palette_blossomLantern')));
+      await tester.pumpAndSettle();
+
+      expect(mockStorage.data['memodiary_custom_light_palette'], equals('mistyTwilight'));
+      expect(mockStorage.data['memodiary_custom_dark_palette'], equals('blossomLantern'));
+      expect(
+        tester.getSemantics(find.byKey(const Key('settings_light_palette_mistyTwilight'))),
+        isSemantics(isSelected: true),
+      );
+      expect(
+        tester.getSemantics(find.byKey(const Key('settings_dark_palette_blossomLantern'))),
+        isSemantics(isSelected: true),
+      );
+
+      // Switch away to classic and back to custom -> custom pair stays preserved
+      await tester.tap(find.byKey(const Key('settings_theme_preset_classic')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings_custom_palette_drawer')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('settings_theme_preset_custom')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings_custom_palette_drawer')), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byKey(const Key('settings_light_palette_mistyTwilight'))),
+        isSemantics(isSelected: true),
+      );
+      expect(
+        tester.getSemantics(find.byKey(const Key('settings_dark_palette_blossomLantern'))),
+        isSemantics(isSelected: true),
+      );
+    });
+
+    testWidgets('changing AtmosphereTheme updates live MaterialApp theme without mutating saved entry templates and fits 320px at 1.3x scale',
+        (WidgetTester tester) async {
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'preserved_entry_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_vintage_letter',
+          title: const Value('旧笺未改'),
+          contentDelta: jsonEncode([{'insert': '信纸模板应保持原样。\n'}]),
+          plainText: '信纸模板应保持原样。',
+          entryDate: DateTime(2026, 11, 18),
+        ),
+      );
+
+      final mockStorage = MockSecureStorage();
+      final themeSettings = ThemeSettingsService(storage: mockStorage);
+
+      tester.view.physicalSize = const Size(320, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        ValueListenableBuilder<AtmosphereThemeConfig>(
+          valueListenable: themeSettings.configNotifier,
+          builder: (context, config, _) {
+            return MaterialApp(
+              theme: InkDiaryTheme.forLightPalette(config.activeLightPalette),
+              darkTheme: InkDiaryTheme.forDarkPalette(config.activeDarkPalette),
+              themeMode: config.themeMode,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: const TextScaler.linear(1.3),
+                ),
+                child: child ?? const SizedBox.shrink(),
+              ),
+              home: SettingsScreen(
+                database: db,
+                mediaService: mediaService,
+                fileSelector: mockFileSelector,
+                themeSettings: themeSettings,
+                initialStats: const StorageStats(
+                  activeEntriesCount: 1,
+                  deletedEntriesCount: 0,
+                  totalMediaFiles: 0,
+                  totalMediaBytes: 0,
+                  orphanMediaFiles: 0,
+                  orphanMediaBytes: 0,
+                ),
+                permissionChecker: () async => {
+                  'camera': PermissionStatus.granted,
+                  'microphone': PermissionStatus.granted,
+                  'photos': PermissionStatus.granted,
+                },
+              ),
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('settings_theme_mode_dark')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('settings_theme_preset_custom')));
+      await tester.pumpAndSettle();
+      final blossomFinder = find.byKey(const Key('settings_dark_palette_blossomLantern'));
+      await tester.scrollUntilVisible(blossomFinder, 200.0);
+      await tester.pumpAndSettle();
+      await tester.tap(blossomFinder);
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final scaffold = tester.widget<Scaffold>(find.byType(Scaffold));
+      expect(scaffold.backgroundColor, equals(const Color(0xFF0D1B1E)));
+
+      final entry = await db.entriesDao.getEntryById('preserved_entry_1');
+      expect(entry?.templateId, equals('template_vintage_letter'));
     });
   });
 }

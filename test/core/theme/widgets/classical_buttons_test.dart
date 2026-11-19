@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
+import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/core/theme/widgets/octagonal_medallion_button.dart';
 
 void main() {
@@ -65,6 +67,75 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tapped, isTrue);
+    });
+
+    testWidgets('CinnabarSealBadge preserves precious sealCinnabar in yunhaoNight instead of amber',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.dark,
+          home: const Scaffold(
+            body: Center(
+              child: CinnabarSealBadge(text: '珍藏'),
+            ),
+          ),
+        ),
+      );
+
+      final container = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(CinnabarSealBadge),
+          matching: find.byType(Container),
+        ),
+      );
+      final decoration = container.decoration! as BoxDecoration;
+      expect(decoration.color, equals(const Color(0xFFD16B62)));
+    });
+
+    testWidgets('BegoniaPlaqueButton accent resolves AtmospherePalette tallyFeatured colors and OctagonalMedallionButton supports overrides',
+        (tester) async {
+      const customGradient = LinearGradient(
+        colors: [Color(0xFF123456), Color(0xFF654321)],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.forDarkPalette(DarkAtmospherePaletteId.blossomLantern),
+          home: const Scaffold(
+            body: Column(
+              children: [
+                BegoniaPlaqueButton(label: '筛选', isAccent: true),
+                OctagonalMedallionButton(
+                  icon: Icons.search_rounded,
+                  gradient: customGradient,
+                  borderColor: Color(0xFFABCDEF),
+                  bevelColor: Color(0xFF112233),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final plaqueContainer = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(BegoniaPlaqueButton),
+          matching: find.byType(Container),
+        ),
+      );
+      final plaqueDec = plaqueContainer.decoration! as ShapeDecoration;
+      expect(
+        (plaqueDec.gradient! as LinearGradient).colors,
+        equals(const [Color(0xFFC76975), Color(0xFF873E49)]),
+      );
+
+      final medallionContainer = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(OctagonalMedallionButton),
+          matching: find.byType(Container),
+        ),
+      );
+      final medallionDec = medallionContainer.decoration! as ShapeDecoration;
+      expect(medallionDec.gradient, equals(customGradient));
     });
   });
 }

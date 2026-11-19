@@ -37,9 +37,7 @@ class XuanPaperCard extends StatelessWidget {
     final border = borderColor ?? tokens.deckleBorder;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final innerBorderColor = isDark
-        ? tokens.qingmo.withValues(alpha: 0.22)
-        : const Color(0xFF8A7B62).withValues(alpha: 0.25);
+    final innerBorderColor = tokens.qingmo.withValues(alpha: isDark ? 0.22 : 0.25);
 
     Widget innerContent = Material(
       type: MaterialType.transparency,

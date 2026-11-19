@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
+import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 
 /// Color tokens for the Window Sill Ledge (`窗台案沿`) and Chronicle Desk (`案头卷匣`),
-/// matching SPEC-019 Dark (`碑拓乌木`) and Light (`宣纸胡桃`) palettes.
+/// resolved from the active [AtmospherePalette] with Cloud-Moon defaults and
+/// Classic (`宣纸胡桃` / `碑拓乌木`) preservation.
 @immutable
 class ChronicleDeskPalette {
   final Color woodFrameDark;
@@ -48,8 +51,8 @@ class ChronicleDeskPalette {
     required this.candleGlow,
   });
 
-  /// Dark theme ("碑拓乌木" — Stone Rubbing & Ebony).
-  static const ChronicleDeskPalette dark = ChronicleDeskPalette(
+  /// Classic dark theme ("碑拓乌木" — Stone Rubbing & Ebony).
+  static const ChronicleDeskPalette classicDark = ChronicleDeskPalette(
     woodFrameDark: Color(0xFF1C140F),
     woodFrameMid: Color(0xFF2D2018),
     woodFrameHighlight: Color(0xFF473325),
@@ -72,8 +75,8 @@ class ChronicleDeskPalette {
     candleGlow: Color.fromRGBO(255, 184, 77, 0.16),
   );
 
-  /// Light theme ("宣纸胡桃" — Xuan Paper & Walnut).
-  static const ChronicleDeskPalette light = ChronicleDeskPalette(
+  /// Classic light theme ("宣纸胡桃" — Xuan Paper & Walnut).
+  static const ChronicleDeskPalette classicLight = ChronicleDeskPalette(
     woodFrameDark: Color(0xFF3D2719),
     woodFrameMid: Color(0xFF593A26),
     woodFrameHighlight: Color(0xFF785036),
@@ -96,8 +99,51 @@ class ChronicleDeskPalette {
     candleGlow: Color.fromRGBO(255, 195, 95, 0.22),
   );
 
-  /// Resolves the palette matching the active [ThemeData.brightness].
+  /// Default dark theme ("皓月夜" — Yunhao Night).
+  static final ChronicleDeskPalette dark =
+      ChronicleDeskPalette.fromAtmosphere(AtmospherePalettes.yunhaoNight);
+
+  /// Default light theme ("云岚昼" — Yunhao Day).
+  static final ChronicleDeskPalette light =
+      ChronicleDeskPalette.fromAtmosphere(AtmospherePalettes.yunhaoDay);
+
+  /// Derives a [ChronicleDeskPalette] from an [AtmospherePalette],
+  /// preserving exact legacy hex tokens for [AtmospherePalettes.classicWalnut]
+  /// and [AtmospherePalettes.classicEbony].
+  factory ChronicleDeskPalette.fromAtmosphere(AtmospherePalette palette) {
+    if (palette.id == AtmospherePalettes.classicWalnut.id) return classicLight;
+    if (palette.id == AtmospherePalettes.classicEbony.id) return classicDark;
+    return ChronicleDeskPalette(
+      woodFrameDark: palette.woodFrameDark,
+      woodFrameMid: palette.woodFrameMid,
+      woodFrameHighlight: palette.woodFrameHighlight,
+      sillTop: palette.sillTop,
+      sillBottom: palette.sillBottom,
+      lipTop: palette.lipTop,
+      lipBottom: palette.lipBottom,
+      deskSurroundTop: palette.deskSurroundTop,
+      deskSurroundBottom: palette.deskSurroundBottom,
+      deskMat: palette.deskMat,
+      deskTray: palette.deskTray,
+      agedChip: palette.agedFiberChip,
+      deckleBorder: palette.deckleBorder,
+      brassGold: palette.accentSecondary,
+      brassDim: palette.accentSecondaryDim,
+      cinnabar: palette.accentPrimary,
+      textPrimary: palette.textPrimary,
+      textMuted: palette.textMuted,
+      textFaint: palette.textFaint,
+      candleGlow: palette.candleGlow,
+    );
+  }
+
+  /// Resolves the palette matching the active [AtmospherePalette] extension,
+  /// falling back to [dark] / [light] by [ThemeData.brightness].
   static ChronicleDeskPalette of(BuildContext context) {
+    final atmosphere = Theme.of(context).extension<AtmospherePalette>();
+    if (atmosphere != null) {
+      return ChronicleDeskPalette.fromAtmosphere(atmosphere);
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? dark : light;
   }

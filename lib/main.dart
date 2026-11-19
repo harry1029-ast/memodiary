@@ -10,6 +10,7 @@ import 'core/services/media_sandbox_service.dart';
 import 'core/services/ocr/ocr_queue_manager.dart';
 import 'core/services/ocr/ocr_service.dart';
 import 'core/services/recycle_bin_service.dart';
+import 'core/theme/atmosphere_theme_models.dart';
 import 'core/theme/ink_diary_theme.dart';
 import 'core/theme/theme_settings_service.dart';
 import 'features/auth/app_lock_gate.dart';
@@ -60,9 +61,9 @@ void main() async {
   final introSettings = BookIntroSettingsService();
   final showIntroOnLaunch = await introSettings.getShouldShowOnLaunch();
 
-  // 4. Load persisted theme preference (System, Light, or Dark)
+  // 4. Load persisted appearance & atmosphere theme preferences
   final themeSettings = ThemeSettingsService.instance;
-  await themeSettings.getThemeMode();
+  await themeSettings.loadPreferences();
 
   // 5. Initialize on-device OCR pipeline and reactive queue manager
   final ocrService = PlatformOcrService();
@@ -105,15 +106,15 @@ class MemoDiaryApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeSettings.themeModeNotifier,
-      builder: (context, themeMode, _) {
+    return ValueListenableBuilder<AtmosphereThemeConfig>(
+      valueListenable: themeSettings.configNotifier,
+      builder: (context, config, _) {
         return MaterialApp(
           title: 'MemoDiary',
           debugShowCheckedModeBanner: false,
-          theme: InkDiaryTheme.light,
-          darkTheme: InkDiaryTheme.dark,
-          themeMode: themeMode,
+          theme: InkDiaryTheme.forLightPalette(config.activeLightPalette),
+          darkTheme: InkDiaryTheme.forDarkPalette(config.activeDarkPalette),
+          themeMode: config.themeMode,
           home: showIntroOnLaunch
               ? BookIntroScreen(
                   database: database,

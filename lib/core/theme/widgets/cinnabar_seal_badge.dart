@@ -64,9 +64,11 @@ class CinnabarSealBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
-    final bgColor = isWashVariant ? tokens.cinnabarWash : tokens.cinnabar;
-    final fgColor = isWashVariant ? tokens.cinnabar : Colors.white;
-    final borderColor = isWashVariant ? tokens.cinnabar.withValues(alpha: 0.4) : tokens.cinnabarDark;
+    final bgColor = isWashVariant ? tokens.sealCinnabarWash : tokens.sealCinnabar;
+    final fgColor = isWashVariant ? tokens.sealCinnabar : Colors.white;
+    final borderColor = isWashVariant
+        ? tokens.sealCinnabar.withValues(alpha: 0.4)
+        : tokens.sealCinnabarDark;
 
     BorderRadius borderRadius;
     switch (shape) {
@@ -92,7 +94,7 @@ class CinnabarSealBadge extends StatelessWidget {
             ? null
             : [
                 BoxShadow(
-                  color: tokens.cinnabar.withValues(alpha: 0.3),
+                  color: tokens.sealCinnabar.withValues(alpha: 0.3),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),

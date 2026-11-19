@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'atmosphere_palette.dart';
+import 'atmosphere_palettes.dart';
+import 'atmosphere_theme_models.dart';
 
 /// Semantic ink & Xuan paper design tokens embodying classical Chinese literati aesthetics.
-/// Derived from `.stitch/DESIGN.md` (Ink & Paper Journal).
 @immutable
 class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
   // Ground & Paper Foundation
@@ -16,10 +18,16 @@ class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
   final Color danmo; // 淡墨 (Diluted Ink Wash)
   final Color qingmo; // 清墨 (Faint Water Tint)
 
-  // Cinnabar Accent (The Seal Stamp)
+  // Interactive Primary Accent
   final Color cinnabar;
   final Color cinnabarWash;
   final Color cinnabarDark;
+  final Color onAccentPrimary;
+
+  // Precious Seal Cinnabar (Reserved strictly for stamps & seals)
+  final Color sealCinnabar;
+  final Color sealCinnabarWash;
+  final Color sealCinnabarDark;
 
   // Functional Status
   final Color emeraldSaved;
@@ -36,42 +44,60 @@ class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
     required this.cinnabar,
     required this.cinnabarWash,
     required this.cinnabarDark,
+    this.onAccentPrimary = Colors.white,
+    this.sealCinnabar = const Color(0xFFC24D43),
+    this.sealCinnabarWash = const Color(0xFFF5E5E3),
+    this.sealCinnabarDark = const Color(0xFF9A3830),
     required this.emeraldSaved,
   });
 
-  /// Alias for the primary warm rice paper background ground
+  /// Derives semantic tokens from an [AtmospherePalette].
+  factory InkDiaryTokens.fromAtmosphere(AtmospherePalette palette) {
+    return InkDiaryTokens(
+      xuanGround: palette.ground,
+      xuanPureLeaf: palette.cardPaper,
+      agedFiber: palette.agedFiberChip,
+      deckleBorder: palette.deckleBorder,
+      jiaomo: palette.textPrimary,
+      nongmo: palette.textSecondary,
+      danmo: palette.textMuted,
+      qingmo: palette.textFaint,
+      cinnabar: palette.accentPrimary,
+      cinnabarWash: palette.accentPrimaryWash,
+      cinnabarDark: palette.accentPrimaryDark,
+      onAccentPrimary: palette.onAccentPrimary,
+      sealCinnabar: palette.sealAccent,
+      sealCinnabarWash: palette.sealAccentWash,
+      sealCinnabarDark: palette.sealAccentDark,
+      emeraldSaved: palette.emeraldSaved,
+    );
+  }
+
+  /// Alias for the primary paper background ground.
   Color get ricePaper => xuanGround;
 
-  /// Light theme default tokens
+  /// Light theme default tokens (`云岚昼`).
   static const light = InkDiaryTokens(
-    xuanGround: Color(0xFFFCF9F2),
-    xuanPureLeaf: Color(0xFFFFFFFF),
-    agedFiber: Color(0xFFEFE9DC),
-    deckleBorder: Color(0xFFD8D1C3),
-    jiaomo: Color(0xFF1E1E1E),
-    nongmo: Color(0xFF2D2D2D),
-    danmo: Color(0xFF68645E),
-    qingmo: Color(0xFF9E998F),
-    cinnabar: Color(0xFFB83B2E),
-    cinnabarWash: Color(0xFFF3E5E3),
-    cinnabarDark: Color(0xFF982B1F),
-    emeraldSaved: Color(0xFF059669),
+    xuanGround: Color(0xFFEFF3F6), xuanPureLeaf: Color(0xFFFFFFFF),
+    agedFiber: Color(0xFFE3E9EF), deckleBorder: Color(0xFFCCD5DF),
+    jiaomo: Color(0xFF1E2A38), nongmo: Color(0xFF344658),
+    danmo: Color(0xFF516578), qingmo: Color(0xFF7E93A6),
+    cinnabar: Color(0xFF4A7A9C), cinnabarWash: Color(0xFFE2ECF3),
+    cinnabarDark: Color(0xFF355C78), onAccentPrimary: Colors.white,
+    sealCinnabar: Color(0xFFC24D43), sealCinnabarWash: Color(0xFFF5E5E3),
+    sealCinnabarDark: Color(0xFF9A3830), emeraldSaved: Color(0xFF059669),
   );
 
-  /// Dark theme (Inverted stone rubbings & night desk)
+  /// Dark theme default tokens (`皓月夜`).
   static const dark = InkDiaryTokens(
-    xuanGround: Color(0xFF181816),
-    xuanPureLeaf: Color(0xFF242320),
-    agedFiber: Color(0xFF2E2C28),
-    deckleBorder: Color(0xFF3D3A34),
-    jiaomo: Color(0xFFF0ECE3),
-    nongmo: Color(0xFFDCD6CA),
-    danmo: Color(0xFFA69F93),
-    qingmo: Color(0xFF6E6960),
-    cinnabar: Color(0xFFD25447),
-    cinnabarWash: Color(0xFF381F1D),
-    cinnabarDark: Color(0xFFB83B2E),
-    emeraldSaved: Color(0xFF10B981),
+    xuanGround: Color(0xFF0E1520), xuanPureLeaf: Color(0xFF1B2738),
+    agedFiber: Color(0xFF202E40), deckleBorder: Color(0xFF2D4057),
+    jiaomo: Color(0xFFEEF2F6), nongmo: Color(0xFFCBD6E2),
+    danmo: Color(0xFF9EB0C4), qingmo: Color(0xFF6D8299),
+    cinnabar: Color(0xFFF2B866), cinnabarWash: Color(0xFF2E2417),
+    cinnabarDark: Color(0xFFB88339), onAccentPrimary: Color(0xFF1A140B),
+    sealCinnabar: Color(0xFFD16B62), sealCinnabarWash: Color(0xFF351F22),
+    sealCinnabarDark: Color(0xFFA84A42), emeraldSaved: Color(0xFF10B981),
   );
 
   @override
@@ -87,6 +113,10 @@ class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
     Color? cinnabar,
     Color? cinnabarWash,
     Color? cinnabarDark,
+    Color? onAccentPrimary,
+    Color? sealCinnabar,
+    Color? sealCinnabarWash,
+    Color? sealCinnabarDark,
     Color? emeraldSaved,
   }) {
     return InkDiaryTokens(
@@ -101,6 +131,10 @@ class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
       cinnabar: cinnabar ?? this.cinnabar,
       cinnabarWash: cinnabarWash ?? this.cinnabarWash,
       cinnabarDark: cinnabarDark ?? this.cinnabarDark,
+      onAccentPrimary: onAccentPrimary ?? this.onAccentPrimary,
+      sealCinnabar: sealCinnabar ?? this.sealCinnabar,
+      sealCinnabarWash: sealCinnabarWash ?? this.sealCinnabarWash,
+      sealCinnabarDark: sealCinnabarDark ?? this.sealCinnabarDark,
       emeraldSaved: emeraldSaved ?? this.emeraldSaved,
     );
   }
@@ -120,18 +154,48 @@ class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
       cinnabar: Color.lerp(cinnabar, other.cinnabar, t)!,
       cinnabarWash: Color.lerp(cinnabarWash, other.cinnabarWash, t)!,
       cinnabarDark: Color.lerp(cinnabarDark, other.cinnabarDark, t)!,
+      onAccentPrimary: Color.lerp(onAccentPrimary, other.onAccentPrimary, t)!,
+      sealCinnabar: Color.lerp(sealCinnabar, other.sealCinnabar, t)!,
+      sealCinnabarWash: Color.lerp(sealCinnabarWash, other.sealCinnabarWash, t)!,
+      sealCinnabarDark: Color.lerp(sealCinnabarDark, other.sealCinnabarDark, t)!,
       emeraldSaved: Color.lerp(emeraldSaved, other.emeraldSaved, t)!,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is InkDiaryTokens &&
+            runtimeType == other.runtimeType &&
+            xuanGround == other.xuanGround && xuanPureLeaf == other.xuanPureLeaf &&
+            agedFiber == other.agedFiber && deckleBorder == other.deckleBorder &&
+            jiaomo == other.jiaomo && nongmo == other.nongmo &&
+            danmo == other.danmo && qingmo == other.qingmo &&
+            cinnabar == other.cinnabar && cinnabarWash == other.cinnabarWash &&
+            cinnabarDark == other.cinnabarDark && onAccentPrimary == other.onAccentPrimary &&
+            sealCinnabar == other.sealCinnabar && sealCinnabarWash == other.sealCinnabarWash &&
+            sealCinnabarDark == other.sealCinnabarDark && emeraldSaved == other.emeraldSaved;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        xuanGround, xuanPureLeaf, agedFiber, deckleBorder,
+        jiaomo, nongmo, danmo, qingmo,
+        cinnabar, cinnabarWash, cinnabarDark, onAccentPrimary,
+        sealCinnabar, sealCinnabarWash, sealCinnabarDark, emeraldSaved,
+      );
 }
 
-/// Convenience extension on [BuildContext] to access [InkDiaryTokens] directly
+/// Convenience extension on [BuildContext] to access [InkDiaryTokens] directly.
 extension InkDiaryContext on BuildContext {
   InkDiaryTokens get inkTokens =>
-      Theme.of(this).extension<InkDiaryTokens>() ?? InkDiaryTokens.light;
+      Theme.of(this).extension<InkDiaryTokens>() ??
+      (Theme.of(this).brightness == Brightness.dark
+          ? InkDiaryTokens.dark
+          : InkDiaryTokens.light);
 }
 
-/// Comprehensive ThemeData implementation for MemoDiary (Ink & Paper Journal)
+/// Comprehensive [ThemeData] builder for 云皓日记 (MemoDiary).
 class InkDiaryTheme {
   static const String fontNotoSerif = 'Noto Serif SC';
   static const String fontLiterata = 'Literata';
@@ -140,91 +204,87 @@ class InkDiaryTheme {
 
   /// Convenience lookup for current [InkDiaryTokens] in [context].
   static InkDiaryTokens tokensOf(BuildContext context) =>
-      Theme.of(context).extension<InkDiaryTokens>() ?? InkDiaryTokens.light;
+      Theme.of(context).extension<InkDiaryTokens>() ??
+      (Theme.of(context).brightness == Brightness.dark
+          ? InkDiaryTokens.dark
+          : InkDiaryTokens.light);
 
-  /// Primary light theme
-  static ThemeData get light {
-    final tokens = InkDiaryTokens.light;
+  /// Default light theme (`云岚昼`).
+  static ThemeData get light => forLightPalette(LightAtmospherePaletteId.yunhaoDay);
 
-    final colorScheme = ColorScheme(
-      brightness: Brightness.light,
+  /// Default dark theme (`皓月夜`).
+  static ThemeData get dark => forDarkPalette(DarkAtmospherePaletteId.yunhaoNight);
+
+  /// Builds a light [ThemeData] from the chosen [LightAtmospherePaletteId].
+  static ThemeData forLightPalette(LightAtmospherePaletteId paletteId) =>
+      forAtmosphere(AtmospherePalettes.forLight(paletteId));
+
+  /// Builds a dark [ThemeData] from the chosen [DarkAtmospherePaletteId].
+  static ThemeData forDarkPalette(DarkAtmospherePaletteId paletteId) =>
+      forAtmosphere(AtmospherePalettes.forDark(paletteId));
+
+  /// Builds a full [ThemeData] attaching both [InkDiaryTokens] and [AtmospherePalette].
+  static ThemeData forAtmosphere(AtmospherePalette palette) {
+    final tokens = InkDiaryTokens.fromAtmosphere(palette);
+    final colorScheme = _buildColorScheme(palette, tokens);
+    return _buildTheme(colorScheme, tokens, palette);
+  }
+
+  static ColorScheme _buildColorScheme(
+    AtmospherePalette palette,
+    InkDiaryTokens tokens,
+  ) {
+    final isDark = palette.brightness == Brightness.dark;
+    return ColorScheme(
+      brightness: palette.brightness,
       primary: tokens.jiaomo,
       onPrimary: tokens.xuanGround,
       primaryContainer: tokens.nongmo,
       onPrimaryContainer: tokens.xuanPureLeaf,
       secondary: tokens.cinnabar,
-      onSecondary: Colors.white,
+      onSecondary: tokens.onAccentPrimary,
       secondaryContainer: tokens.cinnabarWash,
-      onSecondaryContainer: tokens.cinnabarDark,
+      onSecondaryContainer: isDark
+          ? Color.lerp(tokens.cinnabar, Colors.white, 0.72)!
+          : tokens.cinnabarDark,
       tertiary: tokens.danmo,
-      onTertiary: Colors.white,
+      onTertiary: isDark ? Colors.black : Colors.white,
       surface: tokens.xuanGround,
       onSurface: tokens.jiaomo,
-      surfaceDim: const Color(0xFFDCDAD3),
+      surfaceDim: isDark
+          ? Color.lerp(tokens.xuanGround, Colors.black, 0.25)!
+          : Color.lerp(tokens.xuanGround, tokens.deckleBorder, 0.55)!,
       surfaceBright: tokens.xuanGround,
-      surfaceContainerLowest: tokens.xuanPureLeaf,
-      surfaceContainerLow: const Color(0xFFF6F3EC),
-      surfaceContainer: const Color(0xFFF1EEE7),
-      surfaceContainerHigh: const Color(0xFFEBE8E1),
-      surfaceContainerHighest: const Color(0xFFE5E2DB),
+      surfaceContainerLowest: isDark
+          ? Color.lerp(tokens.xuanGround, palette.deskMat, 0.4)!
+          : tokens.xuanPureLeaf,
+      surfaceContainerLow: isDark
+          ? palette.deskMat
+          : Color.lerp(tokens.xuanGround, palette.deskMat, 0.45)!,
+      surfaceContainer: isDark ? tokens.xuanPureLeaf : palette.deskMat,
+      surfaceContainerHigh: isDark ? tokens.agedFiber : palette.deskTray,
+      surfaceContainerHighest: isDark ? tokens.deckleBorder : tokens.agedFiber,
       onSurfaceVariant: tokens.danmo,
       outline: tokens.qingmo,
       outlineVariant: tokens.deckleBorder,
-      error: const Color(0xFFBA1A1A),
-      onError: Colors.white,
-      errorContainer: const Color(0xFFFFDAD6),
-      onErrorContainer: const Color(0xFF93000A),
+      error: isDark ? const Color(0xFFFFB4AB) : const Color(0xFFBA1A1A),
+      onError: isDark ? const Color(0xFF690005) : Colors.white,
+      errorContainer: isDark ? const Color(0xFF93000A) : const Color(0xFFFFDAD6),
+      onErrorContainer: isDark ? const Color(0xFFFFDAD6) : const Color(0xFF93000A),
     );
-
-    return _buildTheme(colorScheme, tokens);
   }
 
-  /// Meditative dark theme
-  static ThemeData get dark {
-    final tokens = InkDiaryTokens.dark;
-
-    final colorScheme = ColorScheme(
-      brightness: Brightness.dark,
-      primary: tokens.jiaomo,
-      onPrimary: tokens.xuanGround,
-      primaryContainer: tokens.nongmo,
-      onPrimaryContainer: tokens.xuanPureLeaf,
-      secondary: tokens.cinnabar,
-      onSecondary: Colors.white,
-      secondaryContainer: tokens.cinnabarWash,
-      onSecondaryContainer: const Color(0xFFFFDAD5),
-      tertiary: tokens.danmo,
-      onTertiary: Colors.black,
-      surface: tokens.xuanGround,
-      onSurface: tokens.jiaomo,
-      surfaceDim: const Color(0xFF141412),
-      surfaceBright: tokens.xuanGround,
-      surfaceContainerLowest: const Color(0xFF1C1C19),
-      surfaceContainerLow: const Color(0xFF21201D),
-      surfaceContainer: tokens.xuanPureLeaf,
-      surfaceContainerHigh: tokens.agedFiber,
-      surfaceContainerHighest: tokens.deckleBorder,
-      onSurfaceVariant: tokens.danmo,
-      outline: tokens.qingmo,
-      outlineVariant: tokens.deckleBorder,
-      error: const Color(0xFFFFB4AB),
-      onError: const Color(0xFF690005),
-      errorContainer: const Color(0xFF93000A),
-      onErrorContainer: const Color(0xFFFFDAD6),
-    );
-
-    return _buildTheme(colorScheme, tokens);
-  }
-
-  static ThemeData _buildTheme(ColorScheme colorScheme, InkDiaryTokens tokens) {
+  static ThemeData _buildTheme(
+    ColorScheme colorScheme,
+    InkDiaryTokens tokens,
+    AtmospherePalette palette,
+  ) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: colorScheme.surface,
-      extensions: [tokens],
+      extensions: [tokens, palette],
       fontFamily: fontNotoSerif,
-
-      // App Bar styling
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
@@ -238,27 +298,17 @@ class InkDiaryTheme {
           color: colorScheme.onSurface,
           letterSpacing: 0.5,
         ),
-        iconTheme: IconThemeData(
-          color: colorScheme.onSurface,
-          size: 22,
-        ),
+        iconTheme: IconThemeData(color: colorScheme.onSurface, size: 22),
       ),
-
-      // Card styling with deckle paper border
       cardTheme: CardThemeData(
         color: colorScheme.surfaceContainerLowest,
         elevation: 0,
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: tokens.deckleBorder,
-            width: 1,
-          ),
+          side: BorderSide(color: tokens.deckleBorder, width: 1),
         ),
       ),
-
-      // Dialog styling
       dialogTheme: DialogThemeData(
         backgroundColor: colorScheme.surfaceContainerLowest,
         elevation: 4,
@@ -273,8 +323,6 @@ class InkDiaryTheme {
           color: colorScheme.onSurface,
         ),
       ),
-
-      // Bottom Sheet styling
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colorScheme.surfaceContainerLowest,
         modalBackgroundColor: colorScheme.surfaceContainerLowest,
@@ -284,15 +332,11 @@ class InkDiaryTheme {
         ),
         clipBehavior: Clip.antiAliasWithSaveLayer,
       ),
-
-      // Buttons
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: tokens.jiaomo,
           foregroundColor: colorScheme.onPrimary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           textStyle: const TextStyle(
             fontFamily: fontNotoSerif,
@@ -302,14 +346,11 @@ class InkDiaryTheme {
           ),
         ),
       ),
-
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: colorScheme.onSurface,
           side: BorderSide(color: tokens.deckleBorder, width: 1),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           textStyle: const TextStyle(
             fontFamily: fontNotoSerif,
@@ -318,7 +359,6 @@ class InkDiaryTheme {
           ),
         ),
       ),
-
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: colorScheme.primary,
@@ -329,18 +369,12 @@ class InkDiaryTheme {
           ),
         ),
       ),
-
-      // Floating Action Button
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: tokens.cinnabar,
-        foregroundColor: Colors.white,
+        foregroundColor: tokens.onAccentPrimary,
         elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-
-      // Input Decoration
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surfaceContainerLow,
@@ -357,103 +391,47 @@ class InkDiaryTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: tokens.jiaomo, width: 1.5),
         ),
-        hintStyle: TextStyle(
-          color: tokens.qingmo,
-          fontFamily: fontNotoSerif,
-          fontSize: 14,
-        ),
+        hintStyle: TextStyle(color: tokens.qingmo, fontFamily: fontNotoSerif, fontSize: 14),
       ),
-
-      // Divider
       dividerTheme: DividerThemeData(
         color: tokens.deckleBorder.withValues(alpha: 0.6),
         thickness: 0.8,
         space: 1,
       ),
+      textTheme: _buildTextTheme(colorScheme, tokens),
+    );
+  }
 
-      // Text Theme
-      textTheme: TextTheme(
-        displayLarge: TextStyle(
-          fontFamily: fontNotoSerif,
-          fontSize: 32,
-          fontWeight: FontWeight.w400,
-          height: 1.38,
-          letterSpacing: 0.4,
-          color: colorScheme.onSurface,
-        ),
-        headlineLarge: TextStyle(
-          fontFamily: fontNotoSerif,
-          fontSize: 26,
-          fontWeight: FontWeight.w500,
-          height: 1.38,
-          letterSpacing: 0.2,
-          color: colorScheme.onSurface,
-        ),
-        headlineMedium: TextStyle(
-          fontFamily: fontNotoSerif,
-          fontSize: 20,
-          fontWeight: FontWeight.w500,
-          height: 1.5,
-          letterSpacing: 0.15,
-          color: colorScheme.onSurface,
-        ),
-        headlineSmall: TextStyle(
-          fontFamily: fontNotoSerif,
-          fontSize: 17,
-          fontWeight: FontWeight.w600,
-          height: 1.53,
-          letterSpacing: 0.1,
-          color: colorScheme.onSurface,
-        ),
-        bodyLarge: TextStyle(
-          fontFamily: fontLiterata,
-          fontSize: 18,
-          fontWeight: FontWeight.w400,
-          height: 1.78,
-          letterSpacing: 0.15,
-          color: colorScheme.onSurface,
-        ),
-        bodyMedium: TextStyle(
-          fontFamily: fontLiterata,
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          height: 1.75,
-          letterSpacing: 0.1,
-          color: colorScheme.onSurface,
-        ),
-        bodySmall: TextStyle(
-          fontFamily: fontLiterata,
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          height: 1.71,
-          letterSpacing: 0.05,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        labelLarge: TextStyle(
-          fontFamily: fontNotoSerif,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          height: 1.43,
-          letterSpacing: 0.8,
-          color: colorScheme.onSurface,
-        ),
-        labelMedium: TextStyle(
-          fontFamily: fontNotoSerif,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          height: 1.5,
-          letterSpacing: 1.0,
-          color: colorScheme.onSurfaceVariant,
-        ),
-        labelSmall: TextStyle(
-          fontFamily: fontNotoSerif,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          height: 1.4,
-          letterSpacing: 1.4,
-          color: tokens.qingmo,
-        ),
-      ),
+  static TextTheme _buildTextTheme(ColorScheme colorScheme, InkDiaryTokens tokens) {
+    TextStyle style(
+      String family,
+      double size,
+      FontWeight weight,
+      double height,
+      double spacing,
+      Color color,
+    ) =>
+        TextStyle(
+          fontFamily: family,
+          fontSize: size,
+          fontWeight: weight,
+          height: height,
+          letterSpacing: spacing,
+          color: color,
+        );
+    final primary = colorScheme.onSurface;
+    final muted = colorScheme.onSurfaceVariant;
+    return TextTheme(
+      displayLarge: style(fontNotoSerif, 32, FontWeight.w400, 1.38, 0.4, primary),
+      headlineLarge: style(fontNotoSerif, 26, FontWeight.w500, 1.38, 0.2, primary),
+      headlineMedium: style(fontNotoSerif, 20, FontWeight.w500, 1.5, 0.15, primary),
+      headlineSmall: style(fontNotoSerif, 17, FontWeight.w600, 1.53, 0.1, primary),
+      bodyLarge: style(fontLiterata, 18, FontWeight.w400, 1.78, 0.15, primary),
+      bodyMedium: style(fontLiterata, 16, FontWeight.w400, 1.75, 0.1, primary),
+      bodySmall: style(fontLiterata, 14, FontWeight.w400, 1.71, 0.05, muted),
+      labelLarge: style(fontNotoSerif, 14, FontWeight.w500, 1.43, 0.8, primary),
+      labelMedium: style(fontNotoSerif, 12, FontWeight.w500, 1.5, 1.0, muted),
+      labelSmall: style(fontNotoSerif, 10, FontWeight.w600, 1.4, 1.4, tokens.qingmo),
     );
   }
 }

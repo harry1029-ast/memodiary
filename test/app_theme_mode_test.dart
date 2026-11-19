@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/theme_settings_service.dart';
 import 'package:memodiary/main.dart';
+import 'helpers/mock_secure_storage.dart';
 
 void main() {
   late AppDatabase db;
@@ -61,6 +64,47 @@ void main() {
 
     app = tester.widget(find.byType(MaterialApp));
     expect(app.themeMode, equals(ThemeMode.dark));
+  });
+
+  testWidgets('MemoDiaryApp updates light and dark ThemeData live on preset and custom palette changes',
+      (WidgetTester tester) async {
+    final themeSettings = ThemeSettingsService(storage: MockSecureStorage());
+
+    await tester.pumpWidget(
+      MemoDiaryApp(
+        database: db,
+        mediaService: mediaService,
+        showIntroOnLaunch: false,
+        themeSettings: themeSettings,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    MaterialApp app = tester.widget(find.byType(MaterialApp));
+    expect(app.theme?.extension<AtmospherePalette>()?.id, equals('yunhaoDay'));
+    expect(app.darkTheme?.extension<AtmospherePalette>()?.id, equals('yunhaoNight'));
+    expect(app.theme?.extension<InkDiaryTokens>()?.sealCinnabar, equals(const Color(0xFFC24D43)));
+    expect(app.darkTheme?.colorScheme.onSecondary, equals(const Color(0xFF1A140B)));
+    expect(app.darkTheme?.floatingActionButtonTheme.foregroundColor, equals(const Color(0xFF1A140B)));
+
+    // Switch to classic preset
+    await themeSettings.setPreset(AtmosphereThemePreset.classic);
+    await tester.pumpAndSettle();
+
+    app = tester.widget(find.byType(MaterialApp));
+    expect(app.theme?.extension<AtmospherePalette>()?.id, equals('classicWalnut'));
+    expect(app.darkTheme?.extension<AtmospherePalette>()?.id, equals('classicEbony'));
+
+    // Switch to custom and choose mistyTwilight + blossomLantern
+    await themeSettings.setPreset(AtmosphereThemePreset.custom);
+    await themeSettings.setCustomLightPalette(LightAtmospherePaletteId.mistyTwilight);
+    await themeSettings.setCustomDarkPalette(DarkAtmospherePaletteId.blossomLantern);
+    await tester.pumpAndSettle();
+
+    app = tester.widget(find.byType(MaterialApp));
+    expect(app.theme?.extension<AtmospherePalette>()?.id, equals('mistyTwilight'));
+    expect(app.darkTheme?.extension<AtmospherePalette>()?.id, equals('blossomLantern'));
+    expect(app.darkTheme?.extension<InkDiaryTokens>()?.onAccentPrimary, equals(const Color(0xFF261015)));
   });
 }
 

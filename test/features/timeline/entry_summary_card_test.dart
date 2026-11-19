@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
@@ -100,7 +101,7 @@ void main() {
   });
 
   group('EntrySummaryCard folded slip & Tier 1 header', () {
-    testWidgets('renders Light theme (宣纸胡桃) folded slip colors and Tier 1 header without cinnabar dot', (tester) async {
+    testWidgets('renders Light theme (云岚昼 default & 宣纸胡桃 classic) folded slip colors and Tier 1 header without cinnabar dot', (tester) async {
       final date = DateTime(2026, 11, 3, 21, 25);
       final item = _buildItem(
         title: '暮秋听雨小记',
@@ -121,8 +122,40 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.byType(FoldedXuanSlip), findsOneWidget);
 
-      // Verify Light theme palette on FoldedXuanSlip
-      final slipMaterial = tester.widget<Material>(
+      // Verify default yunhaoDay palette on FoldedXuanSlip
+      final yunhaoSlipMaterial = tester.widget<Material>(
+        find.descendant(
+          of: find.byType(FoldedXuanSlip),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Material && widget.color == const Color(0xFFFFFFFF),
+          ),
+        ),
+      );
+      final yunhaoShape = yunhaoSlipMaterial.shape as RoundedRectangleBorder;
+      expect(yunhaoShape.side.color, const Color(0xFFCCD5DF));
+
+      final yunhaoLipContainer = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(FoldedXuanSlip),
+          matching: find.byWidgetPredicate((widget) {
+            if (widget is! Container) return false;
+            final dec = widget.decoration;
+            return dec is BoxDecoration && dec.color == const Color(0xFFD3DCE4);
+          }),
+        ),
+      );
+      expect(yunhaoLipContainer.padding, const EdgeInsets.only(bottom: 3));
+
+      // Verify classicWalnut palette on FoldedXuanSlip
+      await _pumpEntryCard(
+        tester,
+        item: item,
+        mediaService: mediaService,
+        theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.classicWalnut),
+      );
+      await tester.pumpAndSettle();
+
+      final classicSlipMaterial = tester.widget<Material>(
         find.descendant(
           of: find.byType(FoldedXuanSlip),
           matching: find.byWidgetPredicate(
@@ -130,10 +163,10 @@ void main() {
           ),
         ),
       );
-      final shape = slipMaterial.shape as RoundedRectangleBorder;
-      expect(shape.side.color, const Color(0xFFC9B99E));
+      final classicShape = classicSlipMaterial.shape as RoundedRectangleBorder;
+      expect(classicShape.side.color, const Color(0xFFC9B99E));
 
-      final lipContainer = tester.widget<Container>(
+      final classicLipContainer = tester.widget<Container>(
         find.descendant(
           of: find.byType(FoldedXuanSlip),
           matching: find.byWidgetPredicate((widget) {
@@ -143,7 +176,7 @@ void main() {
           }),
         ),
       );
-      expect(lipContainer.padding, const EdgeInsets.only(bottom: 3));
+      expect(classicLipContainer.padding, const EdgeInsets.only(bottom: 3));
 
       // Verify Tier 1 title: 15.5sp serif bold, maxLines 2, no leading cinnabar dot
       final titleWidget = tester.widget<Text>(find.text('暮秋听雨小记'));
@@ -193,7 +226,7 @@ void main() {
       expect(find.byKey(const Key('entry_weather_charm')), findsNothing);
     });
 
-    testWidgets('renders Dark theme (碑拓乌木) folded slip colors', (tester) async {
+    testWidgets('renders Dark theme (皓月夜 default & 碑拓乌木 classic) folded slip colors', (tester) async {
       final item = _buildItem(title: '夜读书斋');
 
       await _pumpEntryCard(
@@ -204,7 +237,38 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
-      final slipMaterial = tester.widget<Material>(
+      final yunhaoSlipMaterial = tester.widget<Material>(
+        find.descendant(
+          of: find.byType(FoldedXuanSlip),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Material && widget.color == const Color(0xFF1B2738),
+          ),
+        ),
+      );
+      final yunhaoShape = yunhaoSlipMaterial.shape as RoundedRectangleBorder;
+      expect(yunhaoShape.side.color, const Color(0xFF2D4057));
+
+      expect(
+        find.descendant(
+          of: find.byType(FoldedXuanSlip),
+          matching: find.byWidgetPredicate((widget) {
+            if (widget is! Container) return false;
+            final dec = widget.decoration;
+            return dec is BoxDecoration && dec.color == const Color(0xFF27374D);
+          }),
+        ),
+        findsOneWidget,
+      );
+
+      await _pumpEntryCard(
+        tester,
+        item: item,
+        mediaService: mediaService,
+        theme: InkDiaryTheme.forDarkPalette(DarkAtmospherePaletteId.classicEbony),
+      );
+      await tester.pumpAndSettle();
+
+      final classicSlipMaterial = tester.widget<Material>(
         find.descendant(
           of: find.byType(FoldedXuanSlip),
           matching: find.byWidgetPredicate(
@@ -212,8 +276,8 @@ void main() {
           ),
         ),
       );
-      final shape = slipMaterial.shape as RoundedRectangleBorder;
-      expect(shape.side.color, const Color(0xFF3D3A34));
+      final classicShape = classicSlipMaterial.shape as RoundedRectangleBorder;
+      expect(classicShape.side.color, const Color(0xFF3D3A34));
 
       expect(
         find.descendant(

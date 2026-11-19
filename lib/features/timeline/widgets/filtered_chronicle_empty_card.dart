@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/widgets/folded_xuan_slip.dart';
 import 'chronicle_desk_palette.dart';
@@ -70,7 +71,7 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
             onPressed: onClearFilters,
             style: FilledButton.styleFrom(
               backgroundColor: palette.cinnabar,
-              foregroundColor: Colors.white,
+              foregroundColor: context.atmospherePalette.onAccentPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             ),
             child: Text(

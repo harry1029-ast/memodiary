@@ -39,37 +39,21 @@ class WusilanScrollCard extends StatelessWidget {
     final tokens = context.inkTokens;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final outerBorderColor = isDark
-        ? tokens.deckleBorder
-        : const Color(0xFFC4B59B);
+    final outerBorderColor = tokens.deckleBorder;
+    final innerBorderColor = tokens.qingmo.withValues(alpha: 0.25);
 
-    final innerBorderColor = isDark
-        ? tokens.qingmo.withValues(alpha: 0.25)
-        : const Color(0xFF8A7B62).withValues(alpha: 0.28);
-
-    final defaultLightGradient = const LinearGradient(
+    final bottomTone = isDark
+        ? Color.lerp(tokens.xuanPureLeaf, tokens.xuanGround, 0.35)!
+        : Color.lerp(tokens.xuanPureLeaf, tokens.agedFiber, 0.65)!;
+    final gradient = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: [
-        Color(0xFFFBF8F0),
-        Color(0xFFF0E9DA),
-      ],
+      colors: [tokens.xuanPureLeaf, bottomTone],
     );
-
-    final defaultDarkGradient = const LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: [
-        Color(0xFF282521),
-        Color(0xFF1D1B18),
-      ],
-    );
-
-    final gradient = isDark ? defaultDarkGradient : defaultLightGradient;
 
     final shadowColor = isDark
         ? Colors.black.withValues(alpha: 0.4)
-        : const Color(0xFF1C1914).withValues(alpha: 0.08);
+        : tokens.jiaomo.withValues(alpha: 0.08);
 
     Widget cardBody;
 
@@ -89,7 +73,7 @@ class WusilanScrollCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? tokens.qingmo : tokens.cinnabar,
+                    color: isDark ? tokens.danmo : tokens.cinnabar,
                     letterSpacing: 0.6,
                   ),
                 ),
@@ -97,7 +81,7 @@ class WusilanScrollCard extends StatelessWidget {
                 Icon(
                   Icons.keyboard_arrow_down_rounded,
                   size: 16,
-                  color: isDark ? tokens.qingmo : tokens.cinnabar,
+                  color: isDark ? tokens.danmo : tokens.cinnabar,
                 ),
               ],
             ),
@@ -120,15 +104,13 @@ class WusilanScrollCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isDark
-                          ? tokens.agedFiber.withValues(alpha: 0.5)
-                          : const Color(0xFFE5DBC7).withValues(alpha: 0.6),
+                      color: tokens.agedFiber.withValues(alpha: isDark ? 0.5 : 0.65),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       Icons.keyboard_arrow_up_rounded,
                       size: 16,
-                      color: isDark ? tokens.danmo : const Color(0xFF8F2419),
+                      color: isDark ? tokens.danmo : tokens.cinnabarDark,
                     ),
                   ),
                 ),

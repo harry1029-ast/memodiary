@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
@@ -115,7 +116,43 @@ void main() {
       expect(find.textContaining('天解锁'), findsOneWidget);
       expect(find.textContaining('Super secret sealed capsule content'), findsNothing);
 
-      // Light theme slip color
+      // Light theme slip color (yunhaoDay default)
+      expect(
+        find.descendant(
+          of: find.byType(FoldedXuanSlip),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Material && widget.color == const Color(0xFFFFFFFF),
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      // Dark theme slip color (yunhaoNight default)
+      await pumpTimeCapsuleCard(
+        tester,
+        width: 360,
+        theme: InkDiaryTheme.dark,
+        title: '丙午岁末封缄',
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(FoldedXuanSlip),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is Material && widget.color == const Color(0xFF1B2738),
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      // Classic Light & Dark slip colors (classicWalnut / classicEbony)
+      await pumpTimeCapsuleCard(
+        tester,
+        width: 360,
+        theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.classicWalnut),
+        title: '丙午岁末封缄',
+      );
+      await tester.pumpAndSettle();
       expect(
         find.descendant(
           of: find.byType(FoldedXuanSlip),
@@ -126,11 +163,10 @@ void main() {
         findsOneWidget,
       );
 
-      // Dark theme slip color
       await pumpTimeCapsuleCard(
         tester,
         width: 360,
-        theme: InkDiaryTheme.dark,
+        theme: InkDiaryTheme.forDarkPalette(DarkAtmospherePaletteId.classicEbony),
         title: '丙午岁末封缄',
       );
       await tester.pumpAndSettle();

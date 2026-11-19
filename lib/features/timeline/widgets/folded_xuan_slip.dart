@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
+import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 
 /// Color tokens for the folded Xuan-paper slip (*折笺影札*) surface.
 @immutable
@@ -21,30 +23,42 @@ class FoldedXuanSlipPalette {
     required this.shadowColor,
   });
 
-  /// Dark theme ("碑拓乌木" — Stone Rubbing & Ebony) palette.
-  static final FoldedXuanSlipPalette dark = FoldedXuanSlipPalette(
-    cardColor: const Color(0xFF242320),
-    lipColor: const Color(0xFF36332D),
-    borderColor: const Color(0xFF3D3A34),
-    vermilionRuleColor: const Color(0xFFD25447).withValues(alpha: 0.065),
-    innerFrameColor: const Color(0xFFC8A96E).withValues(alpha: 0.11),
-    dividerColor: const Color(0xFFC8A96E).withValues(alpha: 0.16),
-    shadowColor: Colors.black.withValues(alpha: 0.32),
-  );
+  /// Derives slip tokens from an [AtmospherePalette].
+  factory FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalette palette) {
+    return FoldedXuanSlipPalette(
+      cardColor: palette.cardPaper,
+      lipColor: palette.cardStackLip,
+      borderColor: palette.deckleBorder,
+      vermilionRuleColor: palette.slipRuleColor,
+      innerFrameColor: palette.slipInnerFrameColor,
+      dividerColor: palette.slipDividerColor,
+      shadowColor: palette.slipShadowColor,
+    );
+  }
 
-  /// Light theme ("宣纸胡桃" — Xuan Paper & Walnut) palette.
-  static final FoldedXuanSlipPalette light = FoldedXuanSlipPalette(
-    cardColor: const Color(0xFFFAF6EE),
-    lipColor: const Color(0xFFD4C7B0),
-    borderColor: const Color(0xFFC9B99E),
-    vermilionRuleColor: const Color(0xFFB84335).withValues(alpha: 0.08),
-    innerFrameColor: const Color(0xFF9A7432).withValues(alpha: 0.14),
-    dividerColor: const Color(0xFF9A7432).withValues(alpha: 0.18),
-    shadowColor: Colors.black.withValues(alpha: 0.09),
-  );
+  /// Classic dark theme ("碑拓乌木" — Stone Rubbing & Ebony) palette.
+  static final FoldedXuanSlipPalette classicDark =
+      FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalettes.classicEbony);
 
-  /// Resolves the palette matching the active [ThemeData.brightness].
+  /// Classic light theme ("宣纸胡桃" — Xuan Paper & Walnut) palette.
+  static final FoldedXuanSlipPalette classicLight =
+      FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalettes.classicWalnut);
+
+  /// Default dark theme ("皓月夜" — Yunhao Night) palette.
+  static final FoldedXuanSlipPalette dark =
+      FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalettes.yunhaoNight);
+
+  /// Default light theme ("云岚昼" — Yunhao Day) palette.
+  static final FoldedXuanSlipPalette light =
+      FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalettes.yunhaoDay);
+
+  /// Resolves the palette matching the active [AtmospherePalette] extension,
+  /// falling back to [dark] / [light] by [ThemeData.brightness].
   static FoldedXuanSlipPalette of(BuildContext context) {
+    final atmosphere = Theme.of(context).extension<AtmospherePalette>();
+    if (atmosphere != null) {
+      return FoldedXuanSlipPalette.fromAtmosphere(atmosphere);
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return isDark ? dark : light;
   }

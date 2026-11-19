@@ -20,6 +20,7 @@ import '../../import_export/services/file_selector_service.dart';
 import '../../import_export/widgets/backup_dialogs.dart';
 import '../../import_export/widgets/export_dialog.dart';
 import '../services/storage_optimizer_service.dart';
+import '../widgets/appearance_theme_card.dart';
 import '../widgets/notification_settings_card.dart';
 import '../widgets/ocr_backfill_dialog.dart';
 import '../../intro/screens/book_intro_screen.dart';
@@ -402,7 +403,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // 0.5. Appearance & Theme Section
           _buildSectionHeader('外观主题', tokens),
-          _buildAppearanceCard(tokens),
+          AppearanceThemeCard(themeSettings: _themeSettings),
           const SizedBox(height: 20),
 
           // 0.6. Signature Seal Section
@@ -853,7 +854,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onSelected: (_) => setDialogState(() => selectedSeason = season),
                             selectedColor: tokens.cinnabar,
                             labelStyle: TextStyle(
-                              color: isSel ? Colors.white : tokens.jiaomo,
+                              color: isSel ? tokens.onAccentPrimary : tokens.jiaomo,
                               fontSize: 11,
                             ),
                           );
@@ -873,7 +874,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onSelected: (_) => setDialogState(() => selectedTime = timeOfDay),
                             selectedColor: tokens.cinnabar,
                             labelStyle: TextStyle(
-                              color: isSel ? Colors.white : tokens.jiaomo,
+                              color: isSel ? tokens.onAccentPrimary : tokens.jiaomo,
                               fontSize: 11,
                             ),
                           );
@@ -893,7 +894,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onSelected: (_) => setDialogState(() => selectedWeather = weather),
                             selectedColor: tokens.cinnabar,
                             labelStyle: TextStyle(
-                              color: isSel ? Colors.white : tokens.jiaomo,
+                              color: isSel ? tokens.onAccentPrimary : tokens.jiaomo,
                               fontSize: 11,
                             ),
                           );
@@ -910,7 +911,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 FilledButton(
                   key: const Key('settings_pin_save_button'),
-                  style: FilledButton.styleFrom(backgroundColor: tokens.cinnabar),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: tokens.cinnabar,
+                    foregroundColor: tokens.onAccentPrimary,
+                  ),
                   onPressed: () async {
                     final newState = ShanshuiAtmosphereState(
                       season: selectedSeason,
@@ -936,137 +940,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           },
         );
       },
-    );
-  }
-
-  Widget _buildAppearanceCard(InkDiaryTokens tokens) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: _themeSettings.themeModeNotifier,
-      builder: (context, activeThemeMode, _) {
-        return XuanPaperCard(
-          key: const Key('settings_appearance_card'),
-          margin: EdgeInsets.zero,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: tokens.agedFiber,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      activeThemeMode.filledIcon,
-                      color: tokens.cinnabar,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '外观模式',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: tokens.jiaomo,
-                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          activeThemeMode.description,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: tokens.danmo,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  for (var index = 0; index < ThemeMode.values.length; index++) ...[
-                    if (index > 0) const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildThemeOption(
-                        key: Key('settings_theme_mode_${ThemeMode.values[index].name}'),
-                        mode: ThemeMode.values[index],
-                        activeMode: activeThemeMode,
-                        tokens: tokens,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildThemeOption({
-    required Key key,
-    required ThemeMode mode,
-    required ThemeMode activeMode,
-    required InkDiaryTokens tokens,
-  }) {
-    final isSelected = activeMode == mode;
-    return Semantics(
-      button: true,
-      selected: isSelected,
-      label: mode.label,
-      child: InkWell(
-        key: key,
-        borderRadius: BorderRadius.circular(10),
-        onTap: () async {
-          if (activeMode == mode) return;
-          await _themeSettings.setThemeMode(mode);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? tokens.cinnabarWash
-                : tokens.agedFiber.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected ? tokens.cinnabar : tokens.deckleBorder,
-              width: isSelected ? 1.5 : 1.0,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                mode.icon,
-                size: 20,
-                color: isSelected ? tokens.cinnabar : tokens.danmo,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                mode.label,
-                style: TextStyle(
-                  fontFamily: InkDiaryTheme.fontNotoSerif,
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? tokens.cinnabarDark : tokens.jiaomo,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -1115,9 +988,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          CinnabarSignatureSeal(
-            overrideText: _signatureSealText,
-            size: 36,
+          MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1.0,
+            child: CinnabarSignatureSeal(
+              overrideText: _signatureSealText,
+              size: 36,
+            ),
           ),
           const SizedBox(width: 8),
           OutlinedButton(
@@ -1212,7 +1088,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 FilledButton(
                   key: const Key('settings_signature_seal_save_button'),
-                  style: FilledButton.styleFrom(backgroundColor: tokens.cinnabar),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: tokens.cinnabar,
+                    foregroundColor: tokens.onAccentPrimary,
+                  ),
                   onPressed: isValid
                       ? () async {
                           await _signatureSealService.setSealText(currentText);

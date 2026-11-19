@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/services/audio_sanctum_service.dart';
 import 'package:memodiary/features/scenery/models/shanshui_atmosphere.dart';
@@ -156,6 +157,7 @@ class ChronicleDeskScrollBody extends StatelessWidget {
                   textScaleFactor: textScale,
                   hasEntriesBelow: feedData.entries.isNotEmpty,
                   isDarkTheme: isDarkTheme,
+                  paletteId: context.atmospherePalette.id,
                   isCandleLit: sceneryConfig.isCandleLit,
                   onOpenCharmFilter: callbacks.onOpenCharmFilter,
                   onSelectYear: callbacks.onSelectYear,

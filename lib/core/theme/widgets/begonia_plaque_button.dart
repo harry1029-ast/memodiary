@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../atmosphere_palette.dart';
 import '../ink_diary_theme.dart';
 import '../shapes/classical_chinese_borders.dart';
 import 'min_tap_target.dart';
@@ -38,43 +39,28 @@ class BegoniaPlaqueButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
+    final palette = context.atmospherePalette;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final borderColor = isAccent
-        ? tokens.cinnabarDark
-        : (isDark ? tokens.deckleBorder : const Color(0xFFB89B72));
+    final borderColor = isAccent ? palette.tallyFeaturedBorder : tokens.deckleBorder;
 
     final innerBorderColor = isAccent
-        ? Colors.white.withValues(alpha: 0.3)
+        ? palette.tallyFeaturedText.withValues(alpha: 0.3)
         : (isDark
             ? tokens.qingmo.withValues(alpha: 0.3)
-            : const Color(0xFFB83B2E).withValues(alpha: 0.28));
+            : tokens.cinnabar.withValues(alpha: 0.25));
 
-    final defaultLightGradient = isAccent
-        ? const LinearGradient(
+    final gradient = isAccent
+        ? LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFBA372A), Color(0xFF98261B)],
+            colors: [palette.tallyFeaturedTop, palette.tallyFeaturedBottom],
           )
-        : const LinearGradient(
+        : LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFAF6EC), Color(0xFFEAE0CC)],
+            colors: [tokens.xuanPureLeaf, tokens.agedFiber],
           );
-
-    final defaultDarkGradient = isAccent
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF98261B), Color(0xFF6E180F)],
-          )
-        : const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF2B2824), Color(0xFF1E1C19)],
-          );
-
-    final gradient = isDark ? defaultDarkGradient : defaultLightGradient;
 
     final border = BegoniaPlaqueBorder(
       cutSize: cutSize,
@@ -87,8 +73,8 @@ class BegoniaPlaqueButton extends StatelessWidget {
 
     final effectiveTextColor = textColor ??
         (isAccent
-            ? Colors.white
-            : (isDark ? tokens.jiaomo : const Color(0xFF8F2419)));
+            ? palette.tallyFeaturedText
+            : (isDark ? tokens.jiaomo : tokens.cinnabarDark));
 
     final Widget content = Row(
       mainAxisSize: MainAxisSize.min,
@@ -126,7 +112,7 @@ class BegoniaPlaqueButton extends StatelessWidget {
         BoxShadow(
           color: isDark
               ? Colors.black.withValues(alpha: 0.35)
-              : const Color(0xFF2A2216).withValues(alpha: 0.08),
+              : tokens.jiaomo.withValues(alpha: 0.08),
           blurRadius: 4,
           offset: const Offset(0, 1.5),
         ),

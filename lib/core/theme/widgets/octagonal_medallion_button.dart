@@ -15,6 +15,9 @@ class OctagonalMedallionButton extends StatelessWidget {
   final Color? iconColor;
   final bool hasIndicator;
   final Color? indicatorColor;
+  final Gradient? gradient;
+  final Color? borderColor;
+  final Color? bevelColor;
 
   const OctagonalMedallionButton({
     super.key,
@@ -26,6 +29,9 @@ class OctagonalMedallionButton extends StatelessWidget {
     this.iconColor,
     this.hasIndicator = false,
     this.indicatorColor,
+    this.gradient,
+    this.borderColor,
+    this.bevelColor,
   });
 
   @override
@@ -33,33 +39,31 @@ class OctagonalMedallionButton extends StatelessWidget {
     final tokens = context.inkTokens;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final borderColor = isDark ? tokens.deckleBorder : const Color(0xFFB5A486);
-    final bevelColor = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : Colors.white.withValues(alpha: 0.75);
+    final effectiveBorderColor = borderColor ?? tokens.deckleBorder;
+    final effectiveBevelColor = bevelColor ??
+        (isDark
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.white.withValues(alpha: 0.75));
 
     final border = OctagonalMedallionBorder(
       chamferRatio: 0.28,
-      borderColor: borderColor,
+      borderColor: effectiveBorderColor,
       borderWidth: 1.0,
-      bevelHighlightColor: bevelColor,
+      bevelHighlightColor: effectiveBevelColor,
     );
 
-    final gradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF2C2A26), Color(0xFF1F1D1A)],
-          )
-        : const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFF9F5EB), Color(0xFFE6DCC8)],
-          );
+    final effectiveGradient = gradient ??
+        LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [tokens.agedFiber, tokens.xuanPureLeaf]
+              : [tokens.xuanPureLeaf, tokens.agedFiber],
+        );
 
     final shadowColor = isDark
         ? Colors.black.withValues(alpha: 0.4)
-        : const Color(0xFF2A2216).withValues(alpha: 0.12);
+        : tokens.jiaomo.withValues(alpha: 0.12);
 
     final effectiveIconColor = iconColor ?? tokens.jiaomo;
 
@@ -92,7 +96,7 @@ class OctagonalMedallionButton extends StatelessWidget {
       height: size,
       decoration: ShapeDecoration(
         shape: border,
-        gradient: gradient,
+        gradient: effectiveGradient,
         shadows: [
           BoxShadow(
             color: shadowColor,

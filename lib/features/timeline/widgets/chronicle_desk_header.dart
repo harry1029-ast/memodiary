@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
@@ -17,6 +18,7 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double textScaleFactor;
   final bool hasEntriesBelow;
   final bool isDarkTheme;
+  final String paletteId;
   final bool isCandleLit;
   final VoidCallback onOpenCharmFilter;
   final ValueChanged<int?> onSelectYear;
@@ -32,6 +34,7 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.textScaleFactor,
     required this.hasEntriesBelow,
     required this.isDarkTheme,
+    this.paletteId = '',
     required this.isCandleLit,
     required this.onOpenCharmFilter,
     required this.onSelectYear,
@@ -59,6 +62,7 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     final palette = ChronicleDeskPalette.of(context);
+    final atmosphere = context.atmospherePalette;
     final tokens = context.inkTokens;
     final hasActiveCharms = filters.hasActiveCharmFilters;
     final charmSummary = filters.charmSummaryLabel();
@@ -186,14 +190,14 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
                                           : Icons.local_offer_outlined,
                                       size: 13,
                                       color: hasActiveCharms
-                                          ? Colors.white
+                                          ? atmosphere.tallyFeaturedText
                                           : tokens.cinnabar,
                                     ),
                                     trailing: Icon(
                                       Icons.keyboard_arrow_down_rounded,
                                       size: 15,
                                       color: hasActiveCharms
-                                          ? Colors.white
+                                          ? atmosphere.tallyFeaturedText
                                           : tokens.danmo,
                                     ),
                                     onTap: onOpenCharmFilter,
@@ -279,6 +283,7 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
         textScaleFactor != oldDelegate.textScaleFactor ||
         hasEntriesBelow != oldDelegate.hasEntriesBelow ||
         isDarkTheme != oldDelegate.isDarkTheme ||
+        paletteId != oldDelegate.paletteId ||
         isCandleLit != oldDelegate.isCandleLit;
   }
 }

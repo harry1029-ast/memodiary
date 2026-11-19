@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
+import 'package:memodiary/features/timeline/widgets/chronicle_desk_header.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_desk_palette.dart';
 import 'package:memodiary/features/timeline/widgets/date_index_tray.dart';
 
@@ -119,8 +120,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(ChronicleDeskPalette.light.deskSurroundTop, const Color(0xFFDFD3C0));
-      expect(ChronicleDeskPalette.light.deskSurroundBottom, const Color(0xFFDFD3C0));
+      expect(ChronicleDeskPalette.light.deskSurroundTop, const Color(0xFFE4EBF0));
+      expect(ChronicleDeskPalette.light.deskSurroundBottom, const Color(0xFFDDE5EC));
+      expect(ChronicleDeskPalette.classicLight.deskSurroundTop, const Color(0xFFDFD3C0));
+      expect(ChronicleDeskPalette.classicLight.deskSurroundBottom, const Color(0xFFDFD3C0));
 
       expect(find.text('最早'), findsOneWidget);
       expect(find.text('↑'), findsOneWidget);
@@ -214,6 +217,42 @@ void main() {
         ChronicleDeskPalette.dark.cinnabar.withValues(alpha: 0.20),
       );
       expect(decoration.boxShadow ?? const [], isEmpty);
+    });
+
+    test('ChronicleDeskHeaderDelegate rebuilds when paletteId changes under same brightness', () {
+      final base = ChronicleDeskHeaderDelegate(
+        filters: const TimelineFilterState(),
+        facetSummary: TimelineDateFacetSummary.empty(),
+        totalFilteredCount: 0,
+        xunExpandFactor: 0.0,
+        textScaleFactor: 1.0,
+        hasEntriesBelow: false,
+        isDarkTheme: false,
+        paletteId: 'yunhaoDay',
+        isCandleLit: true,
+        onOpenCharmFilter: () {},
+        onSelectYear: (_) {},
+        onSelectMonth: (_) {},
+        onSelectXun: (_) {},
+        onToggleSort: () {},
+      );
+      final switched = ChronicleDeskHeaderDelegate(
+        filters: const TimelineFilterState(),
+        facetSummary: TimelineDateFacetSummary.empty(),
+        totalFilteredCount: 0,
+        xunExpandFactor: 0.0,
+        textScaleFactor: 1.0,
+        hasEntriesBelow: false,
+        isDarkTheme: false,
+        paletteId: 'classicWalnut',
+        isCandleLit: true,
+        onOpenCharmFilter: () {},
+        onSelectYear: (_) {},
+        onSelectMonth: (_) {},
+        onSelectXun: (_) {},
+        onToggleSort: () {},
+      );
+      expect(switched.shouldRebuild(base), isTrue);
     });
   });
 }
