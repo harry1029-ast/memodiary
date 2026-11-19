@@ -35,6 +35,18 @@ void main() {
     await db.close();
   });
 
+  void setTallPhoneViewport(
+    WidgetTester tester, {
+    Size size = const Size(800, 1600),
+  }) {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+  }
+
   Future<void> pumpTimelineAppBar(
     WidgetTester tester, {
     required AtmospherePalette palette,
@@ -43,12 +55,7 @@ void main() {
     VoidCallback? onReturnFromSubscreen,
     VoidCallback? onReturnFromSettings,
   }) async {
-    tester.view.physicalSize = Size(viewportWidth, 800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+    setTallPhoneViewport(tester, size: Size(viewportWidth, 800));
 
     await tester.pumpWidget(
       MaterialApp(
@@ -178,12 +185,7 @@ void main() {
     testWidgets(
       'tapping 返回封面 pops back to existing BookIntroScreen when pushed from cover (canPop == true)',
       (tester) async {
-        tester.view.physicalSize = const Size(800, 1600);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() {
-          tester.view.resetPhysicalSize();
-          tester.view.resetDevicePixelRatio();
-        });
+        setTallPhoneViewport(tester);
 
         await tester.pumpWidget(
           MaterialApp(
@@ -229,12 +231,7 @@ void main() {
     testWidgets(
       'tapping 返回封面 push-replaces to BookIntroScreen when TimelineScreen started as root (canPop == false)',
       (tester) async {
-        tester.view.physicalSize = const Size(800, 1600);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() {
-          tester.view.resetPhysicalSize();
-          tester.view.resetDevicePixelRatio();
-        });
+        setTallPhoneViewport(tester);
 
         final themeSettings = ThemeSettingsService(storage: MockSecureStorage());
         await tester.pumpWidget(

@@ -42,40 +42,91 @@ void main() {
   });
 
   group('SettingsScreen Widget Tests', () {
-    testWidgets('renders all settings modules and privacy declaration', (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(800, 2600);
+    Future<void> pumpSettingsScreen(
+      WidgetTester tester, {
+      Size viewportSize = const Size(800, 1600),
+      double textScale = 1.0,
+      int backupPbkdf2Iterations = 200000,
+      Duration delay = const Duration(milliseconds: 50),
+      ThemeSettingsService? themeSettings,
+      ScenerySettingsService? scenerySettingsService,
+      SignatureSealService? signatureSealService,
+      int activeEntriesCount = 0,
+      Map<String, PermissionStatus>? permissions,
+      bool liveThemeApp = false,
+    }) async {
+      tester.view.physicalSize = viewportSize;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
         tester.view.resetPhysicalSize();
         tester.view.resetDevicePixelRatio();
       });
 
-      await tester.pumpWidget(
-        MaterialApp(
+      Widget buildApp({AtmosphereThemeConfig? config}) {
+        return MaterialApp(
+          theme: config != null
+              ? InkDiaryTheme.forLightPalette(config.activeLightPalette)
+              : null,
+          darkTheme: config != null
+              ? InkDiaryTheme.forDarkPalette(config.activeDarkPalette)
+              : null,
+          themeMode: config?.themeMode ?? ThemeMode.system,
+          builder: textScale == 1.0
+              ? null
+              : (context, child) => MediaQuery(
+                    data: MediaQuery.of(context).copyWith(
+                      textScaler: TextScaler.linear(textScale),
+                    ),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
           home: SettingsScreen(
             database: db,
             mediaService: mediaService,
             fileSelector: mockFileSelector,
-            initialStats: const StorageStats(
-              activeEntriesCount: 0,
+            backupPbkdf2Iterations: backupPbkdf2Iterations,
+            themeSettings: themeSettings,
+            scenerySettingsService: scenerySettingsService,
+            signatureSealService: signatureSealService,
+            initialStats: StorageStats(
+              activeEntriesCount: activeEntriesCount,
               deletedEntriesCount: 0,
               totalMediaFiles: 0,
               totalMediaBytes: 0,
               orphanMediaFiles: 0,
               orphanMediaBytes: 0,
             ),
-            permissionChecker: () async => {
-              'camera': PermissionStatus.granted,
-              'microphone': PermissionStatus.granted,
-              'photos': PermissionStatus.granted,
-            },
+            permissionChecker: () async =>
+                permissions ??
+                const {
+                  'camera': PermissionStatus.granted,
+                  'microphone': PermissionStatus.granted,
+                  'photos': PermissionStatus.granted,
+                },
           ),
-        ),
-      );
+        );
+      }
 
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      final rootWidget = (liveThemeApp && themeSettings != null)
+          ? ValueListenableBuilder<AtmosphereThemeConfig>(
+              valueListenable: themeSettings.configNotifier,
+              builder: (context, config, _) => buildApp(config: config),
+            )
+          : buildApp();
+
+      await tester.runAsync(() async {
+        await tester.pumpWidget(rootWidget);
+        await Future.delayed(delay);
+      });
+
       await tester.pumpAndSettle();
+    }
+
+    testWidgets('renders all settings modules and privacy declaration', (WidgetTester tester) async {
+      await pumpSettingsScreen(
+        tester,
+        viewportSize: const Size(800, 2600),
+        delay: const Duration(milliseconds: 200),
+      );
 
       // Verify Screen Title (no English subtitle or slogan banner)
       expect(find.text('设置'), findsOneWidget);
@@ -140,37 +191,15 @@ void main() {
     });
 
     testWidgets('displays 未授权 badge for denied hardware permissions', (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(800, 2600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SettingsScreen(
-            database: db,
-            mediaService: mediaService,
-            fileSelector: mockFileSelector,
-            initialStats: const StorageStats(
-              activeEntriesCount: 0,
-              deletedEntriesCount: 0,
-              totalMediaFiles: 0,
-              totalMediaBytes: 0,
-              orphanMediaFiles: 0,
-              orphanMediaBytes: 0,
-            ),
-            permissionChecker: () async => {
-              'camera': PermissionStatus.granted,
-              'microphone': PermissionStatus.denied,
-              'photos': PermissionStatus.permanentlyDenied,
-            },
-          ),
-        ),
+      await pumpSettingsScreen(
+        tester,
+        viewportSize: const Size(800, 2600),
+        permissions: const {
+          'camera': PermissionStatus.granted,
+          'microphone': PermissionStatus.denied,
+          'photos': PermissionStatus.permanentlyDenied,
+        },
       );
-
-      await tester.pumpAndSettle();
 
       expect(find.text('已授权'), findsOneWidget);
       expect(find.text('未授权'), findsNWidgets(2));
@@ -178,38 +207,7 @@ void main() {
 
     testWidgets('tapping Create Encrypted Backup opens CreateBackupDialog and validates passphrase',
         (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SettingsScreen(
-            database: db,
-            mediaService: mediaService,
-            fileSelector: mockFileSelector,
-            backupPbkdf2Iterations: 1000,
-            initialStats: const StorageStats(
-              activeEntriesCount: 0,
-              deletedEntriesCount: 0,
-              totalMediaFiles: 0,
-              totalMediaBytes: 0,
-              orphanMediaFiles: 0,
-              orphanMediaBytes: 0,
-            ),
-            permissionChecker: () async => {
-              'camera': PermissionStatus.granted,
-              'microphone': PermissionStatus.granted,
-              'photos': PermissionStatus.granted,
-            },
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
+      await pumpSettingsScreen(tester, backupPbkdf2Iterations: 1000);
 
       final backupTile = find.byKey(const Key('settings_create_backup_tile'));
       await tester.scrollUntilVisible(backupTile, 200.0);
@@ -252,13 +250,6 @@ void main() {
     });
 
     testWidgets('tapping import with picked file opens ImportStagingScreen', (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
       // Create mock file with sample diary text
       final sampleFile = File('${tempDir.path}/imported_notes.md');
       sampleFile.writeAsStringSync('''
@@ -267,32 +258,7 @@ Visiting Dotonbori in the evening.
 ''');
       mockFileSelector.pickedFile = sampleFile;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SettingsScreen(
-            database: db,
-            mediaService: mediaService,
-            fileSelector: mockFileSelector,
-            initialStats: const StorageStats(
-              activeEntriesCount: 0,
-              deletedEntriesCount: 0,
-              totalMediaFiles: 0,
-              totalMediaBytes: 0,
-              orphanMediaFiles: 0,
-              orphanMediaBytes: 0,
-            ),
-            permissionChecker: () async => {
-              'camera': PermissionStatus.granted,
-              'microphone': PermissionStatus.granted,
-              'photos': PermissionStatus.granted,
-            },
-          ),
-        ),
-      );
-
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pumpAndSettle();
+      await pumpSettingsScreen(tester, delay: const Duration(milliseconds: 200));
 
       // Tap "导入文本"
       final importTextFinder = find.text('导入文本');
@@ -308,52 +274,6 @@ Visiting Dotonbori in the evening.
       expect(find.text('导入预览'), findsOneWidget);
       expect(find.text('Trip to Osaka'), findsOneWidget);
     });
-
-    Future<void> pumpSettingsScreen(
-      WidgetTester tester, {
-      int backupPbkdf2Iterations = 200000,
-      Duration delay = const Duration(milliseconds: 50),
-      ThemeSettingsService? themeSettings,
-      ScenerySettingsService? scenerySettingsService,
-    }) async {
-      tester.view.physicalSize = const Size(800, 1600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: SettingsScreen(
-              database: db,
-              mediaService: mediaService,
-              fileSelector: mockFileSelector,
-              backupPbkdf2Iterations: backupPbkdf2Iterations,
-              themeSettings: themeSettings,
-              scenerySettingsService: scenerySettingsService,
-              initialStats: const StorageStats(
-                activeEntriesCount: 0,
-                deletedEntriesCount: 0,
-                totalMediaFiles: 0,
-                totalMediaBytes: 0,
-                orphanMediaFiles: 0,
-                orphanMediaBytes: 0,
-              ),
-              permissionChecker: () async => {
-                'camera': PermissionStatus.granted,
-                'microphone': PermissionStatus.granted,
-                'photos': PermissionStatus.granted,
-              },
-            ),
-          ),
-        );
-        await Future.delayed(delay);
-      });
-
-      await tester.pumpAndSettle();
-    }
 
     testWidgets('displays formatted timestamp when last backup exists',
         (WidgetTester tester) async {
@@ -399,7 +319,7 @@ Visiting Dotonbori in the evening.
       // Tap "保存到设备" button and await disk write in runAsync
       await tester.runAsync(() async {
         await tester.tap(find.byKey(const Key('backup_save_button')));
-        for (var i = 0; i < 20; i++) {
+        for (var attempt = 0; attempt < 20; attempt++) {
           await Future.delayed(const Duration(milliseconds: 50));
           await tester.pump(const Duration(milliseconds: 50));
         }
@@ -509,35 +429,14 @@ Visiting Dotonbori in the evening.
     });
 
     testWidgets('renders signature seal card, opens edit dialog, updates inscription, and saves', (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(800, 2600);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
       final mockStorage = MockSecureStorage();
       final sealService = SignatureSealService(storage: mockStorage);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SettingsScreen(
-            database: db,
-            mediaService: mediaService,
-            fileSelector: mockFileSelector,
-            signatureSealService: sealService,
-            initialStats: const StorageStats(
-              activeEntriesCount: 0,
-              deletedEntriesCount: 0,
-              totalMediaFiles: 0,
-              totalMediaBytes: 0,
-              orphanMediaFiles: 0,
-              orphanMediaBytes: 0,
-            ),
-          ),
-        ),
+      await pumpSettingsScreen(
+        tester,
+        viewportSize: const Size(800, 2600),
+        signatureSealService: sealService,
       );
-      await tester.pumpAndSettle();
 
       // Card is rendered with default seal text
       expect(find.byKey(const Key('settings_signature_seal_card')), findsOneWidget);
@@ -599,12 +498,17 @@ Visiting Dotonbori in the evening.
 
       expect(
         tester.getSemantics(find.byKey(const Key('settings_theme_preset_yunhao'))),
-        isSemantics(isSelected: true),
+        isSemantics(isSelected: true, hasTapAction: true),
       );
       expect(
         tester.getSemantics(find.byKey(const Key('settings_theme_preset_classic'))),
-        isSemantics(isSelected: false),
+        isSemantics(isSelected: false, hasTapAction: true),
       );
+
+      // Tapping an already-selected preset is a safe no-op that preserves tap semantics.
+      await tester.tap(find.byKey(const Key('settings_theme_preset_yunhao')));
+      await tester.pumpAndSettle();
+      expect(themeSettings.configNotifier.value.preset, equals(AtmosphereThemePreset.yunhao));
 
       await tester.tap(find.byKey(const Key('settings_theme_preset_classic')));
       await tester.pumpAndSettle();
@@ -629,13 +533,13 @@ Visiting Dotonbori in the evening.
       expect(find.text('深色色板'), findsOneWidget);
 
       for (final keyName in const [
-        'settings_light_palette_yunhaoDay',
-        'settings_light_palette_classicWalnut',
-        'settings_light_palette_mistyTwilight',
-        'settings_dark_palette_yunhaoNight',
-        'settings_dark_palette_classicEbony',
-        'settings_dark_palette_silveryRain',
-        'settings_dark_palette_blossomLantern',
+        'settings_light_palette_yunhao_day',
+        'settings_light_palette_classic_walnut',
+        'settings_light_palette_misty_twilight',
+        'settings_dark_palette_yunhao_night',
+        'settings_dark_palette_classic_ebony',
+        'settings_dark_palette_silvery_rain',
+        'settings_dark_palette_blossom_lantern',
       ]) {
         final finder = find.byKey(Key(keyName));
         expect(finder, findsOneWidget, reason: keyName);
@@ -650,20 +554,20 @@ Visiting Dotonbori in the evening.
       expect(find.text('清辉烟雨'), findsOneWidget);
       expect(find.text('花影灯火'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('settings_light_palette_mistyTwilight')));
+      await tester.tap(find.byKey(const Key('settings_light_palette_misty_twilight')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('settings_dark_palette_blossomLantern')));
+      await tester.tap(find.byKey(const Key('settings_dark_palette_blossom_lantern')));
       await tester.pumpAndSettle();
 
       expect(mockStorage.data['memodiary_custom_light_palette'], equals('mistyTwilight'));
       expect(mockStorage.data['memodiary_custom_dark_palette'], equals('blossomLantern'));
       expect(
-        tester.getSemantics(find.byKey(const Key('settings_light_palette_mistyTwilight'))),
-        isSemantics(isSelected: true),
+        tester.getSemantics(find.byKey(const Key('settings_light_palette_misty_twilight'))),
+        isSemantics(isSelected: true, hasTapAction: true),
       );
       expect(
-        tester.getSemantics(find.byKey(const Key('settings_dark_palette_blossomLantern'))),
-        isSemantics(isSelected: true),
+        tester.getSemantics(find.byKey(const Key('settings_dark_palette_blossom_lantern'))),
+        isSemantics(isSelected: true, hasTapAction: true),
       );
 
       // Switch away to classic and back to custom -> custom pair stays preserved
@@ -675,11 +579,11 @@ Visiting Dotonbori in the evening.
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('settings_custom_palette_drawer')), findsOneWidget);
       expect(
-        tester.getSemantics(find.byKey(const Key('settings_light_palette_mistyTwilight'))),
+        tester.getSemantics(find.byKey(const Key('settings_light_palette_misty_twilight'))),
         isSemantics(isSelected: true),
       );
       expect(
-        tester.getSemantics(find.byKey(const Key('settings_dark_palette_blossomLantern'))),
+        tester.getSemantics(find.byKey(const Key('settings_dark_palette_blossom_lantern'))),
         isSemantics(isSelected: true),
       );
     });
@@ -701,57 +605,20 @@ Visiting Dotonbori in the evening.
       final mockStorage = MockSecureStorage();
       final themeSettings = ThemeSettingsService(storage: mockStorage);
 
-      tester.view.physicalSize = const Size(320, 1400);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      await tester.pumpWidget(
-        ValueListenableBuilder<AtmosphereThemeConfig>(
-          valueListenable: themeSettings.configNotifier,
-          builder: (context, config, _) {
-            return MaterialApp(
-              theme: InkDiaryTheme.forLightPalette(config.activeLightPalette),
-              darkTheme: InkDiaryTheme.forDarkPalette(config.activeDarkPalette),
-              themeMode: config.themeMode,
-              builder: (context, child) => MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: const TextScaler.linear(1.3),
-                ),
-                child: child ?? const SizedBox.shrink(),
-              ),
-              home: SettingsScreen(
-                database: db,
-                mediaService: mediaService,
-                fileSelector: mockFileSelector,
-                themeSettings: themeSettings,
-                initialStats: const StorageStats(
-                  activeEntriesCount: 1,
-                  deletedEntriesCount: 0,
-                  totalMediaFiles: 0,
-                  totalMediaBytes: 0,
-                  orphanMediaFiles: 0,
-                  orphanMediaBytes: 0,
-                ),
-                permissionChecker: () async => {
-                  'camera': PermissionStatus.granted,
-                  'microphone': PermissionStatus.granted,
-                  'photos': PermissionStatus.granted,
-                },
-              ),
-            );
-          },
-        ),
+      await pumpSettingsScreen(
+        tester,
+        viewportSize: const Size(320, 1400),
+        textScale: 1.3,
+        themeSettings: themeSettings,
+        activeEntriesCount: 1,
+        liveThemeApp: true,
       );
-      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('settings_theme_mode_dark')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('settings_theme_preset_custom')));
       await tester.pumpAndSettle();
-      final blossomFinder = find.byKey(const Key('settings_dark_palette_blossomLantern'));
+      final blossomFinder = find.byKey(const Key('settings_dark_palette_blossom_lantern'));
       await tester.scrollUntilVisible(blossomFinder, 200.0);
       await tester.pumpAndSettle();
       await tester.tap(blossomFinder);

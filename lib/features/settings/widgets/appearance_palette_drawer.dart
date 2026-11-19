@@ -43,7 +43,9 @@ class SelectableThemeTile extends StatelessWidget {
         type: MaterialType.transparency,
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
-          onTap: isSelected ? null : onTap,
+          onTap: () {
+            if (!isSelected) onTap();
+          },
           child: ExcludeSemantics(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
@@ -108,7 +110,7 @@ class AppearanceCustomPaletteDrawer extends StatelessWidget {
                   for (final lightId in LightAtmospherePaletteId.values)
                     _buildPaletteOption(
                       width: itemWidth,
-                      optionKey: Key('settings_light_palette_${lightId.storageKey}'),
+                      optionKey: Key('settings_light_palette_${lightId.widgetKeySuffix}'),
                       palette: AtmospherePalettes.forLight(lightId),
                       isSelected: config.customLightPalette == lightId,
                       onTap: () => onSelectLight(lightId),
@@ -125,7 +127,7 @@ class AppearanceCustomPaletteDrawer extends StatelessWidget {
                   for (final darkId in DarkAtmospherePaletteId.values)
                     _buildPaletteOption(
                       width: itemWidth,
-                      optionKey: Key('settings_dark_palette_${darkId.storageKey}'),
+                      optionKey: Key('settings_dark_palette_${darkId.widgetKeySuffix}'),
                       palette: AtmospherePalettes.forDark(darkId),
                       isSelected: config.customDarkPalette == darkId,
                       onTap: () => onSelectDark(darkId),

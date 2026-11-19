@@ -454,7 +454,7 @@ class _AlbumWorkspaceScreenState extends State<AlbumWorkspaceScreen> {
                   onPressed: () => _handleOpenStudio(collection, photos),
                   style: FilledButton.styleFrom(
                     backgroundColor: tokens.cinnabar,
-                    foregroundColor: Colors.white,
+                    foregroundColor: tokens.onAccentPrimary,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),

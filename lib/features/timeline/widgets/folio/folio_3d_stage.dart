@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/theme/atmosphere_palette.dart';
 import 'folio_chassis_painter.dart';
 import 'folio_corner_curl_widget.dart';
 import 'folio_leaf_model.dart';
@@ -204,18 +205,21 @@ class Folio3DStageState extends State<Folio3DStage>
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.atmospherePalette;
+    final scaffoldBg = Color.lerp(palette.woodFrameDark, Colors.black, 0.55)!;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         return Container(
           width: constraints.maxWidth,
           height: constraints.maxHeight,
-          decoration: const BoxDecoration(
-            color: Color(0xFF0A0908),
+          decoration: BoxDecoration(
+            color: scaffoldBg,
             gradient: RadialGradient(
-              center: Alignment(0.0, -0.25),
+              center: const Alignment(0.0, -0.25),
               radius: 1.15,
-              colors: [Color(0xFF2B231D), Color(0xFF171310), Color(0xFF0A0908)],
-              stops: [0.0, 0.58, 1.0],
+              colors: [palette.woodFrameMid, palette.woodFrameDark, scaffoldBg],
+              stops: const [0.0, 0.58, 1.0],
             ),
           ),
           child: Stack(

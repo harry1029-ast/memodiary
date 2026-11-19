@@ -37,7 +37,7 @@ class ScrollRollerFab extends StatelessWidget {
       borderColor: palette.fabBorder,
       borderWidth: 1.5,
       innerBorderInset: 2.0,
-      innerBorderColor: palette.fabInnerBorder.withValues(alpha: 0.35),
+      innerBorderColor: palette.fabInnerBorder,
       innerBorderWidth: 1.0,
     );
 

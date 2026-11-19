@@ -8,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/atmosphere_palettes.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/widgets/desk_workstation/desk_palette.dart';
 import 'package:memodiary/features/editor/widgets/desk_workstation/scholar_desk_painter.dart';
@@ -50,12 +52,22 @@ void main() {
       tester.widget<CustomPaint>(find.byKey(key)).painter! as ScholarDeskPainter;
 
   for (final templateId in _templates) {
-    for (final (theme, expected) in [
-      (InkDiaryTheme.light, DeskPalette.walnut),
-      (InkDiaryTheme.dark, DeskPalette.ebony),
+    for (final (theme, label, expected) in [
+      (InkDiaryTheme.light, 'yunhaoDay', DeskPalette.yunhaoDay),
+      (InkDiaryTheme.dark, 'yunhaoNight', DeskPalette.yunhaoNight),
+      (
+        InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.classicWalnut),
+        'classicWalnut',
+        DeskPalette.walnut,
+      ),
+      (
+        InkDiaryTheme.forDarkPalette(DarkAtmospherePaletteId.classicEbony),
+        'classicEbony',
+        DeskPalette.ebony,
+      ),
     ]) {
       testWidgets(
-        'with $templateId the desk and the workstation mat use the ${theme.brightness.name} palette',
+        'with $templateId the desk and the workstation mat use the $label palette',
         (tester) async {
           await pumpEntryEditorScreen(
             tester,
@@ -73,12 +85,24 @@ void main() {
     }
   }
 
-  test('the ebony desk is deeper than the walnut desk', () {
+  test('desk palettes preserve depth hierarchy and map all 7 AtmospherePalettes', () {
     expect(
       DeskPalette.ebony.base.computeLuminance(),
       lessThan(DeskPalette.walnut.base.computeLuminance()),
     );
+    expect(
+      DeskPalette.yunhaoNight.base.computeLuminance(),
+      lessThan(DeskPalette.yunhaoDay.base.computeLuminance()),
+    );
     expect(DeskPalette.forBrightness(Brightness.dark), same(DeskPalette.ebony));
     expect(DeskPalette.forBrightness(Brightness.light), same(DeskPalette.walnut));
+
+    expect(DeskPalette.forAtmosphere(AtmospherePalettes.yunhaoDay), same(DeskPalette.yunhaoDay));
+    expect(DeskPalette.forAtmosphere(AtmospherePalettes.yunhaoNight), same(DeskPalette.yunhaoNight));
+    expect(DeskPalette.forAtmosphere(AtmospherePalettes.classicWalnut), same(DeskPalette.walnut));
+    expect(DeskPalette.forAtmosphere(AtmospherePalettes.classicEbony), same(DeskPalette.ebony));
+    expect(DeskPalette.forAtmosphere(AtmospherePalettes.mistyTwilight), same(DeskPalette.mistyTwilight));
+    expect(DeskPalette.forAtmosphere(AtmospherePalettes.silveryRain), same(DeskPalette.silveryRain));
+    expect(DeskPalette.forAtmosphere(AtmospherePalettes.blossomLantern), same(DeskPalette.blossomLantern));
   });
 }

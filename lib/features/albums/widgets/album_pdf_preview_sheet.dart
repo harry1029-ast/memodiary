@@ -347,7 +347,7 @@ class _AlbumPdfPreviewSheetState extends State<AlbumPdfPreviewSheet> {
                       onPressed: _handleSharePdf,
                       style: FilledButton.styleFrom(
                         backgroundColor: tokens.cinnabar,
-                        foregroundColor: Colors.white,
+                        foregroundColor: tokens.onAccentPrimary,
                       ),
                       icon: const Icon(Icons.ios_share, size: 18),
                       label: const Text(

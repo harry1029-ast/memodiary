@@ -42,7 +42,7 @@ class CinnabarSignatureSeal extends StatelessWidget {
   Widget _buildSeal(BuildContext context, String rawText) {
     final tokens = InkDiaryTheme.tokensOf(context);
     final text = rawText.trim().isEmpty ? SignatureSealService.defaultSealText : rawText.trim();
-    final cinnabar = tokens.cinnabar;
+    final cinnabar = tokens.sealCinnabar;
     final isBaiwen = sealStyle == SealCarvingStyle.baiwen;
 
     // Split text into 2 columns for traditional right-to-left seal carving
@@ -81,14 +81,14 @@ class CinnabarSignatureSeal extends StatelessWidget {
   }
 
   Widget _buildColumn(List<String> chars, bool isBaiwen, InkDiaryTokens tokens) {
-    final textColor = isBaiwen ? tokens.xuanGround : tokens.cinnabar;
+    final textColor = isBaiwen ? tokens.xuanGround : tokens.sealCinnabar;
     final fontSize = size * 0.32;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: chars.map((ch) {
+      children: chars.map((character) {
         return Text(
-          ch,
+          character,
           style: TextStyle(
             fontFamily: InkDiaryTheme.fontNotoSerif,
             fontSize: fontSize,

@@ -45,13 +45,14 @@ class BambooBlindCollapsedBar extends StatelessWidget {
           child: Material(
             type: MaterialType.transparency,
             child: Semantics(
-              label: '展开山水画卷',
+              label: '展开山水画卷，${atmosphere.timeWeatherBadgeZh}',
               button: true,
               child: InkWell(
                 key: const Key('scenery_collapsed_blind_bar'),
                 onTap: onExpand,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
+                child: ExcludeSemantics(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
                     final isCompact = constraints.maxWidth < 380;
                     final pullUpPill = Container(
                       padding: EdgeInsets.symmetric(
@@ -137,6 +138,7 @@ class BambooBlindCollapsedBar extends StatelessWidget {
                   },
                 ),
               ),
+            ),
             ),
           ),
         ),

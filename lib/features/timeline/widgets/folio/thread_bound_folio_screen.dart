@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/services/media_sandbox_service.dart';
+import '../../../../core/theme/atmosphere_palette.dart';
 import '../../../editor/services/audio_sanctum_service.dart';
 import '../../../templates/models/template_style.dart';
 import 'folio_3d_stage.dart';
@@ -124,12 +125,14 @@ class _ThreadBoundFolioScreenState extends State<ThreadBoundFolioScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.atmospherePalette;
+    final scaffoldBg = Color.lerp(palette.woodFrameDark, Colors.black, 0.55)!;
     final entry = widget.entry;
     final dateBreadcrumb = DateFormat('yyyy.MM.dd').format(entry.entryDate);
     final displayTitle = (entry.title?.trim().isNotEmpty ?? false) ? entry.title!.trim() : '无题';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0908),
+      backgroundColor: scaffoldBg,
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _toggleChrome,

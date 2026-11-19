@@ -220,17 +220,11 @@ class _PresetOptionTile extends StatelessWidget {
   });
 
   ({AtmospherePalette light, AtmospherePalette dark}) _previewPair() {
-    switch (preset) {
-      case AtmosphereThemePreset.yunhao:
-        return (light: AtmospherePalettes.yunhaoDay, dark: AtmospherePalettes.yunhaoNight);
-      case AtmosphereThemePreset.classic:
-        return (light: AtmospherePalettes.classicWalnut, dark: AtmospherePalettes.classicEbony);
-      case AtmosphereThemePreset.custom:
-        return (
-          light: AtmospherePalettes.forLight(config.customLightPalette),
-          dark: AtmospherePalettes.forDark(config.customDarkPalette),
-        );
-    }
+    final previewConfig = config.copyWith(preset: preset);
+    return (
+      light: AtmospherePalettes.forLight(previewConfig.activeLightPalette),
+      dark: AtmospherePalettes.forDark(previewConfig.activeDarkPalette),
+    );
   }
 
   @override

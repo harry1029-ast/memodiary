@@ -24,14 +24,19 @@ enum AtmosphereThemePreset {
 
 /// Light-mode palette choices for the two-axis Atmosphere Theme system.
 enum LightAtmospherePaletteId {
-  yunhaoDay('yunhaoDay', '云岚昼'),
-  classicWalnut('classicWalnut', '宣纸胡桃'),
-  mistyTwilight('mistyTwilight', '淡墨暮岚');
+  yunhaoDay('yunhaoDay', 'yunhao_day', '云岚昼'),
+  classicWalnut('classicWalnut', 'classic_walnut', '宣纸胡桃'),
+  mistyTwilight('mistyTwilight', 'misty_twilight', '淡墨暮岚');
 
   final String storageKey;
+  final String widgetKeySuffix;
   final String nameZh;
 
-  const LightAtmospherePaletteId(this.storageKey, this.nameZh);
+  const LightAtmospherePaletteId(
+    this.storageKey,
+    this.widgetKeySuffix,
+    this.nameZh,
+  );
 
   /// Parses a persisted storage key safely, defaulting to [yunhaoDay].
   static LightAtmospherePaletteId parse(String? value) {
@@ -44,15 +49,20 @@ enum LightAtmospherePaletteId {
 
 /// Dark-mode palette choices for the two-axis Atmosphere Theme system.
 enum DarkAtmospherePaletteId {
-  yunhaoNight('yunhaoNight', '皓月夜'),
-  classicEbony('classicEbony', '碑拓乌木'),
-  silveryRain('silveryRain', '清辉烟雨'),
-  blossomLantern('blossomLantern', '花影灯火');
+  yunhaoNight('yunhaoNight', 'yunhao_night', '皓月夜'),
+  classicEbony('classicEbony', 'classic_ebony', '碑拓乌木'),
+  silveryRain('silveryRain', 'silvery_rain', '清辉烟雨'),
+  blossomLantern('blossomLantern', 'blossom_lantern', '花影灯火');
 
   final String storageKey;
+  final String widgetKeySuffix;
   final String nameZh;
 
-  const DarkAtmospherePaletteId(this.storageKey, this.nameZh);
+  const DarkAtmospherePaletteId(
+    this.storageKey,
+    this.widgetKeySuffix,
+    this.nameZh,
+  );
 
   /// Parses a persisted storage key safely, defaulting to [yunhaoNight].
   static DarkAtmospherePaletteId parse(String? value) {

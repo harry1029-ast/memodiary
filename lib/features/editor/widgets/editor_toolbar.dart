@@ -169,7 +169,7 @@ class EditorToolbar extends StatelessWidget {
                   onTap: onToggleDictation,
                   tooltip: '语音听写',
                   tokens: tokens,
-                  color: isDictating ? Colors.white : tokens.cinnabar,
+                  color: isDictating ? tokens.onAccentPrimary : tokens.cinnabar,
                   backgroundColor: isDictating ? tokens.cinnabar : null,
                 ),
                 // Typography Settings

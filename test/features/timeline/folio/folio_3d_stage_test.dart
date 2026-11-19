@@ -1,13 +1,19 @@
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/theme/atmosphere_palettes.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_3d_stage.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_chassis_painter.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_corner_curl_widget.dart';
+import 'package:memodiary/features/timeline/widgets/folio/folio_frontispiece_page.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_leaf_model.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_reading_perspective.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_silk_bookmark_painter.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_substrate_painter.dart';
+import 'package:memodiary/features/timeline/widgets/folio/thread_bound_folio_screen.dart';
 
 void main() {
   List<FolioLeaf> createTestLeaves() => const [
@@ -387,5 +393,115 @@ void main() {
 
       expect(currentPage, equals(0));
     });
+  });
+
+  group('Folio3DStage & ThreadBoundFolioScreen Atmosphere Backdrop Tests', () {
+    testWidgets(
+      'backdrop adopts AtmospherePalette woodFrameDark/woodFrameMid across yunhaoDay, yunhaoNight, and classicEbony without altering ReadingPerspective',
+      (tester) async {
+        tester.view.physicalSize = const Size(412, 915);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final now = DateTime(2026, 11, 19, 21, 0);
+        final entry = Entry(
+          id: 'folio_backdrop_entry',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: '夜读随笔',
+          contentDelta: jsonEncode([
+            {'insert': '案头微光，书卷如初。\n'}
+          ]),
+          plainText: '案头微光，书卷如初。',
+          entryDate: now,
+          isWeeklyReview: false,
+          createdAt: now,
+          updatedAt: now,
+          isLocked: false,
+          legacyMountsPending: false,
+          isDeleted: false,
+        );
+
+        for (final palette in [
+          AtmospherePalettes.yunhaoDay,
+          AtmospherePalettes.yunhaoNight,
+          AtmospherePalettes.classicEbony,
+        ]) {
+          final expectedScaffoldBg = Color.lerp(palette.woodFrameDark, Colors.black, 0.55)!;
+
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: InkDiaryTheme.forAtmosphere(palette),
+              home: ThreadBoundFolioScreen(
+                entry: entry,
+                enableAmbientAnimation: false,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final scaffold = tester.widget<Scaffold>(
+            find.descendant(
+              of: find.byType(ThreadBoundFolioScreen),
+              matching: find.byType(Scaffold),
+            ),
+          );
+          expect(scaffold.backgroundColor, equals(expectedScaffoldBg), reason: palette.id);
+
+          final stageBackdrop = tester.widget<Container>(
+            find
+                .descendant(
+                  of: find.byType(Folio3DStage),
+                  matching: find.byType(Container),
+                )
+                .first,
+          );
+          final backdropDec = stageBackdrop.decoration! as BoxDecoration;
+          expect(backdropDec.color, equals(expectedScaffoldBg), reason: palette.id);
+          final gradient = backdropDec.gradient! as RadialGradient;
+          expect(
+            gradient.colors,
+            equals([palette.woodFrameMid, palette.woodFrameDark, expectedScaffoldBg]),
+            reason: palette.id,
+          );
+
+          // ReadingPerspective & frontispiece leaf substrate stay untouched.
+          final stageWidget = tester.widget<Folio3DStage>(find.byType(Folio3DStage));
+          expect(stageWidget.theme, equals(FolioSubstrateTheme.xuan), reason: palette.id);
+          final frontispiece = tester.widget<FolioFrontispiecePage>(
+            find.byType(FolioFrontispiecePage),
+          );
+          expect(frontispiece.theme, equals(FolioSubstrateTheme.xuan), reason: palette.id);
+        }
+
+        // Switching ReadingPerspective stays independent of AtmospherePalette backdrop.
+        await tester.tap(find.byKey(const Key('folio_reading_perspective_btn')));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.byKey(Key('folio_perspective_option_${ReadingPerspective.obsidianNight.name}')),
+        );
+        await tester.pumpAndSettle();
+
+        final stageAfterSwitch = tester.widget<Folio3DStage>(find.byType(Folio3DStage));
+        expect(stageAfterSwitch.theme, equals(FolioSubstrateTheme.obsidian));
+        final ebonyBackdrop = tester.widget<Container>(
+          find
+              .descendant(
+                of: find.byType(Folio3DStage),
+                matching: find.byType(Container),
+              )
+              .first,
+        );
+        final ebonyExpectedBg = Color.lerp(
+          AtmospherePalettes.classicEbony.woodFrameDark,
+          Colors.black,
+          0.55,
+        )!;
+        expect((ebonyBackdrop.decoration! as BoxDecoration).color, equals(ebonyExpectedBg));
+      },
+    );
   });
 }

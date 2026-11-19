@@ -41,8 +41,13 @@ import 'stationery_ephemera_sheet.dart';
 /// when the sheet cannot fit. Tapping the bare desk off the sheet ends writing.
 /// Every sheet card is wrapped in a [SheetInkStage], its Ink Choreography overlay.
 class EditorPaperCanvas extends StatelessWidget {
-  static final _walnutDeskPainter = ScholarDeskPainter(palette: DeskPalette.walnut);
-  static final _ebonyDeskPainter = ScholarDeskPainter(palette: DeskPalette.ebony);
+  static final Map<DeskPalette, ScholarDeskPainter> _deskPainters = {};
+
+  static ScholarDeskPainter _painterFor(DeskPalette palette) =>
+      _deskPainters.putIfAbsent(
+        palette,
+        () => ScholarDeskPainter(palette: palette),
+      );
 
   /// The sheet's hairline border, which insets the paper inside the card.
   static const double _kSheetBorderWidth = 0.8;
@@ -161,7 +166,7 @@ class EditorPaperCanvas extends StatelessWidget {
 
         return CustomPaint(
           key: const Key('editor_scholar_desk'),
-          painter: DeskPalette.of(context) == DeskPalette.ebony ? _ebonyDeskPainter : _walnutDeskPainter,
+          painter: _painterFor(DeskPalette.of(context)),
           child: ClipRect(
             // The desk keeps its resting height while the keyboard covers it,
             // so the lifted sheet is never clipped by its own page view.

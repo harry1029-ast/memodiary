@@ -126,6 +126,10 @@ void main() {
 
         expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
         expect(find.byKey(const Key('scenery_collapsed_blind_bar')), findsOneWidget);
+        expect(
+          find.bySemanticsLabel('展开山水画卷，${indoorAtmosphere.timeWeatherBadgeZh}'),
+          findsOneWidget,
+        );
         expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
         expect(find.text(indoorAtmosphere.timeWeatherBadgeZh), findsOneWidget);
         expect(find.textContaining('竹帘低垂'), findsNothing);

@@ -181,7 +181,7 @@ void main() {
         equals(const [Color(0xFF4E8782), Color(0xFF427772), Color(0xFF376662)]),
       );
       expect(yunhaoDayTokens.borderColor, const Color(0xFF8BC2BC));
-      expect(yunhaoDayTokens.innerBorderColor, const Color(0x59E6F4F2).withValues(alpha: 0.35));
+      expect(yunhaoDayTokens.innerBorderColor, const Color(0x59E6F4F2));
       expect(yunhaoDayTokens.shadowColor, const Color(0x66376662));
       expect(yunhaoDayTokens.textColor, const Color(0xFFF7FBFA));
       expect(yunhaoDayTokens.iconColor, const Color(0xFFF7FBFA));
@@ -196,7 +196,7 @@ void main() {
         equals(const [Color(0xFF223752), Color(0xFF1A2B42), Color(0xFF132133)]),
       );
       expect(yunhaoNightTokens.borderColor, const Color(0xFFF2B866));
-      expect(yunhaoNightTokens.innerBorderColor, const Color(0x52F2B866).withValues(alpha: 0.35));
+      expect(yunhaoNightTokens.innerBorderColor, const Color(0x52F2B866));
       expect(yunhaoNightTokens.shadowColor, const Color(0x8C060B12));
       expect(yunhaoNightTokens.textColor, const Color(0xFFFFF6E5));
       expect(yunhaoNightTokens.iconColor, const Color(0xFFFFF6E5));
@@ -213,7 +213,7 @@ void main() {
         equals(const [Color(0xFFC43E30), Color(0xFFA82F22), Color(0xFF8C2014)]),
       );
       expect(classicWalnutTokens.borderColor, const Color(0xFFD9A962));
-      expect(classicWalnutTokens.innerBorderColor, const Color(0x59FFE8D6).withValues(alpha: 0.35));
+      expect(classicWalnutTokens.innerBorderColor, const Color(0x59FFE8D6));
       expect(classicWalnutTokens.shadowColor, const Color(0x738C2014));
       expect(classicWalnutTokens.textColor, const Color(0xFFFFF9F2));
       expect(classicWalnutTokens.iconColor, const Color(0xFFFFF9F2));
@@ -228,7 +228,7 @@ void main() {
         equals(const [Color(0xFF9E2E22), Color(0xFF7A1F16), Color(0xFF5E150E)]),
       );
       expect(classicEbonyTokens.borderColor, const Color(0xFF8B6B3E));
-      expect(classicEbonyTokens.innerBorderColor, const Color(0x4DD25447).withValues(alpha: 0.35));
+      expect(classicEbonyTokens.innerBorderColor, const Color(0x4DD25447));
       expect(classicEbonyTokens.shadowColor, const Color(0x8C000000));
       expect(classicEbonyTokens.textColor, const Color(0xFFFFF9F2));
       expect(classicEbonyTokens.iconColor, const Color(0xFFFFF9F2));

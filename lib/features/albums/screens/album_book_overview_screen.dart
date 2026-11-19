@@ -351,7 +351,7 @@ class _AlbumBookOverviewScreenState extends State<AlbumBookOverviewScreen> {
             key: const Key('book_overview_continue_button'),
             style: FilledButton.styleFrom(
               backgroundColor: tokens.cinnabar,
-              foregroundColor: Colors.white,
+              foregroundColor: tokens.onAccentPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               minimumSize: const Size(0, 36),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,

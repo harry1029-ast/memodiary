@@ -297,7 +297,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                                 selectedColor: tokens.cinnabar,
                                 backgroundColor: const Color(0xFF292420),
                                 labelStyle: TextStyle(
-                                  color: isSelected ? Colors.white : const Color(0xFFC8BFA8),
+                                  color: isSelected ? tokens.onAccentPrimary : const Color(0xFFC8BFA8),
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                                 ),
@@ -325,7 +325,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                               selectedColor: tokens.cinnabar,
                               backgroundColor: const Color(0xFF292420),
                               labelStyle: TextStyle(
-                                color: isSelected ? Colors.white : const Color(0xFFC8BFA8),
+                                color: isSelected ? tokens.onAccentPrimary : const Color(0xFFC8BFA8),
                                 fontSize: 12,
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                               ),
