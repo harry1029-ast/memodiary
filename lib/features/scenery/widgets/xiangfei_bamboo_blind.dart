@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../core/theme/atmosphere_palette.dart';
+import '../../../core/theme/atmosphere_palettes.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import 'bamboo_blind_pull_cord.dart';
 
@@ -92,6 +94,7 @@ class XiangfeiBambooBlind extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.atmospherePalette;
     final clamped = progress.clamp(0.0, 1.0);
     final translateFractionY = -1.02 * (1.0 - clamped);
 
@@ -111,9 +114,12 @@ class XiangfeiBambooBlind extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Horizontal bamboo slats + vertical crimson-gold silk braided cords
-            const CustomPaint(
-              painter: XiangfeiBambooSlatPainter(compact: false),
+            // Horizontal bamboo slats + vertical braided silk cords
+            CustomPaint(
+              painter: XiangfeiBambooSlatPainter(
+                compact: false,
+                palette: palette,
+              ),
               size: Size.infinite,
             ),
 
@@ -122,10 +128,10 @@ class XiangfeiBambooBlind extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  color: const Color(0xD118110C),
+                  color: palette.woodFrameDark.withValues(alpha: 0.85),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: const Color(0x73C8A96E),
+                    color: palette.accentSecondary.withValues(alpha: 0.45),
                     width: 1.0,
                   ),
                   boxShadow: const [
@@ -142,9 +148,9 @@ class XiangfeiBambooBlind extends StatelessWidget {
                     Container(
                       width: 6,
                       height: 6,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Color(0xFFD25447),
+                        color: palette.sealAccent,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -154,16 +160,16 @@ class XiangfeiBambooBlind extends StatelessWidget {
                         fontFamily: InkDiaryTheme.fontNotoSerif,
                         fontSize: 11,
                         letterSpacing: 2.0,
-                        color: const Color(0xFFF0E4CC),
+                        color: palette.headerTitleText,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
                       width: 6,
                       height: 6,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Color(0xFFD25447),
+                        color: palette.sealAccent,
                       ),
                     ),
                   ],
@@ -171,31 +177,37 @@ class XiangfeiBambooBlind extends StatelessWidget {
               ),
             ),
 
-            // Heavy rosewood bottom roller bar with brass end-caps (沉香木底轴与铜箍)
+            // Heavy bottom roller bar with brass end-caps (底轴与铜箍)
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
                 height: 14,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Color(0xFF6E4E32),
-                      Color(0xFF3A2616),
-                      Color(0xFF1E130A),
+                      palette.blindRollerTop,
+                      palette.blindRollerMid,
+                      palette.blindRollerBottom,
                     ],
                   ),
                   border: Border(
-                    top: BorderSide(color: Color(0xFFB5924C), width: 1.0),
-                    bottom: BorderSide(color: Color(0xFF0E0805), width: 1.0),
+                    top: BorderSide(
+                      color: palette.accentSecondary.withValues(alpha: 0.85),
+                      width: 1.0,
+                    ),
+                    bottom: BorderSide(
+                      color: palette.blindRollerBottom,
+                      width: 1.0,
+                    ),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const _BrassRollerCap(),
+                    _BrassRollerCap(palette: palette),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -204,9 +216,9 @@ class XiangfeiBambooBlind extends StatelessWidget {
                           height: 7,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFFD25447),
+                            color: palette.sealAccent,
                             border: Border.all(
-                              color: const Color(0x99F5D0C5),
+                              color: palette.headerTitleText.withValues(alpha: 0.60),
                               width: 0.8,
                             ),
                           ),
@@ -218,12 +230,12 @@ class XiangfeiBambooBlind extends StatelessWidget {
                             fontFamily: InkDiaryTheme.fontNotoSerif,
                             fontSize: 8.5,
                             letterSpacing: 1.6,
-                            color: const Color(0xFFE6C786),
+                            color: palette.blindTagAccent,
                           ),
                         ),
                       ],
                     ),
-                    const _BrassRollerCap(),
+                    _BrassRollerCap(palette: palette),
                   ],
                 ),
               ),
@@ -236,21 +248,28 @@ class XiangfeiBambooBlind extends StatelessWidget {
 }
 
 class _BrassRollerCap extends StatelessWidget {
-  const _BrassRollerCap();
+  final AtmospherePalette palette;
+
+  const _BrassRollerCap({required this.palette});
 
   @override
   Widget build(BuildContext context) {
+    final capHighlight = Color.lerp(
+      palette.accentSecondary,
+      palette.headerTitleText,
+      0.28,
+    )!;
     return Container(
       width: 12,
       height: 14,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color(0xFFDFC184),
-            Color(0xFFB5924C),
-            Color(0xFF735728),
+            capHighlight,
+            palette.accentSecondary,
+            palette.accentSecondaryDim,
           ],
         ),
       ),
@@ -262,20 +281,20 @@ class _BrassRollerCap extends StatelessWidget {
 /// for both the full-window blind curtain and the `44dp` collapsed bar.
 class XiangfeiBambooSlatPainter extends CustomPainter {
   final bool compact;
+  final AtmospherePalette palette;
 
-  const XiangfeiBambooSlatPainter({required this.compact});
+  const XiangfeiBambooSlatPainter({
+    required this.compact,
+    this.palette = AtmospherePalettes.yunhaoNight,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     const slatPitch = 6.0;
-    final slatTopPaint = Paint()
-      ..color = compact ? const Color(0xFF4A3420) : const Color(0xFF4E3723);
-    final slatMidPaint = Paint()
-      ..color = compact ? const Color(0xFF61452C) : const Color(0xFF684A30);
-    final slatBottomPaint = Paint()
-      ..color = compact ? const Color(0xFF382617) : const Color(0xFF3D2A1A);
-    final slitPaint = Paint()
-      ..color = compact ? const Color(0xFF1A110B) : const Color(0xEB0F0C09);
+    final slatTopPaint = Paint()..color = palette.blindSlatTop;
+    final slatMidPaint = Paint()..color = palette.blindSlatMid;
+    final slatBottomPaint = Paint()..color = palette.blindSlatBottom;
+    final slitPaint = Paint()..color = palette.blindSlit;
 
     var cursorY = 0.0;
     while (cursorY < size.height) {
@@ -300,15 +319,15 @@ class XiangfeiBambooSlatPainter extends CustomPainter {
       canvas.drawRect(
         vignetteRect,
         Paint()
-          ..shader = const LinearGradient(
+          ..shader = LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            stops: [0.0, 0.16, 0.84, 1.0],
+            stops: const [0.0, 0.16, 0.84, 1.0],
             colors: [
-              Color(0xB8120C08),
-              Color(0x521C130C),
-              Color(0x521C130C),
-              Color(0xB8120C08),
+              palette.woodFrameDark.withValues(alpha: 0.72),
+              palette.woodFrameDark.withValues(alpha: 0.32),
+              palette.woodFrameDark.withValues(alpha: 0.32),
+              palette.woodFrameDark.withValues(alpha: 0.72),
             ],
           ).createShader(vignetteRect),
       );
@@ -325,7 +344,7 @@ class XiangfeiBambooSlatPainter extends CustomPainter {
     );
     canvas.drawRect(
       centerCordRect,
-      Paint()..color = const Color(0x8CC8A96E),
+      Paint()..color = palette.accentSecondary.withValues(alpha: 0.55),
     );
 
     final shadowRect = Rect.fromLTWH(0, 0, size.width, 18);
@@ -344,15 +363,17 @@ class XiangfeiBambooSlatPainter extends CustomPainter {
   }
 
   void _drawSilkCordColumn(Canvas canvas, double centerX, double height) {
-    final crimson = Paint()..color = const Color(0xD9A8382B);
-    final gold = Paint()..color = const Color(0xE6DAB266);
+    final primaryCord = Paint()
+      ..color = palette.blindCordPrimary.withValues(alpha: 0.85);
+    final secondaryCord = Paint()
+      ..color = palette.blindCordSecondary.withValues(alpha: 0.90);
     canvas.drawRect(
       Rect.fromCenter(
         center: Offset(centerX, height * 0.5),
         width: 4.5,
         height: height,
       ),
-      crimson,
+      primaryCord,
     );
     canvas.drawRect(
       Rect.fromCenter(
@@ -360,12 +381,12 @@ class XiangfeiBambooSlatPainter extends CustomPainter {
         width: 1.6,
         height: height,
       ),
-      gold,
+      secondaryCord,
     );
   }
 
   @override
   bool shouldRepaint(covariant XiangfeiBambooSlatPainter oldDelegate) {
-    return oldDelegate.compact != compact;
+    return oldDelegate.compact != compact || oldDelegate.palette != palette;
   }
 }

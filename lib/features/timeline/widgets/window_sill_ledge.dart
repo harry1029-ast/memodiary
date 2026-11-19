@@ -130,7 +130,7 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
                     ),
                     border: Border(
                       top: BorderSide(
-                        color: const Color(0xFFECCC94).withValues(alpha: 0.42),
+                        color: palette.brassGold.withValues(alpha: 0.42),
                         width: 0.8,
                       ),
                       bottom: BorderSide(

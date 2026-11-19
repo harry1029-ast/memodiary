@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import '../../../core/theme/atmosphere_palette.dart';
 import '../../../core/utils/ambient_animation_utils.dart';
 import 'scenery_hud_controller.dart';
 
@@ -97,6 +98,7 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.atmospherePalette;
     final passedThreshold =
         widget.dragDelta >= BambooBlindPullCord.triggerDragDelta;
     final isActivelyPulling =
@@ -106,6 +108,27 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
     final tagLabel = passedThreshold
         ? '松手收窗 ✓'
         : (isActivelyPulling ? '继续下拉 ↓' : '下拉垂帘 ↓');
+
+    final beadHighlight = Color.lerp(
+      palette.accentSecondary,
+      Colors.white,
+      0.42,
+    )!;
+    final beadMid = Color.lerp(
+      palette.accentSecondary,
+      palette.accentPrimary,
+      0.25,
+    )!;
+    final beadShadow = Color.lerp(
+      palette.accentSecondary,
+      palette.woodFrameDark,
+      0.45,
+    )!;
+    final beadBorder = Color.lerp(
+      palette.accentSecondary,
+      Colors.white,
+      0.55,
+    )!.withValues(alpha: 0.70);
 
     return Semantics(
       button: true,
@@ -143,7 +166,7 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Top brass pulley grommet (黄铜滑轮扣)
+                  // Top pulley grommet (滑轮扣)
                   Container(
                     width: 16,
                     height: 8,
@@ -152,13 +175,16 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
                         bottom: Radius.circular(3),
                       ),
                       border: Border.all(
-                        color: const Color(0xB3F5E0A9),
+                        color: palette.accentSecondary.withValues(alpha: 0.70),
                         width: 0.8,
                       ),
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [Color(0xFFDFC184), Color(0xFF8C6B32)],
+                        colors: [
+                          palette.accentSecondary,
+                          palette.accentSecondaryDim,
+                        ],
                       ),
                       boxShadow: const [
                         BoxShadow(
@@ -172,40 +198,36 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
                     child: Container(
                       width: 5,
                       height: 3.5,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1C120B),
+                      decoration: BoxDecoration(
+                        color: palette.woodFrameDark,
                         shape: BoxShape.circle,
                       ),
                     ),
                   ),
 
-                  // Braided crimson-gold silk cord (朱金丝绦拉绳)
+                  // Braided silk cord (丝绦拉绳)
                   SizedBox(
                     width: 3.0,
                     height: widget.cordLength,
                     child: CustomPaint(
-                      painter: _BraidedSilkCordPainter(),
+                      painter: _BraidedSilkCordPainter(palette: palette),
                     ),
                   ),
 
-                  // Celadon jade bead (青玉算盘珠)
+                  // Jade bead (算盘珠)
                   Container(
                     width: 14,
                     height: 10,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(5),
                       border: Border.all(
-                        color: const Color(0xB3D8EFE6),
+                        color: beadBorder,
                         width: 0.8,
                       ),
-                      gradient: const RadialGradient(
-                        center: Alignment(-0.3, -0.4),
+                      gradient: RadialGradient(
+                        center: const Alignment(-0.3, -0.4),
                         radius: 0.9,
-                        colors: [
-                          Color(0xFF9AD4C2),
-                          Color(0xFF4E8778),
-                          Color(0xFF2C5248),
-                        ],
+                        colors: [beadHighlight, beadMid, beadShadow],
                       ),
                       boxShadow: const [
                         BoxShadow(
@@ -217,22 +239,22 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
                     ),
                   ),
 
-                  // Gold knot ring (鎏金绳结)
+                  // Gold knot ring (绳结)
                   Container(
                     width: 10,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDFC184),
+                      color: palette.blindCordSecondary,
                       borderRadius: BorderRadius.circular(1.5),
                     ),
                   ),
 
-                  // Crimson silk tassel (朱红流苏穗)
-                  const SizedBox(
+                  // Silk tassel (流苏穗)
+                  SizedBox(
                     width: 16,
                     height: 22,
                     child: CustomPaint(
-                      painter: _CrimsonTasselPainter(),
+                      painter: _TasselPainter(palette: palette),
                     ),
                   ),
 
@@ -250,10 +272,10 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
                         vertical: 1.5,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xBF000000),
+                        color: palette.woodFrameDark.withValues(alpha: 0.82),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: const Color(0x8CC8A96E),
+                          color: palette.accentSecondary.withValues(alpha: 0.60),
                           width: 0.8,
                         ),
                       ),
@@ -263,8 +285,8 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
                           fontSize: 9,
                           height: 1.15,
                           color: passedThreshold
-                              ? const Color(0xFFE6C786)
-                              : const Color(0xFFF0E4CC),
+                              ? palette.blindTagAccent
+                              : palette.headerTitleText,
                           fontWeight: passedThreshold
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -283,31 +305,40 @@ class _BambooBlindPullCordState extends State<BambooBlindPullCord>
 }
 
 class _BraidedSilkCordPainter extends CustomPainter {
+  final AtmospherePalette palette;
+
+  const _BraidedSilkCordPainter({required this.palette});
+
   @override
   void paint(Canvas canvas, Size size) {
-    final crimsonPaint = Paint()..color = const Color(0xFFD25447);
-    final goldPaint = Paint()..color = const Color(0xFFDFC184);
+    final primaryPaint = Paint()..color = palette.blindCordPrimary;
+    final secondaryPaint = Paint()..color = palette.blindCordSecondary;
     const segmentHeight = 3.0;
     var topY = 0.0;
-    var useCrimson = true;
+    var usePrimary = true;
 
     while (topY < size.height) {
       final drawHeight = math.min(segmentHeight, size.height - topY);
       canvas.drawRect(
         Rect.fromLTWH(0, topY, size.width, drawHeight),
-        useCrimson ? crimsonPaint : goldPaint,
+        usePrimary ? primaryPaint : secondaryPaint,
       );
       topY += segmentHeight;
-      useCrimson = !useCrimson;
+      usePrimary = !usePrimary;
     }
   }
 
   @override
-  bool shouldRepaint(covariant _BraidedSilkCordPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _BraidedSilkCordPainter oldDelegate) {
+    return oldDelegate.palette.blindCordPrimary != palette.blindCordPrimary ||
+        oldDelegate.palette.blindCordSecondary != palette.blindCordSecondary;
+  }
 }
 
-class _CrimsonTasselPainter extends CustomPainter {
-  const _CrimsonTasselPainter();
+class _TasselPainter extends CustomPainter {
+  final AtmospherePalette palette;
+
+  const _TasselPainter({required this.palette});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -323,22 +354,22 @@ class _CrimsonTasselPainter extends CustomPainter {
       ..lineTo(14, 6)
       ..lineTo(4, 6)
       ..close();
-    canvas.drawPath(capPath, Paint()..color = const Color(0xFFB83B2E));
+    canvas.drawPath(capPath, Paint()..color = palette.sealAccent);
     canvas.drawPath(
       capPath,
       Paint()
-        ..color = const Color(0xFFF09387)
+        ..color = Color.lerp(palette.sealAccent, Colors.white, 0.45)!
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.6,
     );
 
-    // Gold ferrule band
+    // Ferrule band
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         const Rect.fromLTWH(5, 5, 8, 2),
         const Radius.circular(0.8),
       ),
-      Paint()..color = const Color(0xFFDFC184),
+      Paint()..color = palette.blindCordSecondary,
     );
 
     // Splayed silk skirt
@@ -351,14 +382,14 @@ class _CrimsonTasselPainter extends CustomPainter {
       ..lineTo(16, 22)
       ..lineTo(13, 7)
       ..close();
-    canvas.drawPath(skirtPath, Paint()..color = const Color(0xFFD25447));
+    canvas.drawPath(skirtPath, Paint()..color = palette.blindCordPrimary);
 
     // Strand shading lines
     final darkStrand = Paint()
-      ..color = const Color(0xFF8C2218)
+      ..color = Color.lerp(palette.blindCordPrimary, palette.woodFrameDark, 0.45)!
       ..strokeWidth = 0.7;
     final highlightStrand = Paint()
-      ..color = const Color(0xFFF5B5AC)
+      ..color = Color.lerp(palette.blindCordPrimary, Colors.white, 0.45)!
       ..strokeWidth = 0.6;
     canvas.drawLine(const Offset(6.5, 8), const Offset(5, 22), darkStrand);
     canvas.drawLine(const Offset(9, 8), const Offset(9, 23), highlightStrand);
@@ -368,5 +399,11 @@ class _CrimsonTasselPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _CrimsonTasselPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _TasselPainter oldDelegate) {
+    return oldDelegate.palette.blindCordPrimary != palette.blindCordPrimary ||
+        oldDelegate.palette.blindCordSecondary != palette.blindCordSecondary ||
+        oldDelegate.palette.sealAccent != palette.sealAccent ||
+        oldDelegate.palette.woodFrameDark != palette.woodFrameDark ||
+        oldDelegate.palette.accentSecondary != palette.accentSecondary;
+  }
 }

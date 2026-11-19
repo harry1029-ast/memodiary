@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/atmosphere_palette.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../models/shanshui_atmosphere.dart';
 import 'scenery_hud_controller.dart';
@@ -57,7 +58,7 @@ class SceneryWindowCanvasLayer extends StatelessWidget {
 
 /// Top overlay strip inside the `Shanshui Scenery Card` window, offset clear of
 /// the left-hanging `Bamboo Blind Pull-Cord` and displaying Time/Weather,
-/// [realmBadge], seasonal title, and seasonal seal.
+/// [realmBadge], and seasonal seal.
 class SceneryWindowOverlayStrip extends StatelessWidget {
   final ShanshuiAtmosphereState atmosphere;
   final InkDiaryTokens tokens;
@@ -76,7 +77,6 @@ class SceneryWindowOverlayStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCompact = maxWidth < 360;
     return Positioned(
       top: 14,
       left: 72,
@@ -91,100 +91,72 @@ class SceneryWindowOverlayStrip extends StatelessWidget {
             duration: SceneryHudController.fadeDuration,
             curve: SceneryHudController.fadeCurve,
             child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Flexible(
-                  flex: 2,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 5,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0x991E1A17),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.16),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        flex: 2,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0x991E1A17),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.16),
+                            ),
+                          ),
+                          child: Text(
+                            atmosphere.timeWeatherBadgeZh,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              color: Color(0xFFF7F4EB),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      atmosphere.timeWeatherBadgeZh,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: Color(0xFFF7F4EB),
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Flexible(
-                  flex: 3,
-                  child: realmBadge,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 4),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: isCompact ? 56.0 : maxWidth * 0.25,
-                ),
-                child: Text(
-                  atmosphere.titleZh,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: isCompact ? 10.0 : 11.0,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFFF7F4EB),
-                    letterSpacing: isCompact ? 0.2 : 1.0,
-                    shadows: const [
-                      Shadow(
-                        color: Color(0x99000000),
-                        blurRadius: 4,
+                      const SizedBox(width: 4),
+                      Flexible(
+                        flex: 3,
+                        child: realmBadge,
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 4.5,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: tokens.cinnabar,
-                  borderRadius: BorderRadius.circular(4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      blurRadius: 4,
+                const SizedBox(width: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4.5,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tokens.sealCinnabar,
+                    borderRadius: BorderRadius.circular(4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    atmosphere.sealBadgeZh,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
                     ),
-                  ],
-                ),
-                child: Text(
-                  atmosphere.sealBadgeZh,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.3,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
             ),
           ),
         ),
@@ -209,11 +181,8 @@ class SceneryWindowFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final frameDark = isDark ? const Color(0xFF1C140F) : const Color(0xFF3D2719);
-    final frameMid = isDark ? const Color(0xFF2D2018) : const Color(0xFF593A26);
-    final frameHighlight =
-        isDark ? const Color(0xFF473325) : const Color(0xFF785036);
+    final palette = context.atmospherePalette;
+    final isDark = palette.brightness == Brightness.dark;
 
     return Container(
       key: const Key('scenery_window_frame'),
@@ -222,7 +191,7 @@ class SceneryWindowFrame extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [frameDark, frameMid],
+          colors: [palette.woodFrameDark, palette.woodFrameMid],
         ),
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
@@ -243,15 +212,10 @@ class SceneryWindowFrame extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               child,
-              // Recessed inner shadow + beveled warm wood highlight + volumetric rays + valance + balustrade
+              // Recessed inner shadow + beveled wood highlight + volumetric rays + valance + balustrade
               IgnorePointer(
                 child: CustomPaint(
-                  painter: _SceneryWindowOverlayPainter(
-                    isDark: isDark,
-                    frameDark: frameDark,
-                    frameMid: frameMid,
-                    frameHighlight: frameHighlight,
-                  ),
+                  painter: _SceneryWindowOverlayPainter(palette: palette),
                   size: Size.infinite,
                 ),
               ),
@@ -264,17 +228,9 @@ class SceneryWindowFrame extends StatelessWidget {
 }
 
 class _SceneryWindowOverlayPainter extends CustomPainter {
-  final bool isDark;
-  final Color frameDark;
-  final Color frameMid;
-  final Color frameHighlight;
+  final AtmospherePalette palette;
 
-  const _SceneryWindowOverlayPainter({
-    required this.isDark,
-    required this.frameDark,
-    required this.frameMid,
-    required this.frameHighlight,
-  });
+  const _SceneryWindowOverlayPainter({required this.palette});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -308,14 +264,18 @@ class _SceneryWindowOverlayPainter extends CustomPainter {
 
   void _paintExteriorBalustrade(Canvas canvas, Size size) {
     // Slim bottom railing spanning the exterior window sill without hiding the lake/ferryboat.
-    final sillHeight = 7.0;
+    const sillHeight = 7.0;
     final railTopY = size.height - 20.0;
     final sillTopY = size.height - sillHeight;
 
-    final railColor = isDark ? const Color(0xEB2A1C14) : const Color(0xEB4A2F1D);
-    final sillColor = isDark ? const Color(0xF218100B) : const Color(0xF2362214);
-    final postColor = isDark ? const Color(0xE6241710) : const Color(0xE6422A1A);
-    final highlightColor = frameHighlight.withValues(alpha: 0.45);
+    final railColor = palette.woodFrameMid.withValues(alpha: 0.92);
+    final sillColor = palette.woodFrameDark.withValues(alpha: 0.95);
+    final postColor = Color.lerp(
+      palette.woodFrameDark,
+      palette.woodFrameMid,
+      0.5,
+    )!.withValues(alpha: 0.90);
+    final highlightColor = palette.woodFrameHighlight.withValues(alpha: 0.45);
 
     final postPaint = Paint()
       ..color = postColor
@@ -353,20 +313,20 @@ class _SceneryWindowOverlayPainter extends CustomPainter {
     final valanceRect = Rect.fromLTWH(0, 0, size.width, valanceHeight);
 
     final valancePaint = Paint()
-      ..shader = const LinearGradient(
+      ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0xFF2E2015),
-          Color(0xFF3E2B1C),
-          Color(0xFF281B11),
+          palette.blindSlatTop,
+          palette.blindSlatMid,
+          palette.blindSlatBottom,
         ],
       ).createShader(valanceRect);
     canvas.drawRect(valanceRect, valancePaint);
 
     // Fine bamboo slat weave lines inside the rolled valance
     final slatPaint = Paint()
-      ..color = const Color(0xFF634830).withValues(alpha: 0.72)
+      ..color = palette.blindSlit.withValues(alpha: 0.65)
       ..strokeWidth = 0.85;
     canvas.drawLine(const Offset(0, 3.5), Offset(size.width, 3.5), slatPaint);
     canvas.drawLine(const Offset(0, 7.0), Offset(size.width, 7.0), slatPaint);
@@ -378,19 +338,28 @@ class _SceneryWindowOverlayPainter extends CustomPainter {
     );
     canvas.drawRRect(
       poleRect,
-      Paint()..color = const Color(0xFF5C4028),
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [palette.blindRollerTop, palette.blindRollerMid],
+        ).createShader(poleRect.outerRect),
     );
     canvas.drawLine(
       Offset(0, valanceHeight - 0.5),
       Offset(size.width, valanceHeight - 0.5),
       Paint()
-        ..color = const Color(0xFF8C6B48).withValues(alpha: 0.55)
+        ..color = Color.lerp(
+          palette.blindRollerTop,
+          palette.accentSecondary,
+          0.35,
+        )!.withValues(alpha: 0.65)
         ..strokeWidth = 0.7,
     );
   }
 
   void _paintInnerWoodBevel(Canvas canvas, Size size) {
-    // Subtle recessed shadow along top/sides + crisp warm wood inner highlight
+    // Subtle recessed shadow along top/sides + crisp wood inner highlight
     final topShadowRect = Rect.fromLTWH(0, 12, size.width, 12);
     canvas.drawRect(
       topShadowRect,
@@ -408,7 +377,7 @@ class _SceneryWindowOverlayPainter extends CustomPainter {
     final borderPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0
-      ..color = frameHighlight.withValues(alpha: 0.55);
+      ..color = palette.woodFrameHighlight.withValues(alpha: 0.55);
     canvas.drawRect(
       Rect.fromLTWH(0.5, 0.5, size.width - 1.0, size.height - 1.0),
       borderPaint,
@@ -417,9 +386,6 @@ class _SceneryWindowOverlayPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SceneryWindowOverlayPainter oldDelegate) {
-    return oldDelegate.isDark != isDark ||
-        oldDelegate.frameDark != frameDark ||
-        oldDelegate.frameMid != frameMid ||
-        oldDelegate.frameHighlight != frameHighlight;
+    return oldDelegate.palette != palette;
   }
 }

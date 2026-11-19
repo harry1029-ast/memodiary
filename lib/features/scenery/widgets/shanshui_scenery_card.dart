@@ -18,7 +18,7 @@ enum _BlindTransitionMode { idle, closing, opening }
 ///
 /// Features the hanging braided-silk **Bamboo Blind Pull-Cord** (`竹帘流苏拉绳`)
 /// at the top-left, which unrolls the slatted **Xiangfei Bamboo Blind (`湘妃竹帘`)**
-/// and collapses into a `44dp` bamboo-slat bar (`竹帘低垂`) with reversed
+/// and collapses into a `44dp` bamboo-slat bar with reversed
 /// two-stage expand choreography.
 class ShanshuiSceneryCard extends StatefulWidget {
   final ShanshuiAtmosphereState atmosphere;
@@ -322,22 +322,15 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
 
   @override
   Widget build(BuildContext context) {
-    final tokens = Theme.of(context).extension<InkDiaryTokens>() ?? InkDiaryTokens.light;
-
     final Widget child;
     if (_isCollapsed && _transitionMode == _BlindTransitionMode.idle) {
       child = BambooBlindCollapsedBar(
         atmosphere: _effectiveAtmosphere,
-        tokens: tokens,
-        realmBadge: SceneryRealmBadge(
-          atmosphere: _effectiveAtmosphere,
-          tokens: tokens,
-          isCollapsed: true,
-          onTap: () => _openRealmSwitcher(tokens),
-        ),
         onExpand: _triggerOpenChoreography,
       );
     } else {
+      final tokens =
+          Theme.of(context).extension<InkDiaryTokens>() ?? InkDiaryTokens.light;
       child = _buildExpandedWindow(tokens);
     }
 
