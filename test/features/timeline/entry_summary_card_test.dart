@@ -294,7 +294,7 @@ void main() {
   });
 
   group('EntrySummaryCard Tier 2 & WetMountedThumbnail', () {
-    testWidgets('renders 3-line snippet and seal-free WetMountedThumbnail when primaryMedia is present', (tester) async {
+    testWidgets('renders 3-line snippet, palette-aware WetMountedThumbnail, and non-interactive 云皓珍藏 collector seal', (tester) async {
       const relativePath = 'media/autumn_lake.webp';
       final mediaFile = File('${tempDir.path}/$relativePath')
         ..parent.createSync(recursive: true)
@@ -312,7 +312,14 @@ void main() {
         primaryMedia: media,
       );
 
-      await _pumpEntryCard(tester, item: item, mediaService: mediaService);
+      var cardTapped = false;
+      await _pumpEntryCard(
+        tester,
+        item: item,
+        mediaService: mediaService,
+        theme: InkDiaryTheme.light,
+        onTap: () => cardTapped = true,
+      );
       await tester.pump();
 
       expect(tester.takeException(), isNull);
@@ -322,50 +329,100 @@ void main() {
       expect(snippetWidget.maxLines, 3);
       expect(snippetWidget.overflow, TextOverflow.ellipsis);
 
-      // Verify WetMountedThumbnail structure & colors
+      // Verify palette-harmonized silk mounts and 云皓珍藏 collector seal
       final thumbFinder = find.byType(WetMountedThumbnail);
+      final sealFinder = find.byKey(const Key('wet_mount_collector_seal'));
       expect(thumbFinder, findsOneWidget);
-
-      final silkMatContainer = tester.widget<Container>(
-        find.descendant(
-          of: thumbFinder,
-          matching: find.byWidgetPredicate((widget) {
-            if (widget is! Container) return false;
-            final dec = widget.decoration;
-            if (dec is! BoxDecoration) return false;
-            final border = dec.border;
-            return dec.color == const Color(0xFFE8DFCE) &&
-                border is Border &&
-                border.top.color == const Color(0xFFB8A689);
-          }),
-        ),
-      );
-      expect(silkMatContainer, isNotNull);
-
-      final innerFrameContainer = tester.widget<Container>(
-        find.descendant(
-          of: thumbFinder,
-          matching: find.byWidgetPredicate((widget) {
-            if (widget is! Container) return false;
-            final dec = widget.decoration;
-            if (dec is! BoxDecoration) return false;
-            final border = dec.border;
-            return border is Border && border.top.color == const Color(0xFF9A7B48);
-          }),
-        ),
-      );
-      expect(innerFrameContainer, isNotNull);
-
-      // Verify miter seam CustomPaint exists & Image rendered
       expect(find.descendant(of: thumbFinder, matching: find.byType(CustomPaint)), findsAtLeastNWidgets(1));
       expect(find.descendant(of: thumbFinder, matching: find.byType(Image)), findsOneWidget);
 
-      // Verify NO overlapping 2x2 red collector's seal
+      void expectMountPalette({
+        required Color mountBg,
+        required Color mountBorder,
+        required Color innerFrame,
+        required Color sealColor,
+      }) {
+        expect(
+          find.descendant(
+            of: thumbFinder,
+            matching: find.byWidgetPredicate((widget) {
+              if (widget is! Container) return false;
+              final dec = widget.decoration;
+              final border = dec is BoxDecoration ? dec.border : null;
+              return dec is BoxDecoration &&
+                  dec.color == mountBg &&
+                  border is Border &&
+                  border.top.color == mountBorder;
+            }),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: thumbFinder,
+            matching: find.byWidgetPredicate((widget) {
+              if (widget is! Container) return false;
+              final dec = widget.decoration;
+              final border = dec is BoxDecoration ? dec.border : null;
+              return border is Border && border.top.color == innerFrame;
+            }),
+          ),
+          findsOneWidget,
+        );
+        final sealDec = tester.widget<Container>(sealFinder).decoration! as BoxDecoration;
+        expect(sealDec.color, sealColor);
+      }
+
+      // 1. Under yunhaoDay (InkDiaryTheme.light), silk mat uses #EBF1F5 / #A8BDCE / #68849B
+      expectMountPalette(
+        mountBg: const Color(0xFFEBF1F5),
+        mountBorder: const Color(0xFFA8BDCE),
+        innerFrame: const Color(0xFF68849B),
+        sealColor: const Color(0xFFC24D43),
+      );
+      expect(sealFinder, findsOneWidget);
+      expect(find.descendant(of: sealFinder, matching: find.text('云皓\n珍藏')), findsOneWidget);
+      expect(find.ancestor(of: sealFinder, matching: find.byType(IgnorePointer)), findsAtLeastNWidgets(1));
+      expect(find.ancestor(of: sealFinder, matching: find.byType(ExcludeSemantics)), findsAtLeastNWidgets(1));
+
+      // Verify legacy '拾光' copy stays absent
+      expect(find.textContaining('拾'), findsNothing);
+      expect(find.textContaining('光'), findsNothing);
       expect(find.descendant(of: thumbFinder, matching: find.byType(CinnabarSealBadge)), findsNothing);
-      expect(find.text('拾'), findsNothing);
-      expect(find.text('光'), findsNothing);
-      expect(find.text('珍'), findsNothing);
-      expect(find.text('藏'), findsNothing);
+
+      // Tapping over the seal location still fires EntrySummaryCard.onTap
+      await tester.tap(sealFinder);
+      expect(cardTapped, isTrue);
+
+      // 2. Under classicWalnut, silk mat uses #E8DFCE / #B8A689 / #9A7B48 and seal uses #C43E30
+      await _pumpEntryCard(
+        tester,
+        item: item,
+        mediaService: mediaService,
+        theme: InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.classicWalnut),
+      );
+      await tester.pumpAndSettle();
+      expectMountPalette(
+        mountBg: const Color(0xFFE8DFCE),
+        mountBorder: const Color(0xFFB8A689),
+        innerFrame: const Color(0xFF9A7B48),
+        sealColor: const Color(0xFFC43E30),
+      );
+
+      // 3. Under yunhaoNight, silk mat uses #DCE4EC / #8EA4B8 / #5C7388 and seal uses #D16B62
+      await _pumpEntryCard(
+        tester,
+        item: item,
+        mediaService: mediaService,
+        theme: InkDiaryTheme.dark,
+      );
+      await tester.pumpAndSettle();
+      expectMountPalette(
+        mountBg: const Color(0xFFDCE4EC),
+        mountBorder: const Color(0xFF8EA4B8),
+        innerFrame: const Color(0xFF5C7388),
+        sealColor: const Color(0xFFD16B62),
+      );
     });
 
     testWidgets('omits WetMountedThumbnail when primaryMedia is null', (tester) async {

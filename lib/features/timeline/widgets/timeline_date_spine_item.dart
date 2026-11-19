@@ -1,7 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../../../core/theme/ink_diary_theme.dart';
+import '../../../core/theme/atmosphere_palette.dart';
 import '../../../core/theme/shapes/classical_chinese_borders.dart';
+import 'lunar_phase_glyph.dart';
 
 /// Formats a Gregorian day of the month (1-31) with the `日` suffix
 /// (e.g. 1 -> '1日', 25 -> '25日', 31 -> '31日').
@@ -63,8 +64,7 @@ class TimelineDateSpineItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.inkTokens;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = context.atmospherePalette;
 
     return Stack(
       children: [
@@ -83,12 +83,12 @@ class TimelineDateSpineItem extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        tokens.cinnabar.withValues(alpha: 0.8),
-                        tokens.deckleBorder,
+                        palette.spineCordTop,
+                        palette.deckleBorder,
                       ],
                     )
                   : null,
-              color: isFirst ? null : tokens.deckleBorder,
+              color: isFirst ? null : palette.deckleBorder,
             ),
           ),
         ),
@@ -106,11 +106,7 @@ class TimelineDateSpineItem extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildWaistTallyBadge(
-                context: context,
-                tokens: tokens,
-                isDark: isDark,
-              ),
+              _buildWaistTallyBadge(palette: palette),
               const SizedBox(height: 3),
               // Connecting Diamond Node Knot (Pan-Chang Knot Node on the Silk Cord)
               Transform.rotate(
@@ -120,10 +116,10 @@ class TimelineDateSpineItem extends StatelessWidget {
                   height: 6.5,
                   decoration: BoxDecoration(
                     color: isHighlighted
-                        ? tokens.cinnabar
-                        : (isDark ? tokens.danmo : const Color(0xFFB5A487)),
+                        ? palette.accentPrimary
+                        : palette.accentSecondaryDim,
                     border: Border.all(
-                      color: tokens.xuanGround,
+                      color: palette.deskMat,
                       width: 1.0,
                     ),
                   ),
@@ -137,19 +133,15 @@ class TimelineDateSpineItem extends StatelessWidget {
   }
 
   Widget _buildWaistTallyBadge({
-    required BuildContext context,
-    required InkDiaryTokens tokens,
-    required bool isDark,
+    required AtmospherePalette palette,
   }) {
     final borderColor = isHighlighted
-        ? const Color(0xFF6E180F)
-        : (isDark ? tokens.deckleBorder : const Color(0xFFB5A487));
+        ? palette.tallyFeaturedBorder
+        : palette.tallyBorder;
 
     final innerBorderColor = isHighlighted
-        ? const Color(0xFFF8ECE0).withValues(alpha: 0.35)
-        : (isDark
-            ? tokens.qingmo.withValues(alpha: 0.25)
-            : const Color(0xFFFCF9F2).withValues(alpha: 0.8));
+        ? palette.tallyFeaturedText.withValues(alpha: 0.35)
+        : palette.slipInnerFrameColor;
 
     final tallyBorder = WaistTallyBorder(
       cutSize: 7.0,
@@ -160,26 +152,28 @@ class TimelineDateSpineItem extends StatelessWidget {
     );
 
     final gradient = isHighlighted
-        ? const LinearGradient(
+        ? LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFC23E30), Color(0xFFA42B1E)],
+            colors: [palette.tallyFeaturedTop, palette.tallyFeaturedBottom],
           )
-        : (isDark
-            ? const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF2E2B27), Color(0xFF1F1D1A)],
-              )
-            : const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFFF7F2E6), Color(0xFFE5D7BC)],
-              ));
+        : LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [palette.tallyBgTop, palette.tallyBgBottom],
+          );
 
     final shadowColor = isHighlighted
-        ? const Color(0xFFA82E21).withValues(alpha: 0.35)
-        : const Color(0xFF2A261E).withValues(alpha: isDark ? 0.3 : 0.1);
+        ? palette.tallyFeaturedShadow
+        : palette.slipShadowColor;
+
+    final secondaryTextColor = isHighlighted
+        ? palette.tallyFeaturedText.withValues(alpha: 0.88)
+        : palette.textMuted;
+
+    final dayTextColor = isHighlighted
+        ? palette.tallyFeaturedText
+        : palette.textPrimary;
 
     return Tooltip(
       message: '${date.year}年${date.month}月${date.day}日 ${formatChineseWeekday(date.weekday)}',
@@ -190,7 +184,7 @@ class TimelineDateSpineItem extends StatelessWidget {
           onTap: onTapBadge,
           child: Container(
             width: 52,
-            padding: const EdgeInsets.fromLTRB(2, 6, 2, 4),
+            padding: const EdgeInsets.fromLTRB(2, 7.5, 2, 4),
             decoration: ShapeDecoration(
               shape: tallyBorder,
               gradient: gradient,
@@ -205,46 +199,54 @@ class TimelineDateSpineItem extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                LunarPhaseGlyph(
+                  key: const Key('waist_tally_lunar_phase'),
+                  bucket: resolveLunarPhaseForDate(date),
+                  color: isHighlighted
+                      ? palette.tallyFeaturedText
+                      : palette.accentPrimary,
+                ),
+                const SizedBox(height: 1.5),
                 // Month label (clean sans-serif)
                 Text(
                   '${date.month}月',
+                  maxLines: 1,
                   style: TextStyle(
                     fontSize: 9.5,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
                     height: 1.1,
-                    color: isHighlighted
-                        ? const Color(0xFFFDE8E5)
-                        : tokens.danmo,
+                    color: secondaryTextColor,
                   ),
                 ),
                 const SizedBox(height: 1.0),
                 // Day numeral (Gregorian by default; traditional lunar when toggled)
-                Text(
-                  useLunarDay
-                      ? formatTraditionalChineseDay(date.day)
-                      : formatGregorianDay(date.day),
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4,
-                    height: 1.15,
-                    color: isHighlighted
-                        ? Colors.white
-                        : tokens.jiaomo,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    useLunarDay
+                        ? formatTraditionalChineseDay(date.day)
+                        : formatGregorianDay(date.day),
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                      height: 1.15,
+                      color: dayTextColor,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 1.0),
                 // Weekday tag
                 Text(
                   formatChineseWeekday(date.weekday),
+                  maxLines: 1,
                   style: TextStyle(
                     fontSize: 8.5,
                     fontWeight: FontWeight.w500,
                     height: 1.1,
-                    color: isHighlighted
-                        ? const Color(0xFFFCE2DF).withValues(alpha: 0.9)
-                        : tokens.danmo,
+                    color: secondaryTextColor,
                   ),
                 ),
               ],

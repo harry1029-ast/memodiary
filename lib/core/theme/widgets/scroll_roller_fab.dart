@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
+import '../atmosphere_palette.dart';
 import '../shapes/classical_chinese_borders.dart';
 
-/// Imperial Scroll-Roller Floating Action Button (朱砂泥金卷轴横匾按钮)
+/// Imperial Scroll-Roller Floating Action Button (卷轴横匾按钮)
 ///
-/// An ornate floating action button inspired by traditional Chinese imperial proclamation
-/// scrolls and handscroll paintings. Supports dynamic roll-up physics:
-/// - Unfurled (展开态, ~160px wide): displays scroll knobs, gold silk borders, brush icon,
-///   and bilingual title ("挥毫落墨 Write Diary").
-/// - Rolled-up (卷轴闭合态, ~52px compact token): compact rolled cylinder showing only the
-///   brush icon and cinnabar ribbon knot.
+/// An ornate floating action button inspired by traditional Chinese handscrolls,
+/// resolving all gradient, border, rail, knob, and text tokens from [AtmospherePalette].
+/// Supports dynamic roll-up physics:
+/// - Unfurled (展开态, 178px wide): displays scroll knobs, foil borders, brush icon, and title.
+/// - Rolled-up (卷轴闭合态, 52px compact token): compact rolled cylinder showing only the brush icon.
 class ScrollRollerFab extends StatelessWidget {
   final VoidCallback onPressed;
   final bool isRolledUp;
@@ -27,45 +27,29 @@ class ScrollRollerFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = context.atmospherePalette;
 
     final targetWidth = isRolledUp ? 52.0 : 178.0;
     const height = 44.0;
 
     final border = BegoniaPlaqueBorder(
       cutSize: isRolledUp ? 8.0 : 6.0,
-      borderColor: isDark ? const Color(0xFF8B6B3E) : const Color(0xFFD9A962),
+      borderColor: palette.fabBorder,
       borderWidth: 1.5,
       innerBorderInset: 2.0,
-      innerBorderColor: isDark
-          ? const Color(0xFFD25447).withValues(alpha: 0.3)
-          : const Color(0xFFFFE8D6).withValues(alpha: 0.35),
+      innerBorderColor: palette.fabInnerBorder.withValues(alpha: 0.35),
       innerBorderWidth: 1.0,
     );
 
-    final gradient = isDark
-        ? const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF9E2E22),
-              Color(0xFF7A1F16),
-              Color(0xFF5E150E),
-            ],
-          )
-        : const LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFC43E30),
-              Color(0xFFA82F22),
-              Color(0xFF8C2014),
-            ],
-          );
-
-    final shadowColor = isDark
-        ? Colors.black.withValues(alpha: 0.55)
-        : const Color(0xFF8C2014).withValues(alpha: 0.45);
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        palette.fabTop,
+        palette.fabMid,
+        palette.fabBottom,
+      ],
+    );
 
     return Semantics(
       button: true,
@@ -80,7 +64,7 @@ class ScrollRollerFab extends StatelessWidget {
           gradient: gradient,
           shadows: [
             BoxShadow(
-              color: shadowColor,
+              color: palette.fabShadow,
               blurRadius: 12,
               offset: const Offset(0, 5),
               spreadRadius: -2,
@@ -92,91 +76,93 @@ class ScrollRollerFab extends StatelessWidget {
           child: InkWell(
             customBorder: border,
             onTap: onPressed,
-            child: ClipRect(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Decorative top and bottom gold-foiled rail lines
-                  Positioned(
-                    top: 2.5,
-                    left: 6,
-                    right: 6,
-                    child: Container(
-                      height: 1.0,
-                      color: const Color(0xFFFFDF9E).withValues(alpha: 0.7),
+            child: ExcludeSemantics(
+              child: ClipRect(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Decorative top and bottom foil rail lines
+                    Positioned(
+                      top: 2.5,
+                      left: 6,
+                      right: 6,
+                      child: Container(
+                        height: 1.0,
+                        color: palette.fabCapHighlight.withValues(alpha: 0.72),
+                      ),
                     ),
-                  ),
-                  Positioned(
-                    bottom: 2.5,
-                    left: 6,
-                    right: 6,
-                    child: Container(
-                      height: 1.0,
-                      color: const Color(0xFFB5833E).withValues(alpha: 0.7),
+                    Positioned(
+                      bottom: 2.5,
+                      left: 6,
+                      right: 6,
+                      child: Container(
+                        height: 1.0,
+                        color: palette.fabCapDark.withValues(alpha: 0.72),
+                      ),
                     ),
-                  ),
 
-                  // Content Row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Scroll Knob Left
-                        _buildScrollHead(isLeft: true),
-                        const SizedBox(width: 4),
+                    // Content Row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Scroll Knob Left
+                          _buildScrollHead(isLeft: true, palette: palette),
+                          const SizedBox(width: 4),
 
-                        // Icon
-                        Icon(
-                          icon,
-                          size: 18,
-                          color: const Color(0xFFFFF6ED),
-                        ),
+                          // Icon
+                          Icon(
+                            icon,
+                            size: 18,
+                            color: palette.fabText,
+                          ),
 
-                        // If not rolled up, display text labels
-                        if (!isRolledUp) ...[
-                          const SizedBox(width: 5),
-                          Flexible(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    label,
-                                    style: const TextStyle(
-                                      color: Color(0xFFFFF9F2),
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.6,
-                                    ),
-                                  ),
-                                  if (subLabel.isNotEmpty) ...[
-                                    const SizedBox(width: 3),
+                          // If not rolled up, display text labels
+                          if (!isRolledUp) ...[
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
                                     Text(
-                                      subLabel,
+                                      label,
                                       style: TextStyle(
-                                        color: const Color(0xFFFFD8CC).withValues(alpha: 0.9),
-                                        fontSize: 9.0,
-                                        fontWeight: FontWeight.w600,
-                                        letterSpacing: 0.3,
+                                        color: palette.fabText,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.6,
                                       ),
                                     ),
+                                    if (subLabel.isNotEmpty) ...[
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        subLabel,
+                                        style: TextStyle(
+                                          color: palette.fabText.withValues(alpha: 0.88),
+                                          fontSize: 9.0,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
 
-                        const SizedBox(width: 4),
-                        // Scroll Knob Right
-                        _buildScrollHead(isLeft: false),
-                      ],
+                          const SizedBox(width: 4),
+                          // Scroll Knob Right
+                          _buildScrollHead(isLeft: false, palette: palette),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -185,18 +171,21 @@ class ScrollRollerFab extends StatelessWidget {
     );
   }
 
-  Widget _buildScrollHead({required bool isLeft}) {
+  Widget _buildScrollHead({
+    required bool isLeft,
+    required AtmospherePalette palette,
+  }) {
     return Container(
       width: 3.5,
       height: 20,
       decoration: BoxDecoration(
-        color: const Color(0xFF2B221B), // Carved ebony wood
+        color: palette.woodFrameDark,
         borderRadius: BorderRadius.horizontal(
           left: isLeft ? const Radius.circular(2) : Radius.zero,
           right: !isLeft ? const Radius.circular(2) : Radius.zero,
         ),
         border: Border.all(
-          color: const Color(0xFFD9A962), // Gold cap
+          color: palette.fabCapMid,
           width: 0.75,
         ),
       ),
