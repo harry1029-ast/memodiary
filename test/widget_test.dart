@@ -16,7 +16,9 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('MemoDiary'), findsOneWidget);
+    expect(find.text('云皓日记'), findsOneWidget);
+    expect(find.text('YUNHAO'), findsOneWidget);
+    expect(find.text('MemoDiary'), findsNothing);
     expect(find.text('暂无日记'), findsOneWidget);
 
     await db.close();
