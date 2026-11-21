@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
@@ -19,6 +20,7 @@ void main() {
     expect(find.text('云皓日记'), findsOneWidget);
     expect(find.text('YUNHAO'), findsOneWidget);
     expect(find.text('MemoDiary'), findsNothing);
+    expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).title, '云皓日记');
     expect(find.text('暂无日记'), findsOneWidget);
 
     await db.close();

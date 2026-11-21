@@ -267,32 +267,9 @@ void main() {
         );
       });
 
-      test('Android localized strings define English MemoDiary and Chinese 云皓日记', () {
-        final enStrings = File('android/app/src/main/res/values/strings.xml');
-        expect(enStrings.existsSync(), isTrue);
-        expect(
-          enStrings.readAsStringSync().contains('<string name="app_name">MemoDiary</string>'),
-          isTrue,
-        );
-
-        final zhStrings = File('android/app/src/main/res/values-zh/strings.xml');
-        expect(zhStrings.existsSync(), isTrue);
-        expect(
-          zhStrings.readAsStringSync().contains('<string name="app_name">云皓日记</string>'),
-          isTrue,
-        );
-      });
-
-      test('iOS Info.plist and InfoPlist.strings define localized branding and zero network permissions', () {
+      // The app name itself is audited in app_icon_and_name_audit_test.dart.
+      test('iOS Info.plist declares localizations and zero network permissions', () {
         final infoPlist = File('ios/Runner/Info.plist').readAsStringSync();
-        expect(
-          infoPlist.contains('<key>CFBundleDisplayName</key>\n\t<string>MemoDiary</string>'),
-          isTrue,
-        );
-        expect(
-          infoPlist.contains('<key>CFBundleName</key>\n\t<string>MemoDiary</string>'),
-          isTrue,
-        );
         expect(
           infoPlist.contains('<key>CFBundleLocalizations</key>'),
           isTrue,
@@ -305,12 +282,6 @@ void main() {
           infoPlist.contains('<string>zh-Hans</string>'),
           isTrue,
         );
-
-        final zhStrings = File('ios/Runner/zh-Hans.lproj/InfoPlist.strings');
-        expect(zhStrings.existsSync(), isTrue);
-        final zhContent = zhStrings.readAsStringSync();
-        expect(zhContent.contains('"CFBundleDisplayName" = "云皓日记";'), isTrue);
-        expect(zhContent.contains('"CFBundleName" = "云皓日记";'), isTrue);
 
         // Assert strict zero network declarations in iOS Info.plist
         expect(

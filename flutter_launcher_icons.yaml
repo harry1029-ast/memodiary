@@ -1,0 +1,16 @@
+# Launcher icon generator config (SPEC-023 Implementation Decision 6).
+# Regenerate every icon with tool/app_icon/generate_app_icons.sh; it builds
+# the masters and layers first and the round icons after the generator.
+flutter_launcher_icons:
+  image_path_android: "tool/app_icon/app_icon_master_legacy.png"
+  android: true
+  min_sdk_android: 24
+  # The painting is the full 108dp background; the foreground is transparent.
+  adaptive_icon_background: "tool/app_icon/app_icon_master.png"
+  adaptive_icon_foreground: "tool/app_icon/app_icon_foreground.png"
+  adaptive_icon_monochrome: "tool/app_icon/app_icon_monochrome.png"
+  # Foreground and monochrome PNGs are full 108dp layers, already safe-zoned.
+  adaptive_icon_foreground_inset: 0
+  image_path_ios: "tool/app_icon/app_icon_master_ios.png"
+  ios: true
+  remove_alpha_ios: true

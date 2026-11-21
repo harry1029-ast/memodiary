@@ -110,7 +110,7 @@ class MemoDiaryApp extends StatelessWidget {
       valueListenable: themeSettings.configNotifier,
       builder: (context, config, _) {
         return MaterialApp(
-          title: 'MemoDiary',
+          title: '云皓日记',
           debugShowCheckedModeBanner: false,
           theme: InkDiaryTheme.forLightPalette(config.activeLightPalette),
           darkTheme: InkDiaryTheme.forDarkPalette(config.activeDarkPalette),
