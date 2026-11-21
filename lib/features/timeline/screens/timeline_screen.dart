@@ -33,6 +33,10 @@ class TimelineScreen extends StatefulWidget {
   /// Scroll Roller Button can trigger it.
   final HomeTabPrimaryAction? primaryAction;
 
+  /// Home Shell seam: fires when a screen opened outside this tab (回收站,
+  /// 导入与备份) may have changed entries, so the timeline reloads.
+  final Listenable? diaryChanged;
+
   const TimelineScreen({
     super.key,
     required this.database,
@@ -42,6 +46,7 @@ class TimelineScreen extends StatefulWidget {
     this.enableSceneryAnimation,
     this.ocrQueueManager,
     this.primaryAction,
+    this.diaryChanged,
   });
 
   @override
@@ -88,6 +93,7 @@ class _TimelineScreenState extends State<TimelineScreen>
     );
     _scrollController.addListener(_onScroll);
     widget.primaryAction?.attach(_handleCreateEntry);
+    widget.diaryChanged?.addListener(_handleDiaryChanged);
     _loadInitial();
     _loadScenerySettings();
   }
@@ -110,11 +116,18 @@ class _TimelineScreenState extends State<TimelineScreen>
       oldWidget.primaryAction?.detach(_handleCreateEntry);
       widget.primaryAction?.attach(_handleCreateEntry);
     }
+    if (oldWidget.diaryChanged != widget.diaryChanged) {
+      oldWidget.diaryChanged?.removeListener(_handleDiaryChanged);
+      widget.diaryChanged?.addListener(_handleDiaryChanged);
+    }
   }
+
+  void _handleDiaryChanged() => _loadInitial();
 
   @override
   void dispose() {
     widget.primaryAction?.detach(_handleCreateEntry);
+    widget.diaryChanged?.removeListener(_handleDiaryChanged);
     _xunExpandController.dispose();
     _scrollController.dispose();
     super.dispose();

@@ -4,7 +4,6 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 /// Storage usage metrics for the application
 class StorageStats {
   final int activeEntriesCount;
-  final int deletedEntriesCount;
   final int totalMediaFiles;
   final int totalMediaBytes;
   final int orphanMediaFiles;
@@ -12,7 +11,6 @@ class StorageStats {
 
   const StorageStats({
     required this.activeEntriesCount,
-    required this.deletedEntriesCount,
     required this.totalMediaFiles,
     required this.totalMediaBytes,
     required this.orphanMediaFiles,
@@ -37,7 +35,6 @@ class StorageOptimizerService {
     required MediaSandboxService mediaService,
   }) async {
     final activeEntries = await database.entriesDao.getAllActiveEntries();
-    final deletedEntries = await database.entriesDao.getDeletedEntries();
     final referencedPaths =
         await database.mediaOcrDao.getAllReferencedMediaPaths();
     final mediaFiles = await mediaService.listMediaFiles();
@@ -56,7 +53,6 @@ class StorageOptimizerService {
 
     return StorageStats(
       activeEntriesCount: activeEntries.length,
-      deletedEntriesCount: deletedEntries.length,
       totalMediaFiles: mediaFiles.length,
       totalMediaBytes: totalMediaBytes,
       orphanMediaFiles: orphanCount,

@@ -9,8 +9,6 @@ import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/theme_settings_service.dart';
 import '../../helpers/mock_secure_storage.dart';
-import 'package:memodiary/features/import_export/screens/import_backup_screen.dart';
-import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/settings/services/signature_seal_service.dart';
 import 'package:memodiary/features/settings/services/storage_optimizer_service.dart';
@@ -82,7 +80,6 @@ void main() {
             signatureSealService: signatureSealService,
             initialStats: StorageStats(
               activeEntriesCount: activeEntriesCount,
-              deletedEntriesCount: 0,
               totalMediaFiles: 0,
               totalMediaBytes: 0,
               orphanMediaFiles: 0,
@@ -135,7 +132,7 @@ void main() {
       expect(find.text('存储与清理'), findsOneWidget);
       expect(find.text('写作提醒'), findsOneWidget);
       expect(find.text('导入与导出'), findsNothing);
-      expect(find.text('日记数据'), findsOneWidget);
+      expect(find.text('日记数据'), findsNothing);
       expect(find.text('权限管理'), findsOneWidget);
       expect(find.text('隐私保护'), findsOneWidget);
 
@@ -169,10 +166,15 @@ void main() {
       expect(find.text('Photos & Files'), findsNothing);
       expect(find.text('已获准'), findsNothing);
 
-      // Data-moving tools live on the Import & Backup screen; Settings keeps one row
-      expect(find.text('写作统计'), findsOneWidget);
-      expect(find.byKey(const Key('settings_import_backup_tile')), findsOneWidget);
-      expect(find.text('导入与备份'), findsOneWidget);
+      // 写作统计, 回收站 and 导入与备份 moved to the Diarist Panel
+      expect(find.text('写作统计'), findsNothing);
+      expect(find.byKey(const Key('settings_analytics_tile')), findsNothing);
+      expect(find.textContaining('回收站'), findsNothing);
+      expect(find.byKey(const Key('settings_recycle_bin_tile')), findsNothing);
+      expect(find.text('导入与备份'), findsNothing);
+      expect(find.byKey(const Key('settings_import_backup_tile')), findsNothing);
+      expect(find.text('日记篇数'), findsOneWidget);
+      expect(find.text('媒体文件'), findsOneWidget);
       expect(find.text('导入文本'), findsNothing);
       expect(find.text('导出日记'), findsNothing);
       expect(find.text('上次备份时间'), findsNothing);
@@ -193,31 +195,6 @@ void main() {
 
       expect(find.text('已授权'), findsOneWidget);
       expect(find.text('未授权'), findsNWidgets(2));
-    });
-
-    testWidgets('tapping the 导入与备份 row opens the Import & Backup screen', (WidgetTester tester) async {
-      await pumpSettingsScreen(tester);
-
-      final importBackupTile = find.byKey(const Key('settings_import_backup_tile'));
-      await tester.ensureVisible(importBackupTile);
-      await tester.pumpAndSettle();
-      await tester.tap(importBackupTile);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(ImportBackupScreen), findsOneWidget);
-      expect(find.text('导出加密备份 (.mdbak)'), findsOneWidget);
-    });
-
-    testWidgets('tapping recycle bin tile navigates to RecycleBinScreen', (WidgetTester tester) async {
-      await pumpSettingsScreen(tester);
-
-      final recycleTile = find.byKey(const Key('settings_recycle_bin_tile'));
-      expect(recycleTile, findsOneWidget);
-
-      await tester.tap(recycleTile);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(RecycleBinScreen), findsOneWidget);
     });
 
     testWidgets('tapping light and dark theme mode options toggles theme and persists preference',

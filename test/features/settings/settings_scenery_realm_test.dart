@@ -50,7 +50,6 @@ void main() {
             permissionChecker: () async => {},
             initialStats: const StorageStats(
               activeEntriesCount: 0,
-              deletedEntriesCount: 0,
               totalMediaFiles: 0,
               totalMediaBytes: 0,
               orphanMediaFiles: 0,

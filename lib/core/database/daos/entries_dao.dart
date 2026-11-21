@@ -188,6 +188,15 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
         .get();
   }
 
+  /// Counts non-deleted entries, weekly reviews and time capsules included.
+  Future<int> countActiveEntries() {
+    final countExp = entries.id.count();
+    final query = selectOnly(entries)
+      ..addColumns([countExp])
+      ..where(entries.isDeleted.equals(false));
+    return query.map((row) => row.read(countExp) ?? 0).getSingle();
+  }
+
   /// Updates an entry's visual template without mutating contentDelta or plainText.
   Future<int> updateEntryTemplate(String entryId, String newTemplateId) {
     return (update(entries)..where((entry) => entry.id.equals(entryId))).write(

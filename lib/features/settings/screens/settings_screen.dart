@@ -8,9 +8,6 @@ import '../../../core/theme/ink_diary_theme.dart';
 import '../../../core/theme/theme_settings_service.dart';
 import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
 import '../../../core/theme/widgets/xuan_paper_card.dart';
-import '../../analytics/screens/analytics_dashboard_screen.dart';
-import '../../recycle_bin/screens/recycle_bin_screen.dart';
-import '../../import_export/screens/import_backup_screen.dart';
 import '../services/storage_optimizer_service.dart';
 import '../widgets/appearance_theme_card.dart';
 import '../widgets/notification_settings_card.dart';
@@ -273,17 +270,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const NotificationSettingsCard(),
           const SizedBox(height: 20),
 
-          // 3. Diary Data Section
-          _buildSectionHeader('日记数据', tokens),
-          _buildDiaryDataCard(tokens),
-          const SizedBox(height: 20),
-
-          // 4. Permissions Dashboard
+          // 3. Permissions Dashboard
           _buildSectionHeader('权限管理', tokens),
           _buildPermissionsCard(tokens),
           const SizedBox(height: 20),
 
-          // 5. Zero-Cloud Privacy Declaration
+          // 4. Zero-Cloud Privacy Declaration
           _buildSectionHeader('隐私保护', tokens),
           _buildPrivacyCard(tokens),
         ],
@@ -985,7 +977,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _buildStatColumn('日记篇数', '${stats.activeEntriesCount}', tokens),
               _buildStatColumn('媒体文件', '${stats.totalMediaFiles} (${stats.totalMediaFormatted})', tokens),
-              _buildStatColumn('回收站', '${stats.deletedEntriesCount}', tokens),
             ],
           ),
           Divider(height: 24, color: tokens.agedFiber),
@@ -1044,45 +1035,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       : const Text('清理'),
                 ),
             ],
-          ),
-          Divider(height: 24, color: tokens.agedFiber),
-          ListTile(
-            key: const Key('settings_recycle_bin_tile'),
-            contentPadding: EdgeInsets.zero,
-            leading:
-                Icon(Icons.delete_outline_rounded, size: 20, color: tokens.cinnabar),
-            title: Text(
-              '回收站 (${stats.deletedEntriesCount})',
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 13.5,
-                fontWeight: FontWeight.bold,
-                color: tokens.jiaomo,
-              ),
-            ),
-            subtitle: Text(
-              '查看、恢复或彻底删除 30 天内删除的日记',
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontKaiti,
-                fontSize: 11.5,
-                color: tokens.danmo,
-              ),
-            ),
-            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RecycleBinScreen(
-                    database: widget.database,
-                    mediaService: widget.mediaService,
-                  ),
-                ),
-              ).then((_) {
-                _loadStorageStats();
-              });
-            },
           ),
           if (widget.ocrQueueManager != null) ...[
             Divider(height: 24, color: tokens.agedFiber),
@@ -1156,67 +1108,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDiaryDataCard(InkDiaryTokens tokens) {
-    return XuanPaperCard(
-      margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          ListTile(
-            key: const Key('settings_analytics_tile'),
-            leading: Icon(Icons.insights_rounded, color: tokens.nongmo),
-            title: Text(
-              '写作统计',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
-            ),
-            subtitle: Text(
-              '查看总篇数、总字数、年度写作热力图与心情分布',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
-            ),
-            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AnalyticsDashboardScreen(
-                    database: widget.database,
-                  ),
-                ),
-              );
-            },
-          ),
-          Divider(height: 1, color: tokens.agedFiber),
-          ListTile(
-            key: const Key('settings_import_backup_tile'),
-            leading: Icon(Icons.inventory_2_outlined, color: tokens.nongmo),
-            title: Text(
-              '导入与备份',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
-            ),
-            subtitle: Text(
-              '导入文本、导出日记、加密备份与恢复',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
-            ),
-            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ImportBackupScreen(
-                    database: widget.database,
-                    mediaService: widget.mediaService,
-                  ),
-                ),
-              ).then((_) {
-                _loadStorageStats();
-              });
-            },
-          ),
-        ],
-      ),
     );
   }
 

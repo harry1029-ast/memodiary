@@ -66,6 +66,13 @@ class AlbumsDao extends DatabaseAccessor<AppDatabase> with _$AlbumsDaoMixin {
         .get();
   }
 
+  /// Counts all travel album collections.
+  Future<int> countCollections() {
+    final countExp = albumCollections.id.count();
+    final query = selectOnly(albumCollections)..addColumns([countExp]);
+    return query.map((row) => row.read(countExp) ?? 0).getSingle();
+  }
+
   /// Retrieves the most recently created travel album collection, or null if none exist.
   Future<AlbumCollection?> getLatestCollection() {
     return (select(albumCollections)
