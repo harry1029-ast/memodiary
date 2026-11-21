@@ -6,6 +6,7 @@ import 'package:memodiary/features/albums/screens/album_collections_screen.dart'
 import 'package:memodiary/features/home/models/home_tab.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel_controller.dart';
+import 'package:memodiary/features/home/widgets/diarist_panel_edge_band.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel_overlay.dart';
 import 'package:memodiary/features/home/widgets/tab_rail.dart';
 import 'package:memodiary/features/home/widgets/tab_rail_scroll_hider.dart';
@@ -16,7 +17,8 @@ import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 /// indexed stack (both keep their state; 相册 is built on first selection),
 /// switched by tapping the [TabRail]. The rail hides while the active tab's
 /// list scrolls forward ([TabRailVisibility]) and returns on a tab switch.
-/// The Diarist Panel is laid over the whole shell, rail included.
+/// The Diarist Panel is laid over the whole shell, rail included, and is
+/// dragged out from the left edge's upper band ([DiaristPanelEdgeBand]).
 ///
 /// Every screen opened from a tab is pushed on the single root Navigator, so it
 /// covers the shell and its rail. Android Back walks panel open → close it;
@@ -149,7 +151,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
       child: DiaristPanelOverlay(
         controller: _panel,
         panel: DiaristPanel(onReturnToCover: _returnToCover),
-        child: shell,
+        child: DiaristPanelEdgeBand(controller: _panel, child: shell),
       ),
     );
   }
