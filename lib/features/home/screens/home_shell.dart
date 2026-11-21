@@ -5,11 +5,13 @@ import 'package:memodiary/core/services/ocr/ocr_queue_manager.dart';
 import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
 import 'package:memodiary/features/home/models/home_tab.dart';
 import 'package:memodiary/features/home/widgets/tab_rail.dart';
+import 'package:memodiary/features/home/widgets/tab_rail_scroll_hider.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 
 /// The root screen once the cover is passed: the 日记 and 相册 tabs held in an
 /// indexed stack (both keep their state; 相册 is built on first selection),
-/// switched by tapping the [TabRail].
+/// switched by tapping the [TabRail]. The rail hides while the active tab's
+/// list scrolls forward ([TabRailVisibility]) and returns on a tab switch.
 ///
 /// Every screen opened from a tab is pushed on the single root Navigator, so it
 /// covers the shell and its rail. Android Back walks 相册 → 日记 → exit.
@@ -36,6 +38,7 @@ class _HomeShellState extends State<HomeShell> {
     for (final tab in HomeTab.values) tab: HomeTabPrimaryAction(),
   };
   final Set<HomeTab> _builtTabs = {};
+  final TabRailVisibility _railVisibility = TabRailVisibility();
   late HomeTab _selectedTab;
 
   @override
@@ -45,8 +48,15 @@ class _HomeShellState extends State<HomeShell> {
     _builtTabs.add(_selectedTab);
   }
 
+  @override
+  void dispose() {
+    _railVisibility.dispose();
+    super.dispose();
+  }
+
   void _selectTab(HomeTab tab) {
     if (tab == _selectedTab) return;
+    _railVisibility.reveal();
     setState(() {
       _selectedTab = tab;
       _builtTabs.add(tab);
@@ -82,15 +92,21 @@ class _HomeShellState extends State<HomeShell> {
       onPopInvokedWithResult: _handlePopBlocked,
       child: Scaffold(
         extendBody: true,
-        body: IndexedStack(
-          index: _selectedTab.index,
-          children: [for (final tab in HomeTab.values) _buildTab(tab)],
+        body: NotificationListener<Notification>(
+          onNotification: _railVisibility.handleScrollNotification,
+          child: IndexedStack(
+            index: _selectedTab.index,
+            children: [for (final tab in HomeTab.values) _buildTab(tab)],
+          ),
         ),
-        bottomNavigationBar: TabRail(
-          key: const Key('home_tab_rail'),
-          selectedTab: _selectedTab,
-          onTabSelected: _selectTab,
-          onCentrePressed: () => _primaryActions[_selectedTab]!.run(),
+        bottomNavigationBar: TabRailScrollHider(
+          visibility: _railVisibility,
+          child: TabRail(
+            key: const Key('home_tab_rail'),
+            selectedTab: _selectedTab,
+            onTabSelected: _selectTab,
+            onCentrePressed: () => _primaryActions[_selectedTab]!.run(),
+          ),
         ),
       ),
     );
