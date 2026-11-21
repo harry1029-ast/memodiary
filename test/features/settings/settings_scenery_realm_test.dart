@@ -8,14 +8,12 @@ import 'package:memodiary/features/scenery/services/scenery_settings_service.dar
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/settings/services/storage_optimizer_service.dart';
 import '../../helpers/mock_secure_storage.dart';
-import '../import_export/export_service_test.dart';
 
 void main() {
   group('SettingsScreen Scenery Realm Preferences Tests', () {
     late AppDatabase db;
     late Directory tempDir;
     late MediaSandboxService mediaService;
-    late MockFileSelectorService fileSelector;
     late MockSecureStorage mockStorage;
     late ScenerySettingsService scenerySettings;
 
@@ -23,7 +21,6 @@ void main() {
       db = AppDatabase.memory();
       tempDir = Directory.systemTemp.createTempSync('settings_realm_test_');
       mediaService = MediaSandboxService(baseDirProvider: () async => tempDir);
-      fileSelector = MockFileSelectorService();
       mockStorage = MockSecureStorage();
       scenerySettings = ScenerySettingsService(storage: mockStorage);
     });
@@ -49,7 +46,6 @@ void main() {
           home: SettingsScreen(
             database: db,
             mediaService: mediaService,
-            fileSelector: fileSelector,
             scenerySettingsService: scenerySettings,
             permissionChecker: () async => {},
             initialStats: const StorageStats(

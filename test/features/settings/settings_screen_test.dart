@@ -3,26 +3,23 @@ import 'dart:io';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:intl/intl.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/theme_settings_service.dart';
 import '../../helpers/mock_secure_storage.dart';
-import 'package:memodiary/features/import_export/screens/import_staging_screen.dart';
+import 'package:memodiary/features/import_export/screens/import_backup_screen.dart';
 import 'package:memodiary/features/recycle_bin/screens/recycle_bin_screen.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
 import 'package:memodiary/features/settings/services/signature_seal_service.dart';
 import 'package:memodiary/features/settings/services/storage_optimizer_service.dart';
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../import_export/export_service_test.dart';
 
 void main() {
   late AppDatabase db;
   late MediaSandboxService mediaService;
-  late MockFileSelectorService mockFileSelector;
   late Directory tempDir;
 
   setUp(() {
@@ -31,7 +28,6 @@ void main() {
     mediaService = MediaSandboxService(
       baseDirProvider: () async => tempDir,
     );
-    mockFileSelector = MockFileSelectorService();
   });
 
   tearDown(() async {
@@ -46,7 +42,6 @@ void main() {
       WidgetTester tester, {
       Size viewportSize = const Size(800, 1600),
       double textScale = 1.0,
-      int backupPbkdf2Iterations = 200000,
       Duration delay = const Duration(milliseconds: 50),
       ThemeSettingsService? themeSettings,
       ScenerySettingsService? scenerySettingsService,
@@ -82,8 +77,6 @@ void main() {
           home: SettingsScreen(
             database: db,
             mediaService: mediaService,
-            fileSelector: mockFileSelector,
-            backupPbkdf2Iterations: backupPbkdf2Iterations,
             themeSettings: themeSettings,
             scenerySettingsService: scenerySettingsService,
             signatureSealService: signatureSealService,
@@ -141,7 +134,8 @@ void main() {
       expect(find.text('签名印章'), findsOneWidget);
       expect(find.text('存储与清理'), findsOneWidget);
       expect(find.text('写作提醒'), findsOneWidget);
-      expect(find.text('导入与导出'), findsOneWidget);
+      expect(find.text('导入与导出'), findsNothing);
+      expect(find.text('日记数据'), findsOneWidget);
       expect(find.text('权限管理'), findsOneWidget);
       expect(find.text('隐私保护'), findsOneWidget);
 
@@ -175,19 +169,15 @@ void main() {
       expect(find.text('Photos & Files'), findsNothing);
       expect(find.text('已获准'), findsNothing);
 
-      // Verify Data Portability Actions
+      // Data-moving tools live on the Import & Backup screen; Settings keeps one row
       expect(find.text('写作统计'), findsOneWidget);
-      expect(find.text('导入文本'), findsOneWidget);
-      expect(find.text('导出日记'), findsOneWidget);
-      expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
-      expect(find.text('尚未创建备份'), findsOneWidget);
-      expect(find.text('No backup created yet'), findsNothing);
-      expect(find.text('导出加密备份 (.mdbak)'), findsOneWidget);
-      expect(find.text('从备份恢复'), findsOneWidget);
-      expect(find.byKey(const Key('settings_create_backup_tile')), findsOneWidget);
-      expect(find.byKey(const Key('settings_restore_backup_tile')), findsOneWidget);
-      expect(find.text('Import from .txt / .md'), findsNothing);
-      expect(find.text('Export All Diaries'), findsNothing);
+      expect(find.byKey(const Key('settings_import_backup_tile')), findsOneWidget);
+      expect(find.text('导入与备份'), findsOneWidget);
+      expect(find.text('导入文本'), findsNothing);
+      expect(find.text('导出日记'), findsNothing);
+      expect(find.text('上次备份时间'), findsNothing);
+      expect(find.text('导出加密备份 (.mdbak)'), findsNothing);
+      expect(find.text('从备份恢复'), findsNothing);
     });
 
     testWidgets('displays 未授权 badge for denied hardware permissions', (WidgetTester tester) async {
@@ -205,133 +195,17 @@ void main() {
       expect(find.text('未授权'), findsNWidgets(2));
     });
 
-    testWidgets('tapping Create Encrypted Backup opens CreateBackupDialog and validates passphrase',
-        (WidgetTester tester) async {
-      await pumpSettingsScreen(tester, backupPbkdf2Iterations: 1000);
+    testWidgets('tapping the 导入与备份 row opens the Import & Backup screen', (WidgetTester tester) async {
+      await pumpSettingsScreen(tester);
 
-      final backupTile = find.byKey(const Key('settings_create_backup_tile'));
-      await tester.scrollUntilVisible(backupTile, 200.0);
+      final importBackupTile = find.byKey(const Key('settings_import_backup_tile'));
+      await tester.ensureVisible(importBackupTile);
       await tester.pumpAndSettle();
-      await tester.tap(backupTile);
-      await tester.pumpAndSettle();
-
-      expect(find.text('导出加密备份 (.mdbak)'), findsAtLeast(1));
-      expect(find.byKey(const Key('backup_passphrase_field')), findsOneWidget);
-
-      // Save & Share buttons should be disabled when passphrase is empty
-      final saveBtnBefore = tester.widget<FilledButton>(
-        find.byKey(const Key('backup_save_button')),
-      );
-      expect(saveBtnBefore.onPressed, isNull);
-
-      // Enter valid matching passphrase (>= 8 chars)
-      await tester.enterText(
-        find.byKey(const Key('backup_passphrase_field')),
-        'strong-pass-2026',
-      );
-      await tester.enterText(
-        find.byKey(const Key('backup_confirm_passphrase_field')),
-        'strong-pass-2026',
-      );
-      await tester.pump();
-
-      final saveBtnAfter = tester.widget<FilledButton>(
-        find.byKey(const Key('backup_save_button')),
-      );
-      expect(saveBtnAfter.onPressed, isNotNull);
-
-      // Toggle encryption off -> shows warning banner
-      await tester.tap(find.byKey(const Key('backup_encrypt_switch')));
-      await tester.pump();
-      expect(
-        find.byKey(const Key('backup_unencrypted_warning')),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('tapping import with picked file opens ImportStagingScreen', (WidgetTester tester) async {
-      // Create mock file with sample diary text
-      final sampleFile = File('${tempDir.path}/imported_notes.md');
-      sampleFile.writeAsStringSync('''
-# 2026-10-16 Trip to Osaka
-Visiting Dotonbori in the evening.
-''');
-      mockFileSelector.pickedFile = sampleFile;
-
-      await pumpSettingsScreen(tester, delay: const Duration(milliseconds: 200));
-
-      // Tap "导入文本"
-      final importTextFinder = find.text('导入文本');
-      await tester.ensureVisible(importTextFinder);
-      await tester.pumpAndSettle();
-      await tester.tap(importTextFinder);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
+      await tester.tap(importBackupTile);
       await tester.pumpAndSettle();
 
-      // ImportStagingScreen should now be on top of navigation
-      expect(find.byType(ImportStagingScreen), findsOneWidget);
-      expect(find.text('导入预览'), findsOneWidget);
-      expect(find.text('Trip to Osaka'), findsOneWidget);
-    });
-
-    testWidgets('displays formatted timestamp when last backup exists',
-        (WidgetTester tester) async {
-      // Write mock backup_meta.json in parent of media sandbox
-      final metaFile = File('${tempDir.path}/backup_meta.json');
-      metaFile.writeAsStringSync('{"lastBackupAt":"2026-10-19T10:30:00.000Z"}');
-
-      await pumpSettingsScreen(tester, delay: const Duration(milliseconds: 100));
-
-      final tileFinder = find.byKey(const Key('settings_last_backup_tile'));
-      expect(tileFinder, findsOneWidget);
-      expect(find.text('尚未创建备份'), findsNothing);
-      expect(find.textContaining('2026-10-19'), findsOneWidget);
-
-      final listTile = tester.widget<ListTile>(tileFinder);
-      expect(listTile.leading, isA<Icon>());
-      final icon = listTile.leading as Icon;
-      expect(icon.icon, Icons.history_edu_outlined);
-      expect(icon.size, 20.0);
-    });
-
-    testWidgets('creating backup dynamically updates last backup tile timestamp on screen',
-        (WidgetTester tester) async {
-      await pumpSettingsScreen(tester, backupPbkdf2Iterations: 100);
-
-      // Initially shows no backup created yet
-      expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
-      expect(find.text('尚未创建备份'), findsOneWidget);
-
-      // Tap "导出加密备份 (.mdbak)" tile to open dialog
-      final backupTile = find.byKey(const Key('settings_create_backup_tile'));
-      await tester.scrollUntilVisible(backupTile, 200.0);
-      await tester.pumpAndSettle();
-      await tester.tap(backupTile);
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('backup_save_button')), findsOneWidget);
-
-      // Toggle off encryption to create an unencrypted backup instantly
-      await tester.tap(find.byKey(const Key('backup_encrypt_switch')));
-      await tester.pumpAndSettle();
-
-      // Tap "保存到设备" button and await disk write in runAsync
-      await tester.runAsync(() async {
-        await tester.tap(find.byKey(const Key('backup_save_button')));
-        for (var attempt = 0; attempt < 20; attempt++) {
-          await Future.delayed(const Duration(milliseconds: 50));
-          await tester.pump(const Duration(milliseconds: 50));
-        }
-      });
-      await tester.pumpAndSettle();
-
-      // Dialog dismissed and tile dynamically refreshed with today's date
-      expect(find.byKey(const Key('backup_save_button')), findsNothing);
-      expect(find.byKey(const Key('settings_last_backup_tile')), findsOneWidget);
-      expect(find.text('尚未创建备份'), findsNothing);
-      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      expect(find.textContaining(todayStr), findsOneWidget);
+      expect(find.byType(ImportBackupScreen), findsOneWidget);
+      expect(find.text('导出加密备份 (.mdbak)'), findsOneWidget);
     });
 
     testWidgets('tapping recycle bin tile navigates to RecycleBinScreen', (WidgetTester tester) async {
