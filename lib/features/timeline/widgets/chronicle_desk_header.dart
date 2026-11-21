@@ -61,6 +61,79 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
+    // Delegate themed content to a StatelessWidget so AnimatedTheme frames
+    // (0 -> 1) rebuild via Element.didChangeDependencies even after discrete
+    // brightness/paletteId switches flip mid-transition and shouldRebuild stops.
+    return _ChronicleDeskHeaderBody(
+      maxExtent: maxExtent,
+      overlapsContent: overlapsContent,
+      filters: filters,
+      facetSummary: facetSummary,
+      totalFilteredCount: totalFilteredCount,
+      xunExpandFactor: xunExpandFactor,
+      hasEntriesBelow: hasEntriesBelow,
+      isCandleLit: isCandleLit,
+      onOpenCharmFilter: onOpenCharmFilter,
+      onSelectYear: onSelectYear,
+      onSelectMonth: onSelectMonth,
+      onSelectXun: onSelectXun,
+      onToggleSort: onToggleSort,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant ChronicleDeskHeaderDelegate oldDelegate) {
+    return filters != oldDelegate.filters ||
+        facetSummary.totalActiveEntries !=
+            oldDelegate.facetSummary.totalActiveEntries ||
+        facetSummary.years.length != oldDelegate.facetSummary.years.length ||
+        facetSummary.activeMonths.length !=
+            oldDelegate.facetSummary.activeMonths.length ||
+        !facetSummary.activeMonths
+            .containsAll(oldDelegate.facetSummary.activeMonths) ||
+        totalFilteredCount != oldDelegate.totalFilteredCount ||
+        xunExpandFactor != oldDelegate.xunExpandFactor ||
+        textScaleFactor != oldDelegate.textScaleFactor ||
+        hasEntriesBelow != oldDelegate.hasEntriesBelow ||
+        isDarkTheme != oldDelegate.isDarkTheme ||
+        paletteId != oldDelegate.paletteId ||
+        isCandleLit != oldDelegate.isCandleLit;
+  }
+}
+
+class _ChronicleDeskHeaderBody extends StatelessWidget {
+  final double maxExtent;
+  final bool overlapsContent;
+  final TimelineFilterState filters;
+  final TimelineDateFacetSummary facetSummary;
+  final int totalFilteredCount;
+  final double xunExpandFactor;
+  final bool hasEntriesBelow;
+  final bool isCandleLit;
+  final VoidCallback onOpenCharmFilter;
+  final ValueChanged<int?> onSelectYear;
+  final ValueChanged<int> onSelectMonth;
+  final ValueChanged<TimelineXun> onSelectXun;
+  final VoidCallback onToggleSort;
+
+  const _ChronicleDeskHeaderBody({
+    required this.maxExtent,
+    required this.overlapsContent,
+    required this.filters,
+    required this.facetSummary,
+    required this.totalFilteredCount,
+    required this.xunExpandFactor,
+    required this.hasEntriesBelow,
+    required this.isCandleLit,
+    required this.onOpenCharmFilter,
+    required this.onSelectYear,
+    required this.onSelectMonth,
+    required this.onSelectXun,
+    required this.onToggleSort,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final palette = ChronicleDeskPalette.of(context);
     final atmosphere = context.atmospherePalette;
     final tokens = context.inkTokens;
@@ -266,24 +339,5 @@ class ChronicleDeskHeaderDelegate extends SliverPersistentHeaderDelegate {
         ),
       ),
     );
-  }
-
-  @override
-  bool shouldRebuild(covariant ChronicleDeskHeaderDelegate oldDelegate) {
-    return filters != oldDelegate.filters ||
-        facetSummary.totalActiveEntries !=
-            oldDelegate.facetSummary.totalActiveEntries ||
-        facetSummary.years.length != oldDelegate.facetSummary.years.length ||
-        facetSummary.activeMonths.length !=
-            oldDelegate.facetSummary.activeMonths.length ||
-        !facetSummary.activeMonths
-            .containsAll(oldDelegate.facetSummary.activeMonths) ||
-        totalFilteredCount != oldDelegate.totalFilteredCount ||
-        xunExpandFactor != oldDelegate.xunExpandFactor ||
-        textScaleFactor != oldDelegate.textScaleFactor ||
-        hasEntriesBelow != oldDelegate.hasEntriesBelow ||
-        isDarkTheme != oldDelegate.isDarkTheme ||
-        paletteId != oldDelegate.paletteId ||
-        isCandleLit != oldDelegate.isCandleLit;
   }
 }
