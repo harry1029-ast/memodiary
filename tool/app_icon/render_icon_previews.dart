@@ -1,8 +1,8 @@
 // Renders the app-icon approval contact sheet (SPEC-023 Implementation
-// Decision 6): the master at 48px and 180px under the Android circle, the
+// Decision 6): the masters at 48px and 180px under the Android circle, the
 // Android squircle and the iOS rounded square, plus the themed monochrome
 // silhouette. Android tiles show the adaptive viewport (the centre 72dp of the
-// 108dp layer). Run after build_icon_master.dart:
+// 108dp layer); iOS tiles show the separate iOS master. Run after build_icon_master.dart:
 //
 //   flutter test tool/app_icon/render_icon_previews.dart \
 //     --dart-define=ICON_PREVIEW_OUT=<path/to/icon-previews.png>
@@ -13,7 +13,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'build_icon_master.dart' show masterPath;
+import 'build_icon_master.dart' show iosMasterPath, masterPath;
 import 'icon_raster_io.dart';
 import 'monochrome_silhouette.dart';
 
@@ -51,6 +51,7 @@ void main() {
     await tester.runAsync(() async {
       await _loadLabelFont();
       final master = await decodeImageFile(masterPath);
+      final iosMaster = await decodeImageFile(iosMasterPath);
       final masterSide = master.width.toDouble();
       final fullMaster = Rect.fromLTWH(0, 0, masterSide, masterSide);
       final adaptiveViewport = Rect.fromCenter(
@@ -59,8 +60,8 @@ void main() {
         height: masterSide * 72 / 108,
       );
 
-      _TilePainter artwork(Rect source) => (canvas, size) => canvas.drawImageRect(
-            master,
+      _TilePainter artwork(ui.Image image, Rect source) => (canvas, size) => canvas.drawImageRect(
+            image,
             source,
             Rect.fromLTWH(0, 0, size, size),
             Paint()..filterQuality = FilterQuality.medium,
@@ -76,9 +77,9 @@ void main() {
           };
 
       final rows = <(String, _MaskBuilder, _TilePainter)>[
-        ('Android 圆形', _circleMask, artwork(adaptiveViewport)),
-        ('Android 方圆形', _squircleMask, artwork(adaptiveViewport)),
-        ('iOS 圆角方形', _iosMask, artwork(fullMaster)),
+        ('Android 圆形', _circleMask, artwork(master, adaptiveViewport)),
+        ('Android 方圆形', _squircleMask, artwork(master, adaptiveViewport)),
+        ('iOS 圆角方形', _iosMask, artwork(iosMaster, fullMaster)),
         ('单色剪影 · 浅色主题', _circleMask, themed(const Color(0xFFDCE3F5), const Color(0xFF23314F))),
         ('单色剪影 · 深色主题', _circleMask, themed(const Color(0xFF2A3242), const Color(0xFFC9D6F2))),
       ];
