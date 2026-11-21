@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
-import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_empty_states.dart';
@@ -56,7 +55,8 @@ void main() {
       expect(find.text('共 0 篇'), findsOneWidget);
       expect(find.text('暂无日记'), findsOneWidget);
       expect(find.text('写第一篇日记'), findsOneWidget);
-      expect(find.byKey(const Key('timeline_write_fab')), findsOneWidget);
+      expect(find.text('写日记'), findsNothing);
+      expect(find.byType(FloatingActionButton), findsNothing);
     });
 
     testWidgets('renders both normal entry cards and sealed Time Capsule cards with privacy protection', (WidgetTester tester) async {
@@ -133,28 +133,6 @@ void main() {
 
       await tester.tap(find.text('知道了'));
       await tester.pumpAndSettle();
-    });
-
-    testWidgets('FAB creates new entry and navigates to editor', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Tap "写日记" FAB
-      expect(find.text('写日记'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('timeline_write_fab')));
-      await tester.pumpAndSettle();
-
-      // Editor screen should now be opened
-      expect(find.byType(EntryEditorScreen), findsOneWidget);
-      expect(find.byIcon(Icons.check), findsOneWidget);
     });
 
     testWidgets('AppBar Weekly Review shortcut navigates to WeeklyReviewScreen', (WidgetTester tester) async {
@@ -677,7 +655,7 @@ void main() {
       expect(find.text('当前筛选条件下暂无日记'), findsOneWidget);
       expect(find.text('暂无日记'), findsNothing);
 
-      // Scroll slightly so 清除筛选 sits clear of the bottom ScrollRollerFab, then tap
+      // Scroll slightly so 清除筛选 sits well inside the viewport, then tap
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -180));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('timeline_clear_filters_button')));

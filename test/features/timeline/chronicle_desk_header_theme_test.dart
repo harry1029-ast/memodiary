@@ -90,7 +90,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final diaryTextRect = tester.getRect(find.text('日记'));
+      final diaryTextRect = tester.getRect(
+        find.descendant(
+          of: find.byType(SliverPersistentHeader),
+          matching: find.text('日记'),
+        ),
+      );
       // Left gutter inside ChronicleDeskHeaderDelegate (paints deskSurroundTop).
       final surroundSample = Offset(3, diaryTextRect.top - 6);
       // Center of the header deskMat region (inside the pinned sliver header).

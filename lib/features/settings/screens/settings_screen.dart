@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:path/path.dart' as p;
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/database/app_database.dart';
@@ -12,13 +10,7 @@ import '../../../core/theme/widgets/cinnabar_seal_badge.dart';
 import '../../../core/theme/widgets/xuan_paper_card.dart';
 import '../../analytics/screens/analytics_dashboard_screen.dart';
 import '../../recycle_bin/screens/recycle_bin_screen.dart';
-import '../../import_export/screens/import_staging_screen.dart';
-import '../../import_export/services/backup_crypto.dart';
-import '../../import_export/services/backup_restore_service.dart';
-import '../../import_export/services/date_parser_engine.dart';
-import '../../import_export/services/file_selector_service.dart';
-import '../../import_export/widgets/backup_dialogs.dart';
-import '../../import_export/widgets/export_dialog.dart';
+import '../../import_export/screens/import_backup_screen.dart';
 import '../services/storage_optimizer_service.dart';
 import '../widgets/appearance_theme_card.dart';
 import '../widgets/notification_settings_card.dart';
@@ -35,9 +27,6 @@ import '../services/signature_seal_service.dart';
 class SettingsScreen extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
-  final FileSelectorService fileSelector;
-  final BackupRestoreService? backupService;
-  final int backupPbkdf2Iterations;
   final Future<Map<String, PermissionStatus>> Function()? permissionChecker;
   final StorageStats? initialStats;
   final ThemeSettingsService? themeSettings;
@@ -49,9 +38,6 @@ class SettingsScreen extends StatefulWidget {
     super.key,
     required this.database,
     required this.mediaService,
-    this.fileSelector = const NativeFileSelectorService(),
-    this.backupService,
-    this.backupPbkdf2Iterations = BackupCrypto.defaultIterations,
     this.permissionChecker,
     this.initialStats,
     this.themeSettings,
@@ -96,7 +82,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   StorageStats? _stats;
   bool _isLoadingStats = true;
   bool _isCleaningOrphans = false;
-  DateTime? _lastBackupAt;
 
   PermissionStatus? _cameraStatus;
   PermissionStatus? _micStatus;
@@ -128,7 +113,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _stats = widget.initialStats;
       _isLoadingStats = false;
       _checkPermissions();
-      _loadLastBackupTimestamp();
     } else {
       _loadAll();
     }
@@ -181,17 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await Future.wait([
       _loadStorageStats(),
       _checkPermissions(),
-      _loadLastBackupTimestamp(),
     ]);
-  }
-
-  Future<void> _loadLastBackupTimestamp() async {
-    try {
-      final ts = await _effectiveBackupService.getLastBackupTimestamp();
-      if (mounted) {
-        setState(() => _lastBackupAt = ts);
-      }
-    } catch (_) {}
   }
 
   Future<void> _loadStorageStats() async {
@@ -238,128 +212,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _loadStorageStats();
     if (mounted) {
       setState(() => _isCleaningOrphans = false);
-    }
-  }
-
-  Future<void> _handleImportFile() async {
-    try {
-      final file = await widget.fileSelector.pickTextOrMarkdownFile();
-      if (file == null || !mounted) return;
-
-      final text = file.readAsStringSync();
-      if (!mounted) return;
-
-      final candidates = await DateParserEngine.parseDocumentInIsolate(
-        text: text,
-      );
-
-      if (!mounted) return;
-
-      if (candidates.isEmpty) {
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(
-          const SnackBar(content: Text('所选文件中没有可导入的日记内容')),
-        );
-        return;
-      }
-
-      final fileName = p.basename(file.path);
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ImportStagingScreen(
-            initialCandidates: candidates,
-            database: widget.database,
-            fileName: fileName,
-          ),
-        ),
-      );
-
-      await _loadStorageStats();
-    } catch (e) {
-      if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(content: Text('导入失败：$e')),
-      );
-    }
-  }
-
-  BackupRestoreService get _effectiveBackupService =>
-      widget.backupService ??
-      BackupRestoreService(
-        database: widget.database,
-        mediaService: widget.mediaService,
-      );
-
-  void _handleExportAll() {
-    ExportDialog.show(
-      context: context,
-      database: widget.database,
-      fileSelector: widget.fileSelector,
-      mediaService: widget.mediaService,
-    );
-  }
-
-  Future<void> _handleCreateBackup() async {
-    final result = await CreateBackupDialog.show(
-      context: context,
-      backupService: _effectiveBackupService,
-      fileSelector: widget.fileSelector,
-      pbkdf2Iterations: widget.backupPbkdf2Iterations,
-    );
-    if (result != null && mounted) {
-      await _loadLastBackupTimestamp();
-      if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            '已导出备份：${result.entriesCount} 篇日记，${result.mediaFilesCount} 个媒体文件',
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _handleRestoreBackup() async {
-    try {
-      final file = await widget.fileSelector.pickBackupFile();
-      if (file == null || !mounted) return;
-
-      final inspection = await _effectiveBackupService.inspectBackup(file);
-      if (!mounted) return;
-
-      final result = await RestoreBackupDialog.show(
-        context: context,
-        sourceFile: file,
-        inspection: inspection,
-        backupService: _effectiveBackupService,
-      );
-
-      if (result != null && mounted) {
-        await _loadStorageStats();
-        if (!mounted) return;
-        final messenger = ScaffoldMessenger.of(context);
-        messenger.hideCurrentSnackBar();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              '恢复完成：${result.entriesRestored} 篇日记，${result.mediaFilesRestored} 个媒体文件',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        SnackBar(content: Text('备份文件无效或无法读取：$e')),
-      );
     }
   }
 
@@ -421,9 +273,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const NotificationSettingsCard(),
           const SizedBox(height: 20),
 
-          // 3. Data Portability Section
-          _buildSectionHeader('导入与导出', tokens),
-          _buildDataPortabilityCard(tokens),
+          // 3. Diary Data Section
+          _buildSectionHeader('日记数据', tokens),
+          _buildDiaryDataCard(tokens),
           const SizedBox(height: 20),
 
           // 4. Permissions Dashboard
@@ -1307,7 +1159,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildDataPortabilityCard(InkDiaryTokens tokens) {
+  Widget _buildDiaryDataCard(InkDiaryTokens tokens) {
     return XuanPaperCard(
       margin: EdgeInsets.zero,
       padding: EdgeInsets.zero,
@@ -1338,77 +1190,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           Divider(height: 1, color: tokens.agedFiber),
           ListTile(
-            leading: Icon(Icons.file_upload_outlined, color: tokens.nongmo),
+            key: const Key('settings_import_backup_tile'),
+            leading: Icon(Icons.inventory_2_outlined, color: tokens.nongmo),
             title: Text(
-              '导入文本',
+              '导入与备份',
               style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
             ),
             subtitle: Text(
-              '从 .txt 或 .md 文件批量导入日记并自动识别日期',
+              '导入文本、导出日记、加密备份与恢复',
               style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
             ),
             trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
-            onTap: _handleImportFile,
-          ),
-          Divider(height: 1, color: tokens.agedFiber),
-          ListTile(
-            leading: Icon(Icons.file_download_outlined, color: tokens.nongmo),
-            title: Text(
-              '导出日记',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
-            ),
-            subtitle: Text(
-              '导出为 PDF、Markdown 或纯文本文件',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
-            ),
-            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
-            onTap: _handleExportAll,
-          ),
-          Divider(height: 1, color: tokens.agedFiber),
-          ListTile(
-            key: const Key('settings_last_backup_tile'),
-            leading: Icon(Icons.history_edu_outlined, size: 20, color: tokens.danmo),
-            title: Text(
-              '上次备份时间',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 13, color: tokens.jiaomo),
-            ),
-            subtitle: Text(
-              _lastBackupAt != null
-                  ? DateFormat('yyyy-MM-dd HH:mm').format(_lastBackupAt!.toLocal())
-                  : '尚未创建备份',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
-            ),
-            dense: true,
-          ),
-          Divider(height: 1, color: tokens.agedFiber),
-          ListTile(
-            key: const Key('settings_create_backup_tile'),
-            leading: Icon(Icons.enhanced_encryption_outlined, color: tokens.cinnabar),
-            title: Text(
-              '导出加密备份 (.mdbak)',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
-            ),
-            subtitle: Text(
-              '将全部日记、相册、模板及照片视频打包为加密 .mdbak 文件',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
-            ),
-            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
-            onTap: _handleCreateBackup,
-          ),
-          Divider(height: 1, color: tokens.agedFiber),
-          ListTile(
-            key: const Key('settings_restore_backup_tile'),
-            leading: Icon(Icons.restore_page_outlined, color: tokens.nongmo),
-            title: Text(
-              '从备份恢复',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),
-            ),
-            subtitle: Text(
-              '选择 .mdbak 备份文件并完整恢复数据',
-              style: TextStyle(fontFamily: InkDiaryTheme.fontKaiti, fontSize: 11, color: tokens.danmo),
-            ),
-            trailing: Icon(Icons.chevron_right, size: 18, color: tokens.danmo),
-            onTap: _handleRestoreBackup,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ImportBackupScreen(
+                    database: widget.database,
+                    mediaService: widget.mediaService,
+                  ),
+                ),
+              ).then((_) {
+                _loadStorageStats();
+              });
+            },
           ),
         ],
       ),

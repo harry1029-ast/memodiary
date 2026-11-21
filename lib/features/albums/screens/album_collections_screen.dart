@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
+import '../../home/models/home_tab.dart';
 import '../data/album_repository.dart';
 import '../services/album_ingestion_service.dart';
 import '../widgets/album_collection_card.dart';
@@ -22,6 +23,10 @@ class AlbumCollectionsScreen extends StatefulWidget {
   final ImagePicker? imagePicker;
   final AlbumIngestionService? ingestionService;
 
+  /// Home Shell seam: the album list attaches its 新建相册 flow here so the
+  /// Scroll Roller Button can trigger it.
+  final HomeTabPrimaryAction? primaryAction;
+
   const AlbumCollectionsScreen({
     super.key,
     required this.database,
@@ -29,6 +34,7 @@ class AlbumCollectionsScreen extends StatefulWidget {
     this.repository,
     this.imagePicker,
     this.ingestionService,
+    this.primaryAction,
   });
 
   @override
@@ -50,6 +56,22 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
         );
     _collectionsStream = _repository.watchAllCollections();
     _photoCountsStream = _repository.watchPhotoCounts();
+    widget.primaryAction?.attach(_handleCreateCollection);
+  }
+
+  @override
+  void didUpdateWidget(covariant AlbumCollectionsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.primaryAction != widget.primaryAction) {
+      oldWidget.primaryAction?.detach(_handleCreateCollection);
+      widget.primaryAction?.attach(_handleCreateCollection);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.primaryAction?.detach(_handleCreateCollection);
+    super.dispose();
   }
 
   Future<void> _handleCreateCollection() async {
@@ -235,6 +257,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
     return Scaffold(
       backgroundColor: tokens.xuanGround,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text(
           '旅行相册',
           style: TextStyle(
@@ -244,12 +267,6 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
             color: tokens.jiaomo,
           ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('albums_add_fab'),
-        onPressed: _handleCreateCollection,
-        icon: const Icon(Icons.add_photo_alternate_outlined, size: 20),
-        label: const Text('新建相册'),
       ),
       body: StreamBuilder<List<AlbumCollection>>(
         stream: _collectionsStream,
@@ -367,7 +384,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              '将旅途照片整理成相册，记录地点与回忆。',
+              '将旅途照片整理成相册，记录地点与回忆。\n轻点下方「新建相册」开始第一本。',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: InkDiaryTheme.fontNotoSerif,
@@ -375,13 +392,6 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
                 color: tokens.danmo,
                 height: 1.5,
               ),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              key: const Key('albums_empty_create_button'),
-              onPressed: _handleCreateCollection,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('新建相册'),
             ),
           ],
         ),
