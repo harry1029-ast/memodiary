@@ -33,6 +33,28 @@ void main() {
         contains('"CFBundleDisplayName" = "$appName";'),
       );
     });
+
+    test('no user-visible iOS or Android string still says MemoDiary', () {
+      final infoPlist = File('ios/Runner/Info.plist').readAsStringSync();
+      final plistValues = RegExp(r'<string>([^<]*)</string>').allMatches(infoPlist).map((match) => match.group(1)!);
+      expect(plistValues, isNotEmpty);
+      for (final value in plistValues) {
+        expect(value, isNot(contains('MemoDiary')), reason: 'ios/Runner/Info.plist: $value');
+      }
+
+      final localized = [
+        for (final dir in Directory('ios/Runner').listSync().whereType<Directory>())
+          if (dir.path.endsWith('.lproj'))
+            ...dir.listSync().whereType<File>().where((file) => file.path.endsWith('.strings')),
+        for (final dir in Directory(res).listSync().whereType<Directory>())
+          if (File('${dir.path}/strings.xml').existsSync()) File('${dir.path}/strings.xml'),
+        File('android/app/src/main/AndroidManifest.xml'),
+      ];
+      expect(localized, isNotEmpty);
+      for (final file in localized) {
+        expect(file.readAsStringSync(), isNot(contains('MemoDiary')), reason: file.path);
+      }
+    });
   });
 
   group('Android launcher icon', () {
