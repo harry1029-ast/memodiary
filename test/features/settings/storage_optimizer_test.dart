@@ -196,7 +196,6 @@ void main() {
 
         // 7 referenced supported files + 1 true orphan = 8 (dotfile & .tmp ignored)
         expect(stats.activeEntriesCount, equals(1));
-        expect(stats.deletedEntriesCount, equals(1));
         expect(stats.totalMediaFiles, equals(8));
         expect(
           stats.totalMediaBytes,

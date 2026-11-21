@@ -1,0 +1,73 @@
+import 'package:flutter/widgets.dart';
+
+/// Drives the Diarist Panel's open fraction (0 = closed, 1 = open).
+///
+/// Buttons and Back call [open] / [close]; drags call [dragBy] per frame and
+/// [settleFrom] on release, so a gesture can carry the panel any part of the
+/// way.
+/// Animations use [AnimationBehavior.normal], so they run near-instantly when
+/// the platform asks for reduced motion.
+class DiaristPanelController {
+  static const Duration slideDuration = Duration(milliseconds: 260);
+
+  /// Fling speed (in panel widths per second) past which a release follows
+  /// the fling direction rather than the nearest end.
+  static const double flingVelocity = 1.2;
+
+  final AnimationController _animation;
+
+  DiaristPanelController({required TickerProvider vsync})
+      : _animation = AnimationController(vsync: vsync, duration: slideDuration);
+
+  /// The open fraction, for widgets that follow the panel.
+  Animation<double> get animation => _animation;
+
+  /// The current open fraction.
+  double get fraction => _animation.value;
+
+  /// Whether any part of the panel is showing or it is opening.
+  bool get isOpen => _animation.value > 0 || _animation.status == AnimationStatus.forward;
+
+  void open() => _animation.animateTo(1.0, curve: Curves.easeOutCubic).ignore();
+
+  void close() => _animation.animateBack(0.0, curve: Curves.easeOutCubic).ignore();
+
+  /// Moves the panel by a drag of [delta] logical pixels (positive towards
+  /// open) on a panel [panelWidth] wide, clamped to fully closed or open.
+  void dragBy(double delta, double panelWidth) {
+    _animation.stop();
+    _animation.value = (_animation.value + delta / panelWidth).clamp(0.0, 1.0);
+  }
+
+  /// Finishes a drag released at [velocity] logical pixels per second
+  /// (positive towards open) on a panel [panelWidth] wide: a fast fling
+  /// follows its direction, otherwise the panel settles on the nearer end.
+  void settleFrom(double velocity, double panelWidth) {
+    final widthsPerSecond = velocity / panelWidth;
+    final shouldOpen = widthsPerSecond.abs() >= flingVelocity ? widthsPerSecond > 0 : _animation.value >= 0.5;
+    shouldOpen ? open() : close();
+  }
+
+  void dispose() => _animation.dispose();
+}
+
+/// Hands the Home Shell's [DiaristPanelController] to widgets inside the shell,
+/// such as each tab header's avatar button.
+class DiaristPanelScope extends InheritedWidget {
+  final DiaristPanelController controller;
+
+  const DiaristPanelScope({
+    super.key,
+    required this.controller,
+    required super.child,
+  });
+
+  static DiaristPanelController of(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<DiaristPanelScope>();
+    assert(scope != null, 'No DiaristPanelScope above this widget');
+    return scope!.controller;
+  }
+
+  @override
+  bool updateShouldNotify(DiaristPanelScope oldWidget) => controller != oldWidget.controller;
+}

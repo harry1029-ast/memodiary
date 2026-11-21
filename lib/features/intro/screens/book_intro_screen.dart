@@ -5,8 +5,8 @@ import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/services/ocr/ocr_queue_manager.dart';
 import '../../../core/utils/ambient_animation_utils.dart';
-import '../../albums/screens/album_collections_screen.dart';
-import '../../timeline/screens/timeline_screen.dart';
+import '../../home/models/home_tab.dart';
+import '../../home/screens/home_shell.dart';
 import '../models/book_intro_folio_data.dart';
 import '../models/intro_sky_atmosphere.dart';
 import '../widgets/book_3d_stage.dart';
@@ -221,45 +221,25 @@ class _BookIntroScreenState extends State<BookIntroScreen>
     }
   }
 
-  void _syncTimeToClock() {
-    _timeTransitionController.stop();
-    final now = (widget.clock ?? DateTime.now)();
-    final todayLunar = LunarCalendar.fromSolar(now);
-    setState(() {
-      _timeHours = now.hour + now.minute / 60.0;
-      _folioData = _folioData.copyWith(
-        lunarDateText: todayLunar.monthDayName ?? todayLunar.yearName,
-      );
-    });
-  }
-
-  Future<void> _pushAndResetSkyOnReturn(Widget destination) async {
+  /// Replaces the cover with the Home Shell on [tab]; the cover is never kept
+  /// underneath, so Back and edge swipes cannot fall back onto it.
+  void _enterHomeShell(HomeTab tab) {
     HapticFeedback.lightImpact();
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => destination),
-    );
-    if (!mounted) return;
-    _syncTimeToClock();
-  }
-
-  void _navigateToPersonalDiary() {
-    _pushAndResetSkyOnReturn(
-      TimelineScreen(
-        database: widget.database,
-        mediaService: widget.mediaService,
-        ocrQueueManager: widget.ocrQueueManager,
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => HomeShell(
+          database: widget.database,
+          mediaService: widget.mediaService,
+          ocrQueueManager: widget.ocrQueueManager,
+          initialTab: tab,
+        ),
       ),
     );
   }
 
-  void _navigateToTravelAlbum() {
-    _pushAndResetSkyOnReturn(
-      AlbumCollectionsScreen(
-        database: widget.database,
-        mediaService: widget.mediaService,
-      ),
-    );
-  }
+  void _navigateToPersonalDiary() => _enterHomeShell(HomeTab.diary);
+
+  void _navigateToTravelAlbum() => _enterHomeShell(HomeTab.albums);
 
   @override
   Widget build(BuildContext context) {
