@@ -10,7 +10,7 @@ adr: ADR-0014
 
 ## Problem Statement
 
-1. **Diary and albums live in separate worlds.** The 3D book cover (`BookIntroScreen`) is the only place to choose between the diary (`个人日记`) and the photobooks (`旅行相册`). Once inside the timeline, reaching the albums means going back to the cover and through its other door, and the album screen sits behind a back arrow as if it were a sub-page.
+1. **Diary and albums live in separate worlds.** The 3D book cover (`BookIntroScreen`) is the only place to choose between the diary (`私人日记`) and the photobooks (`旅行相册`). Once inside the timeline, reaching the albums means going back to the cover and through its other door, and the album screen sits behind a back arrow as if it were a sub-page.
 2. **Occasional tools are buried in Settings.** Writing Analytics (`写作统计`), the Recycle Bin (`回收站`) and the import, export and backup tools sit inside a 1,559-line Settings screen among appearance and permission options, so things the diarist opens now and then are mixed with things they configure once.
 3. **No personal space.** There is no place that feels like "mine": no summary of how much has been written or collected, and no natural home for the cover shortcut, which currently takes the header's top-left spot.
 4. **The app has no real icon or consistent name.** The launcher shows the default Flutter logo on both platforms, and the app name reads `MemoDiary` on iOS and on Android phones not set to Chinese, while everything inside the app says **云皓日记**.
@@ -28,7 +28,7 @@ adr: ADR-0014
 
 1. As a diarist who keeps the opening cover on, I want the cover to play as before when I launch the app, so that the opening scene I like is unchanged.
 2. As a diarist on the cover, I want no Tab Rail on screen, so that the cover stays a clean, full-screen scene.
-3. As a diarist tapping `个人日记` on the cover, I want to land in the Home Shell on the 日记 tab, so that the door I picked is respected.
+3. As a diarist tapping `私人日记` on the cover, I want to land in the Home Shell on the 日记 tab, so that the door I picked is respected.
 4. As a diarist tapping `旅行相册` on the cover, I want to land in the Home Shell on the 相册 tab, so that I reach my albums in one step.
 5. As a diarist who entered from the cover, I want the cover to be replaced rather than kept underneath, so that an edge swipe or Back never drops me onto it by accident.
 6. As a diarist who turned the cover off, I want the app to open straight into the Home Shell on the 日记 tab, so that I start writing without a detour.
@@ -84,7 +84,7 @@ adr: ADR-0014
 44. As a diarist, I want tapping `日记` or `相册` in the strip to close the panel and switch to that tab, so that the numbers double as shortcuts.
 45. As a diarist, I want tapping `收藏` to do nothing, so that it does not lead to an empty screen.
 46. As a diarist, I want a `写作统计` row that opens the Writing Analytics screen, so that my writing metrics are one tap from my personal space.
-47. As a diarist, I want a `回收站` row that opens the Recycle Bin, so that recovering a deleted entry is easy to find.
+47. As a diarist, I want a `回收站 (N)` row that shows how many entries the Recycle Bin holds and opens it, so that recovering a deleted entry is easy to find.
 48. As a diarist, I want an `导入与备份` row that opens a screen holding `导入文本`, `导出日记`, the last-backup time, `导出加密备份` and `从备份恢复`, so that all my data-moving tools live together.
 49. As a diarist, I want a `返回封面` row as the last item, so that revisiting the cover is deliberate and out of the way.
 50. As a diarist returning from any screen opened from the panel, I want to come back to the Home Shell with my tab state intact, so that the panel never costs me my place.
@@ -146,19 +146,20 @@ adr: ADR-0014
 
 ### 4. Diarist Panel
 
-- A custom side panel (not the stock `Scaffold` drawer, whose edge drag covers the full screen height) about 85% of the screen wide, drawn as a casement-woodwork screen in the active Atmosphere Palette. It opens over the whole Home Shell, header and Tab Rail included. The content behind dims and shifts slightly. Tap-scrim or swipe-left closes it.
+- A custom side panel (not the stock `Scaffold` drawer, whose edge drag covers the full screen height) about 85% of the screen wide, capped at 420dp, drawn as a casement-woodwork screen in the active Atmosphere Palette. It opens over the whole Home Shell, header and Tab Rail included. The content behind dims and shifts slightly. Tap-scrim or swipe-left closes it.
 - **Opening:**
   - The cloud-avatar header button on either tab.
   - A left-edge drag (≈20dp wide) limited to an upper band starting at the top of the safe area, at most 200dp tall, covering the header and scenery window.
 - **Android Back-gesture exclusion:** Flutter has no public API to reserve edge regions from Android's system Back gesture. Add a small native method channel (alongside the existing `memodiary/ocr` channel) through which the Home Shell reports the left-edge band rectangle to the Activity, which applies it as a system gesture exclusion rect. Android honours at most 200dp of exclusion per edge, which is why the band is capped there. The shell sets the band while it is the visible route and clears it when another route covers it. iOS needs no exclusion, because the Home Shell is a root route with no swipe-back.
-- **Placeholder profile:** a drawn round cloud avatar (reusing the Cloud-Moon emblem drawing style), the fixed name `云皓主人` and the fixed line `记录今日，也收藏远方`. Display-only, nothing persisted, no profile model. These are constants to be replaced by a future profile spec.
-- **Stats strip:** a small read model supplies two counts from the repository layer: active entries (not soft-deleted, including weekly reviews and time capsules, the same rule as Writing Analytics' `总篇数`) and album collections. The counts are fetched each time the panel opens. `收藏` renders a dimmed `—` with no tap action. Tapping `日记` or `相册` closes the panel and selects that tab.
-- **Rows (in order):** `写作统计` (opens `AnalyticsDashboardScreen`), `回收站` (opens `RecycleBinScreen`), `导入与备份` (opens a new Import & Backup screen), `返回封面`.
+- **Placeholder profile:** a drawn round cloud avatar (the Cloud-Moon emblem, drawn by one `CloudMoonEmblemPainter` that the cover's embossed emblem now shares), the fixed name `云皓主人` and the fixed line `记录今日，也收藏远方`. Display-only, nothing persisted, no profile model. These are constants to be replaced by a future profile spec.
+- **Stats strip:** a small read model supplies the panel's counts from the repository layer: active entries (not soft-deleted, including weekly reviews and time capsules, the same rule as Writing Analytics' `总篇数`), album collections, and entries in the Recycle Bin (for the `回收站` row). The counts are fetched each time the panel opens. `收藏` renders a dimmed `—` with no tap action. Tapping `日记` or `相册` closes the panel and selects that tab.
+- **Rows (in order):** `写作统计` (opens `AnalyticsDashboardScreen`), `回收站 (N)` (opens `RecycleBinScreen`; `N` is the Recycle Bin count, refreshed with the stats on every panel open, as the old Settings tile showed it), `导入与备份` (opens a new Import & Backup screen), `返回封面`.
+- Closing `回收站` or `导入与备份` reloads the 日记 tab only when the screen wrote entries or media meanwhile, and the reload keeps the pages already loaded, so the timeline keeps its scroll position.
 - The panel's own status-bar styling uses light icons over the woodwork, as the timeline header does.
 
 ### 5. Settings extraction
 
-- Remove the `写作统计` tile and the whole `导入与导出` section from `SettingsScreen`, and the `回收站` tile from its storage card. The Recycle Bin count shown on that tile moves out of Settings with it.
+- Remove the `写作统计` tile and the whole `导入与导出` section from `SettingsScreen`, and the `回收站` tile from its storage card. The Recycle Bin count shown on that tile moves with it to the panel's `回收站 (N)` row.
 - The import/export section's contents (`导入文本`, `导出日记`, last-backup time, `导出加密备份`, `从备份恢复`) move unchanged in behaviour into a new **Import & Backup** screen titled `导入与备份`. The import, backup and restore logic moves with them, so Settings no longer owns it. This is a move, not a copy.
 - The remaining Settings sections are untouched. This extraction is expected to bring `SettingsScreen` substantially closer to the `< 450` LOC standard. Any further decomposition is welcome but not required by this spec.
 
@@ -168,9 +169,9 @@ adr: ADR-0014
 - **Reframing:** scale the subject to about 72% of its current size, centred and lifted slightly, on a sky extended with the painting's own navy-to-slate gradient. This keeps the moon, both outlined clouds and the book inside Android's 66/108 adaptive safe zone and clear of the iOS corner mask. The tips of the side clouds may clip on Android.
 - **Human approval gate:** before committing generated icons, produce previews at 48px and 180px under Android circle and squircle masks and the iOS rounded-square mask, and get the diarist's approval.
 - **Android:** an adaptive icon whose background layer is the full reframed painting with a transparent foreground (no parallax), legacy square and round PNGs at every density, and a **monochrome** layer: a flat single-colour silhouette of the moon disc, two ruyi clouds and an open book, drawn in Dart and rendered to PNG by a committed tool script.
-- **iOS:** the full AppIcon set from the reframed master, 1024px without alpha.
+- **iOS:** the full AppIcon set from its own fuller master (the painting at about 87%, approved by the diarist at the preview gate; Android keeps 72%), 1024px without alpha.
 - **Tooling:** a free (MIT) build-time icon generator (e.g. `flutter_launcher_icons`) as a dev dependency. Format conversion from WebP and silhouette rendering use Flutter/Dart (no host imaging tools are available). Nothing ships at runtime.
-- **Name:** `云皓日记` for the iOS display name, the Android default-locale app label (the `zh` label already says so) and `MaterialApp.title`.
+- **Name:** `云皓日记` for the iOS display name and bundle name, the Android default-locale app label (the `zh` label already says so), `MaterialApp.title`, and the iOS permission usage descriptions (`Info.plist`), which named the app `MemoDiary`.
 
 ### 7. Glossary and ADR
 
@@ -194,7 +195,7 @@ Good tests drive the app the way a diarist does (pump the app, tap, drag, press 
    - Back order via the binding's pop-route handling: panel → 相册 to 日记 → exit.
    - semantics labels and selected states; no overflow at 320dp and 1.3× text scale.
 2. **Platform channel seam: the Back-gesture exclusion bridge**, faked with a mock method-channel handler inside the app-seam tests. Prior art: OCR channel fakes in the OCR test suite. Assert that the shell sends a left-edge band at most 200dp tall when it becomes visible, and clears it when a pushed screen covers it.
-3. **Platform config seam: a small hardening test** that reads the iOS and Android platform config files and asserts the app name is `云皓日记`, and that the adaptive icon, its monochrome layer and the iOS 1024 icon exist. Prior art: the existing hardening tests (e.g. the PDF network quarantine and manifest checks). Icon artwork quality is verified by the human approval gate, not by automated tests.
+3. **Platform config seam: a small hardening test** that reads the iOS and Android platform config files and asserts the app name is `云皓日记`, that no user-visible iOS or Android string still says `MemoDiary`, and that the adaptive icon, its monochrome layer and the iOS 1024 icon exist. Prior art: the existing hardening tests (e.g. the PDF network quarantine and manifest checks). Icon artwork quality is verified by the human approval gate, not by automated tests.
 4. **Updated existing tests:**
    - `settings_screen_test` asserts `写作统计`, `回收站` and the import/export section are absent.
    - `timeline_app_bar_test` replaces its `返回封面` tests with avatar-button tests.
@@ -207,7 +208,7 @@ Good tests drive the app the way a diarist does (pump the app, tap, drag, press 
 - Favourites (`收藏`) as a feature, drafts (`草稿箱`), and anything resembling publishing (`发布`). The app stays local-first with zero backend.
 - Additional tabs (复盘, 搜索, 我的) or moving 每周复盘, 搜索 or 设置 out of the timeline header.
 - Swipe paging between tabs.
-- Visual changes to the cover itself, beyond its doors replacing rather than pushing.
+- Visual changes to the cover itself, beyond its doors replacing rather than pushing. One accepted exception: the cover's embossed emblem is now drawn by the shared `CloudMoonEmblemPainter`, so its moon sits slightly smaller and higher. The door keeps its existing `私人日记` label.
 - A "我的画册" carousel in the panel (the 相册 tab already serves this).
 - A parallax-layered adaptive icon or a vector redraw of the painting.
 - Further decomposition of `SettingsScreen` beyond the extraction above.
