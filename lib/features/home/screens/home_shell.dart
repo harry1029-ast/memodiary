@@ -8,12 +8,15 @@ import 'package:memodiary/features/home/widgets/diarist_panel.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel_controller.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel_overlay.dart';
 import 'package:memodiary/features/home/widgets/tab_rail.dart';
+import 'package:memodiary/features/home/widgets/tab_rail_scroll_hider.dart';
 import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 
 /// The root screen once the cover is passed: the 日记 and 相册 tabs held in an
 /// indexed stack (both keep their state; 相册 is built on first selection),
-/// switched by tapping the [TabRail], with the Diarist Panel laid over both.
+/// switched by tapping the [TabRail]. The rail hides while the active tab's
+/// list scrolls forward ([TabRailVisibility]) and returns on a tab switch.
+/// The Diarist Panel is laid over the whole shell, rail included.
 ///
 /// Every screen opened from a tab is pushed on the single root Navigator, so it
 /// covers the shell and its rail. Android Back walks panel open → close it;
@@ -43,6 +46,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     for (final tab in HomeTab.values) tab: HomeTabPrimaryAction(),
   };
   final Set<HomeTab> _builtTabs = {};
+  final TabRailVisibility _railVisibility = TabRailVisibility();
   late HomeTab _selectedTab;
 
   @override
@@ -53,12 +57,6 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     _panel.animation.addListener(_syncPanelOpen);
   }
 
-  @override
-  void dispose() {
-    _panel.dispose();
-    super.dispose();
-  }
-
   /// Rebuilds the Back interception only when the panel opens or closes.
   void _syncPanelOpen() {
     if (_panel.isOpen != _isPanelOpen) {
@@ -66,8 +64,16 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
     }
   }
 
+  @override
+  void dispose() {
+    _panel.dispose();
+    _railVisibility.dispose();
+    super.dispose();
+  }
+
   void _selectTab(HomeTab tab) {
     if (tab == _selectedTab) return;
+    _railVisibility.reveal();
     setState(() {
       _selectedTab = tab;
       _builtTabs.add(tab);
@@ -120,15 +126,21 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
       onPopInvokedWithResult: _handlePopBlocked,
       child: Scaffold(
         extendBody: true,
-        body: IndexedStack(
-          index: _selectedTab.index,
-          children: [for (final tab in HomeTab.values) _buildTab(tab)],
+        body: NotificationListener<Notification>(
+          onNotification: _railVisibility.handleScrollNotification,
+          child: IndexedStack(
+            index: _selectedTab.index,
+            children: [for (final tab in HomeTab.values) _buildTab(tab)],
+          ),
         ),
-        bottomNavigationBar: TabRail(
-          key: const Key('home_tab_rail'),
-          selectedTab: _selectedTab,
-          onTabSelected: _selectTab,
-          onCentrePressed: () => _primaryActions[_selectedTab]!.run(),
+        bottomNavigationBar: TabRailScrollHider(
+          visibility: _railVisibility,
+          child: TabRail(
+            key: const Key('home_tab_rail'),
+            selectedTab: _selectedTab,
+            onTabSelected: _selectTab,
+            onCentrePressed: () => _primaryActions[_selectedTab]!.run(),
+          ),
         ),
       ),
     );
