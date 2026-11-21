@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
+import 'package:memodiary/features/home/models/home_tab.dart';
 import 'album_test_harness.dart';
 
 void main() {
@@ -16,25 +17,47 @@ void main() {
   });
 
   group('AlbumCollectionsScreen Widget Tests', () {
-    testWidgets('renders empty state and creates a collection via modal sheet', (tester) async {
+    testWidgets('empty state points at the centre button and owns no 新建相册 button or back arrow', (tester) async {
+      await pumpAlbumScreen(tester, const SizedBox.shrink());
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => AlbumCollectionsScreen(
+            database: harness.database,
+            mediaService: harness.mediaService,
+            repository: harness.repository,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('旅行相册'), findsOneWidget);
+      expect(find.text('暂无旅行相册'), findsOneWidget);
+      expect(find.textContaining('轻点下方「新建相册」'), findsOneWidget);
+      expect(find.text('新建相册'), findsNothing);
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byType(BackButton), findsNothing);
+
+      await tearDownAlbumScreen(tester);
+    });
+
+    testWidgets('primary action opens the create sheet and the list shows the new collection', (tester) async {
+      final primaryAction = HomeTabPrimaryAction();
       await pumpAlbumScreen(
         tester,
         AlbumCollectionsScreen(
           database: harness.database,
           mediaService: harness.mediaService,
           repository: harness.repository,
+          primaryAction: primaryAction,
         ),
       );
       await tester.pumpAndSettle();
-
-      expect(find.text('旅行相册'), findsOneWidget);
-      expect(find.text('新建相册'), findsWidgets);
       expect(find.text('暂无旅行相册'), findsOneWidget);
-      expect(find.text('山河沿路，笔底留痕'), findsNothing);
-      expect(find.byKey(const Key('albums_empty_create_button')), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('albums_empty_create_button')));
+      primaryAction.run();
       await tester.pumpAndSettle();
+      expect(find.text('新建相册'), findsOneWidget);
 
       await tester.enterText(
         find.byKey(const Key('album_form_title')),

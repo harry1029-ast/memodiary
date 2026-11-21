@@ -44,52 +44,40 @@ void main() {
       expect(tappedCount, 1);
     });
 
-    testWidgets('collapses to 52dp rolled-up token when isRolledUp is true and preserves semantics and tap', (tester) async {
-      var tapped = false;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: Scaffold(
-            body: Center(
-              child: ScrollRollerFab(
-                isRolledUp: false,
-                subLabel: '随笔',
-                onPressed: () => tapped = true,
+    testWidgets('cross-fades a label change and swaps instantly under reduced motion', (tester) async {
+      Future<void> pumpFab(String label, {bool disableAnimations = false}) {
+        return tester.pumpWidget(
+          MaterialApp(
+            theme: InkDiaryTheme.light,
+            home: MediaQuery(
+              data: MediaQueryData(disableAnimations: disableAnimations),
+              child: Scaffold(
+                body: Center(
+                  child: ScrollRollerFab(label: label, onPressed: () {}),
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
+      }
 
-      expect(find.text('写日记'), findsOneWidget);
-      expect(find.text('随笔'), findsOneWidget);
-      expect(find.bySemanticsLabel('写日记 随笔'), findsOneWidget);
+      await pumpFab('写日记');
       expect(tester.getSize(find.byType(ScrollRollerFab)).width, 178.0);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: Scaffold(
-            body: Center(
-              child: ScrollRollerFab(
-                isRolledUp: true,
-                subLabel: '随笔',
-                onPressed: () => tapped = true,
-              ),
-            ),
-          ),
-        ),
-      );
+      await pumpFab('新建相册');
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(find.text('写日记'), findsOneWidget, reason: 'outgoing label still fading');
+      expect(find.text('新建相册'), findsOneWidget);
       await tester.pumpAndSettle();
-
-      expect(tester.getSize(find.byType(ScrollRollerFab)).width, 52.0);
       expect(find.text('写日记'), findsNothing);
-      expect(find.byIcon(Icons.brush_rounded), findsOneWidget);
-      expect(find.bySemanticsLabel('写日记 随笔'), findsOneWidget);
+      expect(find.bySemanticsLabel('新建相册'), findsOneWidget);
+      expect(tester.getSize(find.byType(ScrollRollerFab)).width, 178.0);
 
-      await tester.tap(find.byType(ScrollRollerFab));
-      expect(tapped, isTrue);
+      await pumpFab('新建相册', disableAnimations: true);
+      await pumpFab('写日记', disableAnimations: true);
+      await tester.pump();
+      expect(find.text('新建相册'), findsNothing);
+      expect(find.text('写日记'), findsOneWidget);
     });
 
     testWidgets('uses distinct AtmospherePalette gradient, border, rail, knob, and text tokens across yunhaoDay, yunhaoNight, classicWalnut, and classicEbony', (tester) async {
@@ -117,10 +105,12 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final fabContainer = tester.widget<AnimatedContainer>(
+        final fabContainer = tester.widget<Container>(
           find.descendant(
             of: find.byType(ScrollRollerFab),
-            matching: find.byType(AnimatedContainer),
+            matching: find.byWidgetPredicate(
+              (widget) => widget is Container && widget.decoration is ShapeDecoration,
+            ),
           ),
         );
         final shapeDec = fabContainer.decoration! as ShapeDecoration;

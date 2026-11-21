@@ -8,7 +8,6 @@ import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/features/intro/widgets/book_3d_stage.dart';
 import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
 import 'package:memodiary/features/intro/widgets/living_ink_background_painter.dart';
-import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_metadata_formatter.dart';
 
 void main() {
@@ -216,42 +215,6 @@ void main() {
       expect(tester.widget<BottomSealSlider>(find.byType(BottomSealSlider)).isNight, isTrue);
     });
 
-    testWidgets('celestial toggle is temporary and resets to real-time clock when returning from diary', (tester) async {
-      await pumpBookIntroScreen(
-        tester,
-        database: db,
-        mediaService: mediaService,
-        startOpened: true,
-        clock: () => DateTime(2026, 11, 19, 21, 24),
-      );
-
-      expect(findBackgroundPainter(tester).timeHours, closeTo(21.4, 0.01));
-
-      // Temporarily toggle Moon orb to daytime (11.5)
-      await tester.tap(find.byKey(const Key('intro_celestial_toggle_button')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 1000));
-      expect(findBackgroundPainter(tester).timeHours, closeTo(11.5, 0.01));
-      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isFalse);
-
-      // Navigate into Personal Diary
-      await tester.tap(find.text('私人日记'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(find.byType(TimelineScreen), findsOneWidget);
-
-      // Pop back to BookIntroScreen and verify sky resets to real-time clock (21.4)
-      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
-      navigator.pop();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
-
-      expect(find.byType(Book3DStage), findsOneWidget);
-      expect(findBackgroundPainter(tester).timeHours, closeTo(21.4, 0.01));
-      expect(tester.widget<Book3DStage>(find.byType(Book3DStage)).isNight, isTrue);
-      expect(tester.widget<BottomSealSlider>(find.byType(BottomSealSlider)).isNight, isTrue);
-    });
-
     testWidgets('reveals 选择栏目, 私人日记 and 旅行相册 when startOpened is true', (tester) async {
       await pumpBookIntroScreen(
         tester,
@@ -312,7 +275,7 @@ void main() {
       expect(characters, equals(['岁', '次', '庚', '子']));
     });
 
-    testWidgets('tapping 私人日记 navigates to TimelineScreen', (tester) async {
+    testWidgets('tapping 私人日记 replaces the cover with the Home Shell 日记 tab', (tester) async {
       await pumpBookIntroScreen(
         tester,
         database: db,
@@ -324,7 +287,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.byType(TimelineScreen), findsOneWidget);
+      expect(find.byKey(const Key('home_tab_rail')), findsOneWidget);
+      expect(find.text('暂无日记'), findsOneWidget);
+      expect(find.byType(BookIntroScreen, skipOffstage: false), findsNothing);
     });
 
     testWidgets('swiping left across the book opens it smoothly', (tester) async {

@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:uuid/uuid.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/services/ocr/ocr_queue_manager.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
-import 'package:memodiary/core/theme/widgets/scroll_roller_fab.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
+import 'package:memodiary/features/home/models/home_tab.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
@@ -30,6 +29,10 @@ class TimelineScreen extends StatefulWidget {
   final bool? enableSceneryAnimation;
   final OcrQueueManager? ocrQueueManager;
 
+  /// Home Shell seam: the timeline attaches its 写日记 flow here so the
+  /// Scroll Roller Button can trigger it.
+  final HomeTabPrimaryAction? primaryAction;
+
   const TimelineScreen({
     super.key,
     required this.database,
@@ -38,6 +41,7 @@ class TimelineScreen extends StatefulWidget {
     this.audioSanctumService,
     this.enableSceneryAnimation,
     this.ocrQueueManager,
+    this.primaryAction,
   });
 
   @override
@@ -68,7 +72,6 @@ class _TimelineScreenState extends State<TimelineScreen>
   int _offset = 0;
   String? _errorMessage;
   bool _isSceneryVisible = true;
-  bool _isFabRolledUp = false;
   bool _isCandleLit = true;
 
   @override
@@ -84,6 +87,7 @@ class _TimelineScreenState extends State<TimelineScreen>
       curve: const Cubic(0.22, 1.0, 0.36, 1.0),
     );
     _scrollController.addListener(_onScroll);
+    widget.primaryAction?.attach(_handleCreateEntry);
     _loadInitial();
     _loadScenerySettings();
   }
@@ -100,7 +104,17 @@ class _TimelineScreenState extends State<TimelineScreen>
   }
 
   @override
+  void didUpdateWidget(covariant TimelineScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.primaryAction != widget.primaryAction) {
+      oldWidget.primaryAction?.detach(_handleCreateEntry);
+      widget.primaryAction?.attach(_handleCreateEntry);
+    }
+  }
+
+  @override
   void dispose() {
+    widget.primaryAction?.detach(_handleCreateEntry);
     _xunExpandController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -111,15 +125,6 @@ class _TimelineScreenState extends State<TimelineScreen>
       final isVisible = _scrollController.offset <= 280.0;
       if (isVisible != _isSceneryVisible) {
         setState(() => _isSceneryVisible = isVisible);
-      }
-
-      final userDirection = _scrollController.position.userScrollDirection;
-      if (userDirection == ScrollDirection.reverse && !_isFabRolledUp) {
-        setState(() => _isFabRolledUp = true);
-      } else if ((userDirection == ScrollDirection.forward ||
-              _scrollController.offset <= 12) &&
-          _isFabRolledUp) {
-        setState(() => _isFabRolledUp = false);
       }
     }
     if (_scrollController.position.pixels >=
@@ -424,14 +429,6 @@ class _TimelineScreenState extends State<TimelineScreen>
                     onEntryTap: _navigateToDetail,
                   ),
                 ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: ScrollRollerFab(
-        key: const Key('timeline_write_fab'),
-        isRolledUp: _isFabRolledUp,
-        label: '写日记',
-        subLabel: '',
-        onPressed: _handleCreateEntry,
-      ),
     );
   }
 }

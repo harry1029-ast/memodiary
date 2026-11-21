@@ -13,7 +13,6 @@ import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
 import 'package:memodiary/features/search/screens/search_screen.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
-import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_app_bar.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
 import 'package:memodiary/main.dart';
@@ -183,53 +182,7 @@ void main() {
     );
 
     testWidgets(
-      'tapping 返回封面 pops back to existing BookIntroScreen when pushed from cover (canPop == true)',
-      (tester) async {
-        setTallPhoneViewport(tester);
-
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: InkDiaryTheme.light,
-            home: BookIntroScreen(
-              database: db,
-              mediaService: mediaService,
-              startOpened: true,
-              clock: () => DateTime(2026, 11, 19, 11, 30),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 200));
-
-        expect(find.byType(BookIntroScreen), findsOneWidget);
-        expect(find.text('私人日记'), findsOneWidget);
-
-        await tester.tap(find.text('私人日记'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-
-        expect(find.byType(TimelineScreen), findsOneWidget);
-        expect(
-          Navigator.of(tester.element(find.byType(TimelineScreen))).canPop(),
-          isTrue,
-        );
-
-        await tester.tap(find.byKey(const Key('timeline_back_to_cover_button')));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-
-        expect(find.byType(TimelineScreen), findsNothing);
-        expect(find.byType(BookIntroScreen), findsOneWidget);
-        expect(find.text('私人日记'), findsOneWidget);
-        expect(
-          Navigator.of(tester.element(find.byType(BookIntroScreen))).canPop(),
-          isFalse,
-        );
-      },
-    );
-
-    testWidgets(
-      'tapping 返回封面 push-replaces to BookIntroScreen when TimelineScreen started as root (canPop == false)',
+      'tapping 返回封面 replaces the Home Shell with the cover, and re-entering lands on the door\'s tab',
       (tester) async {
         setTallPhoneViewport(tester);
 
@@ -244,38 +197,44 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.byType(TimelineScreen), findsOneWidget);
-        expect(
-          Navigator.of(tester.element(find.byType(TimelineScreen))).canPop(),
-          isFalse,
-        );
+        final tabRail = find.byKey(const Key('home_tab_rail'));
+        expect(tabRail, findsOneWidget);
 
-        await tester.tap(find.byKey(const Key('timeline_back_to_cover_button')));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
+        Future<void> returnToCover() async {
+          await tester.tap(find.byKey(const Key('timeline_back_to_cover_button')));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
+          expect(find.byKey(const Key('home_tab_rail'), skipOffstage: false), findsNothing);
+          expect(find.byType(BookIntroScreen), findsOneWidget);
+          expect(
+            Navigator.of(tester.element(find.byType(BookIntroScreen))).canPop(),
+            isFalse,
+          );
+        }
 
-        expect(find.byType(TimelineScreen), findsNothing);
-        expect(find.byType(BookIntroScreen), findsOneWidget);
-        expect(
-          Navigator.of(tester.element(find.byType(BookIntroScreen))).canPop(),
-          isFalse,
-        );
+        Future<void> enterThrough(String door) async {
+          await tester.tap(find.byType(BottomSealSlider));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 900));
+          await tester.tap(find.text(door));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
+          expect(tabRail, findsOneWidget);
+          expect(find.byType(BookIntroScreen, skipOffstage: false), findsNothing);
+          expect(Navigator.of(tester.element(tabRail)).canPop(), isFalse);
+        }
 
-        // Open the cover and re-enter 私人日记; returning again pops cleanly back to cover.
-        await tester.tap(find.byType(BottomSealSlider));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 900));
+        await returnToCover();
+        await enterThrough('私人日记');
+        expect(find.text('暂无日记'), findsOneWidget);
 
-        await tester.tap(find.text('私人日记'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-        expect(find.byType(TimelineScreen), findsOneWidget);
+        await returnToCover();
+        await enterThrough('旅行相册');
+        expect(find.text('暂无旅行相册'), findsOneWidget);
 
-        await tester.tap(find.byKey(const Key('timeline_back_to_cover_button')));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-        expect(find.byType(TimelineScreen), findsNothing);
-        expect(find.byType(BookIntroScreen), findsOneWidget);
+        // Drain the 相册 tab's Drift stream timers before tearDown closes the database.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump(const Duration(seconds: 1));
       },
     );
 

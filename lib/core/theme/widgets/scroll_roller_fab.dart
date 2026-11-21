@@ -2,16 +2,18 @@ import 'package:flutter/material.dart';
 import '../atmosphere_palette.dart';
 import '../shapes/classical_chinese_borders.dart';
 
-/// Imperial Scroll-Roller Floating Action Button (卷轴横匾按钮)
+/// Imperial Scroll-Roller button (卷轴横匾按钮), the Scroll Roller Button raised
+/// in the Tab Rail's centre notch.
 ///
-/// An ornate floating action button inspired by traditional Chinese handscrolls,
-/// resolving all gradient, border, rail, knob, and text tokens from [AtmospherePalette].
-/// Supports dynamic roll-up physics:
-/// - Unfurled (展开态, 178px wide): displays scroll knobs, foil borders, brush icon, and title.
-/// - Rolled-up (卷轴闭合态, 52px compact token): compact rolled cylinder showing only the brush icon.
+/// An ornate 178px handscroll plaque with scroll knobs, foil rails, an icon and
+/// a title, resolving all gradient, border, rail, knob, and text tokens from
+/// [AtmospherePalette]. A label change cross-fades (instant under reduced motion).
 class ScrollRollerFab extends StatelessWidget {
+  static const double width = 178.0;
+  static const double height = 44.0;
+  static const Duration _labelFadeDuration = Duration(milliseconds: 220);
+
   final VoidCallback onPressed;
-  final bool isRolledUp;
   final String label;
   final String subLabel;
   final IconData icon;
@@ -19,7 +21,6 @@ class ScrollRollerFab extends StatelessWidget {
   const ScrollRollerFab({
     super.key,
     required this.onPressed,
-    this.isRolledUp = false,
     this.label = '写日记',
     this.subLabel = '',
     this.icon = Icons.brush_rounded,
@@ -28,12 +29,16 @@ class ScrollRollerFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.atmospherePalette;
-
-    final targetWidth = isRolledUp ? 52.0 : 178.0;
-    const height = 44.0;
+    final disableAnimations =
+        MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final labelPlate = FittedBox(
+      key: ValueKey<String>('$label|$subLabel'),
+      fit: BoxFit.scaleDown,
+      child: _buildLabelRow(palette),
+    );
 
     final border = BegoniaPlaqueBorder(
-      cutSize: isRolledUp ? 8.0 : 6.0,
+      cutSize: 6.0,
       borderColor: palette.fabBorder,
       borderWidth: 1.5,
       innerBorderInset: 2.0,
@@ -54,10 +59,8 @@ class ScrollRollerFab extends StatelessWidget {
     return Semantics(
       button: true,
       label: subLabel.isNotEmpty ? '$label $subLabel' : label,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-        width: targetWidth,
+      child: Container(
+        width: width,
         height: height,
         decoration: ShapeDecoration(
           shape: border,
@@ -119,41 +122,15 @@ class ScrollRollerFab extends StatelessWidget {
                             color: palette.fabText,
                           ),
 
-                          // If not rolled up, display text labels
-                          if (!isRolledUp) ...[
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      label,
-                                      style: TextStyle(
-                                        color: palette.fabText,
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.6,
-                                      ),
-                                    ),
-                                    if (subLabel.isNotEmpty) ...[
-                                      const SizedBox(width: 3),
-                                      Text(
-                                        subLabel,
-                                        style: TextStyle(
-                                          color: palette.fabText.withValues(alpha: 0.88),
-                                          fontSize: 9.0,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.3,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: disableAnimations
+                                ? labelPlate
+                                : AnimatedSwitcher(
+                                    duration: _labelFadeDuration,
+                                    child: labelPlate,
+                                  ),
+                          ),
 
                           const SizedBox(width: 4),
                           // Scroll Knob Right
@@ -168,6 +145,35 @@ class ScrollRollerFab extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLabelRow(AtmospherePalette palette) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: palette.fabText,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.6,
+          ),
+        ),
+        if (subLabel.isNotEmpty) ...[
+          const SizedBox(width: 3),
+          Text(
+            subLabel,
+            style: TextStyle(
+              color: palette.fabText.withValues(alpha: 0.88),
+              fontSize: 9.0,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ],
     );
   }
 

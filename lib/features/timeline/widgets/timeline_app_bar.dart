@@ -36,13 +36,9 @@ class TimelineAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
+  /// Replaces the Home Shell with the cover (the cover is never kept below it).
   void _navigateBackToCover(BuildContext context) {
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-      return;
-    }
-    navigator.pushReplacement(
+    Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (context) => BookIntroScreen(
           database: database,
