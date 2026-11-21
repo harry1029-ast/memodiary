@@ -2,8 +2,9 @@ import 'package:flutter/widgets.dart';
 
 /// Drives the Diarist Panel's open fraction (0 = closed, 1 = open).
 ///
-/// Buttons and Back call [open] / [close]; drags call [dragTo] per frame and
-/// [settle] on release, so a gesture can carry the panel any part of the way.
+/// Buttons and Back call [open] / [close]; drags call [dragBy] per frame and
+/// [settleFrom] on release, so a gesture can carry the panel any part of the
+/// way.
 /// Animations use [AnimationBehavior.normal], so they run near-instantly when
 /// the platform asks for reduced motion.
 class DiaristPanelController {
@@ -31,17 +32,19 @@ class DiaristPanelController {
 
   void close() => _animation.animateBack(0.0, curve: Curves.easeOutCubic).ignore();
 
-  /// Places the panel at [fraction] (clamped to 0..1) during a drag.
-  void dragTo(double fraction) {
+  /// Moves the panel by a drag of [delta] logical pixels (positive towards
+  /// open) on a panel [panelWidth] wide, clamped to fully closed or open.
+  void dragBy(double delta, double panelWidth) {
     _animation.stop();
-    _animation.value = fraction.clamp(0.0, 1.0);
+    _animation.value = (_animation.value + delta / panelWidth).clamp(0.0, 1.0);
   }
 
-  /// Finishes a drag: a fast fling follows its direction, otherwise the panel
-  /// settles on the nearer end. [velocity] is in panel widths per second,
-  /// positive towards open.
-  void settle({double velocity = 0.0}) {
-    final shouldOpen = velocity.abs() >= flingVelocity ? velocity > 0 : _animation.value >= 0.5;
+  /// Finishes a drag released at [velocity] logical pixels per second
+  /// (positive towards open) on a panel [panelWidth] wide: a fast fling
+  /// follows its direction, otherwise the panel settles on the nearer end.
+  void settleFrom(double velocity, double panelWidth) {
+    final widthsPerSecond = velocity / panelWidth;
+    final shouldOpen = widthsPerSecond.abs() >= flingVelocity ? widthsPerSecond > 0 : _animation.value >= 0.5;
     shouldOpen ? open() : close();
   }
 

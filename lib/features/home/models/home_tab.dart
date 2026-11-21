@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show IconData, Icons;
+import 'package:flutter/material.dart' show IconData, Icons, State, StatefulWidget;
 
 /// The two peer tabs held by the Home Shell.
 enum HomeTab {
@@ -54,5 +54,39 @@ class HomeTabPrimaryAction {
   Future<void> run() async {
     final handler = _handler;
     if (handler != null) await handler();
+  }
+}
+
+/// Binds a Home Shell tab's [runPrimaryAction] to the [HomeTabPrimaryAction]
+/// its widget carries, for the State's lifetime: attached in `initState`,
+/// moved when the widget is rebuilt with another action, detached on dispose.
+mixin HomeTabPrimaryActionBinding<T extends StatefulWidget> on State<T> {
+  /// The action seam [widget] carries (null outside the Home Shell).
+  HomeTabPrimaryAction? primaryActionOf(T widget);
+
+  /// The tab's create flow, run by the Scroll Roller Button.
+  Future<void> runPrimaryAction();
+
+  @override
+  void initState() {
+    super.initState();
+    primaryActionOf(widget)?.attach(runPrimaryAction);
+  }
+
+  @override
+  void didUpdateWidget(T oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final oldAction = primaryActionOf(oldWidget);
+    final newAction = primaryActionOf(widget);
+    if (oldAction != newAction) {
+      oldAction?.detach(runPrimaryAction);
+      newAction?.attach(runPrimaryAction);
+    }
+  }
+
+  @override
+  void dispose() {
+    primaryActionOf(widget)?.detach(runPrimaryAction);
+    super.dispose();
   }
 }

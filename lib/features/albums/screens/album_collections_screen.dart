@@ -42,7 +42,8 @@ class AlbumCollectionsScreen extends StatefulWidget {
   State<AlbumCollectionsScreen> createState() => _AlbumCollectionsScreenState();
 }
 
-class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
+class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen>
+    with HomeTabPrimaryActionBinding<AlbumCollectionsScreen> {
   late final AlbumRepository _repository;
   late final Stream<List<AlbumCollection>> _collectionsStream;
   late final Stream<Map<String, int>> _photoCountsStream;
@@ -57,23 +58,13 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
         );
     _collectionsStream = _repository.watchAllCollections();
     _photoCountsStream = _repository.watchPhotoCounts();
-    widget.primaryAction?.attach(_handleCreateCollection);
   }
 
   @override
-  void didUpdateWidget(covariant AlbumCollectionsScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.primaryAction != widget.primaryAction) {
-      oldWidget.primaryAction?.detach(_handleCreateCollection);
-      widget.primaryAction?.attach(_handleCreateCollection);
-    }
-  }
+  HomeTabPrimaryAction? primaryActionOf(AlbumCollectionsScreen widget) => widget.primaryAction;
 
   @override
-  void dispose() {
-    widget.primaryAction?.detach(_handleCreateCollection);
-    super.dispose();
-  }
+  Future<void> runPrimaryAction() => _handleCreateCollection();
 
   Future<void> _handleCreateCollection() async {
     final formResult = await CreateEditCollectionSheet.show(context);

@@ -15,15 +15,13 @@ class ScrollRollerFab extends StatelessWidget {
 
   final VoidCallback onPressed;
   final String label;
-  final String subLabel;
   final IconData icon;
 
   const ScrollRollerFab({
     super.key,
     required this.onPressed,
-    this.label = '写日记',
-    this.subLabel = '',
-    this.icon = Icons.brush_rounded,
+    required this.label,
+    required this.icon,
   });
 
   @override
@@ -32,9 +30,17 @@ class ScrollRollerFab extends StatelessWidget {
     final disableAnimations =
         MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     final labelPlate = FittedBox(
-      key: ValueKey<String>('$label|$subLabel'),
+      key: ValueKey<String>(label),
       fit: BoxFit.scaleDown,
-      child: _buildLabelRow(palette),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: palette.fabText,
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.6,
+        ),
+      ),
     );
 
     final border = BegoniaPlaqueBorder(
@@ -58,7 +64,7 @@ class ScrollRollerFab extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: subLabel.isNotEmpty ? '$label $subLabel' : label,
+      label: label,
       child: Container(
         width: width,
         height: height,
@@ -145,35 +151,6 @@ class ScrollRollerFab extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildLabelRow(AtmospherePalette palette) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: palette.fabText,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6,
-          ),
-        ),
-        if (subLabel.isNotEmpty) ...[
-          const SizedBox(width: 3),
-          Text(
-            subLabel,
-            style: TextStyle(
-              color: palette.fabText.withValues(alpha: 0.88),
-              fontSize: 9.0,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ],
     );
   }
 

@@ -35,11 +35,7 @@ class DiaristPanel extends StatelessWidget {
       child: DecoratedBox(
         key: const Key('diarist_panel'),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [palette.woodFrameMid, palette.woodFrameDark],
-          ),
+          gradient: palette.woodworkGradient(),
           border: Border(
             right: BorderSide(color: palette.woodFrameHighlight, width: 6),
           ),

@@ -38,10 +38,8 @@ class DiaristPanelOverlay extends StatelessWidget {
       builder: (context, constraints) {
         final panelWidth = panelWidthFor(constraints.maxWidth);
 
-        void handleDragUpdate(DragUpdateDetails details) =>
-            controller.dragTo(controller.fraction + details.primaryDelta! / panelWidth);
-        void handleDragEnd(DragEndDetails details) =>
-            controller.settle(velocity: (details.primaryVelocity ?? 0.0) / panelWidth);
+        void handleDragUpdate(DragUpdateDetails details) => controller.dragBy(details.primaryDelta!, panelWidth);
+        void handleDragEnd(DragEndDetails details) => controller.settleFrom(details.primaryVelocity ?? 0.0, panelWidth);
 
         return AnimatedBuilder(
           animation: controller.animation,

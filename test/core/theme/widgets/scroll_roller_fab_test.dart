@@ -15,6 +15,8 @@ void main() {
             body: Center(
               child: ScrollRollerFab(
                 key: const Key('test_scroll_fab'),
+                label: '写日记',
+                icon: Icons.brush_rounded,
                 onPressed: () => tapped = true,
               ),
             ),

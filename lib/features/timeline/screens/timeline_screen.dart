@@ -54,7 +54,7 @@ class TimelineScreen extends StatefulWidget {
 }
 
 class _TimelineScreenState extends State<TimelineScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, HomeTabPrimaryActionBinding<TimelineScreen> {
   static const int _pageSize = 20;
 
   final ScrollController _scrollController = ScrollController();
@@ -92,7 +92,6 @@ class _TimelineScreenState extends State<TimelineScreen>
       curve: const Cubic(0.22, 1.0, 0.36, 1.0),
     );
     _scrollController.addListener(_onScroll);
-    widget.primaryAction?.attach(_handleCreateEntry);
     widget.diaryChanged?.addListener(_handleDiaryChanged);
     _loadInitial();
     _loadScenerySettings();
@@ -101,21 +100,16 @@ class _TimelineScreenState extends State<TimelineScreen>
   Future<void> _loadScenerySettings() async {
     final pinned = await _scenerySettings.getPinnedAtmosphere();
     final realmPref = await _scenerySettings.getRealmPreference();
-    if (mounted) {
-      setState(() {
-        _pinnedAtmosphere = pinned;
-        _realmPreference = realmPref;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _pinnedAtmosphere = pinned;
+      _realmPreference = realmPref;
+    });
   }
 
   @override
   void didUpdateWidget(covariant TimelineScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.primaryAction != widget.primaryAction) {
-      oldWidget.primaryAction?.detach(_handleCreateEntry);
-      widget.primaryAction?.attach(_handleCreateEntry);
-    }
     if (oldWidget.diaryChanged != widget.diaryChanged) {
       oldWidget.diaryChanged?.removeListener(_handleDiaryChanged);
       widget.diaryChanged?.addListener(_handleDiaryChanged);
@@ -127,8 +121,13 @@ class _TimelineScreenState extends State<TimelineScreen>
   void _handleDiaryChanged() => _loadInitial(keepLoadedPages: true);
 
   @override
+  HomeTabPrimaryAction? primaryActionOf(TimelineScreen widget) => widget.primaryAction;
+
+  @override
+  Future<void> runPrimaryAction() => _handleCreateEntry();
+
+  @override
   void dispose() {
-    widget.primaryAction?.detach(_handleCreateEntry);
     widget.diaryChanged?.removeListener(_handleDiaryChanged);
     _xunExpandController.dispose();
     _scrollController.dispose();
@@ -142,10 +141,8 @@ class _TimelineScreenState extends State<TimelineScreen>
         setState(() => _isSceneryVisible = isVisible);
       }
     }
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 250 &&
-        !_isLoadingMore &&
-        _hasMore) {
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 250 && !_isLoadingMore && _hasMore) {
       _loadMore();
     }
   }
@@ -179,10 +176,7 @@ class _TimelineScreenState extends State<TimelineScreen>
     );
   }
 
-  Future<void> _loadInitial({
-    bool refreshSceneryEntries = true,
-    bool keepLoadedPages = false,
-  }) async {
+  Future<void> _loadInitial({bool refreshSceneryEntries = true, bool keepLoadedPages = false}) async {
     final limit = keepLoadedPages && _offset > _pageSize ? _offset : _pageSize;
     setState(() {
       _isLoading = true;

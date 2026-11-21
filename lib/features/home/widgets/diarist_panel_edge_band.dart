@@ -85,10 +85,8 @@ class _DiaristPanelEdgeBandState extends State<DiaristPanelEdgeBand> {
             behavior: HitTestBehavior.translucent,
             excludeFromSemantics: true,
             dragStartBehavior: DragStartBehavior.down,
-            onHorizontalDragUpdate: (details) =>
-                controller.dragTo(controller.fraction + details.primaryDelta! / panelWidth),
-            onHorizontalDragEnd: (details) =>
-                controller.settle(velocity: (details.primaryVelocity ?? 0.0) / panelWidth),
+            onHorizontalDragUpdate: (details) => controller.dragBy(details.primaryDelta!, panelWidth),
+            onHorizontalDragEnd: (details) => controller.settleFrom(details.primaryVelocity ?? 0.0, panelWidth),
           ),
         ),
       ],

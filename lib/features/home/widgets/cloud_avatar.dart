@@ -21,11 +21,7 @@ class CloudAvatar extends StatelessWidget {
       height: diameter,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [palette.woodFrameMid, palette.woodFrameDark],
-        ),
+        gradient: palette.woodworkGradient(),
         border: Border.all(
           color: palette.accentPrimary,
           width: diameter >= 48 ? 2.0 : 1.2,

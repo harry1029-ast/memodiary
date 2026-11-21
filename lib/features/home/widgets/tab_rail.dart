@@ -55,10 +55,9 @@ class TabRail extends StatelessWidget {
                     notchDepth: _notchDepth,
                     hairlineColor: palette.woodFrameHighlight,
                   ),
-                  gradient: LinearGradient(
+                  gradient: palette.woodworkGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [palette.woodFrameMid, palette.woodFrameDark],
                   ),
                 ),
                 child: Padding(

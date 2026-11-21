@@ -73,7 +73,7 @@ class _ImportBackupScreenState extends State<ImportBackupScreen> {
       final file = await widget.fileSelector.pickTextOrMarkdownFile();
       if (file == null || !mounted) return;
 
-      final text = file.readAsStringSync();
+      final text = await file.readAsString();
       if (!mounted) return;
 
       final candidates = await DateParserEngine.parseDocumentInIsolate(
@@ -269,7 +269,7 @@ class _ImportBackupScreenState extends State<ImportBackupScreen> {
   }) {
     return ListTile(
       key: key,
-      leading: Icon(icon, color: iconColor),
+      leading: Icon(icon, size: 20, color: iconColor),
       title: Text(
         title,
         style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 14, color: tokens.jiaomo),

@@ -16,6 +16,8 @@ void main() {
           home: Scaffold(
             body: Center(
               child: ScrollRollerFab(
+                label: '写日记',
+                icon: Icons.brush_rounded,
                 onPressed: () => tappedCount++,
               ),
             ),
@@ -53,7 +55,7 @@ void main() {
               data: MediaQueryData(disableAnimations: disableAnimations),
               child: Scaffold(
                 body: Center(
-                  child: ScrollRollerFab(label: label, onPressed: () {}),
+                  child: ScrollRollerFab(label: label, icon: Icons.brush_rounded, onPressed: () {}),
                 ),
               ),
             ),
@@ -98,7 +100,7 @@ void main() {
             theme: theme,
             home: Scaffold(
               body: Center(
-                child: ScrollRollerFab(onPressed: () {}),
+                child: ScrollRollerFab(label: '写日记', icon: Icons.brush_rounded, onPressed: () {}),
               ),
             ),
           ),

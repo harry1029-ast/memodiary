@@ -75,6 +75,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Taps 导入文本 on the real event loop, so the picked file's async read
+  /// completes (dart:io never completes inside the fake-async test zone).
+  Future<void> tapImportText(WidgetTester tester) async {
+    await tester.runAsync(() async {
+      await tester.tap(find.text('导入文本'));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpAndSettle();
+  }
+
   group('ImportBackupScreen', () {
     testWidgets('titled 导入与备份 and lists the import, export and backup tools', (tester) async {
       await pumpImportBackupScreen(tester);
@@ -99,10 +110,7 @@ Visiting Dotonbori in the evening.
 
       await pumpImportBackupScreen(tester);
 
-      await tester.tap(find.text('导入文本'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pumpAndSettle();
+      await tapImportText(tester);
 
       expect(find.byType(ImportStagingScreen), findsOneWidget);
       expect(find.text('导入预览'), findsOneWidget);
@@ -116,10 +124,7 @@ Visiting Dotonbori in the evening.
 
       await pumpImportBackupScreen(tester);
 
-      await tester.tap(find.text('导入文本'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pumpAndSettle();
+      await tapImportText(tester);
 
       expect(find.byType(ImportStagingScreen), findsNothing);
       expect(find.text('所选文件中没有可导入的日记内容'), findsOneWidget);
