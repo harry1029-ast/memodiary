@@ -228,6 +228,26 @@ void main() {
   });
 
   group('Tab Rail accessibility', () {
+    testWidgets('the two tabs, and only they, sit in one tab bar', (tester) async {
+      final semanticsHandle = tester.ensureSemantics();
+      try {
+        await harness.pumpApp(tester);
+
+        final tabBar = tester.getSemantics(diaryTab).parent!;
+        expect(tabBar.getSemanticsData().role, SemanticsRole.tabBar);
+        expect(tester.getSemantics(albumsTab).parent, same(tabBar));
+        final children = <SemanticsNode>[];
+        tabBar.visitChildren((child) {
+          children.add(child);
+          return true;
+        });
+        expect(children.map((child) => child.label), ['日记', '相册']);
+        expect(tester.takeException(), isNull);
+      } finally {
+        semanticsHandle.dispose();
+      }
+    });
+
     testWidgets('tabs announce tab role and selected state; the centre button its current label', (tester) async {
       final semanticsHandle = tester.ensureSemantics();
       try {
@@ -272,6 +292,54 @@ void main() {
       } finally {
         semanticsHandle.dispose();
       }
+    });
+  });
+
+  group('Short viewport (landscape, under 420dp tall)', () {
+    const landscape = Size(640, 360);
+
+    testWidgets('the Tab Rail lays out whole at the bottom, with tap targets of at least 44x44', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await harness.seedEntries(12);
+      await harness.pumpApp(tester, size: landscape);
+
+      expect(tester.takeException(), isNull);
+      final rail = tester.getRect(tabRail);
+      expect(rail.bottom, landscape.height);
+      expect(rail.top, greaterThan(landscape.height / 2), reason: 'the rail leaves the list room');
+      // The timeline runs on behind the rail here, so measure the rail's
+      // own targets rather than every node under its rect.
+      for (final target in [diaryTab, albumsTab, centreButton]) {
+        final size = tester.getSize(target);
+        expect(size.width, greaterThanOrEqualTo(44));
+        expect(size.height, greaterThanOrEqualTo(44));
+      }
+
+      await harness.selectTab(tester, albumsTab);
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(tabRail).bottom, landscape.height);
+      await harness.unmountApp(tester);
+    });
+
+    testWidgets('the open Diarist Panel scrolls to every row, 返回封面 last', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await harness.pumpApp(tester, size: landscape);
+      await harness.openPanel(tester);
+
+      expect(tester.takeException(), isNull);
+      final panelRect = tester.getRect(HomeShellHarness.panel);
+      expect(panelRect.height, landscape.height);
+      final returnToCover = find.byKey(const Key('diarist_panel_return_to_cover_row'));
+      await tester.scrollUntilVisible(
+        returnToCover,
+        100,
+        scrollable: find.descendant(of: HomeShellHarness.panel, matching: find.byType(Scrollable)).first,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getRect(returnToCover).bottom, lessThanOrEqualTo(landscape.height));
+      expect(tester.takeException(), isNull);
     });
   });
 }

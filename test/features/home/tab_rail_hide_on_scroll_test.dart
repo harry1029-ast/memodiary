@@ -101,6 +101,25 @@ void main() {
       await harness.unmountApp(tester);
     });
 
+    testWidgets('the offstage tab\'s list changing never toggles the rail', (tester) async {
+      await harness.seedEntries(12);
+      final albumIds = await harness.seedAlbums(12);
+      await harness.pumpApp(tester);
+      await openAlbumsTab(tester);
+      await harness.selectTab(tester, HomeShellHarness.diaryTab);
+      await scrollBy(tester, timelineList, -300);
+      expectRailShown(tester, false);
+
+      // The kept 相册 list shrinks below scrollable while 日记 is active.
+      final repository = AlbumRepository(database: harness.db, mediaService: harness.mediaService);
+      for (final id in albumIds.skip(1)) {
+        await repository.deleteCollection(id);
+      }
+      await tester.pumpAndSettle();
+      expectRailShown(tester, false);
+      await harness.unmountApp(tester);
+    });
+
     testWidgets('with reduced motion on, the rail stays shown', (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);

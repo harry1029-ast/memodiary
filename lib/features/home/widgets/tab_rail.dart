@@ -63,12 +63,19 @@ class TabRail extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: EdgeInsets.only(bottom: bottomInset),
-                  child: Row(
-                    children: [
-                      Expanded(child: _buildTab(HomeTab.diary, palette)),
-                      const SizedBox(width: _notchWidth),
-                      Expanded(child: _buildTab(HomeTab.albums, palette)),
-                    ],
+                  // The tab bar holds only the two tabs; the centre button
+                  // is a sibling, since a tab bar's children must be tabs.
+                  child: Semantics(
+                    container: true,
+                    role: SemanticsRole.tabBar,
+                    explicitChildNodes: true,
+                    child: Row(
+                      children: [
+                        Expanded(child: _buildTab(HomeTab.diary, palette)),
+                        const SizedBox(width: _notchWidth),
+                        Expanded(child: _buildTab(HomeTab.albums, palette)),
+                      ],
+                    ),
                   ),
                 ),
               ),

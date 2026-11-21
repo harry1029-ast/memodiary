@@ -122,7 +122,9 @@ class _TimelineScreenState extends State<TimelineScreen>
     }
   }
 
-  void _handleDiaryChanged() => _loadInitial();
+  /// Reloads as many entries as were loaded, so the scroll position and the
+  /// pages paged in so far survive the refresh.
+  void _handleDiaryChanged() => _loadInitial(keepLoadedPages: true);
 
   @override
   void dispose() {
@@ -177,7 +179,11 @@ class _TimelineScreenState extends State<TimelineScreen>
     );
   }
 
-  Future<void> _loadInitial({bool refreshSceneryEntries = true}) async {
+  Future<void> _loadInitial({
+    bool refreshSceneryEntries = true,
+    bool keepLoadedPages = false,
+  }) async {
+    final limit = keepLoadedPages && _offset > _pageSize ? _offset : _pageSize;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -187,7 +193,7 @@ class _TimelineScreenState extends State<TimelineScreen>
       final dao = widget.database.entriesDao;
       final entries = await dao.getFilteredTimelineEntries(
         filters: _filters,
-        limit: _pageSize,
+        limit: limit,
         offset: 0,
       );
       final filteredCount = await dao.countFilteredTimelineEntries(
@@ -225,7 +231,7 @@ class _TimelineScreenState extends State<TimelineScreen>
           _mediaMap = mediaMap;
           _activeNotebook = activeNotebook;
           _offset = entries.length;
-          _hasMore = entries.length >= _pageSize;
+          _hasMore = entries.length >= limit;
           _isLoading = false;
           _errorMessage = null;
         });

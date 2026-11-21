@@ -189,11 +189,16 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
   }
 
   /// Counts non-deleted entries, weekly reviews and time capsules included.
-  Future<int> countActiveEntries() {
+  Future<int> countActiveEntries() => _countEntries(isDeleted: false);
+
+  /// Counts entries in the Recycle Bin (soft-deleted, of every kind).
+  Future<int> countDeletedEntries() => _countEntries(isDeleted: true);
+
+  Future<int> _countEntries({required bool isDeleted}) {
     final countExp = entries.id.count();
     final query = selectOnly(entries)
       ..addColumns([countExp])
-      ..where(entries.isDeleted.equals(false));
+      ..where(entries.isDeleted.equals(isDeleted));
     return query.map((row) => row.read(countExp) ?? 0).getSingle();
   }
 

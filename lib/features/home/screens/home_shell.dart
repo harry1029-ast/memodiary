@@ -5,6 +5,7 @@ import 'package:memodiary/core/services/ocr/ocr_queue_manager.dart';
 import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
 import 'package:memodiary/features/analytics/screens/analytics_dashboard_screen.dart';
 import 'package:memodiary/features/home/data/diarist_stats_repository.dart';
+import 'package:memodiary/features/home/data/diary_write_watch.dart';
 import 'package:memodiary/features/home/models/home_tab.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel_controller.dart';
@@ -52,8 +53,8 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
   late final DiaristStatsRepository _statsRepository = DiaristStatsRepository(database: widget.database);
   DiaristStats? _stats;
 
-  /// Bumped when a panel screen that can change entries (回收站, 导入与备份)
-  /// closes, so the 日记 tab reloads.
+  /// Bumped when a panel screen (回收站, 导入与备份) closes after changing
+  /// entries, so the 日记 tab reloads.
   final ValueNotifier<int> _diaryChanged = ValueNotifier(0);
   final Map<HomeTab, HomeTabPrimaryAction> _primaryActions = {
     for (final tab in HomeTab.values) tab: HomeTabPrimaryAction(),
@@ -71,7 +72,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
   }
 
   /// Rebuilds the Back interception only when the panel opens or closes, and
-  /// refetches the stats strip's counts each time it opens.
+  /// refetches the panel's counts (stats strip, 回收站 row) each time it opens.
   void _syncPanelOpen() {
     if (_panel.isOpen == _isPanelOpen) return;
     setState(() => _isPanelOpen = _panel.isOpen);
@@ -116,11 +117,14 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
   }
 
   /// A panel row: close the panel and push [screen] over the whole shell.
-  /// When [changesDiary], the 日记 tab reloads once the screen closes.
+  /// When [changesDiary], the 日记 tab reloads once the screen closes, but
+  /// only if the screen wrote to the diary meanwhile.
   Future<void> _openFromPanel(WidgetBuilder screen, {bool changesDiary = false}) async {
     _panel.close();
+    final writes = changesDiary ? DiaryWriteWatch.start(widget.database) : null;
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: screen));
-    if (mounted && changesDiary) _diaryChanged.value++;
+    final diaryChanged = writes?.stop() ?? false;
+    if (mounted && diaryChanged) _diaryChanged.value++;
   }
 
   /// Replaces the Home Shell with the cover (the cover is never kept below it).
@@ -161,12 +165,18 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
       onPopInvokedWithResult: _handlePopBlocked,
       child: Scaffold(
         extendBody: true,
-        body: NotificationListener<Notification>(
-          onNotification: _railVisibility.handleScrollNotification,
-          child: IndexedStack(
-            index: _selectedTab.index,
-            children: [for (final tab in HomeTab.values) _buildTab(tab)],
-          ),
+        body: IndexedStack(
+          index: _selectedTab.index,
+          children: [
+            for (final tab in HomeTab.values)
+              // Only the active tab's scrolls drive the rail: the kept
+              // offstage tab still lays out and reports metrics changes.
+              NotificationListener<Notification>(
+                onNotification: (notification) =>
+                    tab == _selectedTab && _railVisibility.handleScrollNotification(notification),
+                child: _buildTab(tab),
+              ),
+          ],
         ),
         bottomNavigationBar: TabRailScrollHider(
           visibility: _railVisibility,
@@ -201,7 +211,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
             DiaristPanelRow(
               key: const Key('diarist_panel_recycle_bin_row'),
               icon: Icons.delete_outline_rounded,
-              label: '回收站',
+              label: _stats == null ? '回收站' : '回收站 (${_stats!.recycleBinCount})',
               onTap: () => _openFromPanel(
                 (_) => RecycleBinScreen(database: widget.database, mediaService: widget.mediaService),
                 changesDiary: true,

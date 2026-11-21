@@ -41,11 +41,12 @@ void main() {
     );
   }
 
-  test('an empty diary has no entries and no albums', () async {
+  test('an empty diary has no entries, no albums and an empty Recycle Bin', () async {
     final stats = await repository.load();
 
     expect(stats.entryCount, 0);
     expect(stats.albumCount, 0);
+    expect(stats.recycleBinCount, 0);
   });
 
   test('counts entries that are not soft-deleted, weekly reviews and time capsules included', () async {
@@ -58,6 +59,18 @@ void main() {
     final stats = await repository.load();
 
     expect(stats.entryCount, 4);
+  });
+
+  test('counts entries in the Recycle Bin, of every kind', () async {
+    await addEntry('active');
+    await addEntry('binned_1', isDeleted: true);
+    await addEntry('binned_review', isWeeklyReview: true, isDeleted: true);
+    await addEntry('binned_capsule', unlockAt: DateTime(2030, 1, 1), isDeleted: true);
+
+    final stats = await repository.load();
+
+    expect(stats.recycleBinCount, 3);
+    expect(stats.entryCount, 1);
   });
 
   test('counts album collections', () async {
@@ -84,5 +97,6 @@ void main() {
     final stats = await repository.load();
     expect(stats.entryCount, 1);
     expect(stats.albumCount, 2);
+    expect(stats.recycleBinCount, 1);
   });
 }

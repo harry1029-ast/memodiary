@@ -13,6 +13,7 @@ void main() {
   final diaryStat = find.byKey(const Key('diarist_panel_stat_diary'));
   final albumsStat = find.byKey(const Key('diarist_panel_stat_albums'));
   final favouritesStat = find.byKey(const Key('diarist_panel_stat_favourites'));
+  final recycleBinRow = find.byKey(const Key('diarist_panel_recycle_bin_row'));
 
   /// Three active entries (one plain, a weekly review, a time capsule), one in
   /// the Recycle Bin, and two albums.
@@ -65,6 +66,7 @@ void main() {
       await harness.openPanel(tester);
       expect(statText(tester, diaryStat), '3 日记');
       expect(statText(tester, albumsStat), '2 相册');
+      expect(find.descendant(of: recycleBinRow, matching: find.text('回收站 (1)')), findsOneWidget);
       await tester.tapAt(const Offset(385, 400));
       await tester.pumpAndSettle();
       expect(panel, findsNothing);
@@ -81,6 +83,7 @@ void main() {
 
       expect(statText(tester, diaryStat), '4 日记');
       expect(statText(tester, albumsStat), '1 相册');
+      expect(find.descendant(of: recycleBinRow, matching: find.text('回收站 (2)')), findsOneWidget);
     });
 
     testWidgets('tapping 相册 or 日记 closes the panel on that tab; tapping 收藏 does nothing', (tester) async {
@@ -109,7 +112,7 @@ void main() {
   group('Rows', () {
     final rows = {
       '写作统计': (key: 'diarist_panel_analytics_row', screen: AnalyticsDashboardScreen),
-      '回收站': (key: 'diarist_panel_recycle_bin_row', screen: RecycleBinScreen),
+      '回收站 (0)': (key: 'diarist_panel_recycle_bin_row', screen: RecycleBinScreen),
       '导入与备份': (key: 'diarist_panel_import_backup_row', screen: ImportBackupScreen),
     };
 
@@ -164,6 +167,65 @@ void main() {
       expect(find.byType(RecycleBinScreen), findsNothing);
       expect(find.text('暂无日记'), findsNothing);
       expect(find.text('restored_entry'), findsWidgets);
+    });
+
+    group('returning to a 日记 tab paged deep into the timeline', () {
+      final timeline = find.byType(CustomScrollView);
+      ScrollPosition timelinePosition(WidgetTester tester) => tester
+          .state<ScrollableState>(find.descendant(of: timeline, matching: find.byType(Scrollable)).first)
+          .position;
+      final deepEntry = find.text('Seed Entry 45');
+
+      /// Scrolls until the third page of 20 is loaded and `Seed Entry 45`
+      /// shows; returns the scroll offset there.
+      Future<double> pageDeep(WidgetTester tester) async {
+        await tester.scrollUntilVisible(
+          deepEntry,
+          400,
+          scrollable: find.descendant(of: timeline, matching: find.byType(Scrollable)).first,
+        );
+        await tester.pumpAndSettle();
+        return timelinePosition(tester).pixels;
+      }
+
+      Future<void> visitRecycleBin(WidgetTester tester, {bool restoreOne = false}) async {
+        await harness.openPanel(tester);
+        await tester.tap(find.byKey(const Key('diarist_panel_recycle_bin_row')));
+        await tester.pumpAndSettle();
+        if (restoreOne) {
+          await tester.tap(find.byTooltip('恢复'));
+          await tester.pumpAndSettle();
+        }
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(RecycleBinScreen), findsNothing);
+      }
+
+      testWidgets('closing 回收站 without changes keeps the loaded pages and scroll offset', (tester) async {
+        await harness.seedEntries(60);
+        await harness.addEntry('binned_entry', isDeleted: true);
+        await harness.pumpApp(tester);
+        final offset = await pageDeep(tester);
+
+        await visitRecycleBin(tester);
+
+        expect(timelinePosition(tester).pixels, offset);
+        expect(deepEntry, findsOneWidget);
+      });
+
+      testWidgets('an entry restored there appears, and the loaded pages stay', (tester) async {
+        await harness.seedEntries(60);
+        await harness.addEntry('restored_entry', isDeleted: true, entryDate: DateTime(2026, 11, 21));
+        await harness.pumpApp(tester);
+        await pageDeep(tester);
+
+        await visitRecycleBin(tester, restoreOne: true);
+
+        expect(deepEntry, findsOneWidget);
+        timelinePosition(tester).jumpTo(0);
+        await tester.pumpAndSettle();
+        expect(find.text('restored_entry'), findsWidgets);
+      });
     });
   });
 
