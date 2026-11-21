@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/theme/widgets/cloud_moon_emblem_painter.dart';
 
 /// Closed thread-bound front cover face for `Book3DStage` featuring directional
 /// moonlight/sunlight rim sheen, vertical Xuan paper title slip («云皓日记»),
@@ -83,7 +84,12 @@ class BookIntroFrontCover extends StatelessWidget {
                   child: Center(
                     child: CustomPaint(
                       size: const Size(88, 88),
-                      painter: _CloudMoonEmblemPainter(),
+                      // Subtle silver-gold emboss of the Cloud-Moon emblem.
+                      painter: const CloudMoonEmblemPainter(
+                        primaryColor: Color(0x33E6D5B8),
+                        accentColor: Color(0x33E6D5B8),
+                        strokeWeight: 0.22,
+                      ),
                     ),
                   ),
                 ),
@@ -219,40 +225,4 @@ class BookIntroFrontCover extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Subtle silver-gold Cloud-Moon emblem embossed onto the closed book cover.
-class _CloudMoonEmblemPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final sx = size.width / 100.0;
-    final sy = size.height / 100.0;
-    canvas.save();
-    canvas.scale(sx, sy);
-
-    final emblemPaint = Paint()
-      ..color = const Color(0x33E6D5B8)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(const Offset(54, 44), 24, emblemPaint..strokeWidth = 1.2);
-    canvas.drawPath(
-      Path()
-        ..moveTo(18, 64)
-        ..quadraticBezierTo(42, 52, 66, 62)
-        ..quadraticBezierTo(80, 68, 92, 58),
-      emblemPaint..strokeWidth = 1.5,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(26, 72)
-        ..quadraticBezierTo(52, 64, 78, 72),
-      emblemPaint..strokeWidth = 1.1,
-    );
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

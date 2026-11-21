@@ -174,8 +174,8 @@ void main() {
       expect(find.byKey(const Key('timeline_albums_button')), findsNothing);
       expect(find.byType(BackButton), findsNothing);
 
-      // Verify title, back-to-cover button, and plain tooltips render cleanly
-      expect(find.byKey(const Key('timeline_back_to_cover_button')), findsOneWidget);
+      // Verify title, avatar button, and plain tooltips render cleanly
+      expect(find.byKey(const Key('timeline_avatar_button')), findsOneWidget);
       expect(find.text('云皓日记'), findsOneWidget);
       expect(find.text('YUNHAO'), findsOneWidget);
       expect(find.text('MemoDiary'), findsNothing);
@@ -216,8 +216,8 @@ void main() {
       expect(find.byIcon(Icons.delete_outline_rounded), findsNothing);
       expect(find.byIcon(Icons.insights_rounded), findsNothing);
 
-      // Verify title, back-to-cover button, and plain tooltips render cleanly without overflow
-      expect(find.byKey(const Key('timeline_back_to_cover_button')), findsOneWidget);
+      // Verify title, avatar button, and plain tooltips render cleanly without overflow
+      expect(find.byKey(const Key('timeline_avatar_button')), findsOneWidget);
       expect(find.text('云皓日记'), findsOneWidget);
       expect(find.text('YUNHAO'), findsOneWidget);
       expect(find.text('MemoDiary'), findsNothing);

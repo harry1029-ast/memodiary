@@ -4,6 +4,7 @@ import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../home/models/home_tab.dart';
+import '../../home/widgets/cloud_avatar.dart';
 import '../data/album_repository.dart';
 import '../services/album_ingestion_service.dart';
 import '../widgets/album_collection_card.dart';
@@ -258,6 +259,7 @@ class _AlbumCollectionsScreenState extends State<AlbumCollectionsScreen> {
       backgroundColor: tokens.xuanGround,
       appBar: AppBar(
         automaticallyImplyLeading: false,
+        leading: const DiaristAvatarButton(key: Key('albums_avatar_button')),
         title: Text(
           '旅行相册',
           style: TextStyle(

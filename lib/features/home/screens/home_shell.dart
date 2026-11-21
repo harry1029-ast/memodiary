@@ -4,15 +4,20 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/services/ocr/ocr_queue_manager.dart';
 import 'package:memodiary/features/albums/screens/album_collections_screen.dart';
 import 'package:memodiary/features/home/models/home_tab.dart';
+import 'package:memodiary/features/home/widgets/diarist_panel.dart';
+import 'package:memodiary/features/home/widgets/diarist_panel_controller.dart';
+import 'package:memodiary/features/home/widgets/diarist_panel_overlay.dart';
 import 'package:memodiary/features/home/widgets/tab_rail.dart';
+import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 
 /// The root screen once the cover is passed: the 日记 and 相册 tabs held in an
 /// indexed stack (both keep their state; 相册 is built on first selection),
-/// switched by tapping the [TabRail].
+/// switched by tapping the [TabRail], with the Diarist Panel laid over both.
 ///
 /// Every screen opened from a tab is pushed on the single root Navigator, so it
-/// covers the shell and its rail. Android Back walks 相册 → 日记 → exit.
+/// covers the shell and its rail. Android Back walks panel open → close it;
+/// 相册 → 日记; 日记 → exit.
 class HomeShell extends StatefulWidget {
   final AppDatabase database;
   final MediaSandboxService mediaService;
@@ -31,7 +36,9 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMixin {
+  late final DiaristPanelController _panel = DiaristPanelController(vsync: this);
+  bool _isPanelOpen = false;
   final Map<HomeTab, HomeTabPrimaryAction> _primaryActions = {
     for (final tab in HomeTab.values) tab: HomeTabPrimaryAction(),
   };
@@ -43,6 +50,20 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     _selectedTab = widget.initialTab;
     _builtTabs.add(_selectedTab);
+    _panel.animation.addListener(_syncPanelOpen);
+  }
+
+  @override
+  void dispose() {
+    _panel.dispose();
+    super.dispose();
+  }
+
+  /// Rebuilds the Back interception only when the panel opens or closes.
+  void _syncPanelOpen() {
+    if (_panel.isOpen != _isPanelOpen) {
+      setState(() => _isPanelOpen = _panel.isOpen);
+    }
   }
 
   void _selectTab(HomeTab tab) {
@@ -55,7 +76,24 @@ class _HomeShellState extends State<HomeShell> {
 
   void _handlePopBlocked(bool didPop, Object? _) {
     if (didPop) return;
-    if (_selectedTab != HomeTab.diary) _selectTab(HomeTab.diary);
+    if (_panel.isOpen) {
+      _panel.close();
+    } else if (_selectedTab != HomeTab.diary) {
+      _selectTab(HomeTab.diary);
+    }
+  }
+
+  /// Replaces the Home Shell with the cover (the cover is never kept below it).
+  void _returnToCover() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => BookIntroScreen(
+          database: widget.database,
+          mediaService: widget.mediaService,
+          ocrQueueManager: widget.ocrQueueManager,
+        ),
+      ),
+    );
   }
 
   Widget _buildTab(HomeTab tab) {
@@ -77,8 +115,8 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: _selectedTab == HomeTab.diary,
+    final shell = PopScope(
+      canPop: _selectedTab == HomeTab.diary && !_isPanelOpen,
       onPopInvokedWithResult: _handlePopBlocked,
       child: Scaffold(
         extendBody: true,
@@ -92,6 +130,14 @@ class _HomeShellState extends State<HomeShell> {
           onTabSelected: _selectTab,
           onCentrePressed: () => _primaryActions[_selectedTab]!.run(),
         ),
+      ),
+    );
+    return DiaristPanelScope(
+      controller: _panel,
+      child: DiaristPanelOverlay(
+        controller: _panel,
+        panel: DiaristPanel(onReturnToCover: _returnToCover),
+        child: shell,
       ),
     );
   }
