@@ -1,7 +1,7 @@
 ---
 id: SPEC-023
 title: Home Shell, Tab Rail and Diarist Panel
-status: ready-for-agent
+status: completed
 created_at: 2026-11-22T10:00:00+08:00
 adr: ADR-0014
 ---
