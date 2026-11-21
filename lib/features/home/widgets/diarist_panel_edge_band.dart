@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:memodiary/core/services/system_gesture_exclusion.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel_controller.dart';
 import 'package:memodiary/features/home/widgets/diarist_panel_overlay.dart';
+import 'package:memodiary/features/home/widgets/diarist_panel_ribbon_tab.dart';
 
 /// The left-edge strip from which the diarist drags the Diarist Panel out.
 ///
@@ -89,6 +90,7 @@ class _DiaristPanelEdgeBandState extends State<DiaristPanelEdgeBand> {
             onHorizontalDragEnd: (details) => controller.settleFrom(details.primaryVelocity ?? 0.0, panelWidth),
           ),
         ),
+        DiaristPanelRibbonTab(controller: controller, panelWidth: panelWidth, band: band),
       ],
     );
   }

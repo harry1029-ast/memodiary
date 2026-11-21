@@ -81,6 +81,54 @@ void main() {
     });
   });
 
+  group('Silk ribbon tab', () {
+    final ribbon = find.byKey(const Key('diarist_panel_ribbon_tab'));
+
+    testWidgets('marks the band on the left edge of both tabs', (tester) async {
+      await pumpApp(tester);
+
+      // Band: 24dp status bar down to 224dp.
+      final onDiary = tester.getRect(ribbon);
+      expect(onDiary.left, 0);
+      expect(onDiary.top, greaterThanOrEqualTo(24));
+      expect(onDiary.bottom, lessThanOrEqualTo(224));
+
+      await harness.selectTab(tester, HomeShellHarness.albumsTab);
+      expect(tester.getRect(ribbon), onDiary);
+
+      await harness.unmountApp(tester);
+    });
+
+    testWidgets('tapping the ribbon opens the panel', (tester) async {
+      await pumpApp(tester);
+
+      await tester.tap(ribbon);
+      await tester.pumpAndSettle();
+
+      expect(panel, findsOneWidget);
+      expect(tester.getTopLeft(panel).dx, 0);
+    });
+
+    testWidgets('slides out with the panel edge and is gone once the panel is open', (tester) async {
+      await pumpApp(tester);
+
+      final gesture = await tester.startGesture(tester.getCenter(ribbon));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(10, 0));
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      // The panel is partly out; the ribbon rides its right edge.
+      final panelRight = tester.getTopRight(panel).dx;
+      expect(panelRight, greaterThan(50));
+      expect(tester.getRect(ribbon).left, closeTo(panelRight, 0.5));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      await harness.openPanel(tester);
+      expect(ribbon, findsNothing);
+    });
+  });
+
   group('Android Back-gesture exclusion', () {
     const channel = MethodChannel('memodiary/gesture_exclusion');
     late List<MethodCall> calls;

@@ -197,7 +197,7 @@ The raised scroll-roller centre button in the Tab Rail's notch, whose label and 
 _Avoid_: FAB, write button, plus button, 发布
 
 **Diarist Panel**:
-The casement-woodwork side panel (`我的`) slid out from the left of the Home Shell, by the header's cloud-avatar button or a left-edge drag in the upper band. It holds a placeholder profile, the `日记 · 相册 · 收藏` stats strip, and rows for `写作统计`, `回收站`, `导入与备份` and `返回封面`.
+The casement-woodwork side panel (`我的`) slid out from the left of the Home Shell, by the header's cloud-avatar button or a left-edge drag in the upper band marked by a silk ribbon tab. It holds a placeholder profile, the `日记 · 相册 · 收藏` stats strip, and rows for `写作统计`, `回收站`, `导入与备份` and `返回封面`.
 _Avoid_: Drawer, sidebar, profile page, user page, 个人中心
 
 **Chronicle Desk**:
