@@ -18,7 +18,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
   ```
 - **Consistent Widget Keys**: Standardize widget keys using snake_case descriptive tokens prefixed by feature domain:
   - Scenery: `Key('scenery_<element>')` (e.g. `const Key('scenery_realm_badge')`, `const Key('scenery_realm_option_<kind>')`)
-  - Settings: `Key('settings_<feature>_<element>')` (e.g. `const Key('settings_last_backup_tile')`)
+  - Settings: `Key('settings_<feature>_<element>')` (e.g. `const Key('settings_ocr_backfill_tile')`)
   - Search: `Key('nl_constraint_chip_<kind>')`, `Key('event_chip_<keyword>')`
   - Dialogs: `Key('backup_<action>_button')`, `Key('backup_encrypt_switch')`
 - **Predictable Constructor Parameters**: Match public property names exactly to constructor parameters; avoid synthetic renames unless adapting legacy signatures.
