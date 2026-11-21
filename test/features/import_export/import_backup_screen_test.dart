@@ -12,7 +12,7 @@ import 'package:memodiary/features/import_export/screens/import_staging_screen.d
 import 'package:memodiary/features/import_export/services/backup_restore_service.dart';
 import 'package:memodiary/features/import_export/widgets/export_dialog.dart';
 
-import 'export_service_test.dart';
+import '../../helpers/mock_file_selector_service.dart';
 
 void main() {
   late AppDatabase db;

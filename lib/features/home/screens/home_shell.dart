@@ -171,7 +171,7 @@ class _HomeShellState extends State<HomeShell> with SingleTickerProviderStateMix
         bottomNavigationBar: TabRailScrollHider(
           visibility: _railVisibility,
           child: TabRail(
-            key: const Key('home_tab_rail'),
+            key: const Key('tab_rail'),
             selectedTab: _selectedTab,
             onTabSelected: _selectTab,
             onCentrePressed: () => _primaryActions[_selectedTab]!.run(),

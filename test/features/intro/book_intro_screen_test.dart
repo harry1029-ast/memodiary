@@ -287,7 +287,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.byKey(const Key('home_tab_rail')), findsOneWidget);
+      expect(find.byKey(const Key('tab_rail')), findsOneWidget);
       expect(find.text('暂无日记'), findsOneWidget);
       expect(find.byType(BookIntroScreen, skipOffstage: false), findsNothing);
     });

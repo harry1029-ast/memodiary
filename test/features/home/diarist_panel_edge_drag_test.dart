@@ -1,34 +1,15 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/core/theme/theme_settings_service.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
-import 'package:memodiary/main.dart';
-import '../../helpers/mock_secure_storage.dart';
+import '../../helpers/home_shell_test_harness.dart';
 
 void main() {
-  late AppDatabase db;
-  late MediaSandboxService mediaService;
-  late Directory tempDir;
-
-  setUp(() {
-    db = AppDatabase.memory();
-    tempDir = Directory.systemTemp.createTempSync('diarist_panel_edge_drag_test_');
-    mediaService = MediaSandboxService(baseDirProvider: () async => tempDir);
-  });
-
-  tearDown(() async {
-    await db.close();
-    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-  });
-
-  final panel = find.byKey(const Key('diarist_panel'));
+  final harness = HomeShellHarness.register();
+  final panel = HomeShellHarness.panel;
 
   /// 400dp wide, so the open panel is 340dp; a 24dp status bar insets the
   /// band's top.
@@ -36,25 +17,8 @@ void main() {
     WidgetTester tester, {
     bool showIntroOnLaunch = false,
     Size size = const Size(400, 800),
-  }) async {
-    tester.view.physicalSize = size;
-    tester.view.devicePixelRatio = 1.0;
-    tester.view.padding = const FakeViewPadding(top: 24);
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-      tester.view.resetPadding();
-    });
-    await tester.pumpWidget(
-      MemoDiaryApp(
-        database: db,
-        mediaService: mediaService,
-        showIntroOnLaunch: showIntroOnLaunch,
-        themeSettings: ThemeSettingsService(storage: MockSecureStorage()),
-      ),
-    );
-    await tester.pumpAndSettle();
-  }
+  }) =>
+      harness.pumpApp(tester, showIntroOnLaunch: showIntroOnLaunch, size: size, topPadding: 24);
 
   group('Left-edge drag band', () {
     testWidgets('a slow edge drag inside the band opens the panel past halfway', (tester) async {
@@ -147,7 +111,7 @@ void main() {
       await pumpApp(tester);
       calls.clear();
 
-      await tester.tap(find.byKey(const Key('home_centre_button')));
+      await tester.tap(HomeShellHarness.centreButton);
       await tester.pumpAndSettle();
       expect(find.byType(EntryEditorScreen), findsOneWidget);
       expect(calls.map((c) => c.method), ['clear']);
@@ -184,7 +148,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         await pumpApp(tester);
-        await tester.tap(find.byKey(const Key('home_centre_button')));
+        await tester.tap(HomeShellHarness.centreButton);
         await tester.pumpAndSettle();
       } finally {
         debugDefaultTargetPlatformOverride = null;

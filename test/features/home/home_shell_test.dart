@@ -1,126 +1,37 @@
-import 'dart:convert';
-import 'dart:io';
 import 'dart:ui' show Tristate;
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
-import 'package:memodiary/core/theme/theme_settings_service.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
-import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
-import 'package:memodiary/main.dart';
-import '../../helpers/mock_secure_storage.dart';
+import '../../helpers/home_shell_test_harness.dart';
 import '../../helpers/widget_test_helpers.dart';
 
 void main() {
-  late AppDatabase db;
-  late MediaSandboxService mediaService;
-  late Directory tempDir;
-
-  setUp(() {
-    db = AppDatabase.memory();
-    tempDir = Directory.systemTemp.createTempSync('home_shell_test_');
-    mediaService = MediaSandboxService(baseDirProvider: () async => tempDir);
-  });
-
-  tearDown(() async {
-    await db.close();
-    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-  });
-
-  final tabRail = find.byKey(const Key('home_tab_rail'));
-  final diaryTab = find.byKey(const Key('home_tab_diary'));
-  final albumsTab = find.byKey(const Key('home_tab_albums'));
-  final centreButton = find.byKey(const Key('home_centre_button'));
-
-  Future<ThemeSettingsService> pumpApp(
-    WidgetTester tester, {
-    bool showIntroOnLaunch = false,
-    Size size = const Size(400, 800),
-  }) async {
-    tester.view.physicalSize = size;
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-    final themeSettings = ThemeSettingsService(storage: MockSecureStorage());
-    await tester.pumpWidget(
-      MemoDiaryApp(
-        database: db,
-        mediaService: mediaService,
-        showIntroOnLaunch: showIntroOnLaunch,
-        themeSettings: themeSettings,
-      ),
-    );
-    if (showIntroOnLaunch) {
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-    } else {
-      await tester.pumpAndSettle();
-    }
-    return themeSettings;
-  }
-
-  Future<void> seedEntries(int count) async {
-    for (var index = 0; index < count; index++) {
-      await db.entriesDao.createEntry(
-        EntriesCompanion.insert(
-          id: 'seed_entry_$index',
-          notebookId: 'notebook_default',
-          templateId: 'template_minimalist_white',
-          title: Value('Seed Entry $index'),
-          contentDelta: jsonEncode([
-            {'insert': 'Body $index\n'}
-          ]),
-          plainText: 'Body $index',
-          entryDate: DateTime(2026, 11, 20, 12).subtract(Duration(days: index)),
-        ),
-      );
-    }
-  }
-
-  Future<void> openCoverAndTap(WidgetTester tester, String door) async {
-    await tester.tap(find.byType(BottomSealSlider));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 900));
-    await tester.tap(find.text(door));
-    await tester.pumpAndSettle();
-  }
-
-  Future<void> selectTab(WidgetTester tester, Finder tab) async {
-    await tester.tap(tab);
-    await tester.pumpAndSettle();
-  }
-
-  /// Unmounts the app and drains Drift stream timers (the 相册 tab watches
-  /// collections) so tearDown can close the database.
-  Future<void> unmountApp(WidgetTester tester) async {
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(seconds: 1));
-  }
+  final harness = HomeShellHarness.register();
+  final tabRail = HomeShellHarness.tabRail;
+  final diaryTab = HomeShellHarness.diaryTab;
+  final albumsTab = HomeShellHarness.albumsTab;
+  final centreButton = HomeShellHarness.centreButton;
 
   bool shellCanPop(WidgetTester tester) =>
       Navigator.of(tester.element(tabRail)).canPop();
 
   group('Home Shell entry', () {
     testWidgets('cover on: the cover shows without a Tab Rail', (tester) async {
-      await pumpApp(tester, showIntroOnLaunch: true);
+      await harness.pumpApp(tester, showIntroOnLaunch: true);
 
       expect(find.byType(BookIntroScreen), findsOneWidget);
       expect(tabRail, findsNothing);
     });
 
     testWidgets('cover on: 私人日记 replaces the cover with the 日记 tab', (tester) async {
-      await pumpApp(tester, showIntroOnLaunch: true);
-      await openCoverAndTap(tester, '私人日记');
+      await harness.pumpApp(tester, showIntroOnLaunch: true);
+      await harness.openCoverAndTap(tester, '私人日记');
 
       expect(tabRail, findsOneWidget);
       expect(find.text('暂无日记'), findsOneWidget);
@@ -129,8 +40,8 @@ void main() {
     });
 
     testWidgets('cover on: 旅行相册 replaces the cover with the 相册 tab', (tester) async {
-      await pumpApp(tester, showIntroOnLaunch: true);
-      await openCoverAndTap(tester, '旅行相册');
+      await harness.pumpApp(tester, showIntroOnLaunch: true);
+      await harness.openCoverAndTap(tester, '旅行相册');
 
       expect(tabRail, findsOneWidget);
       expect(find.text('暂无旅行相册'), findsOneWidget);
@@ -138,11 +49,11 @@ void main() {
       expect(find.byType(BookIntroScreen, skipOffstage: false), findsNothing);
       expect(shellCanPop(tester), isFalse);
 
-      await unmountApp(tester);
+      await harness.unmountApp(tester);
     });
 
     testWidgets('cover off: opens on the 日记 tab with the Tab Rail', (tester) async {
-      await pumpApp(tester);
+      await harness.pumpApp(tester);
 
       expect(tabRail, findsOneWidget);
       expect(find.descendant(of: diaryTab, matching: find.text('日记')), findsOneWidget);
@@ -157,25 +68,25 @@ void main() {
 
   group('Tab switching', () {
     testWidgets('相册 is built only on first selection and the centre label follows the tab', (tester) async {
-      await pumpApp(tester);
+      await harness.pumpApp(tester);
 
       expect(find.text('暂无旅行相册', skipOffstage: false), findsNothing);
 
-      await selectTab(tester, albumsTab);
+      await harness.selectTab(tester, albumsTab);
       expect(find.text('暂无旅行相册'), findsOneWidget);
       expect(find.text('暂无日记'), findsNothing);
       expect(find.descendant(of: centreButton, matching: find.text('新建相册')), findsOneWidget);
       expect(find.descendant(of: centreButton, matching: find.text('写日记')), findsNothing);
 
-      await selectTab(tester, diaryTab);
+      await harness.selectTab(tester, diaryTab);
       expect(find.text('暂无日记'), findsOneWidget);
       expect(find.descendant(of: centreButton, matching: find.text('写日记')), findsOneWidget);
 
-      await unmountApp(tester);
+      await harness.unmountApp(tester);
     });
 
     testWidgets('the centre label cross-fades on switch', (tester) async {
-      await pumpApp(tester);
+      await harness.pumpApp(tester);
 
       await tester.tap(albumsTab);
       await tester.pump();
@@ -185,12 +96,12 @@ void main() {
 
       await tester.pumpAndSettle();
       expect(find.descendant(of: centreButton, matching: find.text('写日记')), findsNothing);
-      await unmountApp(tester);
+      await harness.unmountApp(tester);
     });
 
     testWidgets('switching away and back keeps the timeline scroll offset and filters', (tester) async {
-      await seedEntries(12);
-      await pumpApp(tester);
+      await harness.seedEntries(12);
+      await harness.pumpApp(tester);
 
       await tester.tap(find.byKey(const Key('timeline_sort_toggle_button')));
       await tester.pumpAndSettle();
@@ -200,19 +111,19 @@ void main() {
       await tester.pumpAndSettle();
       final scrolledTop = tester.getTopLeft(find.text('Seed Entry 9')).dy;
 
-      await selectTab(tester, albumsTab);
-      await selectTab(tester, diaryTab);
+      await harness.selectTab(tester, albumsTab);
+      await harness.selectTab(tester, diaryTab);
 
       expect(find.text('最早'), findsOneWidget);
       expect(tester.getTopLeft(find.text('Seed Entry 9')).dy, scrolledTop);
 
-      await unmountApp(tester);
+      await harness.unmountApp(tester);
     });
   });
 
   group('Scroll Roller Button', () {
     testWidgets('on 日记 it opens a new entry and the timeline shows it afterwards', (tester) async {
-      await pumpApp(tester);
+      await harness.pumpApp(tester);
       expect(find.text('共 0 篇'), findsOneWidget);
 
       await tester.tap(centreButton);
@@ -228,8 +139,8 @@ void main() {
     });
 
     testWidgets('on 相册 it opens the create-album sheet and the list shows the new album', (tester) async {
-      await pumpApp(tester);
-      await selectTab(tester, albumsTab);
+      await harness.pumpApp(tester);
+      await harness.selectTab(tester, albumsTab);
 
       await tester.tap(centreButton);
       await tester.pumpAndSettle();
@@ -240,7 +151,7 @@ void main() {
       expect(find.text('江南春行纪'), findsOneWidget);
       expect(find.text('暂无旅行相册'), findsNothing);
 
-      await unmountApp(tester);
+      await harness.unmountApp(tester);
     });
   });
 
@@ -257,8 +168,8 @@ void main() {
       addTearDown(() => tester.binding.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null));
 
-      await pumpApp(tester, showIntroOnLaunch: true);
-      await openCoverAndTap(tester, '旅行相册');
+      await harness.pumpApp(tester, showIntroOnLaunch: true);
+      await harness.openCoverAndTap(tester, '旅行相册');
 
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
@@ -271,7 +182,7 @@ void main() {
       expect(platformCalls, contains('SystemNavigator.pop'));
       expect(find.byType(BookIntroScreen), findsNothing);
       expect(tabRail, findsOneWidget);
-      await unmountApp(tester);
+      await harness.unmountApp(tester);
     });
   });
 
@@ -307,7 +218,7 @@ void main() {
     }
 
     testWidgets('uses the active palette woodwork tokens and recolours live', (tester) async {
-      final themeSettings = await pumpApp(tester);
+      final themeSettings = await harness.pumpApp(tester);
       expectRailColours(tester, AtmospherePalettes.yunhaoDay);
 
       await themeSettings.setPreset(AtmosphereThemePreset.classic);
@@ -320,7 +231,7 @@ void main() {
     testWidgets('tabs announce tab role and selected state; the centre button its current label', (tester) async {
       final semanticsHandle = tester.ensureSemantics();
       try {
-        await pumpApp(tester);
+        await harness.pumpApp(tester);
 
         final diarySemantics = tester.getSemantics(diaryTab).getSemanticsData();
         expect(diarySemantics.role, SemanticsRole.tab);
@@ -332,14 +243,14 @@ void main() {
         expect(albumsSemantics.flagsCollection.isSelected, Tristate.isFalse);
         expect(find.bySemanticsLabel('写日记'), findsOneWidget);
 
-        await selectTab(tester, albumsTab);
+        await harness.selectTab(tester, albumsTab);
         expect(
           tester.getSemantics(albumsTab).getSemanticsData().flagsCollection.isSelected,
           Tristate.isTrue,
         );
         expect(find.bySemanticsLabel('新建相册'), findsOneWidget);
         expect(find.bySemanticsLabel('写日记'), findsNothing);
-        await unmountApp(tester);
+        await harness.unmountApp(tester);
       } finally {
         semanticsHandle.dispose();
       }
@@ -350,14 +261,14 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       final semanticsHandle = tester.ensureSemantics();
       try {
-        await pumpApp(tester, size: const Size(320, 640));
+        await harness.pumpApp(tester, size: const Size(320, 640));
         expect(tester.takeException(), isNull);
         await expectAccessibleTapTargets(tester, within: tabRail);
 
-        await selectTab(tester, albumsTab);
+        await harness.selectTab(tester, albumsTab);
         expect(tester.takeException(), isNull);
         await expectAccessibleTapTargets(tester, within: tabRail);
-        await unmountApp(tester);
+        await harness.unmountApp(tester);
       } finally {
         semanticsHandle.dispose();
       }

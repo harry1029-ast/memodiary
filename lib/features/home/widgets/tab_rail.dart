@@ -79,7 +79,7 @@ class TabRail extends StatelessWidget {
               right: 0,
               child: Center(
                 child: ScrollRollerFab(
-                  key: const Key('home_centre_button'),
+                  key: const Key('tab_rail_centre_button'),
                   label: selectedTab.primaryActionLabel,
                   icon: selectedTab.primaryActionIcon,
                   onPressed: onCentrePressed,
@@ -94,7 +94,7 @@ class TabRail extends StatelessWidget {
 
   Widget _buildTab(HomeTab tab, AtmospherePalette palette) {
     return _TabRailItem(
-      key: Key('home_tab_${tab.name}'),
+      key: Key('tab_rail_tab_${tab.name}'),
       label: tab.label,
       isSelected: tab == selectedTab,
       palette: palette,

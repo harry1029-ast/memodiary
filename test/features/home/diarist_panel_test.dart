@@ -1,81 +1,26 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
-import 'package:memodiary/core/theme/theme_settings_service.dart';
 import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
-import 'package:memodiary/main.dart';
-import '../../helpers/mock_secure_storage.dart';
+import '../../helpers/home_shell_test_harness.dart';
 import '../../helpers/widget_test_helpers.dart';
 
 void main() {
-  late AppDatabase db;
-  late MediaSandboxService mediaService;
-  late Directory tempDir;
-
-  setUp(() {
-    db = AppDatabase.memory();
-    tempDir = Directory.systemTemp.createTempSync('diarist_panel_test_');
-    mediaService = MediaSandboxService(baseDirProvider: () async => tempDir);
-  });
-
-  tearDown(() async {
-    await db.close();
-    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
-  });
-
-  final avatarButton = find.byKey(const Key('timeline_avatar_button'));
-  final panel = find.byKey(const Key('diarist_panel'));
-
-  Future<ThemeSettingsService> pumpApp(
-    WidgetTester tester, {
-    bool showIntroOnLaunch = false,
-    Size size = const Size(400, 800),
-  }) async {
-    tester.view.physicalSize = size;
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-    final themeSettings = ThemeSettingsService(storage: MockSecureStorage());
-    await tester.pumpWidget(
-      MemoDiaryApp(
-        database: db,
-        mediaService: mediaService,
-        showIntroOnLaunch: showIntroOnLaunch,
-        themeSettings: themeSettings,
-      ),
-    );
-    await tester.pumpAndSettle();
-    return themeSettings;
-  }
-
-  /// Unmounts the app and drains Drift stream timers (the 相册 tab watches
-  /// collections) so tearDown can close the database.
-  Future<void> unmountApp(WidgetTester tester) async {
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump(const Duration(seconds: 1));
-  }
-
-  Future<void> openPanel(WidgetTester tester) async {
-    await tester.tap(avatarButton);
-    await tester.pumpAndSettle();
-  }
+  final harness = HomeShellHarness.register();
+  final avatarButton = HomeShellHarness.timelineAvatar;
+  final panel = HomeShellHarness.panel;
 
   group('Opening and closing', () {
     testWidgets('the avatar button on 日记 opens the panel with the placeholder profile', (tester) async {
-      await pumpApp(tester);
+      await harness.pumpApp(tester);
       expect(find.text('云皓主人'), findsNothing);
 
-      await openPanel(tester);
+      await harness.openPanel(tester);
 
       expect(panel, findsOneWidget);
       expect(find.descendant(of: panel, matching: find.text('云皓主人')), findsOneWidget);
@@ -84,8 +29,8 @@ void main() {
     });
 
     testWidgets('tapping the dimmed strip closes the panel', (tester) async {
-      await pumpApp(tester);
-      await openPanel(tester);
+      await harness.pumpApp(tester);
+      await harness.openPanel(tester);
 
       await tester.tapAt(const Offset(385, 400));
       await tester.pumpAndSettle();
@@ -95,8 +40,8 @@ void main() {
     });
 
     testWidgets('swiping left closes the panel; a short nudge leaves it open', (tester) async {
-      await pumpApp(tester);
-      await openPanel(tester);
+      await harness.pumpApp(tester);
+      await harness.openPanel(tester);
 
       await tester.timedDrag(panel, const Offset(-40, 0), const Duration(milliseconds: 400));
       await tester.pumpAndSettle();
@@ -108,15 +53,15 @@ void main() {
     });
 
     testWidgets('the 相册 header has the same avatar button', (tester) async {
-      await pumpApp(tester);
-      await tester.tap(find.byKey(const Key('home_tab_albums')));
+      await harness.pumpApp(tester);
+      await tester.tap(HomeShellHarness.albumsTab);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('albums_avatar_button')));
+      await tester.tap(HomeShellHarness.albumsAvatar);
       await tester.pumpAndSettle();
       expect(find.descendant(of: panel, matching: find.text('云皓主人')), findsOneWidget);
 
-      await unmountApp(tester);
+      await harness.unmountApp(tester);
     });
   });
 
@@ -133,10 +78,10 @@ void main() {
       addTearDown(() => tester.binding.defaultBinaryMessenger
           .setMockMethodCallHandler(SystemChannels.platform, null));
 
-      await pumpApp(tester);
-      await tester.tap(find.byKey(const Key('home_tab_albums')));
+      await harness.pumpApp(tester);
+      await tester.tap(HomeShellHarness.albumsTab);
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('albums_avatar_button')));
+      await tester.tap(HomeShellHarness.albumsAvatar);
       await tester.pumpAndSettle();
 
       await tester.binding.handlePopRoute();
@@ -152,14 +97,14 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
       expect(platformCalls, contains('SystemNavigator.pop'));
-      await unmountApp(tester);
+      await harness.unmountApp(tester);
     });
   });
 
   group('返回封面', () {
     testWidgets('replaces the Home Shell with the cover, and re-entering lands on the door\'s tab', (tester) async {
-      await pumpApp(tester, size: const Size(800, 1600));
-      final tabRail = find.byKey(const Key('home_tab_rail'));
+      await harness.pumpApp(tester, size: const Size(800, 1600));
+      final tabRail = HomeShellHarness.tabRail;
 
       Future<void> returnToCover(Finder avatar) async {
         await tester.tap(avatar);
@@ -167,7 +112,7 @@ void main() {
         await tester.tap(find.byKey(const Key('diarist_panel_return_to_cover_row')));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 500));
-        expect(find.byKey(const Key('home_tab_rail'), skipOffstage: false), findsNothing);
+        expect(find.byKey(const Key('tab_rail'), skipOffstage: false), findsNothing);
         expect(panel, findsNothing);
         expect(find.byType(BookIntroScreen), findsOneWidget);
         expect(Navigator.of(tester.element(find.byType(BookIntroScreen))).canPop(), isFalse);
@@ -193,8 +138,8 @@ void main() {
       await enterThrough('旅行相册');
       expect(find.text('暂无旅行相册'), findsOneWidget);
 
-      await returnToCover(find.byKey(const Key('albums_avatar_button')));
-      await unmountApp(tester);
+      await returnToCover(HomeShellHarness.albumsAvatar);
+      await harness.unmountApp(tester);
     });
   });
 
@@ -202,8 +147,8 @@ void main() {
     testWidgets('is display-only: tapping it changes nothing and it offers no actions', (tester) async {
       final semanticsHandle = tester.ensureSemantics();
       try {
-        await pumpApp(tester);
-        await openPanel(tester);
+        await harness.pumpApp(tester);
+        await harness.openPanel(tester);
         final profile = find.byKey(const Key('diarist_panel_profile'));
 
         await tester.tap(find.text('云皓主人'));
@@ -237,8 +182,8 @@ void main() {
     }
 
     testWidgets('uses the active palette woodwork with light status-bar icons, and recolours live', (tester) async {
-      final themeSettings = await pumpApp(tester);
-      await openPanel(tester);
+      final themeSettings = await harness.pumpApp(tester);
+      await harness.openPanel(tester);
       expectPanelColours(tester, AtmospherePalettes.yunhaoDay);
 
       final region = tester.widget<AnnotatedRegion<SystemUiOverlayStyle>>(
@@ -258,7 +203,7 @@ void main() {
     testWidgets('the avatar button reads 我的; the open panel names itself and hides the shell behind', (tester) async {
       final semanticsHandle = tester.ensureSemantics();
       try {
-        await pumpApp(tester);
+        await harness.pumpApp(tester);
         expect(
           tester.getSemantics(avatarButton),
           matchesSemantics(
@@ -274,7 +219,7 @@ void main() {
 
         expect(find.semantics.byLabel('写日记'), findsOne);
 
-        await openPanel(tester);
+        await harness.openPanel(tester);
 
         final panelRoute = find
             .ancestor(
@@ -300,7 +245,7 @@ void main() {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      await pumpApp(tester);
+      await harness.pumpApp(tester);
 
       await tester.tap(avatarButton);
       await tester.pump();
@@ -318,9 +263,9 @@ void main() {
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
       final semanticsHandle = tester.ensureSemantics();
       try {
-        await pumpApp(tester, size: const Size(320, 640));
+        await harness.pumpApp(tester, size: const Size(320, 640));
         await expectAccessibleTapTargets(tester, within: avatarButton);
-        await openPanel(tester);
+        await harness.openPanel(tester);
         expect(tester.takeException(), isNull);
         expect(tester.getSize(panel).width, closeTo(320 * 0.85, 0.5));
         await expectAccessibleTapTargets(tester, within: panel);
