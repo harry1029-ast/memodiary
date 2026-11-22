@@ -21,6 +21,7 @@ import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
 import '../services/thought_spark_service.dart';
+import '../widgets/desk_workstation/desk_palette.dart';
 import '../widgets/editor_app_bar_slide.dart';
 import '../widgets/editor_paper_canvas.dart';
 import '../widgets/editor_media_actions.dart';
@@ -328,10 +329,7 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
       templateStyle: TemplateStyle.fromTemplate(_currentTemplate!),
       typography: _typography,
     );
-    final isPaperDark = themeConfig.isPaperDark;
-    final paperColor = themeConfig.templateStyle.backgroundColor;
-    final inkColor = themeConfig.inkColor;
-    final iconColor = themeConfig.iconColor;
+    final desk = DeskPalette.of(context);
     final currentSheetIndex = _paginationHandler!.currentSheetIndex;
 
     final letterheadConfig = StationeryLetterheadConfig(
@@ -365,16 +363,18 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isPaperDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      value: desk.isChromeDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
-        backgroundColor: paperColor,
+        backgroundColor: desk.chromeSurface,
         appBar: EditorAppBarSlide(
           isAway: _chrome.isKeyboardVisible,
-          stripColor: paperColor,
+          stripColor: desk.chromeSurface,
           onHiddenExtent: _chrome.syncAppBarHiddenExtent,
           appBar: EditorTopAppBar(
-            paperColor: paperColor,
-            iconColor: iconColor,
+            surfaceColor: desk.chromeSurface,
+            iconColor: DeskPalette.chromeInk,
+            ruleColor: desk.chromeRule,
+            doneColor: DeskPalette.chromeAccent,
             autosaveStatusNotifier: _autosaveManager!.statusNotifier,
             audioSanctumService: _audioSanctumService,
             unlockAt: _unlockAt,
@@ -420,9 +420,10 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               onPickImage: () => _collectMedia(isVideo: false),
               onPickVideo: () => _collectMedia(isVideo: true),
               onShuffleSpark: _handleShuffleSpark,
-              paperColor: paperColor,
-              inkColor: inkColor,
-              isPaperDark: isPaperDark,
+              surfaceColor: desk.chromeSurface,
+              inkColor: DeskPalette.chromeInk,
+              ruleColor: desk.chromeRule,
+              isSurfaceDark: desk.isChromeDark,
             ),
           ],
         ),

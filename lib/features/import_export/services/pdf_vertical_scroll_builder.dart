@@ -9,6 +9,7 @@ import '../../../core/documents/media_embed_data.dart';
 import '../../../core/documents/vertical_typography_mapper.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
+import '../../templates/services/stationery_layout_calculator.dart';
 import '../../timeline/services/folio_media_pairing.dart';
 import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
@@ -68,6 +69,39 @@ class _PdfKeepsakeColophonItem extends _PdfKeepsakeItem {
 class PdfVerticalScrollBuilder {
   const PdfVerticalScrollBuilder._();
 
+  static final Expando<bool> _useCjkVerticalEllipsisCache = Expando<bool>();
+
+  static bool _shouldUseCjkVerticalEllipsis(pw.Font font) {
+    final cached = _useCjkVerticalEllipsisCache[font];
+    if (cached != null) return cached;
+    var result = false;
+    if (font is pw.TtfFont) {
+      final map = TtfParser(font.data).charToGlyphIndexMap;
+      result = map[0x22EE] == null && map[0xFE19] != null;
+    }
+    _useCjkVerticalEllipsisCache[font] = result;
+    return result;
+  }
+
+  static pw.EdgeInsets _resolvePaperHeartMargin(
+    PdfPageFormat landscapeFormat,
+    TemplateStyle style,
+  ) {
+    final metrics = StationeryLayoutCalculator.calculateMetrics(
+      canvasWidth: landscapeFormat.width,
+      canvasHeight: landscapeFormat.height,
+      backgroundType: style.type,
+      horizontalMargin: style.resolvedHorizontalMargin,
+      lineSpacing: style.lineSpacing,
+    );
+    return pw.EdgeInsets.fromLTRB(
+      metrics.innerFrameRect.left + 6.0,
+      metrics.heavenMarginPx + 6.0,
+      (landscapeFormat.width - metrics.innerFrameRect.right) + 6.0,
+      metrics.earthMarginPx + 6.0,
+    );
+  }
+
   /// Compiles entry content into landscape vector PDF pages in authentic right-to-left vertical flow.
   static Future<List<pw.Page>> buildVerticalScrollPages({
     required Entry entry,
@@ -79,8 +113,7 @@ class PdfVerticalScrollBuilder {
     PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
     final landscapeFormat = pageFormat.landscape;
-    final marginX = style.marginHorizontal.clamp(24.0, 48.0);
-    const marginY = 32.0;
+    final pageMargin = _resolvePaperHeartMargin(landscapeFormat, style);
 
     final pageWidgets = await buildPageWidgets(
       entry: entry,
@@ -97,7 +130,7 @@ class PdfVerticalScrollBuilder {
           (pageWidget) => pw.Page(
             pageTheme: pw.PageTheme(
               pageFormat: landscapeFormat,
-              margin: pw.EdgeInsets.symmetric(horizontal: marginX, vertical: marginY),
+              margin: pageMargin,
               buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, style),
             ),
             build: (context) => pageWidget,
@@ -117,11 +150,10 @@ class PdfVerticalScrollBuilder {
     PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
     final landscapeFormat = pageFormat.landscape;
-    final marginX = style.marginHorizontal.clamp(24.0, 48.0);
-    const marginY = 32.0;
+    final pageMargin = _resolvePaperHeartMargin(landscapeFormat, style);
 
-    final availableHeight = landscapeFormat.height - (marginY * 2);
-    final availableWidth = landscapeFormat.width - (marginX * 2);
+    final availableHeight = landscapeFormat.height - pageMargin.vertical;
+    final availableWidth = landscapeFormat.width - pageMargin.horizontal;
 
     // Collect all vertical items (title, columns, media cards, terminal colophon)
     final items = await _parseEntryItems(
@@ -173,8 +205,10 @@ class PdfVerticalScrollBuilder {
         pw.Stack(
           children: [
             pw.Container(
+              width: availableWidth,
               height: availableHeight,
               child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.end,
                 crossAxisAlignment: pw.CrossAxisAlignment.stretch,
                 children: pageSlice.reversed
                     .map((item) => _renderPdfItem(item, style, fontResolver))
@@ -247,7 +281,11 @@ class PdfVerticalScrollBuilder {
               }
 
               if (token is VerticalGlyphToken) {
-                final sanitized = resolver.sanitizeText(token.glyph);
+                var rawGlyph = token.glyph;
+                if (rawGlyph == '⋮' && _shouldUseCjkVerticalEllipsis(font)) {
+                  rawGlyph = '︙';
+                }
+                final sanitized = resolver.sanitizeText(rawGlyph);
                 final parsedColor = TemplateStyle.tryParseHexColor(styledToken.colorHex);
                 final glyphColor = parsedColor != null
                     ? PdfColor.fromInt(parsedColor.toARGB32())

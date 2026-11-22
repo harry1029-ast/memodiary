@@ -28,7 +28,7 @@ class DeskWorkstation extends StatefulWidget {
   /// handscroll's controls. The workstation's own height is unaffected.
   final EdgeInsets reservedInsets;
 
-  static const double kHeaderHeight = 26.0;
+  static const double kHeaderHeight = 18.0;
   static const EdgeInsets kMatInsets = EdgeInsets.fromLTRB(10.0, kHeaderHeight, 10.0, 8.0);
 
   const DeskWorkstation({
@@ -94,9 +94,6 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
   @override
   Widget build(BuildContext context) {
     final isClosed = widget.stagedItems.isEmpty;
-    final headerLabel = isClosed
-        ? '待选照片'
-        : '待选照片 · ${widget.stagedItems.length} 项';
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
@@ -104,49 +101,22 @@ class _DeskWorkstationState extends State<DeskWorkstation> {
         child: CustomPaint(
           key: const Key('desk_workstation'),
           painter: _deskPainter,
-          child: Stack(
-            children: [
-              Positioned(
-                left: 16.0,
-                top: 0.0,
-                height: DeskWorkstation.kHeaderHeight,
-                right: 16.0,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: ExcludeSemantics(
-                    child: Text(
-                      headerLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.0,
-                        letterSpacing: 1.5,
-                        color: Color(0xE6FDE68A),
-                      ),
-                    ),
+          child: Padding(
+            padding: DeskWorkstation.kMatInsets.add(const EdgeInsets.all(2.0)).add(widget.reservedInsets),
+            child: isClosed
+                ? ClosedBrocadeScroll(
+                    key: const Key('closed_brocade_scroll'),
+                    onTap: widget.handlers.onCollect,
+                  )
+                : StagingHandscroll(
+                    items: widget.stagedItems,
+                    mediaSandboxService: widget.mediaSandboxService,
+                    activeSheetNumber: widget.activeSheetNumber,
+                    isPaperDark: false,
+                    onTapItem: widget.onTapItem,
+                    handlers: widget.handlers,
+                    unrollOnOpen: _opensFromClosed,
                   ),
-                ),
-              ),
-              Positioned.fill(
-                child: Padding(
-                  padding: DeskWorkstation.kMatInsets.add(const EdgeInsets.all(2.0)).add(widget.reservedInsets),
-                  child: isClosed
-                      ? ClosedBrocadeScroll(
-                          key: const Key('closed_brocade_scroll'),
-                          onTap: widget.handlers.onCollect,
-                        )
-                      : StagingHandscroll(
-                          items: widget.stagedItems,
-                          mediaSandboxService: widget.mediaSandboxService,
-                          activeSheetNumber: widget.activeSheetNumber,
-                          isPaperDark: false,
-                          onTapItem: widget.onTapItem,
-                          handlers: widget.handlers,
-                          unrollOnOpen: _opensFromClosed,
-                        ),
-                ),
-              ),
-            ],
           ),
         ),
       ),

@@ -9,10 +9,10 @@ import 'writing_dock_tool_button.dart';
 
 /// The slim row resting on the software keyboard in place of the Writing Dock
 /// while the diarist types: Tt formatting (unfolding the formatting ribbon
-/// above it), 🎙 dictation and the 收起文房 / 展开文房 toggle, which chooses
-/// whether the Writing Dock returns when the keyboard closes (the app-wide
-/// hidden-dock preference). Photo, video and ambiance tools wait in the dock:
-/// collecting closes the keyboard anyway.
+/// above it), 🎙 dictation and the [WritingDockHideTab] (收起工具栏), which
+/// hides the toolbar until restored via the floating tab on the desk. Photo,
+/// video and ambiance tools wait in the dock: collecting closes the keyboard
+/// anyway.
 ///
 /// None of the three touch focus, so the keyboard stays open.
 class KeyboardAccessoryRow extends StatelessWidget {
@@ -21,13 +21,11 @@ class KeyboardAccessoryRow extends StatelessWidget {
   final bool isFormattingOpen;
   final VoidCallback? onToggleFormatting;
   final VoidCallback onToggleDictation;
-
-  /// Whether the Writing Dock returns when the keyboard closes.
-  final bool isWritingDockVisible;
-  final VoidCallback onToggleWritingDock;
+  final VoidCallback onHide;
   final bool isDictating;
   final Color backgroundColor;
   final Color inkColor;
+  final Color? borderColor;
   final bool isPaperDark;
 
   static const double kRowHeight = 44.0;
@@ -39,11 +37,11 @@ class KeyboardAccessoryRow extends StatelessWidget {
     this.isFormattingOpen = false,
     this.onToggleFormatting,
     required this.onToggleDictation,
-    required this.isWritingDockVisible,
-    required this.onToggleWritingDock,
+    required this.onHide,
     this.isDictating = false,
     required this.backgroundColor,
     required this.inkColor,
+    this.borderColor,
     this.isPaperDark = false,
   });
 
@@ -56,7 +54,7 @@ class KeyboardAccessoryRow extends StatelessWidget {
         key: const Key('keyboard_accessory_row'),
         decoration: BoxDecoration(
           color: backgroundColor,
-          border: Border(top: BorderSide(color: tokens.agedFiber, width: 1.0)),
+          border: Border(top: BorderSide(color: borderColor ?? tokens.agedFiber, width: 1.0)),
         ),
         child: SafeArea(
           top: false,
@@ -81,7 +79,7 @@ class KeyboardAccessoryRow extends StatelessWidget {
 
   Widget _buildTools(InkDiaryTokens tokens) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10.0),
+      padding: const EdgeInsets.only(left: 10.0),
       child: Row(
         children: [
           WritingDockToolButton(
@@ -89,7 +87,8 @@ class KeyboardAccessoryRow extends StatelessWidget {
             icon: _TtGlyph(color: inkColor),
             tooltip: '字体排版',
             isActive: isFormattingOpen,
-            activeBackground: tokens.agedFiber.withValues(alpha: isPaperDark ? 0.65 : 0.85),
+            activeBackground:
+                isPaperDark ? const Color(0x38D4AF37) : tokens.agedFiber.withValues(alpha: 0.85),
             minHeight: KeyboardAccessoryRow.kRowHeight,
             onTap: () {
               HapticFeedback.lightImpact();
@@ -104,11 +103,7 @@ class KeyboardAccessoryRow extends StatelessWidget {
             onTap: onToggleDictation,
           ),
           const Spacer(),
-          _WritingDockToggle(
-            isWritingDockVisible: isWritingDockVisible,
-            inkColor: inkColor,
-            onTap: onToggleWritingDock,
-          ),
+          WritingDockHideTab(onHide: onHide),
         ],
       ),
     );
@@ -128,63 +123,6 @@ class _TtGlyph extends StatelessWidget {
         text: 'T',
         style: TextStyle(fontFamily: InkDiaryTheme.fontNotoSerif, fontSize: 16, fontWeight: FontWeight.bold, color: color),
         children: const [TextSpan(text: 't', style: TextStyle(fontSize: 12))],
-      ),
-    );
-  }
-}
-
-/// 收起文房 / 展开文房: a labelled 44dp target naming what it will do to the
-/// Writing Dock once the keyboard closes. It holds no focus of its own, so
-/// the keyboard and writing focus stay as they are.
-class _WritingDockToggle extends StatelessWidget {
-  final bool isWritingDockVisible;
-  final Color inkColor;
-  final VoidCallback onTap;
-
-  const _WritingDockToggle({required this.isWritingDockVisible, required this.inkColor, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final label = isWritingDockVisible ? WritingDockHideTab.kSemanticLabel : WritingDockRestoreTab.kSemanticLabel;
-    return Semantics(
-      button: true,
-      label: label,
-      onTap: onTap,
-      excludeSemantics: true,
-      child: GestureDetector(
-        key: const Key('keyboard_accessory_dock_toggle_btn'),
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 44.0, minHeight: KeyboardAccessoryRow.kRowHeight),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isWritingDockVisible ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
-                  size: 18,
-                  color: inkColor,
-                ),
-                const SizedBox(width: 4.0),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontFamily: InkDiaryTheme.fontKaiti,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: inkColor,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

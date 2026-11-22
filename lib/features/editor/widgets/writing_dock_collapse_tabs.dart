@@ -9,9 +9,8 @@ const _brassGradient = LinearGradient(
 );
 const _brassShadow = [BoxShadow(color: Color(0x66000000), blurRadius: 4.0, offset: Offset(0, 1))];
 
-/// A 44x44 target around a slim brass plate bearing [icon], in the style of
-/// the Desk Workstation's pull tab. Taps never touch focus, so the software
-/// keyboard stays as it is.
+/// A 44x44 target around a slim brass plate bearing [icon]. Taps never touch
+/// focus, so the software keyboard stays as it is.
 class _BrassDockTab extends StatelessWidget {
   final Key tabKey;
   final String semanticLabel;
@@ -58,7 +57,8 @@ class _BrassDockTab extends StatelessWidget {
   }
 }
 
-/// The tab (收起文房) at the right of the Writing Dock's top edge that hides it.
+/// The tab (收起工具栏) at the right of the Writing Dock's top edge or keyboard
+/// accessory row that hides the toolbar.
 class WritingDockHideTab extends StatelessWidget {
   final VoidCallback onHide;
 

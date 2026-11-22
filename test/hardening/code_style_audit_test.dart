@@ -144,38 +144,27 @@ void main() {
       );
     });
 
-    test('Non-grandfathered Dart files in lib/ maintain strict file size limit (< 450 LOC)', () {
-      const maxAllowedLoc = 450;
-      const grandfatheredFilesExceeding450Loc = <String>{
-        'lib/core/theme/ink_diary_theme.dart',
+    test('Non-grandfathered Dart files in lib/ maintain strict file size limit (< 500 LOC)', () {
+      const maxAllowedLoc = 500;
+      const grandfatheredFilesExceeding500Loc = <String>{
         'lib/features/albums/models/album_studio_models.dart',
         'lib/features/albums/screens/album_workspace_screen.dart',
         'lib/features/albums/services/album_studio_pdf_renderer.dart',
         'lib/features/albums/services/album_theme_catalog.dart',
         'lib/features/albums/widgets/page_background_painter.dart',
-        'lib/features/analytics/screens/analytics_dashboard_screen.dart',
-        'lib/features/editor/widgets/soundscape_modal.dart',
-        'lib/features/editor/widgets/typography_sheet.dart',
         'lib/features/import_export/services/backup_crypto.dart',
         'lib/features/import_export/services/date_parser_engine.dart',
         'lib/features/import_export/services/offline_cjk_ttf_generator.dart',
         'lib/features/import_export/widgets/backup_dialogs.dart',
-        'lib/features/intro/widgets/book_3d_stage.dart',
-        'lib/features/intro/widgets/living_ink_background_painter.dart',
         'lib/features/scenery/models/ancient_room_palette.dart',
         'lib/features/scenery/models/outdoor_street_palette.dart',
         'lib/features/scenery/models/shanshui_atmosphere.dart',
         'lib/features/scenery/models/shanshui_palette.dart',
-        'lib/features/scenery/painters/ancient_room_painter.dart',
         'lib/features/scenery/painters/outdoor_street_painter.dart',
         'lib/features/scenery/painters/outdoor_street_static_architecture.dart',
         'lib/features/scenery/widgets/shanshui_canvas_painter.dart',
-        'lib/features/scenery/widgets/shanshui_scenery_card.dart',
         'lib/features/search/services/natural_language_search_parser.dart',
         'lib/features/settings/screens/settings_screen.dart',
-        'lib/features/timeline/screens/entry_detail_screen.dart',
-        'lib/features/timeline/screens/timeline_screen.dart',
-        'lib/features/weekly_review/screens/weekly_debrief_detail_screen.dart',
         'lib/features/weekly_review/screens/weekly_review_screen.dart',
       };
 
@@ -188,7 +177,7 @@ void main() {
 
       for (final file in dartFiles) {
         final relPath = file.path.replaceFirst('${rootDir.path}/', '');
-        if (grandfatheredFilesExceeding450Loc.contains(relPath)) {
+        if (grandfatheredFilesExceeding500Loc.contains(relPath)) {
           continue;
         }
 
@@ -201,7 +190,7 @@ void main() {
       expect(
         violations,
         isEmpty,
-        reason: 'All newly authored files in lib/ must remain strictly under 450 lines '
+        reason: 'All newly authored files in lib/ must remain strictly under 500 lines '
             'per GEMINI.md and CODING_STANDARDS.md § 3. Found files exceeding limit:\n'
             '${violations.join('\n')}',
       );

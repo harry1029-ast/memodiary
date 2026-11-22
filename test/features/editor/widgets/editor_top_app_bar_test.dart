@@ -30,8 +30,9 @@ void main() {
         MaterialApp(
           home: Scaffold(
             appBar: EditorTopAppBar(
-              paperColor: Colors.white,
+              surfaceColor: Colors.white,
               iconColor: Colors.black,
+              ruleColor: Colors.grey,
               autosaveStatusNotifier: autosaveStatusNotifier,
               audioSanctumService: fakeAudioService,
               unlockAt: null,
@@ -71,8 +72,9 @@ void main() {
         MaterialApp(
           home: Scaffold(
             appBar: EditorTopAppBar(
-              paperColor: Colors.white,
+              surfaceColor: Colors.white,
               iconColor: Colors.black,
+              ruleColor: Colors.grey,
               autosaveStatusNotifier: autosaveStatusNotifier,
               audioSanctumService: fakeAudioService,
               unlockAt: null,
@@ -102,8 +104,9 @@ void main() {
         MaterialApp(
           home: Scaffold(
             appBar: EditorTopAppBar(
-              paperColor: Colors.white,
+              surfaceColor: Colors.white,
               iconColor: Colors.black,
+              ruleColor: Colors.grey,
               autosaveStatusNotifier: autosaveStatusNotifier,
               audioSanctumService: fakeAudioService,
               unlockAt: null,
@@ -150,8 +153,9 @@ void main() {
             ),
             home: Scaffold(
               appBar: EditorTopAppBar(
-                paperColor: Colors.white,
+                surfaceColor: Colors.white,
                 iconColor: Colors.black,
+                ruleColor: Colors.grey,
                 autosaveStatusNotifier: autosaveStatusNotifier,
                 audioSanctumService: fakeAudioService,
                 unlockAt: futureDate,

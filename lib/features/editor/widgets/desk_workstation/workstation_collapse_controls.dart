@@ -1,51 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// The brass pull tab (拉手) at the right end of the Desk Workstation's top edge that
-/// puts the workstation away. A 44x44 target around a slim brass plate.
-///
-/// Taps never touch focus, so the software keyboard stays as it is.
-class WorkstationPullTab extends StatelessWidget {
-  final VoidCallback onCollapse;
+import 'desk_palette.dart';
 
-  const WorkstationPullTab({super.key, required this.onCollapse});
+/// Compact tab attached to the centre top edge of the Desk Workstation's bamboo
+/// mat (or peeking up from the desk's bottom edge while collapsed): a 44x44
+/// touch target around a 40x18 mat-matched tab bearing [icon]. Taps never touch
+/// focus, so the software keyboard stays as it is.
+class _WorkstationTab extends StatelessWidget {
+  final Key tabKey;
+  final String semanticLabel;
+  final IconData icon;
+  final AlignmentGeometry alignment;
+  final VoidCallback onTap;
+
+  const _WorkstationTab({
+    required this.tabKey,
+    required this.semanticLabel,
+    required this.icon,
+    required this.alignment,
+    required this.onTap,
+  });
 
   static const double kTargetSize = 44.0;
-  static const String kSemanticLabel = '收起待选区';
+  static const double kTabWidth = 40.0;
+  static const double kTabHeight = 18.0;
 
   @override
   Widget build(BuildContext context) {
+    final palette = DeskPalette.of(context);
     return Semantics(
       button: true,
-      label: kSemanticLabel,
-      onTap: onCollapse,
+      label: semanticLabel,
+      onTap: onTap,
       excludeSemantics: true,
       child: GestureDetector(
-        key: const Key('workstation_pull_tab'),
+        key: tabKey,
         behavior: HitTestBehavior.opaque,
         onTap: () {
           HapticFeedback.lightImpact();
-          onCollapse();
+          onTap();
         },
-        child: const SizedBox(
+        child: SizedBox(
           width: kTargetSize,
           height: kTargetSize,
-          child: Center(
+          child: Align(
+            alignment: alignment,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                border: Border.fromBorderSide(BorderSide(color: Color(0xFF6B4F1D), width: 0.8)),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFE6C877), Color(0xFFB8913A)],
+                color: palette.mat,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(8.0)),
+                border: Border(
+                  top: BorderSide(color: palette.matRim),
+                  left: BorderSide(color: palette.matRim),
+                  right: BorderSide(color: palette.matRim),
                 ),
-                boxShadow: [BoxShadow(color: Color(0x66000000), blurRadius: 4.0, offset: Offset(0, 1))],
+                boxShadow: const [BoxShadow(color: Color(0x4D000000), blurRadius: 4.0, offset: Offset(0, -1))],
               ),
               child: SizedBox(
-                width: 36.0,
-                height: 18.0,
-                child: Icon(Icons.keyboard_arrow_down_rounded, size: 16.0, color: Color(0xFF3B2A0C)),
+                width: kTabWidth,
+                height: kTabHeight,
+                child: Icon(icon, size: 16.0, color: const Color(0xE6FDE68A)),
               ),
             ),
           ),
@@ -55,10 +70,30 @@ class WorkstationPullTab extends StatelessWidget {
   }
 }
 
-/// The Restore Pill (展案签) resting at the foot of the Scholar's Desk while the
-/// Desk Workstation is put away: a dark walnut tab with an amber border and
-/// text, showing how many items wait in the Staging Handscroll. Tapping it
-/// brings the workstation back.
+/// The centred down-arrow tab attached to the top edge of the Desk
+/// Workstation's bamboo mat that puts the workstation away.
+class WorkstationCollapsePill extends StatelessWidget {
+  final int stagedCount;
+  final VoidCallback onCollapse;
+
+  const WorkstationCollapsePill({super.key, required this.stagedCount, required this.onCollapse});
+
+  static const String kSemanticLabel = '收起待选区';
+
+  String get _semanticLabel => stagedCount == 0 ? kSemanticLabel : '$kSemanticLabel · $stagedCount 项';
+
+  @override
+  Widget build(BuildContext context) => _WorkstationTab(
+        tabKey: const Key('workstation_collapse_pill'),
+        semanticLabel: _semanticLabel,
+        icon: Icons.keyboard_arrow_down_rounded,
+        alignment: Alignment.center,
+        onTap: onCollapse,
+      );
+}
+
+/// The centred up-arrow tab resting at the foot of the Scholar's Desk while the
+/// Desk Workstation is put away. Tapping it brings the workstation back.
 class WorkstationRestorePill extends StatelessWidget {
   final int stagedCount;
   final VoidCallback onRestore;
@@ -67,58 +102,14 @@ class WorkstationRestorePill extends StatelessWidget {
 
   static const String kSemanticLabel = '展开待选区';
 
-  String get _label => stagedCount == 0 ? '待选照片' : '待选照片已收起 · $stagedCount 项';
+  String get _semanticLabel => stagedCount == 0 ? kSemanticLabel : '$kSemanticLabel · $stagedCount 项';
 
   @override
-  Widget build(BuildContext context) {
-    return MediaQuery.withClampedTextScaling(
-      maxScaleFactor: 1.3,
-      child: Semantics(
-        button: true,
-        label: kSemanticLabel,
+  Widget build(BuildContext context) => _WorkstationTab(
+        tabKey: const Key('workstation_restore_pill'),
+        semanticLabel: _semanticLabel,
+        icon: Icons.keyboard_arrow_up_rounded,
+        alignment: Alignment.bottomCenter,
         onTap: onRestore,
-        excludeSemantics: true,
-        child: GestureDetector(
-          key: const Key('workstation_restore_pill'),
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            HapticFeedback.lightImpact();
-            onRestore();
-          },
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 44.0, minWidth: 44.0),
-            child: Center(
-              widthFactor: 1.0,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: const Color(0xF22B221A),
-                  borderRadius: BorderRadius.circular(999.0),
-                  border: Border.all(color: const Color(0x73F59E0B)),
-                  boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 8.0, offset: Offset(0, 3))],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          _label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 11.0, letterSpacing: 1.5, color: Color(0xFFFDE68A)),
-                        ),
-                      ),
-                      const SizedBox(width: 8.0),
-                      const Icon(Icons.keyboard_arrow_up_rounded, size: 16.0, color: Color(0xFFFDE68A)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+      );
 }

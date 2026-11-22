@@ -137,9 +137,10 @@ void main() {
                     onPickImage: () {},
                     onPickVideo: () {},
                     onShuffleSpark: () {},
-                    paperColor: const Color(0xFFF9F6EE),
-                    inkColor: const Color(0xFF2D2D2D),
-                    isPaperDark: false,
+                    surfaceColor: const Color(0xFF2B2219),
+                    inkColor: const Color(0xFFE9DFCB),
+                    ruleColor: const Color(0x598C6D46),
+                    isSurfaceDark: true,
                   );
                 },
               ),
@@ -204,5 +205,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(WritingDock), findsOneWidget);
     expect(find.byType(WritingDockFormattingRibbon), findsOneWidget);
+
+    // Hiding while keyboard is open hides KeyboardAccessoryRow immediately
+    chrome.syncKeyboardInset(300.0);
+    await pumpPanels(tester);
+    expect(find.byType(KeyboardAccessoryRow), findsOneWidget);
+    chrome.setWritingDockVisible(false);
+    await tester.pumpAndSettle();
+    expect(find.byType(KeyboardAccessoryRow), findsNothing);
+
+    chrome.setWritingDockVisible(true);
+    await tester.pumpAndSettle();
+    expect(find.byType(KeyboardAccessoryRow), findsOneWidget);
   });
 }

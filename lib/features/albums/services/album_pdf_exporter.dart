@@ -73,7 +73,7 @@ class AlbumPdfExporter {
     PdfFontResolver? fontResolver,
     Future<Uint8List> Function(Uint8List)? imageTranscoder,
   }) async {
-    final resolver = fontResolver ?? PdfFontResolver.cjk();
+    final resolver = fontResolver ?? await PdfFontResolver.loadOfflineCjk();
 
     final studioDoc = AlbumLayoutEngine.resolveOrCompileDocument(
       collection: collection,
@@ -101,7 +101,7 @@ class AlbumPdfExporter {
     PdfFontResolver? fontResolver,
     Future<Uint8List> Function(Uint8List)? imageTranscoder,
   }) async {
-    final resolver = fontResolver ?? PdfFontResolver.cjk();
+    final resolver = fontResolver ?? await PdfFontResolver.loadOfflineCjk();
     final document = pw.Document();
 
     final photoById = <String, AlbumPhoto>{

@@ -9,6 +9,8 @@ import 'package:memodiary/features/editor/widgets/keepsake/keepsake_column.dart'
 import 'package:memodiary/features/editor/widgets/keepsake/keepsake_media_card.dart';
 import 'package:memodiary/features/editor/widgets/keepsake_scroll_view.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
+import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
+import 'package:memodiary/features/templates/widgets/template_canvas_painter.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -328,6 +330,87 @@ void main() {
         ),
       );
       expect(coloredText.style?.color, equals(const Color(0xFFB83B2E)));
+    });
+
+    testWidgets('fills full viewport width, anchors short entries on the right, and keeps column rules inside Paper Heart', (tester) async {
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final shortEntry = Entry(
+        id: 'entry_short_001',
+        notebookId: 'nb_001',
+        templateId: 'template_lined_paper',
+        title: '在家喝茶',
+        contentDelta: jsonEncode([
+          {'insert': '在家比，\n'},
+        ]),
+        plainText: '在家比，',
+        entryDate: DateTime(2026, 11, 20, 12, 47),
+        mood: null,
+        weather: null,
+        isWeeklyReview: false,
+        weekNumber: null,
+        isLocked: false,
+        legacyMountsPending: false,
+        unlockAt: null,
+        createdAt: DateTime(2026, 11, 20),
+        updatedAt: DateTime(2026, 11, 20),
+        isDeleted: false,
+      );
+
+      const linedStyle = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: Color(0xFFF7F3E8),
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: StationeryVisualTokens(
+          substrate: PaperSubstrate.coldGold,
+          ruleTint: RuleInkTint.vermilion,
+          sealStyle: SealCarvingStyle.zhuwen,
+        ),
+      );
+
+      await tester.pumpWidget(createSubject(entry: shortEntry, style: linedStyle));
+      await tester.pumpAndSettle();
+
+      final templatePaintFinder = find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is TemplateCanvasPainter,
+      );
+      final paintBox = tester.renderObject(templatePaintFinder) as RenderBox;
+      final paintOrigin = paintBox.localToGlobal(Offset.zero);
+
+      // 1. Paper canvas must fill the entire 412px viewport width
+      expect(paintBox.size.width, equals(412.0));
+
+      // 2. Columns & colophon must stay strictly inside Paper Heart bounds
+      final metrics = StationeryLayoutCalculator.calculate(
+        canvasSize: paintBox.size,
+        style: linedStyle,
+      );
+      final frameTopGlobal = paintOrigin.dy + metrics.innerFrameRect.top;
+      final frameBottomGlobal = paintOrigin.dy + metrics.innerFrameRect.bottom;
+
+      for (final col in tester.widgetList<KeepsakeColumn>(find.byType(KeepsakeColumn))) {
+        final colBox = tester.renderObject(find.byWidget(col)) as RenderBox;
+        final colTop = colBox.localToGlobal(Offset.zero).dy;
+        final colBottom = colTop + colBox.size.height;
+        expect(colTop, greaterThanOrEqualTo(frameTopGlobal));
+        expect(colBottom, lessThanOrEqualTo(frameBottomGlobal));
+      }
+
+      final colophonBox = tester.renderObject(find.byType(KeepsakeColophon)) as RenderBox;
+      final colophonTop = colophonBox.localToGlobal(Offset.zero).dy;
+      final colophonBottom = colophonTop + colophonBox.size.height;
+      expect(colophonTop, greaterThanOrEqualTo(frameTopGlobal));
+      expect(colophonBottom, lessThanOrEqualTo(frameBottomGlobal));
+
+      // 3. First RTL column (title) must anchor near the right edge of Paper Heart (> 300px)
+      final titleCol = tester.widgetList<KeepsakeColumn>(find.byType(KeepsakeColumn))
+          .firstWhere((c) => c.isTitle);
+      final titleBox = tester.renderObject(find.byWidget(titleCol)) as RenderBox;
+      expect(titleBox.localToGlobal(Offset.zero).dx, greaterThan(300.0));
     });
   });
 }

@@ -20,8 +20,8 @@ import 'writing_dock_collapse_tabs.dart';
 /// an overlay; tapping a handscroll item opens the fullscreen lightbox;
 /// collect, mount, erase and unmount bubble up.
 ///
-/// The workstation's brass pull tab puts it away; while it is away the Restore
-/// Pill rests at the foot of the desk and brings it back.
+/// The workstation's centred top tab puts it away; while it is away the restore
+/// tab rests at the foot of the desk and brings it back.
 ///
 /// Fills the canvas [Stack]; only the prints, workstation and these controls
 /// take hits.
@@ -82,7 +82,7 @@ class EditorDeskMediaArea extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasDockTab = chrome.showsWritingDockRestoreTab;
+    final hasDockTab = chrome.showsWritingDockRestoreTab && !chrome.isKeyboardVisible;
     final tabInset = hasDockTab ? WritingDockRestoreTab.kTargetSize : 0.0;
     final systemBarInset = hasDockTab ? MediaQuery.viewPaddingOf(context).bottom : 0.0;
     return Stack(
@@ -119,22 +119,26 @@ class EditorDeskMediaArea extends StatelessWidget {
             ),
           ),
         ),
-        // The pull tab straddles the workstation's top edge at its right end,
-        // clear of the centred Cinnabar Signature Seal.
+        // The collapse tab sits centred and attached to the bamboo mat's top edge.
         Positioned(
-          right: 0.0,
-          width: WorkstationPullTab.kTargetSize,
-          bottom: budget.workstationHeight - WorkstationPullTab.kTargetSize / 2.0,
-          height: WorkstationPullTab.kTargetSize,
+          left: 16.0,
+          right: 16.0,
+          bottom: budget.workstationHeight - DeskWorkstation.kHeaderHeight - 13.0,
+          height: 44.0,
           child: _StepAside(
             isShown: budget.showWorkstation,
-            child: WorkstationPullTab(onCollapse: chrome.collapseWorkstation),
+            child: Center(
+              child: WorkstationCollapsePill(
+                stagedCount: stagedItems.length,
+                onCollapse: chrome.collapseWorkstation,
+              ),
+            ),
           ),
         ),
         Positioned(
           left: 16.0 + tabInset,
           right: 16.0 + tabInset,
-          bottom: DeskSpaceBudget.kBottomMargin + systemBarInset,
+          bottom: systemBarInset,
           child: _StepAside(
             isShown: chrome.isWorkstationCollapsed,
             child: Center(
@@ -145,13 +149,6 @@ class EditorDeskMediaArea extends StatelessWidget {
             ),
           ),
         ),
-        // The Writing Dock's restore tab floats over the desk's bottom-right.
-        if (hasDockTab)
-          Positioned(
-            right: 0.0,
-            bottom: systemBarInset,
-            child: WritingDockRestoreTab(onRestore: () => chrome.setWritingDockVisible(true)),
-          ),
       ],
     );
   }

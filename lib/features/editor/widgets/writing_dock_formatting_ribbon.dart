@@ -74,7 +74,7 @@ class WritingDockFormattingRibbon extends StatelessWidget {
     return Container(
       height: 42,
       decoration: BoxDecoration(
-        color: tokens.agedFiber.withValues(alpha: isPaperDark ? 0.25 : 0.40),
+        color: isPaperDark ? const Color(0x1FD4AF37) : tokens.agedFiber.withValues(alpha: 0.40),
         border: Border(
           bottom: BorderSide(
             color: tokens.deckleBorder.withValues(alpha: 0.5),
@@ -183,7 +183,7 @@ class WritingDockFormattingRibbon extends StatelessWidget {
     bool isUnderline = false,
     bool isHeading = false,
   }) {
-    final activeBg = tokens.agedFiber.withValues(alpha: isPaperDark ? 0.75 : 0.95);
+    final activeBg = isPaperDark ? const Color(0x40D4AF37) : tokens.agedFiber.withValues(alpha: 0.95);
     final activeFg = isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E);
 
     return Container(
@@ -219,7 +219,7 @@ class WritingDockFormattingRibbon extends StatelessWidget {
     required VoidCallback onTap,
     required String tooltip,
   }) {
-    final activeBg = tokens.agedFiber.withValues(alpha: isPaperDark ? 0.75 : 0.95);
+    final activeBg = isPaperDark ? const Color(0x40D4AF37) : tokens.agedFiber.withValues(alpha: 0.95);
     final activeFg = isPaperDark ? const Color(0xFFF0ECE3) : const Color(0xFF1E1E1E);
 
     return Container(

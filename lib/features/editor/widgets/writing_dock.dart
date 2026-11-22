@@ -25,6 +25,7 @@ class WritingDock extends StatelessWidget {
   final bool isDictating;
   final Color? backgroundColor;
   final Color? inkColor;
+  final Color? borderColor;
   final bool isPaperDark;
 
   const WritingDock({
@@ -41,6 +42,7 @@ class WritingDock extends StatelessWidget {
     this.isDictating = false,
     this.backgroundColor,
     this.inkColor,
+    this.borderColor,
     this.isPaperDark = false,
   });
 
@@ -60,7 +62,7 @@ class WritingDock extends StatelessWidget {
           color: effectiveBackground,
           border: Border(
             top: BorderSide(
-              color: tokens.agedFiber,
+              color: borderColor ?? tokens.agedFiber,
               width: 1.0,
             ),
           ),
@@ -111,7 +113,8 @@ class WritingDock extends StatelessWidget {
   }
 
   Widget _buildPrimaryToolbar(InkDiaryTokens tokens, Color effectiveInkColor) {
-    final activeBackdrop = tokens.agedFiber.withValues(alpha: isPaperDark ? 0.65 : 0.85);
+    final activeBackdrop =
+        isPaperDark ? const Color(0x38D4AF37) : tokens.agedFiber.withValues(alpha: 0.85);
     final pickVideo = onPickVideo;
     final shuffleSpark = onShuffleSpark;
 

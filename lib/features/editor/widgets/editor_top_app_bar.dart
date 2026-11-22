@@ -8,8 +8,10 @@ import 'scholar_chest/scholar_chest_drawer.dart';
 
 /// Classical Ink & Paper stationery top app bar for the diary editor.
 class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final Color paperColor;
+  final Color surfaceColor;
   final Color iconColor;
+  final Color ruleColor;
+  final Color? doneColor;
   final ValueNotifier<AutosaveStatus> autosaveStatusNotifier;
   final AudioSanctumService audioSanctumService;
   final DateTime? unlockAt;
@@ -19,8 +21,10 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   const EditorTopAppBar({
     super.key,
-    required this.paperColor,
+    required this.surfaceColor,
     required this.iconColor,
+    required this.ruleColor,
+    this.doneColor,
     required this.autosaveStatusNotifier,
     required this.audioSanctumService,
     required this.unlockAt,
@@ -39,9 +43,10 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,
       child: AppBar(
-        backgroundColor: paperColor,
+        backgroundColor: surfaceColor,
         elevation: 0,
         scrolledUnderElevation: 0,
+        shape: Border(bottom: BorderSide(color: ruleColor, width: 0.5)),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: iconColor, size: 22),
           tooltip: '返回',
@@ -143,7 +148,7 @@ class EditorTopAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           IconButton(
             key: const Key('editor_seal_done_btn'),
-            icon: Icon(Icons.check, color: tokens.cinnabar, size: 22),
+            icon: Icon(Icons.check, color: doneColor ?? tokens.cinnabar, size: 22),
             tooltip: '完成',
             onPressed: onSaveAndExit,
           ),

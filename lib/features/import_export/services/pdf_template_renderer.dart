@@ -292,7 +292,7 @@ class PdfTemplateRenderer {
     return pw.Container(
       width: size,
       height: size,
-      padding: pw.EdgeInsets.all(size * 0.08),
+      padding: pw.EdgeInsets.all(size * 0.06),
       decoration: pw.BoxDecoration(
         color: isBaiwen ? cinnabar : null,
         border: pw.Border.all(color: cinnabar, width: size * 0.05),
@@ -323,18 +323,22 @@ class PdfTemplateRenderer {
     double size,
   ) {
     final textColor = isBaiwen ? PdfColors.white : const PdfColor(0.73, 0.15, 0.10);
-    final fontSize = size * 0.32;
+    final fontSize = size * 0.23;
 
     return pw.Column(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+      mainAxisAlignment: pw.MainAxisAlignment.center,
       children: chars
           .map(
-            (char) => pw.Text(
-              resolver.sanitizeText(char),
-              style: pw.TextStyle(
-                font: resolver.boldFont,
-                fontSize: fontSize,
-                color: textColor,
+            (char) => pw.Expanded(
+              child: pw.Center(
+                child: pw.Text(
+                  resolver.sanitizeText(char),
+                  style: pw.TextStyle(
+                    font: resolver.boldFont,
+                    fontSize: fontSize,
+                    color: textColor,
+                  ),
+                ),
               ),
             ),
           )
@@ -355,8 +359,17 @@ class PdfTemplateRenderer {
         : '云皓日记';
     final title = fontResolver.sanitizeText(rawTitle);
 
+    final metrics = StationeryLayoutCalculator.calculateMetrics(
+      canvasWidth: context.page.pageFormat.width,
+      canvasHeight: context.page.pageFormat.height,
+      backgroundType: style.type,
+      horizontalMargin: style.resolvedHorizontalMargin,
+      lineSpacing: style.lineSpacing,
+    );
+    final bottomGap = math.max(12.0, metrics.heavenMarginPx - 34.0);
+
     return pw.Container(
-      margin: const pw.EdgeInsets.only(bottom: 12),
+      margin: pw.EdgeInsets.only(bottom: bottomGap),
       padding: const pw.EdgeInsets.only(bottom: 4),
       decoration: const pw.BoxDecoration(
         border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),
@@ -392,8 +405,17 @@ class PdfTemplateRenderer {
     TemplateStyle style,
     PdfFontResolver fontResolver,
   ) {
+    final metrics = StationeryLayoutCalculator.calculateMetrics(
+      canvasWidth: context.page.pageFormat.width,
+      canvasHeight: context.page.pageFormat.height,
+      backgroundType: style.type,
+      horizontalMargin: style.resolvedHorizontalMargin,
+      lineSpacing: style.lineSpacing,
+    );
+    final topGap = math.max(12.0, metrics.earthMarginPx - 28.0);
+
     return pw.Container(
-      margin: const pw.EdgeInsets.only(top: 12),
+      margin: pw.EdgeInsets.only(top: topGap),
       padding: const pw.EdgeInsets.only(top: 4),
       decoration: const pw.BoxDecoration(
         border: pw.Border(top: pw.BorderSide(color: PdfColors.grey300, width: 0.5)),

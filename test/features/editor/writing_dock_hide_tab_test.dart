@@ -118,7 +118,7 @@ void main() {
     final scroll = find.byWidgetPredicate((widget) => widget is StagingHandscroll || widget is ClosedBrocadeScroll);
     expect(tabRect.overlaps(tester.getRect(scroll)), isFalse);
 
-    await tester.tap(find.byKey(const Key('workstation_pull_tab')));
+    await tester.tap(find.byKey(const Key('workstation_collapse_pill')));
     await tester.pumpAndSettle();
     final pill = find.byKey(const Key('workstation_restore_pill'));
     expect(pill, findsOneWidget);

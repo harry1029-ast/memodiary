@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/desk_workstation/desk_space_budget.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/desk_workstation.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
@@ -65,7 +66,7 @@ void main() {
   final workstation = find.byKey(const Key('desk_workstation'));
   final closedScroll = find.byKey(const Key('closed_brocade_scroll'));
   final handscroll = find.byKey(const Key('staging_handscroll'));
-  final pullTab = find.byKey(const Key('workstation_pull_tab'));
+  final collapsePill = find.byKey(const Key('workstation_collapse_pill'));
   final pill = find.byKey(const Key('workstation_restore_pill'));
 
   Future<void> pickFromGallery(WidgetTester tester) async {
@@ -119,7 +120,7 @@ void main() {
       await openEditor(tester, viewport: _shortViewport);
 
       expect(workstation, findsNothing);
-      expect(pullTab, findsNothing);
+      expect(collapsePill, findsNothing);
       expect(find.bySemanticsLabel('展开待选区'), findsOneWidget);
 
       await tester.tap(pill);
@@ -131,28 +132,35 @@ void main() {
       expect(find.bySemanticsLabel('收起待选区'), findsOneWidget);
     });
 
-    testWidgets('on a tall viewport the pull tab puts the workstation away and the pill restores it', (tester) async {
+    testWidgets('on a tall viewport the centred collapse tab puts the workstation away and the restore tab brings it back', (tester) async {
       await openEditor(tester);
       expect(workstation, findsOneWidget);
       expect(pill, findsNothing);
       final dockedSheetTop = tester.getRect(find.byType(TemplateCanvasContainer)).top;
+      final canvasRect = tester.getRect(find.byType(EditorPaperCanvas));
 
-      // The tab straddles the workstation's top edge at its right end, with a 44x44 target.
-      final tabRect = tester.getRect(pullTab);
+      // The tab sits centred on the bamboo mat's top edge, with a 44x44 target.
+      final tabRect = tester.getRect(collapsePill);
+      final tabFace = find.descendant(of: collapsePill, matching: find.byType(DecoratedBox));
+      final faceRect = tester.getRect(tabFace);
       expect(tabRect.width, greaterThanOrEqualTo(44.0));
       expect(tabRect.height, greaterThanOrEqualTo(44.0));
-      expect(tabRect.right, closeTo(tester.getRect(find.byType(EditorPaperCanvas)).right, 0.5));
-      final sealRect = tester.getRect(find.byKey(const Key('cinnabar_signature_seal')));
-      expect(sealRect.overlaps(tabRect), isFalse);
-      expect(tabRect.center.dy, closeTo(tester.getRect(workstation).top, 1.0));
+      expect(faceRect.width, closeTo(40.0, 0.5));
+      expect(faceRect.height, closeTo(18.0, 0.5));
+      expect(faceRect.center.dx, closeTo(canvasRect.center.dx, 0.5));
+      expect(faceRect.bottom, closeTo(tester.getRect(workstation).top + DeskWorkstation.kHeaderHeight, 0.5));
+      expect(find.descendant(of: collapsePill, matching: find.byIcon(Icons.keyboard_arrow_down_rounded)), findsOneWidget);
 
-      await tester.tap(pullTab);
+      await tester.tap(collapsePill);
       await tester.pumpAndSettle();
       expect(workstation, findsNothing);
-      expect(pullTab, findsNothing);
+      expect(collapsePill, findsNothing);
       expect(pill, findsOneWidget);
       expect(tester.getSize(pill).height, greaterThanOrEqualTo(44.0));
-      expect(find.descendant(of: pill, matching: find.text('待选照片')), findsOneWidget);
+      final restoreFaceRect = tester.getRect(find.descendant(of: pill, matching: find.byType(DecoratedBox)));
+      expect(restoreFaceRect.center.dx, closeTo(canvasRect.center.dx, 0.5));
+      expect(restoreFaceRect.bottom, closeTo(canvasRect.bottom, 0.5));
+      expect(find.descendant(of: pill, matching: find.byIcon(Icons.keyboard_arrow_up_rounded)), findsOneWidget);
       // The sheet centres on the desk.
       expect(tester.getRect(find.byType(TemplateCanvasContainer)).top, greaterThan(dockedSheetTop));
 
@@ -164,7 +172,7 @@ void main() {
     });
 
     for (final viewport in const [_tallViewport, Size(800.0, 600.0)]) {
-      testWidgets('the seal clears the pull tab, and the Restore Pill once collapsed, on ${viewport.width.toInt()}x${viewport.height.toInt()}', (tester) async {
+      testWidgets('the seal clears the collapse tab visual face, and the restore tab once collapsed, on ${viewport.width.toInt()}x${viewport.height.toInt()}', (tester) async {
         await openEditor(tester, viewport: viewport);
         final seal = find.byKey(const Key('cinnabar_signature_seal'));
         void expectClear(Finder control) {
@@ -180,29 +188,35 @@ void main() {
           await tester.tap(pill);
           await tester.pumpAndSettle();
         }
-        expectClear(pullTab);
+        expect(collapsePill, findsOneWidget);
+        if (seal.evaluate().isNotEmpty) {
+          final visualFace = find.descendant(of: collapsePill, matching: find.byType(DecoratedBox));
+          expect(tester.getRect(seal).bottom, lessThanOrEqualTo(tester.getRect(visualFace).top));
+        }
 
-        await tester.tap(pullTab);
+        await tester.tap(collapsePill);
         await tester.pumpAndSettle();
         expectClear(pill);
       });
     }
 
-    testWidgets('the pill counts the staged keepsakes while the workstation is away', (tester) async {
+    testWidgets('both collapse and restore tabs announce the staged count in semantics', (tester) async {
       await openEditor(tester);
       await tester.tap(closedScroll);
       await tester.pumpAndSettle();
       await pickFromGallery(tester);
 
-      await tester.tap(pullTab);
+      expect(find.bySemanticsLabel('收起待选区 · 1 项'), findsOneWidget);
+
+      await tester.tap(collapsePill);
       await tester.pumpAndSettle();
-      expect(find.text('待选照片已收起 · 1 项'), findsOneWidget);
+      expect(find.bySemanticsLabel('展开待选区 · 1 项'), findsOneWidget);
     });
 
     testWidgets('neither control summons or drops the keyboard', (tester) async {
       await openEditor(tester);
       final focused = FocusManager.instance.primaryFocus;
-      await tester.tap(pullTab);
+      await tester.tap(collapsePill);
       await tester.pumpAndSettle();
       expect(FocusManager.instance.primaryFocus, focused);
       await tester.tap(pill);
@@ -212,7 +226,7 @@ void main() {
 
     testWidgets('reopening the entry docks the workstation again', (tester) async {
       await openEditor(tester);
-      await tester.tap(pullTab);
+      await tester.tap(collapsePill);
       await tester.pumpAndSettle();
       expect(workstation, findsNothing);
 
