@@ -6,7 +6,7 @@ import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/import_export/models/backup_manifest.dart';
 import 'package:memodiary/features/import_export/services/backup_restore_service.dart';
 import 'package:memodiary/features/import_export/widgets/backup_dialogs.dart';
-import 'export_service_test.dart';
+import '../../helpers/mock_file_selector_service.dart';
 
 void main() {
   late AppDatabase db;

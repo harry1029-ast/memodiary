@@ -1,51 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/import_export/services/export_service.dart';
-import 'package:memodiary/features/import_export/services/file_selector_service.dart';
 import 'package:memodiary/features/import_export/widgets/export_dialog.dart';
 
-class MockFileSelectorService implements FileSelectorService {
-  File? pickedFile;
-  File? pickedBackupFile;
-  String? lastSavedFileName;
-  String? lastSavedContent;
-  File? lastSavedBackupSource;
-  String? mockBackupSaveDestination;
-
-  @override
-  Future<File?> pickTextOrMarkdownFile() async => pickedFile;
-
-  @override
-  Future<String?> saveExportFile({
-    required String fileName,
-    required String content,
-  }) async {
-    lastSavedFileName = fileName;
-    lastSavedContent = content;
-    return '/mock/path/$fileName';
-  }
-
-  @override
-  Future<File?> pickBackupFile() async => pickedBackupFile;
-
-  @override
-  Future<String?> saveBackupFile({
-    required String fileName,
-    required File sourceFile,
-  }) async {
-    lastSavedFileName = fileName;
-    lastSavedBackupSource = sourceFile;
-    if (mockBackupSaveDestination != null) {
-      await sourceFile.copy(mockBackupSaveDestination!);
-      return mockBackupSaveDestination;
-    }
-    return '/mock/path/$fileName';
-  }
-}
+import '../../helpers/mock_file_selector_service.dart';
 
 void main() {
   late AppDatabase db;

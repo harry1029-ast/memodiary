@@ -9,11 +9,9 @@ import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/theme_settings_service.dart';
 import 'package:memodiary/core/theme/widgets/octagonal_medallion_button.dart';
 import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
-import 'package:memodiary/features/intro/widgets/bottom_seal_slider.dart';
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
 import 'package:memodiary/features/search/screens/search_screen.dart';
 import 'package:memodiary/features/settings/screens/settings_screen.dart';
-import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_app_bar.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
 import 'package:memodiary/main.dart';
@@ -127,7 +125,7 @@ void main() {
     );
 
     testWidgets(
-      'back-to-cover button meets 44x44 tap target, exposes 返回封面 button semantics, and renders without overflow at 320px and 1.3x text scale',
+      'avatar button meets 44x44 tap target, exposes 我的 button semantics with a drawn avatar and no chevron, and renders without overflow at 320px and 1.3x text scale',
       (tester) async {
         final semanticsHandle = tester.ensureSemantics();
         try {
@@ -140,18 +138,20 @@ void main() {
 
           expect(tester.takeException(), isNull);
 
-          final backFinder = find.byKey(const Key('timeline_back_to_cover_button'));
-          expect(backFinder, findsOneWidget);
+          final avatarFinder = find.byKey(const Key('timeline_avatar_button'));
+          expect(avatarFinder, findsOneWidget);
+          expect(find.byKey(const Key('timeline_back_to_cover_button')), findsNothing);
+          expect(find.bySemanticsLabel('返回封面'), findsNothing);
 
-          final backSize = tester.getSize(backFinder);
-          expect(backSize.width, greaterThanOrEqualTo(44.0));
-          expect(backSize.height, greaterThanOrEqualTo(44.0));
+          final avatarSize = tester.getSize(avatarFinder);
+          expect(avatarSize.width, greaterThanOrEqualTo(44.0));
+          expect(avatarSize.height, greaterThanOrEqualTo(44.0));
 
           expect(
-            tester.getSemantics(backFinder),
+            tester.getSemantics(avatarFinder),
             matchesSemantics(
               isButton: true,
-              label: '返回封面',
+              label: '我的',
               hasEnabledState: true,
               isEnabled: true,
               hasTapAction: true,
@@ -160,21 +160,18 @@ void main() {
             ),
           );
 
-          await expectAccessibleTapTargets(tester, within: backFinder);
+          await expectAccessibleTapTargets(tester, within: avatarFinder);
 
           expect(
-            find.descendant(
-              of: backFinder,
-              matching: find.byType(CustomPaint),
-            ),
+            find.descendant(of: avatarFinder, matching: find.byType(CustomPaint)),
             findsAtLeastNWidgets(1),
           );
           expect(
             find.descendant(
-              of: backFinder,
+              of: avatarFinder,
               matching: find.byIcon(Icons.chevron_left_rounded),
             ),
-            findsOneWidget,
+            findsNothing,
           );
         } finally {
           semanticsHandle.dispose();
@@ -183,53 +180,7 @@ void main() {
     );
 
     testWidgets(
-      'tapping 返回封面 pops back to existing BookIntroScreen when pushed from cover (canPop == true)',
-      (tester) async {
-        setTallPhoneViewport(tester);
-
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: InkDiaryTheme.light,
-            home: BookIntroScreen(
-              database: db,
-              mediaService: mediaService,
-              startOpened: true,
-              clock: () => DateTime(2026, 11, 19, 11, 30),
-            ),
-          ),
-        );
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 200));
-
-        expect(find.byType(BookIntroScreen), findsOneWidget);
-        expect(find.text('私人日记'), findsOneWidget);
-
-        await tester.tap(find.text('私人日记'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-
-        expect(find.byType(TimelineScreen), findsOneWidget);
-        expect(
-          Navigator.of(tester.element(find.byType(TimelineScreen))).canPop(),
-          isTrue,
-        );
-
-        await tester.tap(find.byKey(const Key('timeline_back_to_cover_button')));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-
-        expect(find.byType(TimelineScreen), findsNothing);
-        expect(find.byType(BookIntroScreen), findsOneWidget);
-        expect(find.text('私人日记'), findsOneWidget);
-        expect(
-          Navigator.of(tester.element(find.byType(BookIntroScreen))).canPop(),
-          isFalse,
-        );
-      },
-    );
-
-    testWidgets(
-      'tapping 返回封面 push-replaces to BookIntroScreen when TimelineScreen started as root (canPop == false)',
+      'tapping the avatar button in the Home Shell opens the Diarist Panel',
       (tester) async {
         setTallPhoneViewport(tester);
 
@@ -243,39 +194,14 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        expect(find.byKey(const Key('diarist_panel')), findsNothing);
 
-        expect(find.byType(TimelineScreen), findsOneWidget);
-        expect(
-          Navigator.of(tester.element(find.byType(TimelineScreen))).canPop(),
-          isFalse,
-        );
+        await tester.tap(find.byKey(const Key('timeline_avatar_button')));
+        await tester.pumpAndSettle();
 
-        await tester.tap(find.byKey(const Key('timeline_back_to_cover_button')));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-
-        expect(find.byType(TimelineScreen), findsNothing);
-        expect(find.byType(BookIntroScreen), findsOneWidget);
-        expect(
-          Navigator.of(tester.element(find.byType(BookIntroScreen))).canPop(),
-          isFalse,
-        );
-
-        // Open the cover and re-enter 私人日记; returning again pops cleanly back to cover.
-        await tester.tap(find.byType(BottomSealSlider));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 900));
-
-        await tester.tap(find.text('私人日记'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-        expect(find.byType(TimelineScreen), findsOneWidget);
-
-        await tester.tap(find.byKey(const Key('timeline_back_to_cover_button')));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-        expect(find.byType(TimelineScreen), findsNothing);
-        expect(find.byType(BookIntroScreen), findsOneWidget);
+        expect(find.byKey(const Key('diarist_panel')), findsOneWidget);
+        expect(find.text('云皓主人'), findsOneWidget);
+        expect(find.byType(BookIntroScreen), findsNothing);
       },
     );
 

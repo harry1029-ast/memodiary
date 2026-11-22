@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/documents/entry_content_decoder.dart';
@@ -7,6 +8,7 @@ import '../../../core/theme/ink_diary_theme.dart';
 import '../../import_export/models/pdf_layout_mode.dart';
 import '../../import_export/widgets/pdf_preview_screen.dart';
 import '../../templates/models/template_style.dart';
+import '../../templates/services/stationery_layout_calculator.dart';
 import '../../templates/widgets/template_canvas_painter.dart';
 import 'keepsake/keepsake_colophon.dart';
 import 'keepsake/keepsake_column.dart';
@@ -101,34 +103,62 @@ class KeepsakeScrollView extends StatelessWidget {
               ),
           ],
         ),
-        body: CustomPaint(
-          painter: TemplateCanvasPainter(style: style),
+        body: SizedBox.expand(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final items = _buildKeepsakeItems(constraints.maxHeight);
+              final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
+              final metrics = StationeryLayoutCalculator.calculate(
+                canvasSize: canvasSize,
+                style: style,
+              );
+              final innerRect = metrics.innerFrameRect.deflate(2.0);
+              const double scrollPaddingH = 12.0;
+              const double scrollPaddingV = 8.0;
+              final double minRowWidth =
+                  math.max(0.0, innerRect.width - scrollPaddingH * 2);
+              final items = _buildKeepsakeItems(innerRect.height);
 
-              return Directionality(
-                textDirection: TextDirection.rtl,
-                child: SingleChildScrollView(
-                  key: const Key('keepsake_horizontal_scroll_view'),
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Render columns and ephemera cards right-to-left
-                      ...items.map((item) => _renderItem(item)),
-
-                      // Terminal colophon column and Cinnabar Signature Seal
-                      KeepsakeColophon(
-                        entry: entry,
-                        style: style,
-                        inkColor: _inkColor,
-                      ),
-                    ],
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: TemplateCanvasPainter(style: style),
+                    ),
                   ),
-                ),
+                  Positioned.fromRect(
+                    rect: innerRect,
+                    child: Directionality(
+                      textDirection: TextDirection.rtl,
+                      child: SingleChildScrollView(
+                        key: const Key('keepsake_horizontal_scroll_view'),
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: scrollPaddingH,
+                          vertical: scrollPaddingV,
+                        ),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(minWidth: minRowWidth),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Render columns and ephemera cards right-to-left
+                              ...items.map((item) => _renderItem(item)),
+
+                              // Terminal colophon column and Cinnabar Signature Seal
+                              KeepsakeColophon(
+                                entry: entry,
+                                style: style,
+                                inkColor: _inkColor,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               );
             },
           ),

@@ -27,6 +27,7 @@ import 'page_corner.dart';
 import 'sheet_drop_target.dart';
 import 'sheet_ink/sheet_ink_stage.dart';
 import 'stationery_ephemera_sheet.dart';
+import 'writing_dock_collapse_tabs.dart';
 
 /// Tactile Split Desk procedural paper canvas presenting discrete Stationery Sheets
 /// resting on the Scholar's Desk.
@@ -167,10 +168,13 @@ class EditorPaperCanvas extends StatelessWidget {
         return CustomPaint(
           key: const Key('editor_scholar_desk'),
           painter: _painterFor(DeskPalette.of(context)),
-          child: ClipRect(
-            // The desk keeps its resting height while the keyboard covers it,
-            // so the lifted sheet is never clipped by its own page view.
-            child: OverflowBox(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ClipRect(
+                  // The desk keeps its resting height while the keyboard covers it,
+                  // so the lifted sheet is never clipped by its own page view.
+                  child: OverflowBox(
               alignment: Alignment.topCenter,
               minHeight: canvasHeight,
               maxHeight: canvasHeight,
@@ -369,7 +373,18 @@ class EditorPaperCanvas extends StatelessWidget {
               ),
             ),
           ),
-        );
+        ),
+        if (chrome.showsWritingDockRestoreTab)
+          Positioned(
+            right: 0.0,
+            bottom: keyboardVisible ? 0.0 : MediaQuery.viewPaddingOf(context).bottom,
+            child: WritingDockRestoreTab(
+              onRestore: () => chrome.setWritingDockVisible(true),
+            ),
+          ),
+      ],
+    ),
+  );
       },
     );
   }

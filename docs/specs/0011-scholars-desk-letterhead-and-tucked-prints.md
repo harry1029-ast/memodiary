@@ -30,7 +30,7 @@ The editor becomes a calmer, more tactile scholar's desk:
   - a two-line date that is never cut off;
   - the title;
   - vertical **Weather and Mood Charms**.
-- **Each panel carries its own collapse control.** A brass pull tab on the workstation puts it away and leaves a **Restore Pill** behind. A tab on the Writing Dock hides the dock. The footer handle is removed.
+- **Each panel carries its own collapse control.** A centred collapse pill on the workstation puts it away and leaves a **Restore Pill** behind. A tab on the Writing Dock (and keyboard accessory row) hides the toolbar. The footer handle is removed.
 - **While I type**, the app bar slides away, the Writing Dock becomes a slim accessory row, and the desk keeps the caret at least two rows above the dock, so the whole sheet stays usable. The sheet's geometry never changes.
 - **The Scholar's Desk** is walnut in light mode and ebony in dark mode.
 
@@ -99,7 +99,7 @@ The editor becomes a calmer, more tactile scholar's desk:
 
 ### Collapsing the workstation
 
-47. As a diarist, I want a brass pull tab centred on the workstation's top edge that puts the workstation away, so that the control sits on the thing it hides.
+47. As a diarist, I want a centred collapse pill on the workstation's header that puts the workstation away, so that the control sits on the thing it hides.
 48. As a diarist, I want a Restore Pill resting at the foot of the desk while the workstation is put away, so that I can bring it back from where it was.
 49. As a diarist, I want the Restore Pill to say how many items wait in the Staging Handscroll ("待贴画卷已收起 · 待贴 N 影", or "锦袱合卷" when empty), so that I do not forget staged keepsakes.
 50. As a diarist, I want collecting a new photo or video while the workstation is put away to bring it back automatically, so that I see the Brush Reveal.
@@ -224,12 +224,12 @@ The editor becomes a calmer, more tactile scholar's desk:
 
 - The footer handle above the Writing Dock is removed, and its tests migrate.
 - **Workstation:**
-  - A brass pull tab is centred on its top edge (44×44, labelled 收起画案 / 展开画案).
-  - While the workstation is put away, a **Restore Pill** rests at the desk's foot, styled after the prototype's `#workstation-restore-pill` (dark walnut fill, amber border, amber text). It reads "待贴画卷已收起 · 待贴 N 影" or, when empty, "锦袱合卷", and tapping it restores the workstation.
+  - A compact centred down-arrow tab (`40×18` inside a `44×44` target) sits attached to the top edge of the bamboo mat.
+  - While the workstation is put away, a matching centred up-arrow tab rests at the desk's foot, and tapping it restores the workstation.
   - Collecting media while it is put away restores it automatically.
   - The collapsed state stays session-only (per visit to the editor), as today.
 - **Writing Dock:**
-  - A small tab sits on the dock's top edge at the right (44×44, labelled 收起文房 / 展开文房), and stays at the bottom-right while the dock is hidden.
+  - A small tab sits on the dock's top edge at the right (44×44, labelled 收起工具栏 / 展开工具栏), and stays at the bottom-right while the toolbar is hidden.
   - The hidden state is an app-wide preference, stored with the existing local settings and never in the entry.
   - Hiding or showing the dock changes only the space below the desk; the sheet's resting geometry is unaffected.
 
@@ -279,9 +279,9 @@ The editor becomes a calmer, more tactile scholar's desk:
    - Header band: indicator on the left, no engraving.
    - Letterhead on Sheet 1 only, occupying exactly the four rows (opening sheet still holds 10 body rows): the seal shows the correct stem-branch year and seasonal month; tapping it opens the date picker; the date lines are not truncated at 360dp; the solar term drops first under large text scale; the charms open their pickers.
    - Tucked Prints: absent with no mounts; up to three shown above the sheet's top edge; "+N" for legacy overflow; tap opens the overlay; overlay print opens the lightbox; ↩ unmounts back to the handscroll; mounting via 📌 and via drag adds a print; a full sheet shakes and shows the snackbar; no band below the sheet; none of these summon the keyboard.
-   - Workstation: pull tab collapses and leaves the Restore Pill with the staged count; the pill restores it; collecting while collapsed restores it; the footer handle is gone; reopening the entry shows it docked again.
+   - Workstation: collapse pill collapses and leaves the Restore Pill with the staged count; the pill restores it; collecting while collapsed restores it; the footer handle is gone; reopening the entry shows it docked again.
    - Writing Dock: the tab hides it and the preference survives a new editor session; the sheet does not move.
-   - Keyboard open: the app bar is away and the save dot shows; the accessory row shows its three controls, even when the dock is hidden; the last row of a full opening sheet and of a full continuation sheet is fully visible above the accessory row; the caret stays two rows clear; the sheet's size and ruling are unchanged.
+   - Keyboard open: the app bar is away and the save dot shows; the accessory row shows its three controls and hides with the dock, leaving the restore tab on the desk; the last row of a full opening sheet and of a full continuation sheet is fully visible above the accessory row; the caret stays two rows clear; the sheet's size and ruling are unchanged.
    - Dark appearance: the desk renders with the dark palette regardless of template.
 2. **The lunar calendar converter** (pure Dart):
    - known solar-to-lunar conversions across several years, including dates either side of the lunar new year;
@@ -327,9 +327,9 @@ The editor becomes a calmer, more tactile scholar's desk:
 - The `$0` FOSS invariant holds: Flutter painters, gestures, existing packages and hand-written lunar data only.
 - After implementation, validate the keyboard behaviour on a real phone. Widget tests cannot observe Quill's behaviour while the keyboard is hidden.
 - **Amendments after the real-device check (2026-11-11).** These supersede the decisions above where they differ:
-  - **Accessory row:** 收起键盘 is replaced by a 收起文房 / 展开文房 toggle for the app-wide hidden-dock preference. Most system keyboards already have a close key, and tapping the desk off the sheet still releases focus. User story 62 and § Keyboard chrome read with this substitution.
+  - **Accessory row:** 收起键盘 is replaced by the brass 收起工具栏 tab for the app-wide hidden-dock preference, which hides the accessory row immediately while typing as well. Most system keyboards already have a close key, and tapping the desk off the sheet still releases focus. User story 62 and § Keyboard chrome read with this substitution.
   - **Keyboard lift:** while the keyboard is open, the desk lifts the whole Stationery Sheet above the accessory row whenever it fits. The two-rows-clear caret rule is the fallback when it doesn't.
-  - **Hidden dock:** hiding it leaves no strip. 展开文房 floats at the desk's bottom-right.
-  - **Pull tab:** it sits at the right end of the workstation's top edge, clear of the Cinnabar Signature Seal.
+  - **Hidden dock:** hiding it leaves no strip. 展开工具栏 floats at the desk's bottom-right (even while the keyboard is open).
+  - **Collapse pill:** it sits centred in the workstation's header strip, matching the Restore Pill.
   - **Sheet capacity:** the opening sheet holds the rows that fit minus the 4-row Journal Letterhead, and continuation sheets hold all rows that fit. The fixed 10 and 14 apply only when 14 rows fit. This fixes a pre-existing SPEC-010 bug in which a sheet could be scrolled by one row.
   - **Letterhead:** it follows the prototype's spacing, with a larger title on the bottom row.

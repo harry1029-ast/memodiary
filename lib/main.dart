@@ -18,7 +18,7 @@ import 'features/editor/ink_choreography/arphic_license.dart';
 import 'features/editor/ink_choreography/hanzi_stroke_table.dart';
 import 'features/intro/screens/book_intro_screen.dart';
 import 'features/intro/services/book_intro_settings_service.dart';
-import 'features/timeline/screens/timeline_screen.dart';
+import 'features/home/screens/home_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -110,7 +110,7 @@ class MemoDiaryApp extends StatelessWidget {
       valueListenable: themeSettings.configNotifier,
       builder: (context, config, _) {
         return MaterialApp(
-          title: 'MemoDiary',
+          title: '云皓日记',
           debugShowCheckedModeBanner: false,
           theme: InkDiaryTheme.forLightPalette(config.activeLightPalette),
           darkTheme: InkDiaryTheme.forDarkPalette(config.activeDarkPalette),
@@ -121,7 +121,7 @@ class MemoDiaryApp extends StatelessWidget {
                   mediaService: mediaService,
                   ocrQueueManager: ocrQueueManager,
                 )
-              : TimelineScreen(
+              : HomeShell(
                   database: database,
                   mediaService: mediaService,
                   ocrQueueManager: ocrQueueManager,

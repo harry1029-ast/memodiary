@@ -176,6 +176,14 @@ class AtmospherePalette extends ThemeExtension<AtmospherePalette> {
     required this.fabShadow,
   });
 
+  /// The woodwork surface fill (frame mid into frame dark) shared by the Home
+  /// Shell's woodwork: the Tab Rail, the Diarist Panel and the Cloud Avatar.
+  LinearGradient woodworkGradient({
+    Alignment begin = Alignment.topLeft,
+    Alignment end = Alignment.bottomRight,
+  }) =>
+      LinearGradient(begin: begin, end: end, colors: [woodFrameMid, woodFrameDark]);
+
   @override
   AtmospherePalette copyWith({
     String? id,

@@ -8,6 +8,8 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/dictation_service.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/features/editor/widgets/desk_workstation/desk_palette.dart';
+import 'package:memodiary/features/editor/widgets/editor_top_app_bar.dart';
 import 'package:memodiary/features/editor/widgets/keepsake_scroll_view.dart';
 import 'package:memodiary/features/editor/widgets/editor_quill_styles_builder.dart';
 import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
@@ -393,6 +395,26 @@ void main() {
       // Verify database delta is untouched
       final entry = await db.entriesDao.getEntryById('editor_test_entry');
       expect(entry!.contentDelta, equals('[]'));
+    });
+
+    testWidgets('top app bar and writing dock use desk chrome surface rather than template paper color', (tester) async {
+      await pumpEntryEditorScreen(
+        tester,
+        database: db,
+        mediaSandboxService: sandboxService,
+        entryId: 'editor_test_entry',
+        dictationService: dictationService,
+        theme: InkDiaryTheme.light,
+      );
+
+      final topBar = tester.widget<EditorTopAppBar>(find.byType(EditorTopAppBar));
+      final dock = tester.widget<WritingDock>(find.byType(WritingDock));
+      final container = tester.widget<TemplateCanvasContainer>(find.byType(TemplateCanvasContainer));
+      final desk = DeskPalette.of(tester.element(find.byType(EditorTopAppBar)));
+
+      expect(topBar.surfaceColor, equals(desk.chromeSurface));
+      expect(topBar.surfaceColor, isNot(equals(container.style.backgroundColor)));
+      expect(dock.backgroundColor, equals(desk.chromeSurface));
     });
   });
 }

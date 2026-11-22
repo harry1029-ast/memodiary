@@ -18,7 +18,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
   ```
 - **Consistent Widget Keys**: Standardize widget keys using snake_case descriptive tokens prefixed by feature domain:
   - Scenery: `Key('scenery_<element>')` (e.g. `const Key('scenery_realm_badge')`, `const Key('scenery_realm_option_<kind>')`)
-  - Settings: `Key('settings_<feature>_<element>')` (e.g. `const Key('settings_last_backup_tile')`)
+  - Settings: `Key('settings_<feature>_<element>')` (e.g. `const Key('settings_ocr_backfill_tile')`)
   - Search: `Key('nl_constraint_chip_<kind>')`, `Key('event_chip_<keyword>')`
   - Dialogs: `Key('backup_<action>_button')`, `Key('backup_encrypt_switch')`
 - **Predictable Constructor Parameters**: Match public property names exactly to constructor parameters; avoid synthetic renames unless adapting legacy signatures.
@@ -88,7 +88,7 @@ Architectural product invariants (zero backend, $0 FOSS stack, SQLCipher encrypt
 - **Explicit Icon Sizing**: Secondary action icons in list tiles and toolbar buttons must specify explicit pixel sizes (e.g., `size: 20` for secondary list tiles, `size: 16` for chip trailing icons) rather than relying on ambiguous inherited ambient defaults.
 - **3D Transform & Matrix4 Perspective Invariants**: When implementing outward page flips or 3D rotations in Flutter (`rotateY` with `Alignment.centerLeft`), perspective projection must use a negative scale factor (e.g. `setEntry(3, 2, -0.0008)`) so points with positive $z$ expand outward toward the camera rather than collapsing inward.
 - **Accessible Semantics on Canvas Overlays**: Transparent touch targets placed atop a `CustomPainter` (e.g. an empty `InkWell` over a custom canvas) must be explicitly wrapped in `Semantics(button: true, label: '<Action description>')`. Never leave transparent touch targets unlabelled for screen readers.
-- **Complex Vector Painter Modularity & ui.Picture Separation**: Custom painters with rich static and dynamic geometry (e.g., Scenery Realms, Photobook Canvas) must decouple static backgrounds into a dedicated static architecture helper recorded once into an immutable `ui.Picture` layer, and dynamic 60 FPS actors into a separate painter class, keeping individual source files under 450 lines to prevent context bloat and stream limits.
+- **Complex Vector Painter Modularity & ui.Picture Separation**: Custom painters with rich static and dynamic geometry (e.g., Scenery Realms, Photobook Canvas) must decouple static backgrounds into a dedicated static architecture helper recorded once into an immutable `ui.Picture` layer, and dynamic 60 FPS actors into a separate painter class, keeping individual source files under 500 lines (`~450–500` LOC soft decomposition target rather than forcing artificial splits on small bug fixes) to prevent context bloat and stream limits.
 - **Immediate SnackBar Feedback Dismissal**: When presenting immediate user feedback upon state mutation, always invoke `ScaffoldMessenger.of(context).hideCurrentSnackBar()` prior to `showSnackBar()` to prevent queued duration stalls in interactive flows and widget test harnesses.
 - **Displacement over Coexistence (Legacy Scaffolding Cleanup)**: When a specification or architecture decision explicitly mandates replacing an interaction seam, modal, or toolbar menu with a unified component, remove the deprecated UI component and migrate its corresponding widget test assertions to exercise the replacement seam in the same change set. Never preserve dead legacy UI scaffolding to satisfy un-migrated test assertions.
 

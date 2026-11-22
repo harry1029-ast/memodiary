@@ -21,6 +21,7 @@ class OfflineCjkTtfGenerator {
 
   static ByteData? _cachedTtfBytes;
   static pw.Font? _cachedCjkFont;
+  static pw.Font? _cachedBundleFont;
 
   // Segment definitions for Format 4 cmap:
   // Seg 0: 0x0020 .. 0x0020 (1 char: Space) -> glyph 1
@@ -60,8 +61,10 @@ class OfflineCjkTtfGenerator {
 
   /// Default asset bundle candidates checked before in-memory synthesis.
   static const List<String> defaultBundleFontCandidates = [
+    'assets/fonts/NotoSerifSC-Variable.ttf',
     'assets/fonts/NotoSerifSC-Regular.ttf',
     'assets/fonts/NotoSansSC-Regular.ttf',
+    'assets/fonts/MaShanZheng-Regular.ttf',
   ];
 
   /// Returns true if [codeUnit] is mapped in the offline CJK TrueType `cmap`.
@@ -80,6 +83,10 @@ class OfflineCjkTtfGenerator {
   /// Attempts to load a bundled TrueType font from [assetPath] (or default bundled
   /// font candidates) via [rootBundle], falling back to the deterministic in-memory CJK TrueType font.
   static Future<pw.Font> loadOrGenerateFont({String? assetPath}) async {
+    if ((assetPath == null || assetPath.isEmpty) && _cachedBundleFont != null) {
+      return _cachedBundleFont!;
+    }
+
     final candidatePaths = [
       if (assetPath != null && assetPath.isNotEmpty) assetPath,
       ...defaultBundleFontCandidates,
@@ -90,7 +97,9 @@ class OfflineCjkTtfGenerator {
         final data = await rootBundle.load(path);
         if (data.lengthInBytes > 0) {
           final font = pw.Font.ttf(data);
-          _cachedCjkFont = font;
+          if (assetPath == null || assetPath.isEmpty) {
+            _cachedBundleFont = font;
+          }
           return font;
         }
       } catch (_) {

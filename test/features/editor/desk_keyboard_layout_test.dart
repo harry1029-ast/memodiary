@@ -94,7 +94,7 @@ void main() {
   }
 
   Future<void> collapseWorkstation(WidgetTester tester) async {
-    await tester.tap(find.byKey(const Key('workstation_pull_tab')));
+    await tester.tap(find.byKey(const Key('workstation_collapse_pill')));
     await tester.pumpAndSettle();
   }
 

@@ -28,6 +28,23 @@ class DeskPalette {
   /// Antique brass of the mat corner inlays.
   final Color brass;
 
+  /// Desk-toned surface colour for editor chrome bars (top app bar, Writing
+  /// Dock, and keyboard accessory row), lifted slightly above the desk wood.
+  Color get chromeSurface => Color.alphaBlend(const Color(0x14FFF1D6), base);
+
+  /// Brass hairline rule separating chrome bars from the Scholar's Desk.
+  Color get chromeRule => matRim;
+
+  /// Warm parchment ink for icons and labels on dark desk chrome.
+  static const Color chromeInk = Color(0xFFE9DFCB);
+
+  /// Muted cinnabar accent for the done check on dark desk chrome.
+  static const Color chromeAccent = Color(0xFFE07A5F);
+
+  /// Whether [chromeSurface] is dark, for system status bar contrast.
+  bool get isChromeDark =>
+      ThemeData.estimateBrightnessForColor(chromeSurface) == Brightness.dark;
+
   const DeskPalette({
     required this.base,
     required this.highlight,

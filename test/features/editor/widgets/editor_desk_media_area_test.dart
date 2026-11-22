@@ -16,7 +16,7 @@ void main() {
   setUp(() => tempDirectory = Directory.systemTemp.createTempSync('desk_media_area_test_'));
   tearDown(() => tempDirectory.deleteSync(recursive: true));
 
-  final pullTab = find.byKey(const Key('workstation_pull_tab'));
+  final collapsePill = find.byKey(const Key('workstation_collapse_pill'));
   final pill = find.byKey(const Key('workstation_restore_pill'));
   final dockRestoreTab = find.byKey(const Key('writing_dock_restore_tab'));
 
@@ -65,18 +65,18 @@ void main() {
   }
 
   group('EditorDeskMediaArea', () {
-    testWidgets('a docked workstation shows its pull tab, which puts it away', (tester) async {
+    testWidgets('a docked workstation shows its collapse pill, which puts it away', (tester) async {
       final chrome = await pumpArea(tester);
 
       expect(pill, findsNothing);
-      await tester.tap(pullTab);
+      await tester.tap(collapsePill);
       expect(chrome.isWorkstationCollapsed, isTrue);
     });
 
     testWidgets('a collapsed workstation shows only the Restore Pill, which brings it back', (tester) async {
       final chrome = await pumpArea(tester, isWorkstationCollapsed: true);
 
-      expect(pullTab, findsNothing);
+      expect(collapsePill, findsNothing);
       await tester.tap(pill);
       expect(chrome.isWorkstationCollapsed, isFalse);
     });
@@ -85,16 +85,14 @@ void main() {
       await pumpArea(tester, isKeyboardVisible: true);
 
       expect(tester.takeException(), isNull);
-      expect(pullTab, findsNothing);
+      expect(collapsePill, findsNothing);
       expect(pill, findsNothing);
     });
 
-    testWidgets('shows the Writing Dock restore tab only while dock is hidden and keyboard closed', (tester) async {
-      final chrome = await pumpArea(tester, isWritingDockVisible: false);
-
-      expect(dockRestoreTab, findsOneWidget);
-      await tester.tap(dockRestoreTab);
-      expect(chrome.isWritingDockVisible, isTrue);
+    testWidgets('reserves bottom-right room for the floating restore tab only while keyboard is closed', (tester) async {
+      await pumpArea(tester, isWritingDockVisible: false);
+      expect(dockRestoreTab, findsNothing, reason: 'the canvas hosts the floating restore tab');
+      expect(tester.getRect(find.byKey(const Key('closed_brocade_scroll'))).right, lessThanOrEqualTo(400.0 - 44.0));
 
       await pumpArea(tester, isWritingDockVisible: false, isKeyboardVisible: true);
       expect(dockRestoreTab, findsNothing);

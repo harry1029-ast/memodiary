@@ -281,8 +281,7 @@ void main() {
                 KeyboardAccessoryRow(
                   controller: controller,
                   onToggleDictation: () {},
-                  isWritingDockVisible: true,
-                  onToggleWritingDock: () {},
+                  onHide: () {},
                   backgroundColor: Colors.white,
                   inkColor: Colors.black,
                 ),

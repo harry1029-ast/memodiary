@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
@@ -5,7 +6,7 @@ import 'package:memodiary/features/intro/screens/book_intro_screen.dart';
 import 'package:memodiary/main.dart';
 
 void main() {
-  testWidgets('MemoDiaryApp smoke test renders TimelineScreen when showIntroOnLaunch is false', (WidgetTester tester) async {
+  testWidgets('MemoDiaryApp smoke test opens the Home Shell 日记 tab when showIntroOnLaunch is false', (WidgetTester tester) async {
     final db = AppDatabase.memory();
     final media = MediaSandboxService();
 
@@ -19,7 +20,10 @@ void main() {
     expect(find.text('云皓日记'), findsOneWidget);
     expect(find.text('YUNHAO'), findsOneWidget);
     expect(find.text('MemoDiary'), findsNothing);
+    expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).title, '云皓日记');
     expect(find.text('暂无日记'), findsOneWidget);
+    expect(find.byKey(const Key('tab_rail')), findsOneWidget);
+    expect(find.byType(BookIntroScreen), findsNothing);
 
     await db.close();
   });
@@ -37,6 +41,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(BookIntroScreen), findsOneWidget);
+    expect(find.byKey(const Key('tab_rail')), findsNothing);
 
     await db.close();
   });

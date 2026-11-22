@@ -52,35 +52,40 @@ class KeepsakeColophon extends StatelessWidget {
           right: BorderSide(color: ruleColor, width: 0.6),
         ),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 6.0),
+      padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 6.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // Vertical Colophon Metadata
-          Semantics(
-            container: true,
-            label: fullColophonText,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildVerticalRun('$dateFormatted $dayOfWeek'),
-                if (colophonDetails.isNotEmpty) ...[
-                  const SizedBox(height: 12.0),
-                  _buildVerticalRun(colophonDetails.join(' ')),
-                ],
-              ],
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.topCenter,
+              child: Semantics(
+                container: true,
+                label: fullColophonText,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildVerticalRun('$dateFormatted $dayOfWeek'),
+                    if (colophonDetails.isNotEmpty) ...[
+                      const SizedBox(height: 10.0),
+                      _buildVerticalRun(colophonDetails.join(' ')),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
 
+          const SizedBox(height: 8.0),
+
           // User's Cinnabar Signature Seal
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: CinnabarSignatureSeal(
-              key: const Key('keepsake_signature_seal'),
-              sealStyle: style.tokens.sealStyle,
-              size: 46.0,
-            ),
+          CinnabarSignatureSeal(
+            key: const Key('keepsake_signature_seal'),
+            sealStyle: style.tokens.sealStyle,
+            size: 44.0,
           ),
         ],
       ),

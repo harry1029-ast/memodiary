@@ -32,7 +32,7 @@ Deepen the chrome state and desk space budget seam around the existing editor ch
 2. As a diarist typing with the **Keyboard Accessory Row** formatting ribbon expanded, I want dismissing the software keyboard to leave the **Writing Dock** formatting ribbon open, so that I can continue adjusting headings or styles without re-tapping `[Aa]`/`Tt`.
 3. As a diarist navigating across multiple **Stationery Sheets** via **Page Corners** or swiping, I want my formatting ribbon open state to remain undisturbed throughout the editing session until I explicitly close it.
 4. As a diarist viewing a **Tipped-In Ephemera Leaf** sheet when I open formatting in either the **Writing Dock** or the **Keyboard Accessory Row**, I want the editor to automatically ensure an active text sheet exists before expanding the ribbon, matching the dictation toggle behavior.
-5. As a diarist toggling the **Writing Dock** hidden via `收起文房` while the keyboard is open or closed, I want formatting ribbon openness to remain independent of dock visibility, so restoring the dock later preserves my expected formatting tool state.
+5. As a diarist toggling the **Writing Dock** hidden via `收起工具栏` while the keyboard is open or closed, I want formatting ribbon openness to remain independent of dock visibility, so restoring the dock later preserves my expected formatting tool state.
 
 ### Single-Pass Desk Budget & Short-Viewport Ergonomics
 

@@ -138,37 +138,36 @@ void main() {
     final accessoryRow = find.byKey(const Key('keyboard_accessory_row'));
     final formatButton = find.byKey(const Key('keyboard_accessory_format_btn'));
     final dictationButton = find.byKey(const Key('keyboard_accessory_dictation_btn'));
-    final dockToggle = find.byKey(const Key('keyboard_accessory_dock_toggle_btn'));
+    final hideTab = find.byKey(const Key('writing_dock_hide_tab'));
+    final restoreTab = find.byKey(const Key('writing_dock_restore_tab'));
 
-    void expectOnlyAccessoryRow(WidgetTester tester, {required String toggleLabel}) {
+    void expectOnlyAccessoryRow(WidgetTester tester) {
       expect(accessoryRow, findsOneWidget);
       expect(find.byType(WritingDock), findsNothing);
-      expect(find.byKey(const Key('writing_dock_hide_tab')), findsNothing);
-      expect(find.byKey(const Key('writing_dock_restore_tab')), findsNothing);
+      expect(restoreTab, findsNothing);
       for (final dockOnly in ['writing_dock_photo_btn', 'writing_dock_video_btn', 'writing_dock_spark_btn']) {
         expect(find.byKey(Key(dockOnly)), findsNothing, reason: '$dockOnly is not shown while typing');
       }
-      for (final control in [formatButton, dictationButton, dockToggle]) {
+      for (final control in [formatButton, dictationButton, hideTab]) {
         expect(find.descendant(of: accessoryRow, matching: control), findsOneWidget);
         final size = tester.getSize(control);
         expect(size.width, greaterThanOrEqualTo(44.0));
         expect(size.height, greaterThanOrEqualTo(44.0));
       }
       expect(find.descendant(of: accessoryRow, matching: find.byType(IconButton)), findsNWidgets(2));
-      expect(find.descendant(of: dockToggle, matching: find.text(toggleLabel)), findsOneWidget);
       // About 40dp tall, resting on the keyboard.
       final rowRect = tester.getRect(accessoryRow);
       expect(rowRect.height, inInclusiveRange(40.0, 46.0));
       expect(rowRect.bottom, closeTo(780.0 - kPhoneKeyboardInset, 0.5));
     }
 
-    testWidgets('replaces the Writing Dock while the keyboard is open, holding only Tt, dictation and the dock toggle', (tester) async {
+    testWidgets('replaces the Writing Dock while the keyboard is open, holding only Tt, dictation and the hide tab', (tester) async {
       await openEditor(tester);
       expect(accessoryRow, findsNothing);
 
       await startWritingOn(tester, editorTextSheets(tester).first);
       await openSoftKeyboard(tester);
-      expectOnlyAccessoryRow(tester, toggleLabel: WritingDockHideTab.kSemanticLabel);
+      expectOnlyAccessoryRow(tester);
       final semantics = tester.ensureSemantics();
       expect(find.bySemanticsLabel(WritingDockHideTab.kSemanticLabel), findsOneWidget);
       await expectAccessibleTapTargets(tester, within: accessoryRow);
@@ -179,23 +178,25 @@ void main() {
       expect(find.byType(WritingDock), findsOneWidget);
     });
 
-    testWidgets('appears even when the Writing Dock is hidden, offering 展开文房, and the restore tab returns when the keyboard closes',
+    testWidgets('stays hidden when the Writing Dock was hidden before typing, leaving the restore tab on the desk',
         (tester) async {
       await openEditor(tester);
-      await tester.tap(find.byKey(const Key('writing_dock_hide_tab')));
+      await tester.tap(hideTab);
       await tester.pumpAndSettle();
       expect(find.byType(WritingDock), findsNothing);
 
       await startWritingOn(tester, editorTextSheets(tester).first);
       await openSoftKeyboard(tester);
-      expectOnlyAccessoryRow(tester, toggleLabel: WritingDockRestoreTab.kSemanticLabel);
+      expect(accessoryRow, findsNothing);
+      expect(restoreTab, findsOneWidget);
 
       await closeSoftKeyboard(tester);
       expect(accessoryRow, findsNothing);
-      expect(find.byKey(const Key('writing_dock_restore_tab')), findsOneWidget);
+      expect(find.byType(WritingDock), findsNothing);
+      expect(restoreTab, findsOneWidget);
     });
 
-    testWidgets('the dock toggle flips the stored preference while writing, and the dock follows it when the keyboard closes',
+    testWidgets('tapping hide in the keyboard row removes the row and shows the restore tab while the keyboard stays up',
         (tester) async {
       await openEditor(tester);
       final sheet = editorTextSheets(tester).first;
@@ -203,26 +204,23 @@ void main() {
       await openSoftKeyboard(tester);
       tester.testTextInput.log.clear();
 
-      await tester.tap(dockToggle);
-      await tester.pump();
-      expect(find.descendant(of: dockToggle, matching: find.text(WritingDockRestoreTab.kSemanticLabel)), findsOneWidget);
+      await tester.tap(hideTab);
+      await tester.pumpAndSettle();
+      expect(accessoryRow, findsNothing);
+      expect(find.byType(WritingDock), findsNothing);
+      expect(restoreTab, findsOneWidget);
+      final restoreRect = tester.getRect(restoreTab);
+      expect(restoreRect.right, closeTo(360.0, 20.0));
+      expect(restoreRect.bottom, closeTo(780.0 - kPhoneKeyboardInset, 1.0));
       expect(await editorSettings.getIsWritingDockHidden(), isTrue);
       expect(sheet.focusNode.hasFocus, isTrue, reason: 'writing goes on');
-      expect(inputCalls(tester), isNot(contains('TextInput.hide')), reason: 'the toggle never drops the keyboard');
+      expect(inputCalls(tester), isNot(contains('TextInput.hide')), reason: 'the hide tab never drops the keyboard');
       expect(inputCalls(tester), isNot(contains('TextInput.show')));
-      expect(accessoryRow, findsOneWidget);
-      expect(find.byType(WritingDock), findsNothing);
 
-      await closeSoftKeyboard(tester);
-      expect(find.byType(WritingDock), findsNothing);
-      expect(find.byKey(const Key('writing_dock_restore_tab')), findsOneWidget);
-
-      await startWritingOn(tester, sheet);
-      await openSoftKeyboard(tester);
-      tester.testTextInput.log.clear();
-      await tester.tap(dockToggle);
-      await tester.pump();
-      expect(find.descendant(of: dockToggle, matching: find.text(WritingDockHideTab.kSemanticLabel)), findsOneWidget);
+      // Tapping the restore tab while typing brings the accessory row back.
+      await tester.tap(restoreTab);
+      await tester.pumpAndSettle();
+      expectOnlyAccessoryRow(tester);
       expect(await editorSettings.getIsWritingDockHidden(), isFalse);
       expect(sheet.focusNode.hasFocus, isTrue);
       expect(inputCalls(tester), isNot(contains('TextInput.hide')));

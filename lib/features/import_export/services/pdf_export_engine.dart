@@ -9,6 +9,7 @@ import '../../../core/documents/vertical_typography_mapper.dart';
 import '../../editor/widgets/journal_letterhead_models.dart';
 import '../../settings/services/signature_seal_service.dart';
 import '../../templates/models/template_style.dart';
+import '../../templates/services/stationery_layout_calculator.dart';
 import '../../timeline/services/folio_media_pairing.dart';
 import '../models/pdf_layout_mode.dart';
 import 'pdf_entry_serializer.dart';
@@ -35,7 +36,7 @@ class PdfExportEngine {
     String? sealText,
     SignatureSealService? sealService,
   }) async {
-    final resolver = fontResolver ?? PdfFontResolver.cjk();
+    final resolver = fontResolver ?? await PdfFontResolver.loadOfflineCjk();
 
     // 1. Resolve visual template
     final template = await database.templatesDao.getTemplateById(entry.templateId) ??
@@ -119,13 +120,27 @@ class PdfExportEngine {
       ));
     }
 
+    final horizontalMetrics = StationeryLayoutCalculator.calculateMetrics(
+      canvasWidth: pageFormat.width,
+      canvasHeight: pageFormat.height,
+      backgroundType: style.type,
+      horizontalMargin: style.resolvedHorizontalMargin,
+      lineSpacing: style.lineSpacing,
+    );
+    final horizontalLeftMargin = horizontalMetrics.innerFrameRect.left +
+        (style.type == TemplateBackgroundType.lined ? 20.0 : 12.0);
+    final horizontalRightMargin =
+        (pageFormat.width - horizontalMetrics.innerFrameRect.right) + 12.0;
+
     doc.addPage(
       pw.MultiPage(
         pageTheme: pw.PageTheme(
           pageFormat: pageFormat,
-          margin: pw.EdgeInsets.symmetric(
-            horizontal: style.marginHorizontal.clamp(20.0, 60.0),
-            vertical: 36.0,
+          margin: pw.EdgeInsets.fromLTRB(
+            horizontalLeftMargin,
+            24.0,
+            horizontalRightMargin,
+            20.0,
           ),
           buildBackground: (context) =>
               PdfTemplateRenderer.buildBackground(context, style),
@@ -162,7 +177,7 @@ class PdfExportEngine {
     String? sealText,
     SignatureSealService? sealService,
   }) async {
-    final resolver = fontResolver ?? PdfFontResolver.cjk();
+    final resolver = fontResolver ?? await PdfFontResolver.loadOfflineCjk();
     final sealManager = sealService ?? SignatureSealService();
     final effectiveSealText = sealText ?? await sealManager.getSealText();
     final doc = pw.Document();
@@ -274,13 +289,27 @@ class PdfExportEngine {
         fontResolver: resolver,
       );
 
+      final horizontalMetrics = StationeryLayoutCalculator.calculateMetrics(
+        canvasWidth: pageFormat.width,
+        canvasHeight: pageFormat.height,
+        backgroundType: style.type,
+        horizontalMargin: style.resolvedHorizontalMargin,
+        lineSpacing: style.lineSpacing,
+      );
+      final horizontalLeftMargin = horizontalMetrics.innerFrameRect.left +
+          (style.type == TemplateBackgroundType.lined ? 20.0 : 12.0);
+      final horizontalRightMargin =
+          (pageFormat.width - horizontalMetrics.innerFrameRect.right) + 12.0;
+
       doc.addPage(
         pw.MultiPage(
           pageTheme: pw.PageTheme(
             pageFormat: pageFormat,
-            margin: pw.EdgeInsets.symmetric(
-              horizontal: style.marginHorizontal.clamp(20.0, 60.0),
-              vertical: 36.0,
+            margin: pw.EdgeInsets.fromLTRB(
+              horizontalLeftMargin,
+              24.0,
+              horizontalRightMargin,
+              20.0,
             ),
             buildBackground: (context) =>
                 PdfTemplateRenderer.buildBackground(context, style),

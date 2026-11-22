@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:uuid/uuid.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/services/ocr/ocr_queue_manager.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
-import 'package:memodiary/core/theme/widgets/scroll_roller_fab.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
+import 'package:memodiary/features/home/models/home_tab.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
@@ -30,6 +29,14 @@ class TimelineScreen extends StatefulWidget {
   final bool? enableSceneryAnimation;
   final OcrQueueManager? ocrQueueManager;
 
+  /// Home Shell seam: the timeline attaches its 写日记 flow here so the
+  /// Scroll Roller Button can trigger it.
+  final HomeTabPrimaryAction? primaryAction;
+
+  /// Home Shell seam: fires when a screen opened outside this tab (回收站,
+  /// 导入与备份) may have changed entries, so the timeline reloads.
+  final Listenable? diaryChanged;
+
   const TimelineScreen({
     super.key,
     required this.database,
@@ -38,6 +45,8 @@ class TimelineScreen extends StatefulWidget {
     this.audioSanctumService,
     this.enableSceneryAnimation,
     this.ocrQueueManager,
+    this.primaryAction,
+    this.diaryChanged,
   });
 
   @override
@@ -45,7 +54,7 @@ class TimelineScreen extends StatefulWidget {
 }
 
 class _TimelineScreenState extends State<TimelineScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, HomeTabPrimaryActionBinding<TimelineScreen> {
   static const int _pageSize = 20;
 
   final ScrollController _scrollController = ScrollController();
@@ -68,7 +77,6 @@ class _TimelineScreenState extends State<TimelineScreen>
   int _offset = 0;
   String? _errorMessage;
   bool _isSceneryVisible = true;
-  bool _isFabRolledUp = false;
   bool _isCandleLit = true;
 
   @override
@@ -84,6 +92,7 @@ class _TimelineScreenState extends State<TimelineScreen>
       curve: const Cubic(0.22, 1.0, 0.36, 1.0),
     );
     _scrollController.addListener(_onScroll);
+    widget.diaryChanged?.addListener(_handleDiaryChanged);
     _loadInitial();
     _loadScenerySettings();
   }
@@ -91,16 +100,35 @@ class _TimelineScreenState extends State<TimelineScreen>
   Future<void> _loadScenerySettings() async {
     final pinned = await _scenerySettings.getPinnedAtmosphere();
     final realmPref = await _scenerySettings.getRealmPreference();
-    if (mounted) {
-      setState(() {
-        _pinnedAtmosphere = pinned;
-        _realmPreference = realmPref;
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _pinnedAtmosphere = pinned;
+      _realmPreference = realmPref;
+    });
   }
 
   @override
+  void didUpdateWidget(covariant TimelineScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.diaryChanged != widget.diaryChanged) {
+      oldWidget.diaryChanged?.removeListener(_handleDiaryChanged);
+      widget.diaryChanged?.addListener(_handleDiaryChanged);
+    }
+  }
+
+  /// Reloads as many entries as were loaded, so the scroll position and the
+  /// pages paged in so far survive the refresh.
+  void _handleDiaryChanged() => _loadInitial(keepLoadedPages: true);
+
+  @override
+  HomeTabPrimaryAction? primaryActionOf(TimelineScreen widget) => widget.primaryAction;
+
+  @override
+  Future<void> runPrimaryAction() => _handleCreateEntry();
+
+  @override
   void dispose() {
+    widget.diaryChanged?.removeListener(_handleDiaryChanged);
     _xunExpandController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -112,20 +140,9 @@ class _TimelineScreenState extends State<TimelineScreen>
       if (isVisible != _isSceneryVisible) {
         setState(() => _isSceneryVisible = isVisible);
       }
-
-      final userDirection = _scrollController.position.userScrollDirection;
-      if (userDirection == ScrollDirection.reverse && !_isFabRolledUp) {
-        setState(() => _isFabRolledUp = true);
-      } else if ((userDirection == ScrollDirection.forward ||
-              _scrollController.offset <= 12) &&
-          _isFabRolledUp) {
-        setState(() => _isFabRolledUp = false);
-      }
     }
-    if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 250 &&
-        !_isLoadingMore &&
-        _hasMore) {
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 250 && !_isLoadingMore && _hasMore) {
       _loadMore();
     }
   }
@@ -159,7 +176,8 @@ class _TimelineScreenState extends State<TimelineScreen>
     );
   }
 
-  Future<void> _loadInitial({bool refreshSceneryEntries = true}) async {
+  Future<void> _loadInitial({bool refreshSceneryEntries = true, bool keepLoadedPages = false}) async {
+    final limit = keepLoadedPages && _offset > _pageSize ? _offset : _pageSize;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -169,7 +187,7 @@ class _TimelineScreenState extends State<TimelineScreen>
       final dao = widget.database.entriesDao;
       final entries = await dao.getFilteredTimelineEntries(
         filters: _filters,
-        limit: _pageSize,
+        limit: limit,
         offset: 0,
       );
       final filteredCount = await dao.countFilteredTimelineEntries(
@@ -207,7 +225,7 @@ class _TimelineScreenState extends State<TimelineScreen>
           _mediaMap = mediaMap;
           _activeNotebook = activeNotebook;
           _offset = entries.length;
-          _hasMore = entries.length >= _pageSize;
+          _hasMore = entries.length >= limit;
           _isLoading = false;
           _errorMessage = null;
         });
@@ -424,14 +442,6 @@ class _TimelineScreenState extends State<TimelineScreen>
                     onEntryTap: _navigateToDetail,
                   ),
                 ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: ScrollRollerFab(
-        key: const Key('timeline_write_fab'),
-        isRolledUp: _isFabRolledUp,
-        label: '写日记',
-        subLabel: '',
-        onPressed: _handleCreateEntry,
-      ),
     );
   }
 }

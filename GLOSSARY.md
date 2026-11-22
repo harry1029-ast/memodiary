@@ -184,6 +184,22 @@ _Avoid_: Weather chip, mood chip, metadata tag, 天时笺, 心绪笺, 沉郁, �
 The carved wooden sill and brass-bracketed ledge (窗台案沿) separating the upper Shanshui Scenery Card window from the lower Chronicle Desk, bearing the four study ornaments (pine bonsai, brush stand, brass candlestick, and celadon incense burner).
 _Avoid_: Divider bar, desk lip, ornament shelf
 
+**Home Shell**:
+The root screen the diarist lands in after the opening cover, holding two tabs—日记 (the timeline) and 相册 (album collections)—that keep their state while switching. The cover's doors replace themselves with it, and it never goes back to the cover except through `返回封面` in the Diarist Panel.
+_Avoid_: Main page, tab host, dashboard, 首页
+
+**Tab Rail**:
+The woodwork bottom bar on the Home Shell (`日记 · [Scroll Roller Button] · 相册`), coloured by the active Atmosphere Palette, that slides away while scrolling down and returns while scrolling up. Absent on the cover and on every screen opened from a tab.
+_Avoid_: Bottom nav, navigation bar, tab bar, sill bar
+
+**Scroll Roller Button**:
+The raised scroll-roller centre button in the Tab Rail's notch, whose label and action follow the active tab: `写日记` on 日记, `新建相册` on 相册.
+_Avoid_: FAB, write button, plus button, 发布
+
+**Diarist Panel**:
+The casement-woodwork side panel (`我的`) slid out from the left of the Home Shell, by the header's cloud-avatar button or a left-edge drag in the upper band marked by a silk ribbon tab. It holds a placeholder profile, the `日记 · 相册 · 收藏` stats strip, and rows for `写作统计`, `回收站`, `导入与备份` and `返回封面`.
+_Avoid_: Drawer, sidebar, profile page, user page, 个人中心
+
 **Chronicle Desk**:
 The lower timeline workspace surface (`日记`) housing the Date Index Tray, mood/weather filter (`筛选`), and vertical timeline spine of diary entries.
 _Avoid_: Bottom container, entry list box, timeline background, 案头卷匣, 案头卷宗, 素宣待书, 笺签筛选

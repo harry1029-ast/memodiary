@@ -13,6 +13,7 @@ import 'package:memodiary/features/import_export/services/pdf_font_resolver.dart
 import 'package:memodiary/features/import_export/services/pdf_polaroid_overlay_builder.dart';
 import 'package:memodiary/features/import_export/services/pdf_vertical_scroll_builder.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
+import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -554,6 +555,107 @@ void main() {
       expect(texts.join(' '), isNot(contains('Mood:')));
       expect(texts.join(' '), isNot(contains('Weather:')));
       expect(texts.join(' '), isNot(contains('Week 45 Review')));
+    });
+
+    test('generatePdfForEntry embeds bundled CJK TrueType font instead of synthetic box glyphs', () async {
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'entry_real_cjk_font',
+          notebookId: 'default',
+          templateId: 'template_lined_paper',
+          title: const Value('在家喝茶'),
+          contentDelta: jsonEncode([
+            {'insert': '在家比，\n'},
+          ]),
+          plainText: '在家比，',
+          entryDate: DateTime(2026, 11, 20, 12, 47),
+        ),
+      );
+      final entry = (await db.entriesDao.getEntryById('entry_real_cjk_font'))!;
+
+      final horizBytes = await PdfExportEngine.generatePdfForEntry(
+        entry: entry,
+        database: db,
+        mediaService: mediaService,
+        layoutMode: PdfLayoutMode.horizontal,
+      );
+      final horizPdf = latin1.decode(horizBytes, allowInvalid: true);
+      expect(horizPdf, isNot(contains('/BaseFont/MemoDiaryCJK-Regular')));
+      expect(horizPdf, contains('NotoSerifSC'));
+
+      final vertBytes = await PdfExportEngine.generatePdfForEntry(
+        entry: entry,
+        database: db,
+        mediaService: mediaService,
+        layoutMode: PdfLayoutMode.verticalScroll,
+      );
+      final vertPdf = latin1.decode(vertBytes, allowInvalid: true);
+      expect(vertPdf, isNot(contains('/BaseFont/MemoDiaryCJK-Regular')));
+      expect(vertPdf, contains('NotoSerifSC'));
+    });
+
+    test('verticalScroll anchors columns to the right edge and confines column height inside Paper Heart', () async {
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'entry_vert_bounds',
+          notebookId: 'default',
+          templateId: 'template_lined_paper',
+          title: const Value('在家喝茶'),
+          contentDelta: jsonEncode([
+            {'insert': '在家比，\n'},
+          ]),
+          plainText: '在家比，',
+          entryDate: DateTime(2026, 11, 20, 12, 47),
+        ),
+      );
+      final entry = (await db.entriesDao.getEntryById('entry_vert_bounds'))!;
+      const style = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: Color(0xFFF7F3E8),
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: StationeryVisualTokens(
+          substrate: PaperSubstrate.coldGold,
+          ruleTint: RuleInkTint.vermilion,
+          sealStyle: SealCarvingStyle.zhuwen,
+        ),
+      );
+
+      final resolver = await PdfFontResolver.loadOfflineCjk();
+      final landscapeFormat = PdfPageFormat.a4.landscape;
+      final metrics = StationeryLayoutCalculator.calculateMetrics(
+        canvasWidth: landscapeFormat.width,
+        canvasHeight: landscapeFormat.height,
+        backgroundType: style.type,
+        horizontalMargin: style.resolvedHorizontalMargin,
+        lineSpacing: style.lineSpacing,
+      );
+
+      final pageWidgets = await PdfVerticalScrollBuilder.buildPageWidgets(
+        entry: entry,
+        style: style,
+        mediaService: mediaService,
+        fontResolver: resolver,
+        sealText: '心安迹放',
+        pageFormat: PdfPageFormat.a4,
+      );
+      expect(pageWidgets, hasLength(1));
+
+      final row = _findFirstRow(pageWidgets.first);
+      expect(row, isNotNull);
+      expect(row!.mainAxisAlignment, equals(pw.MainAxisAlignment.end));
+
+      final pages = await PdfVerticalScrollBuilder.buildVerticalScrollPages(
+        entry: entry,
+        style: style,
+        mediaService: mediaService,
+        fontResolver: resolver,
+        sealText: '心安迹放',
+        pageFormat: PdfPageFormat.a4,
+      );
+      final margin = pages.first.pageTheme.margin! as pw.EdgeInsets;
+      expect(margin.top, greaterThanOrEqualTo(metrics.heavenMarginPx));
+      expect(margin.bottom, greaterThanOrEqualTo(metrics.earthMarginPx));
     });
   });
 }
