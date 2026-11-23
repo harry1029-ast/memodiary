@@ -5,15 +5,19 @@ import '../models/outdoor_street_models.dart';
 import '../models/outdoor_street_palette.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_scenery_geometry.dart';
+import 'outdoor_street_crowd_layers.dart';
+import 'outdoor_street_shop_layers.dart';
 import 'outdoor_street_static_architecture.dart';
+import 'shanshui_atmospheric_effects.dart';
 
-/// Full interactive vector painter for the Outdoor Ancient Market Street (`市井`) realm.
+/// Full interactive vector painter for the Outdoor Ancient Market Street (`街市`) realm.
 ///
 /// Combines a cached static architectural `ui.Picture` layer with dynamic 60 FPS
-/// animations: drifting billowy clouds, distant flying birds, swaying red paper
-/// lanterns with warm night halos, bustling townsfolk crowd with time-of-day
-/// lifecycle, rainy-day oiled-paper umbrellas (`油纸伞`), steaming food stalls,
-/// wet flagstone reflections, interactive puddle ripples, and classical colophons.
+/// Z-ordered layers: weather-tinted sky and jagged lightning, drifting clouds,
+/// dynamic shopfront window glows, wind-billowing awnings, clipped street lantern
+/// reflections, behind-counter vendors occluded by foreground stall counters,
+/// foreground customers and avenue walkers, multi-stop radial lanterns,
+/// upward-pulsing summer fireflies, rain puddle ripples, and classical colophons.
 class OutdoorStreetPainter extends CustomPainter {
   final ShanshuiAtmosphereState atmosphere;
   final OutdoorStreetPalette streetPalette;
@@ -64,18 +68,28 @@ class OutdoorStreetPainter extends CustomPainter {
 
     final isNight = atmosphere.timeOfDay == ShanshuiTimeOfDay.night;
     final isDawn = atmosphere.timeOfDay == ShanshuiTimeOfDay.dawn;
+    final isDusk = atmosphere.timeOfDay == ShanshuiTimeOfDay.dusk;
     final isWet = atmosphere.weather == ShanshuiWeather.rainy ||
         atmosphere.weather == ShanshuiWeather.stormy;
     final isSnow = atmosphere.weather == ShanshuiWeather.snowy;
-    final wind = atmosphere.weather == ShanshuiWeather.stormy ? 1.4 : 1.0;
+    final hasSnow = atmosphere.season == ShanshuiSeason.winter || isSnow;
+    final wind = atmosphere.weather.windFactor;
+    final lanternLevel = (streetPalette.candleIntensity + (isWet ? 0.35 : 0.0)).clamp(0.0, 1.0);
+    final awningBillow = math.sin(animationTime * 2.0 * wind) * (4.0 * wind);
 
-    // 1. Sky gradient, celestial sun/moon, twinkling stars, lightning
-    _paintSkyAndCelestial(canvas, isNight: isNight, isDawn: isDawn);
+    // 1. Sky gradient, weather overlay, stars, celestial body, stormy lightning
+    _paintSkyAndCelestial(canvas, isNight: isNight, isDawn: isDawn, isDusk: isDusk);
 
     // 2. Drifting billowy clouds & distant flying birds
-    _paintCloudsAndBirds(canvas, wind: wind, isNight: isNight);
+    OutdoorStreetCrowdLayers.paintCloudsAndBirds(
+      canvas,
+      animationTime: animationTime,
+      wind: wind,
+      isNight: isNight,
+      weather: atmosphere.weather,
+    );
 
-    // 3. Static architecture (from cached Picture or direct call)
+    // 3. Static architecture (mountains, avenue, Paifang with tile ribs, shopfronts)
     if (cachedStaticPicture != null) {
       canvas.drawPicture(cachedStaticPicture!);
     } else {
@@ -87,37 +101,94 @@ class OutdoorStreetPainter extends CustomPainter {
       );
     }
 
-    // 4. Lantern reflections on stone avenue & puddle ripples
-    _paintLanternReflectionsAndRipples(canvas, isWet: isWet, isNight: isNight);
+    // 4. Dynamic warm shopfront lattice windows (Dawn/Dusk/Night/Rainy/Stormy)
+    OutdoorStreetShopLayers.paintDynamicShopWindows(canvas, lanternLevel: lanternLevel);
 
-    // 5. Rising food stall steam wisps
-    _paintFoodSteam(canvas, isNight: isNight, isDawn: isDawn, wind: wind);
+    // 5. Wind-billowing market fabric awnings & right support pole
+    OutdoorStreetShopLayers.paintBillowingAwnings(
+      canvas,
+      hasSnow: hasSnow,
+      billow: awningBillow,
+    );
 
-    // 6. Townsfolk crowd lifecycle & oiled-paper umbrellas
-    _paintTownsfolkCrowd(canvas, isNight: isNight, isPrecipitation: isWet || isSnow, wind: wind);
+    // 6. Clipped street lantern reflections & puddle ripples
+    _paintLanternReflectionsAndRipples(
+      canvas,
+      isWet: isWet,
+      isNight: isNight,
+      lanternLevel: lanternLevel,
+    );
 
-    // 7. Swaying red paper lanterns with warm radial glow halos
-    _paintStreetLanterns(canvas, isWet: isWet, wind: wind);
+    // 7. Behind-counter vendors/patrons painted BEFORE foreground stall counters
+    OutdoorStreetCrowdLayers.paintTownsfolkList(
+      canvas,
+      OutdoorStreetCrowd.getBehindCounterFigures(atmosphere.timeOfDay),
+      animationTime: animationTime,
+      isNight: isNight,
+      isPrecipitation: false,
+      wind: wind,
+    );
 
-    // 8. Ambient overlay, seasonal particles & weather precipitation
-    _paintAmbientAndPrecipitation(canvas, isWet: isWet, isSnow: isSnow);
+    // 8. Foreground wooden market stalls, pastries, crates, bowls, stool & barrel
+    OutdoorStreetShopLayers.paintForegroundStalls(canvas, isDawn: isDawn);
 
-    // 9. Classical calligraphy colophon & cinnabar seal
+    // 9. Rising food stall steam wisps
+    OutdoorStreetCrowdLayers.paintFoodSteam(
+      canvas,
+      animationTime: animationTime,
+      isNight: isNight,
+      isDawn: isDawn,
+      hasSnow: hasSnow,
+      wind: wind,
+    );
+
+    // 10. Foreground customers & avenue walkers painted AFTER stall counters
+    OutdoorStreetCrowdLayers.paintTownsfolkList(
+      canvas,
+      OutdoorStreetCrowd.getForegroundFigures(atmosphere.timeOfDay),
+      animationTime: animationTime,
+      isNight: isNight,
+      isPrecipitation: isWet || isSnow,
+      wind: wind,
+    );
+
+    // 11. Swaying red paper lanterns with multi-stop radial glow halos
+    OutdoorStreetCrowdLayers.paintStreetLanterns(
+      canvas,
+      animationTime: animationTime,
+      lanternLevel: lanternLevel,
+      wind: wind,
+    );
+
+    // 12. Ambient wash, seasonal particles/fireflies & precipitation
+    _paintAmbientAndPrecipitation(
+      canvas,
+      isWet: isWet,
+      isSnow: isSnow,
+      isNight: isNight,
+      isDawn: isDawn,
+      isDusk: isDusk,
+      wind: wind,
+    );
+
+    // 13. Classical calligraphy colophon & cinnabar seal
     if (showCalligraphy) {
       _paintCalligraphyAndSeal(canvas, isNight: isNight);
     }
 
-    // 10. Soft Vignette around canvas borders
+    // 14. Soft vignette around canvas borders
     _paintVignette(canvas, isNight: isNight);
 
     canvas.restore();
   }
 
-  // ===========================================================================
-  // 1. Sky, Sun/Moon, Stars & Lightning Flash
-  // ===========================================================================
-  void _paintSkyAndCelestial(Canvas canvas, {required bool isNight, required bool isDawn}) {
-    final skyRect = const Rect.fromLTWH(0, 0, 1500, 540);
+  void _paintSkyAndCelestial(
+    Canvas canvas, {
+    required bool isNight,
+    required bool isDawn,
+    required bool isDusk,
+  }) {
+    const skyRect = Rect.fromLTWH(0, 0, 1500, 540);
     final skyPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -126,463 +197,191 @@ class OutdoorStreetPainter extends CustomPainter {
       ).createShader(skyRect);
     canvas.drawRect(skyRect, skyPaint);
 
-    // Twinkling stars at Night / Dawn
-    if (isNight || isDawn) {
+    if (atmosphere.weather.skyOverlay != null) {
+      canvas.drawRect(skyRect, Paint()..color = atmosphere.weather.skyOverlay!);
+    }
+
+    final isStormy = atmosphere.weather == ShanshuiWeather.stormy;
+    if (isStormy && lightningAlpha > 0.05) {
+      canvas.drawRect(
+        skyRect,
+        Paint()..color = Colors.white.withValues(alpha: (lightningAlpha * 0.55).clamp(0.0, 0.7)),
+      );
+    }
+
+    if ((isNight || isDawn) &&
+        (atmosphere.weather == ShanshuiWeather.sunny ||
+            atmosphere.weather == ShanshuiWeather.snowy)) {
       final starCount = isDawn ? 18 : 45;
       final starPaint = Paint();
-      for (int i = 0; i < starCount; i++) {
-        final sx = 240.0 + ((i * 293) % 1020);
-        final sy = 18.0 + ((i * 137) % 240);
-        final tw = (isDawn ? 0.2 : 0.35) + 0.5 * math.sin(animationTime * 2.0 + i);
-        starPaint.color = Colors.white.withValues(alpha: tw.clamp(0.0, 1.0));
-        canvas.drawCircle(Offset(sx, sy), i % 3 == 0 ? 1.9 : 1.2, starPaint);
+      for (int index = 0; index < starCount; index++) {
+        final sx = 240.0 + ((index * 293) % 1020);
+        final sy = 18.0 + ((index * 137) % 240);
+        final twinkle = (isDawn ? 0.2 : 0.35) + 0.5 * math.sin(animationTime * 2.0 + index);
+        starPaint.color = Colors.white.withValues(alpha: twinkle.clamp(0.0, 1.0));
+        canvas.drawCircle(Offset(sx, sy), index % 3 == 0 ? 1.9 : 1.2, starPaint);
       }
     }
 
-    // Sun / Moon with celestial glow
-    final isDusk = atmosphere.timeOfDay == ShanshuiTimeOfDay.dusk;
-    final celX = 955.0;
+    const celX = 955.0;
     final celY = isDawn ? 225.0 : isDusk ? 205.0 : 118.0;
     final celR = isDawn || isDusk ? 54.0 : 46.0;
+    final celAlpha = atmosphere.weather.celestialAlpha;
 
-    final glowPaint = Paint()..color = streetPalette.celestialGlow;
-    canvas.drawCircle(Offset(celX, celY), celR * 2.5, glowPaint);
+    final haloRadius = celR * 3.5;
+    final haloShader = RadialGradient(
+      colors: [
+        streetPalette.celestialGlow.withValues(
+          alpha: (streetPalette.celestialGlow.a * celAlpha).clamp(0.0, 1.0),
+        ),
+        const Color.fromRGBO(0, 0, 0, 0.0),
+      ],
+      stops: const [0.06, 1.0],
+    ).createShader(Rect.fromCircle(center: Offset(celX, celY), radius: haloRadius));
+    canvas.drawCircle(Offset(celX, celY), haloRadius, Paint()..shader = haloShader);
 
-    final celPaint = Paint()..color = streetPalette.celestialColor;
-    canvas.drawCircle(Offset(celX, celY), celR, celPaint);
+    final discAlpha = ((isNight ? 0.95 : 0.88) * celAlpha).clamp(0.0, 1.0);
+    canvas.drawCircle(
+      Offset(celX, celY),
+      celR,
+      Paint()..color = streetPalette.celestialColor.withValues(alpha: discAlpha),
+    );
 
-    // Lightning flash overlay in stormy weather
-    if (atmosphere.weather == ShanshuiWeather.stormy && lightningAlpha > 0.05) {
-      final flashPaint = Paint()
-        ..color = Colors.white.withValues(alpha: (lightningAlpha * 0.55).clamp(0.0, 0.7));
-      canvas.drawRect(skyRect, flashPaint);
-
-      // Jagged lightning bolt
-      final boltPaint = Paint()
-        ..color = Colors.white.withValues(alpha: lightningAlpha.clamp(0.0, 1.0))
-        ..strokeWidth = 3.0
-        ..style = PaintingStyle.stroke;
-      final bolt = Path()
-        ..moveTo(680, 20)
-        ..lineTo(705, 110)
-        ..lineTo(670, 180)
-        ..lineTo(725, 270)
-        ..lineTo(690, 340);
-      canvas.drawPath(bolt, boltPaint);
+    if (isStormy && lightningAlpha > 0.05) {
+      ShanshuiAtmosphericEffects.drawJaggedLightningBolt(
+        canvas,
+        time: animationTime,
+        alpha: lightningAlpha,
+      );
     }
   }
 
-  // ===========================================================================
-  // 2. Drifting Clouds & Flying Birds
-  // ===========================================================================
-  void _paintCloudsAndBirds(Canvas canvas, {required double wind, required bool isNight}) {
-    final clouds = OutdoorCloud.createDefaultClouds();
-    final cloudFill = Paint()
-      ..color = isNight
-          ? const Color.fromRGBO(55, 72, 92, 0.55)
-          : const Color.fromRGBO(255, 252, 244, 0.86);
-    final cloudStroke = Paint()
-      ..color = isNight
-          ? const Color.fromRGBO(30, 42, 55, 0.40)
-          : const Color.fromRGBO(160, 140, 115, 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6;
+  void _paintLanternReflectionsAndRipples(
+    Canvas canvas, {
+    required bool isWet,
+    required bool isNight,
+    required double lanternLevel,
+  }) {
+    canvas.save();
+    canvas.clipPath(OutdoorStreetStaticArchitecture.buildAvenuePath());
 
-    for (int i = 0; i < clouds.length; i++) {
-      final cl = clouds[i];
-      final cx = ((cl.x + animationTime * cl.speed * wind) % 1400) + 50;
-      final cy = cl.y + math.sin(animationTime * 0.6 + i) * 4;
-
-      canvas.save();
-      canvas.translate(cx, cy);
-      canvas.scale(cl.scale, cl.scale);
-
-      final p = Path()
-        ..addArc(const Rect.fromLTWH(-38, -38, 76, 76), 0.8 * 3.14159, 1.1 * 3.14159)
-        ..arcTo(const Rect.fromLTWH(-10, -58, 92, 92), 3.14159, 1.1 * 3.14159, false)
-        ..arcTo(const Rect.fromLTWH(48, -32, 68, 68), 1.1 * 3.14159, 1.1 * 3.14159, false)
-        ..lineTo(-36, 18)
-        ..close();
-      canvas.drawPath(p, cloudFill);
-      canvas.drawPath(p, cloudStroke);
-      canvas.restore();
-    }
-
-    // Distant birds drifting across the right sky
-    final birdPaint = Paint()
-      ..color = isNight ? const Color(0xFFCBD5E1) : const Color(0xFF3B3028)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8;
-    final birds = const [
-      [1085.0, 138.0, 1.0], [1108.0, 125.0, 0.85],
-      [1132.0, 134.0, 0.75], [1150.0, 118.0, 0.65],
-    ];
-    for (int i = 0; i < birds.length; i++) {
-      final b = birds[i];
-      final flap = math.sin(animationTime * 5.5 + i) * 5;
-      final driftX = (animationTime * 14) % 240;
-      final curX = b[0] - driftX * 0.4;
-      final bs = b[2];
-
-      final bp = Path()
-        ..moveTo(curX - 7 * bs, b[1] + flap * bs)
-        ..quadraticBezierTo(curX, b[1] - 4 * bs, curX, b[1])
-        ..quadraticBezierTo(curX, b[1] - 4 * bs, curX + 7 * bs, b[1] + flap * bs);
-      canvas.drawPath(bp, birdPaint);
-    }
-  }
-
-  // ===========================================================================
-  // 3. Lantern Reflections & Stone Avenue Ripples
-  // ===========================================================================
-  void _paintLanternReflectionsAndRipples(Canvas canvas, {required bool isWet, required bool isNight}) {
-    if (streetPalette.candleIntensity > 0.25 || isWet) {
-      final reflAlpha = (streetPalette.candleIntensity * 0.35) + (isWet ? 0.22 : 0);
-      final reflPaint = Paint()..color = Color.fromRGBO(255, 145, 55, reflAlpha.clamp(0.0, 0.5));
-
-      canvas.drawOval(
-        const Rect.fromLTWH(200, 640, 380, 320),
-        reflPaint,
+    if (lanternLevel > 0.25 || isWet) {
+      final reflAlpha = ((lanternLevel * 0.35) + (isWet ? 0.22 : 0.0)).clamp(0.0, 0.57);
+      final leftShader = ui.Gradient.linear(
+        const Offset(250, 620),
+        const Offset(580, 960),
+        [
+          Color.fromRGBO(255, 145, 55, reflAlpha),
+          const Color.fromRGBO(255, 145, 55, 0.0),
+        ],
       );
-      canvas.drawOval(
-        const Rect.fromLTWH(920, 640, 380, 320),
-        reflPaint,
+      canvas.drawRect(const Rect.fromLTWH(180, 600, 420, 400), Paint()..shader = leftShader);
+
+      final rightShader = ui.Gradient.linear(
+        const Offset(1250, 620),
+        const Offset(920, 960),
+        [
+          Color.fromRGBO(255, 145, 55, reflAlpha),
+          const Color.fromRGBO(255, 145, 55, 0.0),
+        ],
+      );
+      canvas.drawRect(const Rect.fromLTWH(900, 600, 420, 400), Paint()..shader = rightShader);
+    }
+
+    final rippleColor = isNight ? const Color(0xFFDCEBFF) : const Color(0xFF6E5F50);
+
+    if (isWet) {
+      final isStorm = atmosphere.weather == ShanshuiWeather.stormy;
+      ShanshuiAtmosphericEffects.drawRainPuddleRipples(
+        canvas,
+        time: animationTime,
+        isStormy: isStorm,
+        rippleColor: rippleColor,
+        minY: 615.0,
+        spanY: 340.0,
+        minXAt: (y) => OutdoorStreetCrowd.avenueLeftX(y) + 35.0,
+        maxXAt: (y) => OutdoorStreetCrowd.avenueRightX(y) - 35.0,
+        aspectRatio: 0.56,
+        strokeWidth: 1.5,
+        minRadius: 2.0,
+        maxRadiusExpand: isStorm ? 26.0 : 20.0,
+        baseAlpha: isStorm ? 0.55 : 0.38,
+        seedMultiplier: 73,
       );
     }
 
-    // Puddle ripples on the stone street
     if (ripples != null) {
-      for (final r in ripples!) {
-        final double rx = r is OutdoorPuddleRipple ? r.x : (r as ShanshuiRipple).x;
-        final double ry = r is OutdoorPuddleRipple ? r.y : (r as ShanshuiRipple).y;
-        final double radius = r is OutdoorPuddleRipple ? r.radius : (r as ShanshuiRipple).radius;
-        final double alpha = r is OutdoorPuddleRipple ? r.alpha : (r as ShanshuiRipple).alpha;
-
-        final ripplePaint = Paint()
-          ..color = (isNight ? const Color(0xFFDCEBFF) : const Color(0xFF6E5F50))
-              .withValues(alpha: alpha.clamp(0.0, 1.0))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5;
+      for (final ripple in ripples!) {
+        final double rx = ripple is OutdoorPuddleRipple ? ripple.x : (ripple as ShanshuiRipple).x;
+        final double ry = ripple is OutdoorPuddleRipple ? ripple.y : (ripple as ShanshuiRipple).y;
+        final double radius =
+            ripple is OutdoorPuddleRipple ? ripple.radius : (ripple as ShanshuiRipple).radius;
+        final double alpha =
+            ripple is OutdoorPuddleRipple ? ripple.alpha : (ripple as ShanshuiRipple).alpha;
 
         canvas.drawOval(
           Rect.fromCenter(center: Offset(rx, ry), width: radius * 2, height: radius * 0.56),
-          ripplePaint,
+          Paint()
+            ..color = rippleColor.withValues(alpha: alpha.clamp(0.0, 1.0))
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5,
         );
       }
     }
+
+    canvas.restore();
   }
 
-  // ===========================================================================
-  // 4. Rising Food Stall Steam Wisps
-  // ===========================================================================
-  void _paintFoodSteam(
+  void _paintAmbientAndPrecipitation(
     Canvas canvas, {
+    required bool isWet,
+    required bool isSnow,
     required bool isNight,
     required bool isDawn,
+    required bool isDusk,
     required double wind,
   }) {
-    if (isDawn) return;
-
-    final wisps = OutdoorSteamWisp.createDefaultWisps();
-    for (int i = 0; i < wisps.length; i++) {
-      final sw = wisps[i];
-      if (isNight && sw.isLeftStall) continue;
-
-      final p = (sw.progress + animationTime * 0.12) % 1.0;
-      final sx = sw.isLeftStall ? 85.0 : 1235.0;
-      final sy = sw.isLeftStall ? 695.0 : 705.0;
-      final curX = sx + math.sin(p * math.pi * 3 + animationTime * 2.0 + sw.phase) * (10 + p * 18 * wind);
-      final curY = sy - p * 95;
-      final alpha = math.sin(p * math.pi) * (isNight ? 0.38 : 0.25);
-
-      final steamPaint = Paint()
-        ..color = const Color.fromRGBO(255, 252, 245, 1.0).withValues(alpha: alpha.clamp(0.0, 1.0));
-      canvas.drawCircle(Offset(curX, curY), 4 + p * 13, steamPaint);
-    }
-  }
-
-  // ===========================================================================
-  // 5. Townsfolk Crowd Lifecycle & Oiled-Paper Umbrellas
-  // ===========================================================================
-  void _paintTownsfolkCrowd(
-    Canvas canvas, {
-    required bool isNight,
-    required bool isPrecipitation,
-    required double wind,
-  }) {
-    final crowd = OutdoorStreetCrowd.getActiveFigures(atmosphere.timeOfDay);
-    for (final w in crowd) {
-      _drawTownsfolk(canvas, w, isNight: isNight, isPrecipitation: isPrecipitation, wind: wind);
-    }
-  }
-
-  void _drawTownsfolk(
-    Canvas canvas,
-    TownsfolkWalker w, {
-    required bool isNight,
-    required bool isPrecipitation,
-    required double wind,
-  }) {
-    final bobY = (math.sin(animationTime * w.speed * 2.2 + w.phase).abs()) * 6 * w.scale;
-    final swayX = math.sin(animationTime * w.speed * 1.1 + w.phase) * 4 * w.scale;
-    final cx = w.baseX + swayX;
-    final cy = w.baseY - bobY;
-    final s = w.scale;
-
-    canvas.save();
-    canvas.translate(cx, cy);
-    canvas.scale(s, s);
-
-    // Ground cast shadow
-    final shadowPaint = Paint()
-      ..color = isNight
-          ? const Color.fromRGBO(8, 12, 18, 0.55)
-          : const Color.fromRGBO(55, 42, 30, 0.32);
-    canvas.drawOval(
-      Rect.fromCenter(center: Offset(0, 88 + bobY / s), width: 68, height: 22),
-      shadowPaint,
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 0, 1500, 1000),
+      Paint()..color = streetPalette.ambientOverlay,
     );
 
-    // Legs / trousers with stride
-    final legSwing = math.sin(animationTime * w.speed * 2.2 + w.phase) * 7;
-    final pantsPaint = Paint()..color = w.pants;
-    final strokePaint = Paint()
-      ..color = const Color(0xFF231B16)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2;
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(-18, 32, 15, 50 + legSwing * 0.4), const Radius.circular(4)),
-      pantsPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(-18, 32, 15, 50 + legSwing * 0.4), const Radius.circular(4)),
-      strokePaint,
-    );
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(3, 32, 15, 50 - legSwing * 0.4), const Radius.circular(4)),
-      pantsPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(3, 32, 15, 50 - legSwing * 0.4), const Radius.circular(4)),
-      strokePaint,
-    );
-
-    // Shoes
-    final shoePaint = Paint()..color = const Color(0xFF262220);
-    canvas.drawOval(Rect.fromCenter(center: Offset(-10, 84 + legSwing * 0.4), width: 18, height: 10), shoePaint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(10, 84 - legSwing * 0.4), width: 18, height: 10), shoePaint);
-
-    // Outer sleeves / tunic
-    final tunic = Path()
-      ..moveTo(-22, -26)
-      ..quadraticBezierTo(-36, 4, -28, 32)
-      ..lineTo(28, 32)
-      ..quadraticBezierTo(36, 4, 22, -26)
-      ..close();
-    canvas.drawPath(tunic, Paint()..color = w.jacket);
-    canvas.drawPath(tunic, strokePaint);
-
-    // Waistcoat / vest
-    final vestRRect = RRect.fromRectAndRadius(const Rect.fromLTWH(-20, -26, 40, 62), const Radius.circular(6));
-    canvas.drawRRect(vestRRect, Paint()..color = w.vest);
-    canvas.drawRRect(vestRRect, strokePaint);
-
-    // Center seam & frog buttons
-    canvas.drawLine(const Offset(0, -26), const Offset(0, 36), strokePaint);
-    for (double by = -14; by <= 22; by += 12) {
-      canvas.drawLine(Offset(-5, by), Offset(5, by), strokePaint);
-    }
-
-    // Holding cup
-    if (w.holdingCup) {
-      canvas.drawRect(const Rect.fromLTWH(-14, -4, 11, 13), Paint()..color = const Color(0xFFE8EEF2));
-      canvas.drawRect(const Rect.fromLTWH(-14, -4, 11, 13), strokePaint);
-    }
-
-    // Head & face
-    canvas.drawCircle(const Offset(0, -45), 16, Paint()..color = const Color(0xFFF2D2B6));
-    canvas.drawCircle(const Offset(0, -45), 16, strokePaint);
-
-    // Hair cap / bun
-    final hair = Path()
-      ..addArc(const Rect.fromLTWH(-16.5, -65.5, 33, 33), 0.95 * 3.14159, 1.1 * 3.14159);
-    canvas.drawPath(hair, Paint()..color = const Color(0xFF26201D));
-
-    // Oiled-paper umbrella in precipitation weather
-    if (isPrecipitation && w.hasUmbrella) {
-      canvas.save();
-      canvas.translate(10, -68);
-      canvas.rotate(0.08 * wind);
-
-      // Bamboo handle
-      canvas.drawLine(
-        Offset.zero,
-        const Offset(0, 62),
-        Paint()
-          ..color = const Color(0xFF5C3A21)
-          ..strokeWidth = 2.5,
-      );
-
-      // Umbrella canopy
-      final umbrella = Path()
-        ..addArc(const Rect.fromLTWH(-44, -36, 88, 88), 3.14159, 3.14159);
-      canvas.drawPath(umbrella, Paint()..color = const Color(0xFFD96B43));
-      canvas.drawPath(umbrella, strokePaint);
-
-      canvas.restore();
-    }
-
-    canvas.restore();
-  }
-
-  // ===========================================================================
-  // 6. Swaying Red Paper Lanterns
-  // ===========================================================================
-  void _paintStreetLanterns(Canvas canvas, {required bool isWet, required double wind}) {
-    final lanterns = OutdoorLantern.createStreetLanterns();
-    final baseSway = math.sin(animationTime * 1.8 * wind) * 0.06 * wind;
-    final flicker1 = math.sin(animationTime * 7.2) * 0.5 + math.cos(animationTime * 12.5) * 0.5;
-    final flicker2 = math.sin(animationTime * 6.4 + 1.2) * 0.5 + math.sin(animationTime * 11.1) * 0.5;
-
-    final autoLantern = (streetPalette.candleIntensity + (isWet ? 0.35 : 0.0)).clamp(0.0, 1.0);
-
-    for (int i = 0; i < lanterns.length; i++) {
-      final lt = lanterns[i];
-      final sw = baseSway * math.cos(animationTime * 1.5 + lt.phase);
-      final fl = i % 2 == 0 ? flicker1 : flicker2;
-      _drawSingleLantern(canvas, lt.x, lt.y, lt.rx, lt.ry, sw, autoLantern, fl);
-    }
-
-    // 2 Paifang hanging lanterns
-    _drawSingleLantern(canvas, 648, 484, 13, 11, baseSway, autoLantern, flicker1);
-    _drawSingleLantern(canvas, 852, 484, 13, 11, -baseSway, autoLantern, flicker2);
-  }
-
-  void _drawSingleLantern(
-    Canvas canvas,
-    double lx,
-    double ly,
-    double rx,
-    double ry,
-    double sway,
-    double glow,
-    double flicker,
-  ) {
-    canvas.save();
-    canvas.translate(lx, ly);
-    canvas.rotate(sway);
-
-    // Hanging cord
-    canvas.drawLine(
-      Offset(0, -ry - 14),
-      Offset(0, -ry),
-      Paint()
-        ..color = const Color(0xFF2B1B12)
-        ..strokeWidth = 2.0,
-    );
-
-    // Warm radial glow halo
-    if (glow > 0.08) {
-      final haloR = rx * (3.6 + flicker * 0.25);
-      final haloPaint = Paint()
-        ..color = Color.fromRGBO(255, 140, 50, (0.35 * glow).clamp(0.0, 0.6));
-      canvas.drawCircle(Offset.zero, haloR, haloPaint);
-    }
-
-    // Lantern silk body
-    final bodyOval = Rect.fromCenter(center: Offset.zero, width: rx * 2, height: ry * 2);
-    final bodyPaint = Paint()
-      ..color = glow > 0.25 ? const Color(0xFFFF6B35) : const Color(0xFFC83728);
-    canvas.drawOval(bodyOval, bodyPaint);
-    canvas.drawOval(
-      bodyOval,
-      Paint()
-        ..color = const Color(0xFF2B1810)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8,
-    );
-
-    // Ribs
-    final ribPaint = Paint()
-      ..color = const Color.fromRGBO(60, 15, 10, 0.45)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1;
-    for (final frac in const [-0.55, -0.22, 0.22, 0.55]) {
-      canvas.drawOval(
-        Rect.fromCenter(center: Offset.zero, width: rx * 2 * frac.abs(), height: ry * 2),
-        ribPaint,
+    final roomDim = atmosphere.weather.indoorRoomDimming;
+    if (roomDim > 0) {
+      canvas.drawRect(
+        const Rect.fromLTWH(0, 0, 1500, 1000),
+        Paint()..color = Color.fromRGBO(14, 20, 28, (roomDim * 0.85).clamp(0.0, 1.0)),
       );
     }
 
-    // Top & bottom caps
-    final capPaint = Paint()..color = const Color(0xFFD49B38);
-    canvas.drawRect(Rect.fromLTWH(-rx * 0.42, -ry - 3, rx * 0.84, 5), capPaint);
-    canvas.drawRect(Rect.fromLTWH(-rx * 0.42, ry - 2, rx * 0.84, 5), capPaint);
-
-    // Silk tassel
-    final tassel = Path()
-      ..moveTo(0, ry + 3)
-      ..quadraticBezierTo(sway * 18, ry + ry * 0.55, sway * 28, ry + ry * 0.95);
-    canvas.drawPath(
-      tassel,
-      Paint()
-        ..color = const Color(0xFFC83226)
-        ..strokeWidth = 2.5
-        ..style = PaintingStyle.stroke,
+    ShanshuiAtmosphericEffects.drawSeasonalParticles(
+      canvas,
+      particles,
+      time: animationTime,
+      wind: wind,
+      isNight: isNight,
+      isDusk: isDusk,
+      isFireflies: streetPalette.particleType == 'fireflies' && !isWet && !isSnow,
+      isSnow: streetPalette.particleType == 'snow',
+      color1: streetPalette.particleColor1,
+      color2: streetPalette.particleColor2,
     );
 
-    canvas.restore();
+    final isStorm = atmosphere.weather == ShanshuiWeather.stormy;
+    ShanshuiAtmosphericEffects.drawPrecipitation(
+      canvas,
+      weatherDrops,
+      weather: atmosphere.weather,
+      rainColor: (isNight || isDawn)
+          ? const Color.fromRGBO(215, 232, 248, 0.46)
+          : const Color.fromRGBO(80, 100, 115, 0.42),
+      rainStrokeWidth: isStorm ? 1.8 : 1.3,
+      slantMultiplier: 2.1,
+      lengthMultiplier: 1.0,
+      snowAlpha: 0.82,
+    );
   }
 
-  // ===========================================================================
-  // 7. Ambient Overlay, Seasonal Particles & Weather Drops
-  // ===========================================================================
-  void _paintAmbientAndPrecipitation(Canvas canvas, {required bool isWet, required bool isSnow}) {
-    // Ambient color wash
-    canvas.drawRect(const Rect.fromLTWH(0, 0, 1500, 1000), Paint()..color = streetPalette.ambientOverlay);
-
-    // Seasonal Particles
-    final p1 = Paint()..color = streetPalette.particleColor1.withValues(alpha: 0.85);
-    final p2 = Paint()..color = streetPalette.particleColor2.withValues(alpha: 0.85);
-
-    for (final pt in particles) {
-      final paint = pt.colorToggle ? p1 : p2;
-      canvas.save();
-      canvas.translate(pt.x, pt.y);
-      canvas.rotate(pt.angle);
-
-      if (streetPalette.particleType == 'snow') {
-        canvas.drawCircle(Offset.zero, pt.size * 0.55, paint);
-      } else {
-        canvas.drawOval(
-          Rect.fromCenter(center: Offset.zero, width: pt.size * 2, height: pt.size * 0.96),
-          paint,
-        );
-      }
-      canvas.restore();
-    }
-
-    // Weather drops (rain or snow)
-    if (isWet) {
-      final dropPaint = Paint()
-        ..color = const Color.fromRGBO(80, 100, 115, 0.42)
-        ..strokeWidth = 1.3;
-      for (final d in weatherDrops) {
-        canvas.drawLine(Offset(d.x, d.y), Offset(d.x - 2.6, d.y + d.len), dropPaint);
-      }
-    } else if (isSnow) {
-      final snowPaint = Paint()..color = Colors.white.withValues(alpha: 0.82);
-      for (final d in weatherDrops) {
-        canvas.drawCircle(Offset(d.x, d.y), d.size * 0.72, snowPaint);
-      }
-    }
-  }
-
-  // ===========================================================================
-  // 8. Vertical Calligraphy Colophon & Cinnabar Seal
-  // ===========================================================================
   void _paintCalligraphyAndSeal(Canvas canvas, {required bool isNight}) {
     canvas.save();
     final title = atmosphere.season.nameZhFor(ShanshuiRealm.outdoor).replaceAll(' · ', '');
@@ -590,10 +389,10 @@ class OutdoorStreetPainter extends CustomPainter {
         ? const Color.fromRGBO(248, 244, 232, 0.90)
         : const Color.fromRGBO(42, 30, 22, 0.86);
 
-    for (int i = 0; i < title.length; i++) {
+    for (int index = 0; index < title.length; index++) {
       final tp = TextPainter(
         text: TextSpan(
-          text: title[i],
+          text: title[index],
           style: TextStyle(
             color: textColor,
             fontSize: 26,
@@ -609,59 +408,23 @@ class OutdoorStreetPainter extends CustomPainter {
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(388, 62.0 + i * 30.0));
+      tp.paint(canvas, Offset(388, 62.0 + index * 30.0));
     }
 
-    // Carved Cinnabar Seal Stamp
-    final sealText = atmosphere.season.sealTextFor(ShanshuiRealm.outdoor);
-    final sealX = 378.0;
-    final sealY = 68.0 + title.length * 30.0;
-
-    canvas.drawRect(Rect.fromLTWH(sealX, sealY, 36, 36), Paint()..color = const Color(0xFFB8332A));
-    canvas.drawRect(
-      Rect.fromLTWH(sealX + 3, sealY + 3, 30, 30),
-      Paint()
-        ..color = const Color(0xFFF7F4EB)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4,
+    ShanshuiAtmosphericEffects.drawCinnabarSeal(
+      canvas,
+      x: 378.0,
+      y: 68.0 + title.length * 30.0,
+      size: 36.0,
+      sealText: atmosphere.season.sealTextFor(ShanshuiRealm.outdoor),
+      fontSize: 12,
+      leftPad: 5,
+      rowOffset1: 5,
+      rowOffset2: 18,
     );
-
-    if (sealText.length >= 4) {
-      final tp1 = TextPainter(
-        text: TextSpan(
-          text: sealText.substring(0, 2),
-          style: const TextStyle(
-            color: Color(0xFFF7F4EB),
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'serif',
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp1.paint(canvas, Offset(sealX + 5, sealY + 5));
-
-      final tp2 = TextPainter(
-        text: TextSpan(
-          text: sealText.substring(2, 4),
-          style: const TextStyle(
-            color: Color(0xFFF7F4EB),
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'serif',
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp2.paint(canvas, Offset(sealX + 5, sealY + 18));
-    }
-
     canvas.restore();
   }
 
-  // ===========================================================================
-  // 9. Soft Vignette Edge Gradient
-  // ===========================================================================
   void _paintVignette(Canvas canvas, {required bool isNight}) {
     final vigPaint = Paint()
       ..shader = RadialGradient(
@@ -682,6 +445,7 @@ class OutdoorStreetPainter extends CustomPainter {
         oldDelegate.atmosphere != atmosphere ||
         oldDelegate.lightningAlpha != lightningAlpha ||
         oldDelegate.showCalligraphy != showCalligraphy ||
-        oldDelegate.fullPoem != fullPoem;
+        oldDelegate.fullPoem != fullPoem ||
+        (oldDelegate.ripples?.length ?? 0) != (ripples?.length ?? 0);
   }
 }

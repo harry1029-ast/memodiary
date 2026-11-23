@@ -15,6 +15,7 @@ class TownsfolkWalker {
   final bool showAtNight;
   final bool holdingCup;
   final bool isVendorOrPatron;
+  final bool isBehindCounter;
 
   const TownsfolkWalker({
     required this.baseX,
@@ -29,7 +30,14 @@ class TownsfolkWalker {
     this.showAtNight = false,
     this.holdingCup = false,
     this.isVendorOrPatron = false,
+    this.isBehindCounter = false,
   });
+
+  /// Ground-plane Y coordinate of this figure's feet in 1500x1000 space.
+  double get footY => baseY + 88.0 * scale;
+
+  /// Horizontal shoulder half-span in 1500x1000 space.
+  double get shoulderHalfSpan => 30.0 * scale;
 }
 
 /// Drifting cloud descriptor behind the central mountain peak.
@@ -172,12 +180,12 @@ class OutdoorStreetCrowd {
     ),
     // Mid-ground shoppers browsing side stalls & walking the avenue
     TownsfolkWalker(
-      baseX: 558, baseY: 638, scale: 0.48,
+      baseX: 586, baseY: 644, scale: 0.48,
       jacket: Color(0xFFD99B82), vest: Color(0xFF9E4738), pants: Color(0xFF423833),
       phase: 1.2, speed: 1.2, hasUmbrella: false, showAtNight: false,
     ),
     TownsfolkWalker(
-      baseX: 932, baseY: 642, scale: 0.48,
+      baseX: 912, baseY: 646, scale: 0.48,
       jacket: Color(0xFF7A9A82), vest: Color(0xFF496952), pants: Color(0xFF383E3A),
       phase: 2.4, speed: 1.3, hasUmbrella: true, showAtNight: false,
     ),
@@ -223,25 +231,25 @@ class OutdoorStreetCrowd {
   static const List<TownsfolkWalker> stallFigures = [
     // Left Stall Figures (Day & Dusk only)
     TownsfolkWalker(
-      baseX: 158, baseY: 715, scale: 0.92,
+      baseX: 262, baseY: 720, scale: 0.84,
       jacket: Color(0xFFE2E6EC), vest: Color(0xFF4F6278), pants: Color(0xFF364152),
-      phase: 0.0, speed: 0.4, isVendorOrPatron: true,
+      phase: 0.0, speed: 0.4, isVendorOrPatron: true, isBehindCounter: true,
     ),
     TownsfolkWalker(
-      baseX: 382, baseY: 642, scale: 0.66,
+      baseX: 404, baseY: 650, scale: 0.64,
       jacket: Color(0xFFC87A82), vest: Color(0xFF8F3E48), pants: Color(0xFF3B3234),
-      phase: 1.6, speed: 0.35, isVendorOrPatron: true,
+      phase: 1.6, speed: 0.35, isVendorOrPatron: true, isBehindCounter: true,
     ),
     TownsfolkWalker(
-      baseX: 322, baseY: 785, scale: 0.96,
+      baseX: 336, baseY: 785, scale: 0.94,
       jacket: Color(0xFFD8DCE3), vest: Color(0xFF3F5678), pants: Color(0xFF3A3532),
       phase: 1.2, speed: 0.5, holdingCup: true, isVendorOrPatron: true,
     ),
     // Right Stall Figures
     TownsfolkWalker(
-      baseX: 1245, baseY: 695, scale: 0.84,
+      baseX: 1192, baseY: 692, scale: 0.84,
       jacket: Color(0xFFE6D8C5), vest: Color(0xFF7A4B38), pants: Color(0xFF3D352E),
-      phase: 0.7, speed: 0.4, showAtNight: true, isVendorOrPatron: true,
+      phase: 0.7, speed: 0.4, showAtNight: true, isVendorOrPatron: true, isBehindCounter: true,
     ),
     TownsfolkWalker(
       baseX: 1022, baseY: 672, scale: 0.65,
@@ -251,14 +259,48 @@ class OutdoorStreetCrowd {
     TownsfolkWalker(
       baseX: 1102, baseY: 712, scale: 0.82,
       jacket: Color(0xFF5E8C4A), vest: Color(0xFF4E7A3B), pants: Color(0xFF3A4238),
-      phase: 2.1, speed: 0.3, isVendorOrPatron: true,
+      phase: 2.1, speed: 0.3, isVendorOrPatron: true, isBehindCounter: true,
     ),
     TownsfolkWalker(
-      baseX: 1342, baseY: 738, scale: 0.86,
+      baseX: 1038, baseY: 755, scale: 0.84,
       jacket: Color(0xFF9E3832), vest: Color(0xFF7D2822), pants: Color(0xFF2E3440),
       phase: 1.4, speed: 0.3, showAtNight: true, isVendorOrPatron: true,
     ),
   ];
+
+  /// Left boundary X of the stone-paved avenue trapezoid at vertical coordinate [y].
+  static double avenueLeftX(double y) {
+    if (y > 940.0) return 0.0;
+    if (y < 580.0) return 560.0;
+    return 560.0 * (940.0 - y) / 360.0;
+  }
+
+  /// Right boundary X of the stone-paved avenue trapezoid at vertical coordinate [y].
+  static double avenueRightX(double y) {
+    if (y > 940.0) return 1500.0;
+    if (y < 580.0) return 940.0;
+    return 940.0 + 560.0 * (y - 580.0) / 360.0;
+  }
+
+  /// Whether a point `(x, y)` (optionally expanded by [halfWidth]) sits inside the stone avenue.
+  static bool isInsideStoneAvenue(double x, double y, {double halfWidth = 0.0}) {
+    if (y < 580.0 || y > 1000.0) return false;
+    return (x - halfWidth) >= avenueLeftX(y) && (x + halfWidth) <= avenueRightX(y);
+  }
+
+  /// Active behind-counter stall figures rendered prior to foreground stall counters.
+  static List<TownsfolkWalker> getBehindCounterFigures(ShanshuiTimeOfDay timeOfDay) {
+    return getActiveFigures(timeOfDay)
+        .where((figure) => figure.isBehindCounter)
+        .toList();
+  }
+
+  /// Active foreground customers and avenue walkers rendered after foreground stall counters.
+  static List<TownsfolkWalker> getForegroundFigures(ShanshuiTimeOfDay timeOfDay) {
+    return getActiveFigures(timeOfDay)
+        .where((figure) => !figure.isBehindCounter)
+        .toList();
+  }
 
   /// Resolves the active crowd figures according to time-of-day crowd lifecycle.
   static List<TownsfolkWalker> getActiveFigures(ShanshuiTimeOfDay timeOfDay) {
