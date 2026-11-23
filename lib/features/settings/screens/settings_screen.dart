@@ -16,6 +16,7 @@ import '../../intro/screens/book_intro_screen.dart';
 import '../../intro/services/book_intro_settings_service.dart';
 import '../../scenery/models/shanshui_atmosphere.dart';
 import '../../scenery/services/scenery_settings_service.dart';
+import '../../scenery/widgets/scenery_realm_switcher.dart';
 import '../../editor/widgets/cinnabar_signature_seal.dart';
 import '../services/signature_seal_service.dart';
 
@@ -535,63 +536,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: tokens.xuanGround,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            '画卷场景',
-            style: TextStyle(
-              fontFamily: InkDiaryTheme.fontNotoSerif,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-              color: tokens.jiaomo,
+        return MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: AlertDialog(
+            backgroundColor: tokens.xuanGround,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              '画卷场景',
+              style: TextStyle(
+                fontFamily: InkDiaryTheme.fontNotoSerif,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+                color: tokens.jiaomo,
+              ),
             ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: kSceneryRealmOptionSpecs
+                    .map(
+                      (option) => _buildRealmDialogOption(
+                        dialogContext: dialogContext,
+                        tokens: tokens,
+                        key: Key('settings_realm_option_${option.preference.id}'),
+                        preference: option.preference,
+                        title: option.title,
+                        subtitle: option.subtitle,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text('取消', style: TextStyle(color: tokens.danmo)),
+              ),
+            ],
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildRealmDialogOption(
-                  dialogContext: dialogContext,
-                  tokens: tokens,
-                  key: const Key('settings_realm_option_auto'),
-                  preference: SceneryRealmPreference.auto,
-                  title: '自动',
-                  subtitle: '根据最近 24 小时日记内容自动切换',
-                ),
-                _buildRealmDialogOption(
-                  dialogContext: dialogContext,
-                  tokens: tokens,
-                  key: const Key('settings_realm_option_nature'),
-                  preference: SceneryRealmPreference.nature,
-                  title: '山水',
-                  subtitle: '水墨山水风景',
-                ),
-                _buildRealmDialogOption(
-                  dialogContext: dialogContext,
-                  tokens: tokens,
-                  key: const Key('settings_realm_option_indoor'),
-                  preference: SceneryRealmPreference.indoor,
-                  title: '室内',
-                  subtitle: '室内书房茶室',
-                ),
-                _buildRealmDialogOption(
-                  dialogContext: dialogContext,
-                  tokens: tokens,
-                  key: const Key('settings_realm_option_outdoor'),
-                  preference: SceneryRealmPreference.outdoor,
-                  title: '街市',
-                  subtitle: '街头市集风光',
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('取消', style: TextStyle(color: tokens.danmo)),
-            ),
-          ],
         );
       },
     );

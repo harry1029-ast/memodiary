@@ -39,6 +39,30 @@ class ShanshuiAtmosphereResolver {
     'bus', 'station', 'sidewalk', 'plaza', 'square', 'shopping', 'errand', 'urban',
   ];
 
+  static const List<String> _westLakeKeywordsZh = [
+    '西湖', '杭州', '断桥', '残雪', '苏堤', '白堤', '雷峰塔', '保俶塔', '三潭印月',
+    '曲院风荷', '平湖秋月', '柳浪闻莺', '画舫', '荷塘', '荷花', '莲叶', '枯荷',
+  ];
+
+  static const List<String> _westLakeKeywordsEn = [
+    'west lake', 'hangzhou', 'leifeng', 'lotus pond', 'willow causeway',
+  ];
+
+  static const List<String> _fenghuangKeywordsZh = [
+    '凤凰', '湘西', '沱江', '吊脚楼', '虹桥', '跳岩', '万名塔', '边城', '苗寨',
+    '苗服', '银饰', '河灯', '乌篷船', '摇橹', '古镇', '水乡',
+  ];
+
+  static const List<String> _fenghuangKeywordsEn = [
+    'fenghuang', 'tuojiang', 'stilt house', 'ancient town', 'river lantern',
+    'stepping stones',
+  ];
+
+  static final RegExp _landmarkCompoundEnRegex = RegExp(
+    r'\b(?:west lake|ancient town|river lantern)\b',
+    caseSensitive: false,
+  );
+
   static const List<String> _natureKeywordsZh = [
     '林泉', '山泉', '山峦', '崇山', '远山', '青山', '孤峰', '山峰', '峰峦', '峡谷',
     '溪流', '溪涧', '溪水', '湖泊', '湖畔', '游湖', '扁舟', '孤舟', '渔舟', '舟楫',
@@ -88,6 +112,8 @@ class ShanshuiAtmosphereResolver {
     if (realmPreference != SceneryRealmPreference.auto) {
       final realm = switch (realmPreference) {
         SceneryRealmPreference.nature => ShanshuiRealm.nature,
+        SceneryRealmPreference.westLake => ShanshuiRealm.westLake,
+        SceneryRealmPreference.fenghuang => ShanshuiRealm.fenghuang,
         SceneryRealmPreference.indoor => ShanshuiRealm.indoor,
         SceneryRealmPreference.outdoor => ShanshuiRealm.outdoor,
         SceneryRealmPreference.auto => ShanshuiRealm.nature,
@@ -136,49 +162,71 @@ class ShanshuiAtmosphereResolver {
       return (realm: ShanshuiRealm.nature, isInferred: false);
     }
 
-    final scoreIndoor = _scoreRealm(
-      title: title,
-      body: plainText,
-      keywordsZh: _indoorKeywordsZh,
-      keywordsEn: _indoorKeywordsEn,
-    );
-    final scoreOutdoor = _scoreRealm(
-      title: title,
-      body: plainText,
-      keywordsZh: _outdoorKeywordsZh,
-      keywordsEn: _outdoorKeywordsEn,
-    );
-    final scoreNature = _scoreRealm(
-      title: title,
-      body: plainText,
-      keywordsZh: _natureKeywordsZh,
-      keywordsEn: _natureKeywordsEn,
-    );
+    final maskedTitle = title?.replaceAll(_landmarkCompoundEnRegex, ' ');
+    final maskedBody = plainText?.replaceAll(_landmarkCompoundEnRegex, ' ');
+
+    final scores = <ShanshuiRealm, int>{
+      ShanshuiRealm.westLake: _scoreRealm(
+        title: title,
+        body: plainText,
+        keywordsZh: _westLakeKeywordsZh,
+        keywordsEn: _westLakeKeywordsEn,
+      ),
+      ShanshuiRealm.fenghuang: _scoreRealm(
+        title: title,
+        body: plainText,
+        keywordsZh: _fenghuangKeywordsZh,
+        keywordsEn: _fenghuangKeywordsEn,
+      ),
+      ShanshuiRealm.indoor: _scoreRealm(
+        title: title,
+        body: plainText,
+        keywordsZh: _indoorKeywordsZh,
+        keywordsEn: _indoorKeywordsEn,
+      ),
+      ShanshuiRealm.outdoor: _scoreRealm(
+        title: title,
+        body: plainText,
+        keywordsZh: _outdoorKeywordsZh,
+        keywordsEn: _outdoorKeywordsEn,
+        englishTitle: maskedTitle,
+        englishBody: maskedBody,
+      ),
+      ShanshuiRealm.nature: _scoreRealm(
+        title: title,
+        body: plainText,
+        keywordsZh: _natureKeywordsZh,
+        keywordsEn: _natureKeywordsEn,
+        englishTitle: maskedTitle,
+        englishBody: maskedBody,
+      ),
+    };
+
+    var maxScore = 0;
+    for (final score in scores.values) {
+      maxScore = math.max(maxScore, score);
+    }
 
     // Zero-score neutral entry
-    if (scoreIndoor <= 0 && scoreOutdoor <= 0 && scoreNature <= 0) {
+    if (maxScore <= 0) {
       return (realm: ShanshuiRealm.nature, isInferred: false);
     }
-
-    final maxScore = math.max(scoreIndoor, math.max(scoreOutdoor, scoreNature));
 
     // Check for ties
+    ShanshuiRealm? winner;
     int topCount = 0;
-    if (scoreIndoor == maxScore) topCount++;
-    if (scoreOutdoor == maxScore) topCount++;
-    if (scoreNature == maxScore) topCount++;
+    for (final entry in scores.entries) {
+      if (entry.value == maxScore) {
+        winner = entry.key;
+        topCount++;
+      }
+    }
 
-    if (topCount > 1) {
+    if (topCount > 1 || winner == null) {
       return (realm: ShanshuiRealm.nature, isInferred: false);
     }
 
-    if (scoreIndoor == maxScore) {
-      return (realm: ShanshuiRealm.indoor, isInferred: true);
-    }
-    if (scoreOutdoor == maxScore) {
-      return (realm: ShanshuiRealm.outdoor, isInferred: true);
-    }
-    return (realm: ShanshuiRealm.nature, isInferred: true);
+    return (realm: winner, isInferred: true);
   }
 
   static int _scoreRealm({
@@ -186,16 +234,22 @@ class ShanshuiAtmosphereResolver {
     required String? body,
     required List<String> keywordsZh,
     required List<String> keywordsEn,
+    String? englishTitle,
+    String? englishBody,
   }) {
     int titleScore = 0;
     int bodyScore = 0;
+    final enTitle = englishTitle ?? title;
+    final enBody = englishBody ?? body;
 
     if (title != null && title.isNotEmpty) {
       for (final kw in keywordsZh) {
         titleScore += _countOccurrences(title, kw);
       }
+    }
+    if (enTitle != null && enTitle.isNotEmpty) {
       for (final kw in keywordsEn) {
-        titleScore += _countWordMatches(title, kw);
+        titleScore += _countWordMatches(enTitle, kw);
       }
     }
 
@@ -203,8 +257,10 @@ class ShanshuiAtmosphereResolver {
       for (final kw in keywordsZh) {
         bodyScore += _countOccurrences(body, kw);
       }
+    }
+    if (enBody != null && enBody.isNotEmpty) {
       for (final kw in keywordsEn) {
-        bodyScore += _countWordMatches(body, kw);
+        bodyScore += _countWordMatches(enBody, kw);
       }
     }
 
@@ -281,7 +337,9 @@ class ShanshuiAtmosphereResolver {
   ///
   /// - Rainy or Stormy weather across any realm -> [SoundscapePreset.gentleRain].
   /// - Non-rainy [ShanshuiRealm.indoor] atmospheres -> [SoundscapePreset.vintageLibrary].
-  /// - Non-rainy [ShanshuiRealm.nature] or [ShanshuiRealm.outdoor] atmospheres in winter or night -> [SoundscapePreset.vintageLibrary]; otherwise [SoundscapePreset.bambooBreeze].
+  /// - Non-rainy [ShanshuiRealm.nature], [ShanshuiRealm.westLake], [ShanshuiRealm.fenghuang],
+  ///   or [ShanshuiRealm.outdoor] atmospheres in winter or night -> [SoundscapePreset.vintageLibrary];
+  ///   otherwise [SoundscapePreset.bambooBreeze].
   static SoundscapePreset resolveSoundscape(ShanshuiAtmosphereState atmosphere) {
     if (atmosphere.weather == ShanshuiWeather.rainy ||
         atmosphere.weather == ShanshuiWeather.stormy) {

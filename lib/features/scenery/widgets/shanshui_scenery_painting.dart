@@ -7,8 +7,10 @@ import '../models/outdoor_street_palette.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_palette.dart';
 import '../models/shanshui_scenery_geometry.dart';
+import '../models/west_lake_palette.dart';
 import '../painters/ancient_room_painter.dart';
 import '../painters/outdoor_street_painter.dart';
+import '../painters/west_lake_painter.dart';
 import 'shanshui_canvas_painter.dart';
 
 /// Pluggable builder function signature for modular realm painters.
@@ -38,6 +40,7 @@ class ShanshuiSceneryPainting extends StatefulWidget {
   final bool isVisible;
   final RealmPainterBuilder? indoorPainterBuilder;
   final RealmPainterBuilder? outdoorPainterBuilder;
+  final RealmPainterBuilder? westLakePainterBuilder;
 
   const ShanshuiSceneryPainting({
     super.key,
@@ -50,6 +53,7 @@ class ShanshuiSceneryPainting extends StatefulWidget {
     this.isVisible = true,
     this.indoorPainterBuilder,
     this.outdoorPainterBuilder,
+    this.westLakePainterBuilder,
   });
 
   @override
@@ -70,9 +74,11 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
 
   ui.Picture? _cachedIndoorPicture;
   ui.Picture? _cachedOutdoorPicture;
+  ui.Picture? _cachedWestLakePicture;
 
   int get particleCount => _particles.length;
   int get rippleCount => _ripples.length;
+  List<ShanshuiRipple> get ripples => List.unmodifiable(_ripples);
 
   bool get _effectiveAnimate =>
       shouldRunAmbientAnimation(widget.enableAmbientAnimation);
@@ -117,6 +123,8 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
     _cachedIndoorPicture = null;
     _cachedOutdoorPicture?.dispose();
     _cachedOutdoorPicture = null;
+    _cachedWestLakePicture?.dispose();
+    _cachedWestLakePicture = null;
   }
 
   void _initParticlePools() {
@@ -238,12 +246,12 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
   }
 
   /// Adds a tactile water ripple in normalized (0..1500, 0..1000) canvas coordinates.
-  void addRippleAtNormalized(double nx, double ny) {
+  void addRippleAtNormalized(double nx, double ny, {double minY = 615.0}) {
     setState(() {
       _ripples.add(
         ShanshuiRipple(
           x: nx.clamp(0.0, 1500.0),
-          y: math.max(615.0, ny.clamp(0.0, 1000.0)),
+          y: math.max(minY, ny.clamp(0.0, 1000.0)),
           radius: 4.0,
           maxRadius: 130.0,
           alpha: 0.75,
@@ -291,6 +299,14 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
       case ShanshuiRealm.nature:
         addRippleAtNormalized(nx, ny);
         break;
+      case ShanshuiRealm.westLake:
+        addRippleAtNormalized(nx, ny, minY: 520.0);
+        addPetalSwirlAtNormalized(nx, ny);
+        break;
+      case ShanshuiRealm.fenghuang:
+        addRippleAtNormalized(nx, ny, minY: 555.0);
+        addPetalSwirlAtNormalized(nx, ny);
+        break;
       case ShanshuiRealm.indoor:
         addPetalSwirlAtNormalized(nx, ny);
         break;
@@ -323,6 +339,7 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
   CustomPainter _buildPainter(ShanshuiPalette palette) {
     switch (widget.atmosphere.realm) {
       case ShanshuiRealm.nature:
+      case ShanshuiRealm.fenghuang:
         return ShanshuiCanvasPainter(
           atmosphere: widget.atmosphere,
           palette: palette,
@@ -334,6 +351,41 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
           showCalligraphy: widget.showCalligraphy,
           fullPoem: widget.fullPoem,
           lightningAlpha: _lightningAlpha,
+        );
+      case ShanshuiRealm.westLake:
+        if (widget.westLakePainterBuilder != null) {
+          return widget.westLakePainterBuilder!(
+            atmosphere: widget.atmosphere,
+            palette: palette,
+            animationTime: _elapsedSeconds,
+            particles: _particles,
+            weatherDrops: _weatherDrops,
+            cranes: _cranes,
+            ripples: _ripples,
+            showCalligraphy: widget.showCalligraphy,
+            fullPoem: widget.fullPoem,
+            lightningAlpha: _lightningAlpha,
+          );
+        }
+        final westLakePalette = WestLakePalette.of(
+          widget.atmosphere.season,
+          widget.atmosphere.timeOfDay,
+        );
+        _cachedWestLakePicture ??= WestLakePainter.recordStaticPicture(
+          atmosphere: widget.atmosphere,
+          westLakePalette: westLakePalette,
+        );
+        return WestLakePainter(
+          atmosphere: widget.atmosphere,
+          westLakePalette: westLakePalette,
+          animationTime: _elapsedSeconds,
+          particles: _particles,
+          weatherDrops: _weatherDrops,
+          ripples: _ripples,
+          showCalligraphy: widget.showCalligraphy,
+          fullPoem: widget.fullPoem,
+          lightningAlpha: _lightningAlpha,
+          cachedStaticPicture: _cachedWestLakePicture,
         );
       case ShanshuiRealm.indoor:
         if (widget.indoorPainterBuilder != null) {

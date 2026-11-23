@@ -79,40 +79,46 @@ class SceneryRealmBadge extends StatelessWidget {
   }
 }
 
+/// Canonical option metadata shared across the card switcher sheet and Settings.
 const List<({
   SceneryRealmPreference preference,
-  String keyName,
   String title,
   String subtitle,
-})> _realmOptionConfigs = [
+})> kSceneryRealmOptionSpecs = [
   (
     preference: SceneryRealmPreference.auto,
-    keyName: 'scenery_realm_option_auto',
     title: '自动',
     subtitle: '根据最近 24 小时日记内容自动切换',
   ),
   (
     preference: SceneryRealmPreference.nature,
-    keyName: 'scenery_realm_option_nature',
     title: '山水',
     subtitle: '水墨山水风景',
   ),
   (
-    preference: SceneryRealmPreference.indoor,
-    keyName: 'scenery_realm_option_indoor',
-    title: '室内',
-    subtitle: '室内书房茶室',
+    preference: SceneryRealmPreference.westLake,
+    title: '西湖',
+    subtitle: '浙江杭州 · 西湖十景',
+  ),
+  (
+    preference: SceneryRealmPreference.fenghuang,
+    title: '凤凰',
+    subtitle: '湖南湘西 · 凤凰古城',
   ),
   (
     preference: SceneryRealmPreference.outdoor,
-    keyName: 'scenery_realm_option_outdoor',
     title: '街市',
     subtitle: '街头市集风光',
+  ),
+  (
+    preference: SceneryRealmPreference.indoor,
+    title: '室内',
+    subtitle: '室内书房茶室',
   ),
 ];
 
 /// Presents the 1-tap modal bottom sheet allowing the diarist to switch between
-/// `自动`, `山水`, `室内`, and `街市`.
+/// `自动`, `山水`, `西湖`, `凤凰`, `街市`, and `室内`.
 Future<void> showSceneryRealmSwitcherSheet({
   required BuildContext context,
   required InkDiaryTokens tokens,
@@ -167,9 +173,9 @@ Future<void> showSceneryRealmSwitcherSheet({
                     style: TextStyle(fontSize: 11, color: tokens.danmo),
                   ),
                   const SizedBox(height: 12),
-                  ..._realmOptionConfigs.map(
+                  ...kSceneryRealmOptionSpecs.map(
                     (option) => _RealmOptionTile(
-                      key: Key(option.keyName),
+                      key: Key('scenery_realm_option_${option.preference.id}'),
                       tokens: tokens,
                       preference: option.preference,
                       title: option.title,
@@ -268,6 +274,8 @@ ShanshuiAtmosphereState resolveAtmosphereForRealmPreference({
   }
   final realm = switch (preference) {
     SceneryRealmPreference.nature => ShanshuiRealm.nature,
+    SceneryRealmPreference.westLake => ShanshuiRealm.westLake,
+    SceneryRealmPreference.fenghuang => ShanshuiRealm.fenghuang,
     SceneryRealmPreference.indoor => ShanshuiRealm.indoor,
     SceneryRealmPreference.outdoor => ShanshuiRealm.outdoor,
     SceneryRealmPreference.auto => ShanshuiRealm.nature,
