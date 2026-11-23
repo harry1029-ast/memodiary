@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
 import '../../../templates/models/template_style.dart';
+import '../../../templates/widgets/template_canvas_painter.dart';
 import '../cinnabar_signature_seal.dart';
 
 /// Renders the terminal colophon (题跋落款) with date, mood/weather, and Cinnabar Signature Seal.
@@ -22,11 +23,6 @@ class KeepsakeColophon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ruleTint = style.tokens.ruleTint;
-    final ruleColor = ruleTint.color.withValues(
-      alpha: ruleTint == RuleInkTint.charcoal ? 0.20 : 0.35,
-    );
-
     final dateFormatted = DateFormat('yyyy年M月d日').format(entry.entryDate);
     const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
     final dayOfWeek = '星期${weekdays[entry.entryDate.weekday - 1]}';
@@ -45,35 +41,35 @@ class KeepsakeColophon extends StatelessWidget {
     final fullColophonText = '$dateFormatted $dayOfWeek ${colophonDetails.join(" · ")}';
 
     return Container(
-      width: columnWidth + 24.0,
-      margin: const EdgeInsets.only(right: 8.0, left: 16.0),
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(color: ruleColor, width: 0.6),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 6.0),
+      width: TemplateCanvasPainter.kVerticalColumnStride * 2,
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Vertical Colophon Metadata
+          // Vertical Colophon Metadata aligned in the guaranteed-unruled leftmost lane
           Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.topCenter,
-              child: Semantics(
-                container: true,
-                label: fullColophonText,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildVerticalRun('$dateFormatted $dayOfWeek'),
-                    if (colophonDetails.isNotEmpty) ...[
-                      const SizedBox(height: 10.0),
-                      _buildVerticalRun(colophonDetails.join(' ')),
-                    ],
-                  ],
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: TemplateCanvasPainter.kVerticalColumnStride,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.topCenter,
+                  child: Semantics(
+                    container: true,
+                    label: fullColophonText,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildVerticalRun('$dateFormatted $dayOfWeek'),
+                        if (colophonDetails.isNotEmpty) ...[
+                          const SizedBox(height: 10.0),
+                          _buildVerticalRun(colophonDetails.join(' ')),
+                        ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

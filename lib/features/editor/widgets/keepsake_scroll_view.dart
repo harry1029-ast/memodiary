@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/documents/entry_content_decoder.dart';
@@ -111,18 +110,19 @@ class KeepsakeScrollView extends StatelessWidget {
                 canvasSize: canvasSize,
                 style: style,
               );
-              final innerRect = metrics.innerFrameRect.deflate(2.0);
-              const double scrollPaddingH = 12.0;
+              final innerRect = metrics.innerFrameRect;
               const double scrollPaddingV = 8.0;
-              final double minRowWidth =
-                  math.max(0.0, innerRect.width - scrollPaddingH * 2);
+              final double minRowWidth = innerRect.width;
               final items = _buildKeepsakeItems(innerRect.height);
 
               return Stack(
                 children: [
                   Positioned.fill(
                     child: CustomPaint(
-                      painter: TemplateCanvasPainter(style: style),
+                      painter: TemplateCanvasPainter(
+                        style: style,
+                        isVertical: true,
+                      ),
                     ),
                   ),
                   Positioned.fromRect(
@@ -133,18 +133,21 @@ class KeepsakeScrollView extends StatelessWidget {
                         key: const Key('keepsake_horizontal_scroll_view'),
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: scrollPaddingH,
                           vertical: scrollPaddingV,
                         ),
                         child: ConstrainedBox(
                           constraints: BoxConstraints(minWidth: minRowWidth),
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.max,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               // Render columns and ephemera cards right-to-left
-                              ...items.map((item) => _renderItem(item)),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: items.map((item) => _renderItem(item)).toList(),
+                              ),
 
                               // Terminal colophon column and Cinnabar Signature Seal
                               KeepsakeColophon(

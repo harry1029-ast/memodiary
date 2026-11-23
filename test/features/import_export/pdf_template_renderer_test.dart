@@ -426,6 +426,38 @@ void main() {
       expect(bytes, isNotEmpty);
       expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
     });
+
+    test('builds vertical column ruled PDF background when isVertical is true', () async {
+      final doc = pw.Document();
+      const linedStyle = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: material.Color(0xFFF7F3E8),
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: StationeryVisualTokens(
+          substrate: PaperSubstrate.coldGold,
+          ruleTint: RuleInkTint.vermilion,
+        ),
+      );
+
+      doc.addPage(
+        pw.Page(
+          pageTheme: pw.PageTheme(
+            pageFormat: PdfPageFormat.a4.landscape,
+            buildBackground: (context) => PdfTemplateRenderer.buildBackground(
+              context,
+              linedStyle,
+              isVertical: true,
+            ),
+          ),
+          build: (context) => pw.Center(child: pw.Text('Vertical Lined Content')),
+        ),
+      );
+
+      final bytes = await doc.save();
+      expect(bytes, isNotEmpty);
+      expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+    });
   });
 }
 

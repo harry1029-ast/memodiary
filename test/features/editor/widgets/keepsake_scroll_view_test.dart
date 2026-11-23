@@ -407,10 +407,39 @@ void main() {
       expect(colophonBottom, lessThanOrEqualTo(frameBottomGlobal));
 
       // 3. First RTL column (title) must anchor near the right edge of Paper Heart (> 300px)
+      // and top-align near frameTopGlobal (with classical 1-char indent, not vertically centered)
       final titleCol = tester.widgetList<KeepsakeColumn>(find.byType(KeepsakeColumn))
           .firstWhere((c) => c.isTitle);
       final titleBox = tester.renderObject(find.byWidget(titleCol)) as RenderBox;
       expect(titleBox.localToGlobal(Offset.zero).dx, greaterThan(300.0));
+      final firstTitleCharBox = tester.renderObject(
+        find.descendant(of: find.byWidget(titleCol), matching: find.text('在')),
+      ) as RenderBox;
+      expect(firstTitleCharBox.localToGlobal(Offset.zero).dy, lessThan(frameTopGlobal + 80.0));
+
+      // 4. Traditional 2x2 seal inscription keeps colRight ('心') to the right of colLeft ('安') despite RTL ancestor
+      final sealFinder = find.byKey(const Key('keepsake_signature_seal'));
+      final heartCharBox = tester.renderObject(
+        find.descendant(of: sealFinder, matching: find.text('心')),
+      ) as RenderBox;
+      final calmCharBox = tester.renderObject(
+        find.descendant(of: sealFinder, matching: find.text('安')),
+      ) as RenderBox;
+      expect(
+        heartCharBox.localToGlobal(Offset.zero).dx,
+        greaterThan(calmCharBox.localToGlobal(Offset.zero).dx),
+      );
+
+      // 5. Colophon & seal anchor to the left side of Paper Heart on short single-screen entries
+      // and colophon date digits stay inside the guaranteed-unruled leftmost lane [0, 36)
+      final frameLeftGlobal = paintOrigin.dx + metrics.innerFrameRect.left;
+      expect(colophonBox.localToGlobal(Offset.zero).dx, lessThan(120.0));
+      final dateCharBox = tester.renderObject(
+        find.descendant(of: find.byType(KeepsakeColophon), matching: find.text('年')),
+      ) as RenderBox;
+      final dateCharCenterX = dateCharBox.localToGlobal(Offset.zero).dx + dateCharBox.size.width / 2;
+      expect(dateCharCenterX, greaterThan(frameLeftGlobal));
+      expect(dateCharCenterX, lessThan(frameLeftGlobal + 36.0));
     });
   });
 }

@@ -34,7 +34,7 @@ class _PdfKeepsakeColumnItem extends _PdfKeepsakeItem {
   });
 
   @override
-  double get estimatedWidth => isTitle ? 32.0 : (isHeader ? 28.0 : 26.0);
+  double get estimatedWidth => PdfTemplateRenderer.kVerticalColumnStride;
 }
 
 class _PdfKeepsakeMediaItem extends _PdfKeepsakeItem {
@@ -42,27 +42,20 @@ class _PdfKeepsakeMediaItem extends _PdfKeepsakeItem {
   final String caption;
   final bool isVideo;
 
-  _PdfKeepsakeMediaItem({
-    this.image,
-    this.caption = '',
-    this.isVideo = false,
-  });
+  _PdfKeepsakeMediaItem({this.image, this.caption = '', this.isVideo = false});
 
   @override
-  double get estimatedWidth => 160.0;
+  double get estimatedWidth => PdfTemplateRenderer.kVerticalColumnStride * 6;
 }
 
 class _PdfKeepsakeColophonItem extends _PdfKeepsakeItem {
   final Entry entry;
   final String sealText;
 
-  _PdfKeepsakeColophonItem({
-    required this.entry,
-    required this.sealText,
-  });
+  _PdfKeepsakeColophonItem({required this.entry, required this.sealText});
 
   @override
-  double get estimatedWidth => 58.0;
+  double get estimatedWidth => PdfTemplateRenderer.kVerticalColumnStride * 2;
 }
 
 /// Builds classical right-to-left vertical columnar scroll pages (卷轴竖排) for PDF export.
@@ -95,9 +88,9 @@ class PdfVerticalScrollBuilder {
       lineSpacing: style.lineSpacing,
     );
     return pw.EdgeInsets.fromLTRB(
-      metrics.innerFrameRect.left + 6.0,
+      metrics.innerFrameRect.left,
       metrics.heavenMarginPx + 6.0,
-      (landscapeFormat.width - metrics.innerFrameRect.right) + 6.0,
+      landscapeFormat.width - metrics.innerFrameRect.right,
       metrics.earthMarginPx + 6.0,
     );
   }
@@ -131,7 +124,11 @@ class PdfVerticalScrollBuilder {
             pageTheme: pw.PageTheme(
               pageFormat: landscapeFormat,
               margin: pageMargin,
-              buildBackground: (context) => PdfTemplateRenderer.buildBackground(context, style),
+              buildBackground: (context) => PdfTemplateRenderer.buildBackground(
+                context,
+                style,
+                isVertical: true,
+              ),
             ),
             build: (context) => pageWidget,
           ),
@@ -201,19 +198,37 @@ class PdfVerticalScrollBuilder {
     final widgets = <pw.Widget>[];
     for (int pageIndex = 0; pageIndex < pagesItems.length; pageIndex++) {
       final pageSlice = pagesItems[pageIndex];
+      final colophonItems = pageSlice.whereType<_PdfKeepsakeColophonItem>().toList();
+      final contentItems = pageSlice
+          .where((item) => item is! _PdfKeepsakeColophonItem)
+          .toList();
+
+      final rowWidget = colophonItems.isNotEmpty
+          ? pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: [
+                _renderPdfItem(colophonItems.first, style, fontResolver),
+                pw.Row(
+                  mainAxisSize: pw.MainAxisSize.min,
+                  crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                  children: _renderReversedSlice(contentItems, style, fontResolver),
+                ),
+              ],
+            )
+          : pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.end,
+              crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              children: _renderReversedSlice(pageSlice, style, fontResolver),
+            );
+
       widgets.add(
         pw.Stack(
           children: [
             pw.Container(
               width: availableWidth,
               height: availableHeight,
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.end,
-                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-                children: pageSlice.reversed
-                    .map((item) => _renderPdfItem(item, style, fontResolver))
-                    .toList(),
-              ),
+              child: rowWidget,
             ),
             ...overlayCardsByPage[pageIndex],
           ],
@@ -224,13 +239,18 @@ class PdfVerticalScrollBuilder {
     return widgets;
   }
 
+  static List<pw.Widget> _renderReversedSlice(
+    List<_PdfKeepsakeItem> items,
+    TemplateStyle style,
+    PdfFontResolver resolver,
+  ) =>
+      items.reversed.map((item) => _renderPdfItem(item, style, resolver)).toList();
+
   static pw.Widget _renderPdfItem(
     _PdfKeepsakeItem item,
     TemplateStyle style,
     PdfFontResolver resolver,
   ) {
-    final ruleColor = PdfTemplateRenderer.pdfRuleColor(style.tokens.ruleTint);
-
     switch (item) {
       case _PdfKeepsakeColumnItem col:
         final fontSize = col.isTitle
@@ -243,16 +263,14 @@ class PdfVerticalScrollBuilder {
 
         return pw.Container(
           width: col.estimatedWidth,
-          margin: const pw.EdgeInsets.symmetric(horizontal: 1.5),
-          decoration: pw.BoxDecoration(
-            border: pw.Border(
-              right: pw.BorderSide(color: ruleColor, width: 0.5),
-              left: pw.BorderSide(color: ruleColor, width: 0.5),
-            ),
+          padding: pw.EdgeInsets.only(
+            top: col.isTitle ? 20.0 : 8.0,
+            bottom: 8.0,
+            left: 2.0,
+            right: 2.0,
           ),
-          padding: const pw.EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
           child: pw.Column(
-            mainAxisAlignment: col.isTitle ? pw.MainAxisAlignment.center : pw.MainAxisAlignment.start,
+            mainAxisAlignment: pw.MainAxisAlignment.start,
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: col.styledTokens.map((styledToken) {
               final token = styledToken.token;
@@ -329,8 +347,8 @@ class PdfVerticalScrollBuilder {
       case _PdfKeepsakeMediaItem media:
         return pw.Container(
           width: media.estimatedWidth,
-          margin: const pw.EdgeInsets.symmetric(horizontal: 8.0, vertical: 16.0),
-          padding: const pw.EdgeInsets.all(6.0),
+          margin: const pw.EdgeInsets.symmetric(vertical: 16.0),
+          padding: const pw.EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
           decoration: pw.BoxDecoration(
             color: const PdfColor(0.98, 0.96, 0.93),
             border: pw.Border.all(color: PdfColors.grey400, width: 0.8),
@@ -374,26 +392,28 @@ class PdfVerticalScrollBuilder {
 
         return pw.Container(
           width: colophon.estimatedWidth,
-          margin: const pw.EdgeInsets.only(right: 6.0, left: 12.0),
           padding: const pw.EdgeInsets.symmetric(vertical: 12.0),
-          decoration: pw.BoxDecoration(
-            border: pw.Border(right: pw.BorderSide(color: ruleColor, width: 0.5)),
-          ),
           child: pw.Column(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             crossAxisAlignment: pw.CrossAxisAlignment.center,
             children: [
-              pw.Column(
-                mainAxisSize: pw.MainAxisSize.min,
-                children: colophonText
-                    .split('')
-                    .map(
-                      (character) => pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
-                        child: pw.Text(resolver.sanitizeText(character), style: dateStyle),
-                      ),
-                    )
-                    .toList(),
+              pw.Align(
+                alignment: pw.Alignment.topLeft,
+                child: pw.SizedBox(
+                  width: PdfTemplateRenderer.kVerticalColumnStride,
+                  child: pw.Column(
+                    mainAxisSize: pw.MainAxisSize.min,
+                    children: colophonText
+                        .split('')
+                        .map(
+                          (character) => pw.Padding(
+                            padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
+                            child: pw.Text(resolver.sanitizeText(character), style: dateStyle),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
               ),
               PdfTemplateRenderer.buildSignatureSeal(
                 style: style,

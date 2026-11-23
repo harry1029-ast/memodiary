@@ -38,25 +38,14 @@ class KeepsakeColumn extends StatelessWidget {
         ? fontSize * 1.3
         : (isHeader ? fontSize * 1.15 : (isQuote ? fontSize * 0.95 : fontSize));
 
-    final ruleColor = ruleTint.color.withValues(
-      alpha: ruleTint == RuleInkTint.charcoal ? 0.20 : 0.35,
-    );
-
     return Semantics(
       container: true,
       label: _buildSemanticsLabel(),
       child: Container(
         width: columnWidth,
-        margin: const EdgeInsets.symmetric(horizontal: 2.0),
-        decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: ruleColor, width: 0.6),
-            left: BorderSide(color: ruleColor, width: 0.6),
-          ),
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        padding: EdgeInsets.only(top: isTitle ? 28.0 : 12.0, bottom: 12.0),
         child: Column(
-          mainAxisAlignment: isTitle ? MainAxisAlignment.center : MainAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: styledTokens
               .map((styledToken) => _buildTokenCell(styledToken, effectiveFontSize))

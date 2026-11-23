@@ -46,12 +46,16 @@ class _SubstratePictureCacheKey {
 class TemplateCanvasPainter extends CustomPainter {
   static final Map<_SubstratePictureCacheKey, ui.Picture> _substratePictureCache = {};
 
+  /// Uniform column pitch for vertical keepsake stationery panes (36px).
+  static const double kVerticalColumnStride = 36.0;
+
   final TemplateStyle style;
   final TypographySettings? typography;
   final double scrollOffset;
   final double headerHeight;
   final StationeryLayoutMetrics? layoutMetrics;
   final bool isThumbnail;
+  final bool isVertical;
 
   const TemplateCanvasPainter({
     required this.style,
@@ -60,6 +64,7 @@ class TemplateCanvasPainter extends CustomPainter {
     this.headerHeight = 0.0,
     this.layoutMetrics,
     this.isThumbnail = false,
+    this.isVertical = false,
   });
 
   bool get _isDark =>
@@ -106,6 +111,16 @@ class TemplateCanvasPainter extends CustomPainter {
     );
 
     // 6. Grid / Lined / Geometry layer confined strictly inside innerFrameRect
+    if (isVertical &&
+        (style.type == TemplateBackgroundType.lined ||
+            style.type == TemplateBackgroundType.paperTexture)) {
+      if (style.type == TemplateBackgroundType.paperTexture) {
+        _paintKraftSurface(canvas, size);
+      }
+      _paintVerticalColumnPaper(canvas, size, metrics);
+      return;
+    }
+
     switch (style.type) {
       case TemplateBackgroundType.color:
         break;
@@ -250,6 +265,27 @@ class TemplateCanvasPainter extends CustomPainter {
     canvas.drawRect(rect, vignettePaint);
   }
 
+  void _paintVerticalColumnPaper(
+    Canvas canvas,
+    Size size,
+    StationeryLayoutMetrics metrics,
+  ) {
+    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
+    final topY = math.max(0.0, math.max(innerRect.top, innerRect.top + headerHeight));
+    final bottomY = math.min(size.height, innerRect.bottom);
+    if (topY >= bottomY) return;
+
+    final rulePaint = Paint()
+      ..color = _isDark ? const Color(0x22FFFFFF) : style.tokens.ruleTint.color
+      ..strokeWidth = 0.8;
+
+    for (double x = innerRect.right - kVerticalColumnStride;
+        x >= innerRect.left + kVerticalColumnStride;
+        x -= kVerticalColumnStride) {
+      canvas.drawLine(Offset(x, topY), Offset(x, bottomY), rulePaint);
+    }
+  }
+
   void _paintLinedPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
     final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
     final effectiveHeaderY = innerRect.top + headerHeight;
@@ -361,7 +397,7 @@ class TemplateCanvasPainter extends CustomPainter {
     }
   }
 
-  void _paintPaperTexture(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
+  void _paintKraftSurface(Canvas canvas, Size size) {
     _paintKraftTexture(canvas, size);
 
     final fiberPaint = Paint()
@@ -381,6 +417,10 @@ class TemplateCanvasPainter extends CustomPainter {
         );
       }
     }
+  }
+
+  void _paintPaperTexture(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
+    _paintKraftSurface(canvas, size);
 
     final guidePaint = Paint()
       ..color = const Color(0x148D6E63)
@@ -413,6 +453,7 @@ class TemplateCanvasPainter extends CustomPainter {
         oldDelegate.headerHeight != headerHeight ||
         oldDelegate.layoutMetrics != layoutMetrics ||
         oldDelegate.isThumbnail != isThumbnail ||
+        oldDelegate.isVertical != isVertical ||
         oldDelegate.typography?.fontId != typography?.fontId ||
         oldDelegate.typography?.fontFamily != typography?.fontFamily ||
         oldDelegate.typography?.fontSize != typography?.fontSize ||

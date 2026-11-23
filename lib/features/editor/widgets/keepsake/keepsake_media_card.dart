@@ -49,7 +49,7 @@ class KeepsakeMediaCard extends StatelessWidget {
       label: isVideo ? '视频：${caption ?? "无备注"}' : '照片：${caption ?? "无备注"}',
       child: Container(
         width: cardWidth,
-        margin: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 24.0),
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
         decoration: BoxDecoration(
           color: cardBg,
           borderRadius: BorderRadius.circular(8.0),

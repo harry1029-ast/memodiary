@@ -14,8 +14,15 @@ import 'pdf_font_resolver.dart';
 class PdfTemplateRenderer {
   const PdfTemplateRenderer._();
 
+  /// Uniform column pitch for vertical keepsake PDF stationery panes (28pt).
+  static const double kVerticalColumnStride = 28.0;
+
   /// Builds a full-bleed vector background layer for [pw.MultiPage] or [pw.Page].
-  static pw.Widget buildBackground(pw.Context context, TemplateStyle style) {
+  static pw.Widget buildBackground(
+    pw.Context context,
+    TemplateStyle style, {
+    bool isVertical = false,
+  }) {
     final pdfBgColor = PdfColor.fromInt(style.backgroundColor.toARGB32());
 
     return pw.FullPage(
@@ -40,6 +47,16 @@ class PdfTemplateRenderer {
           );
 
           _paintFraming(canvas, size, style, metrics);
+
+          if (isVertical &&
+              (style.type == TemplateBackgroundType.lined ||
+                  style.type == TemplateBackgroundType.paperTexture)) {
+            if (style.type == TemplateBackgroundType.paperTexture) {
+              _paintKraftBands(canvas, size);
+            }
+            _paintVerticalColumnPaper(canvas, style, metrics);
+            return;
+          }
 
           switch (style.type) {
             case TemplateBackgroundType.color:
@@ -245,6 +262,36 @@ class PdfTemplateRenderer {
     canvas.fillPath();
   }
 
+  static void _paintKraftBands(PdfGraphics canvas, PdfPoint size) {
+    canvas
+      ..setFillColor(const PdfColor(0.31, 0.20, 0.18, 0.08))
+      ..drawRect(0, size.y - 8, size.x, 8)
+      ..drawRect(0, 0, size.x, 8)
+      ..fillPath();
+  }
+
+  /// Vertical column silk rulings (朱丝栏/乌丝栏) bounded within innerFrameRect.
+  static void _paintVerticalColumnPaper(
+    PdfGraphics canvas,
+    TemplateStyle style,
+    StationeryLayoutMetrics metrics,
+  ) {
+    final frameLeft = metrics.innerFrameRect.left;
+    final frameRight = metrics.innerFrameRect.right;
+    final frameBottom = metrics.earthMarginPx;
+    final frameTop = frameBottom + metrics.innerFrameRect.height;
+
+    canvas
+      ..setStrokeColor(pdfRuleColor(style.tokens.ruleTint))
+      ..setLineWidth(0.5);
+    for (double x = frameRight - kVerticalColumnStride;
+        x >= frameLeft + kVerticalColumnStride;
+        x -= kVerticalColumnStride) {
+      canvas.drawLine(x, frameBottom, x, frameTop);
+    }
+    canvas.strokePath();
+  }
+
   /// Vintage kraft paper with guidelines strictly bounded within innerFrameRect
   static void _paintPaperTexture(
     PdfGraphics canvas,
@@ -252,11 +299,7 @@ class PdfTemplateRenderer {
     TemplateStyle style,
     StationeryLayoutMetrics metrics,
   ) {
-    canvas
-      ..setFillColor(const PdfColor(0.31, 0.20, 0.18, 0.08))
-      ..drawRect(0, size.y - 8, size.x, 8)
-      ..drawRect(0, 0, size.x, 8)
-      ..fillPath();
+    _paintKraftBands(canvas, size);
 
     final frameLeft = metrics.innerFrameRect.left;
     final frameRight = metrics.innerFrameRect.right;

@@ -62,6 +62,7 @@ class CinnabarSignatureSeal extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.08),
       ),
       child: Row(
+        textDirection: TextDirection.ltr,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           // Left column (read second in traditional R-to-L seal order)

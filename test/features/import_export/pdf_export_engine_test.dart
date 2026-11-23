@@ -434,13 +434,15 @@ void main() {
       final row = _findFirstRow(pageWidgets.first);
       expect(row, isNotNull);
 
-      // Reversed RTL order: [colophon, bodyCol, quoteCol, headerCol, titleCol]
-      expect(row!.children, hasLength(5));
+      // Concluding page groups [colophon, Row([bodyCol, quoteCol, headerCol, titleCol])]
+      expect(row!.children, hasLength(2));
+      final contentRow = row.children[1] as pw.Row;
+      expect(contentRow.children, hasLength(4));
 
-      final titleTexts = _collectPdfTexts(row.children[4]);
-      final headerTexts = _collectPdfTexts(row.children[3]);
-      final quoteTexts = _collectPdfTexts(row.children[2]);
-      final bodyTexts = _collectPdfTexts(row.children[1]);
+      final titleTexts = _collectPdfTexts(contentRow.children[3]);
+      final headerTexts = _collectPdfTexts(contentRow.children[2]);
+      final quoteTexts = _collectPdfTexts(contentRow.children[1]);
+      final bodyTexts = _collectPdfTexts(contentRow.children[0]);
 
       expect(titleTexts.map((textWidget) => textWidget.text.toPlainText()).join(), equals('秋兴'));
       expect(headerTexts.map((textWidget) => textWidget.text.toPlainText()).join(), equals('秋日偶书'));
@@ -643,7 +645,20 @@ void main() {
 
       final row = _findFirstRow(pageWidgets.first);
       expect(row, isNotNull);
-      expect(row!.mainAxisAlignment, equals(pw.MainAxisAlignment.end));
+      expect(row!.mainAxisAlignment, equals(pw.MainAxisAlignment.spaceBetween));
+      expect(row.children.length, equals(2));
+      expect(
+        _collectPdfTexts(row.children.first)
+            .map((textNode) => textNode.text.toPlainText())
+            .join(),
+        contains('2026'),
+      );
+      expect(row.children.last, isA<pw.Row>());
+      // Title column must top-align (MainAxisAlignment.start), not vertically center
+      final titlePdfCol = _findColumns(pageWidgets.first).firstWhere(
+        (col) => _collectPdfTexts(col).any((textNode) => textNode.text.toPlainText() == '茶'),
+      );
+      expect(titlePdfCol.mainAxisAlignment, equals(pw.MainAxisAlignment.start));
 
       final pages = await PdfVerticalScrollBuilder.buildVerticalScrollPages(
         entry: entry,
@@ -675,6 +690,35 @@ pw.Row? _findFirstRow(pw.Widget widget) {
   return null;
 }
 
+List<pw.Column> _findColumns(pw.Widget root) {
+  final results = <pw.Column>[];
+  void visit(pw.Widget node) {
+    if (node is pw.Column) {
+      results.add(node);
+    }
+    if (node is pw.Container && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.Align && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.SizedBox && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.SingleChildWidget && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.Flex) {
+      for (final child in node.children) {
+        visit(child);
+      }
+    } else if (node is pw.Stack) {
+      for (final child in node.children) {
+        visit(child);
+      }
+    }
+  }
+
+  visit(root);
+  return results;
+}
+
 List<pw.Text> _collectPdfTexts(pw.Widget widget) {
   final results = <pw.Text>[];
   void visit(pw.Widget node) {
@@ -683,6 +727,10 @@ List<pw.Text> _collectPdfTexts(pw.Widget widget) {
       return;
     }
     if (node is pw.Container && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.Align && node.child != null) {
+      visit(node.child!);
+    } else if (node is pw.SizedBox && node.child != null) {
       visit(node.child!);
     } else if (node is pw.SingleChildWidget && node.child != null) {
       visit(node.child!);

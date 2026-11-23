@@ -131,6 +131,7 @@ class PdfExportEngine {
         (style.type == TemplateBackgroundType.lined ? 20.0 : 12.0);
     final horizontalRightMargin =
         (pageFormat.width - horizontalMetrics.innerFrameRect.right) + 12.0;
+    final sealBottomInset = horizontalMetrics.earthMarginPx + 12.0;
 
     doc.addPage(
       pw.MultiPage(
@@ -144,6 +145,27 @@ class PdfExportEngine {
           ),
           buildBackground: (context) =>
               PdfTemplateRenderer.buildBackground(context, style),
+          buildForeground: (context) {
+            if (context.pageNumber != context.pagesCount ||
+                style.tokens.sealStyle == SealCarvingStyle.hidden) {
+              return pw.SizedBox.shrink();
+            }
+            return pw.FullPage(
+              ignoreMargins: true,
+              child: pw.Container(
+                alignment: pw.Alignment.bottomRight,
+                padding: pw.EdgeInsets.only(
+                  right: horizontalRightMargin,
+                  bottom: sealBottomInset,
+                ),
+                child: PdfTemplateRenderer.buildSignatureSeal(
+                  style: style,
+                  fontResolver: resolver,
+                  sealText: effectiveSealText,
+                ),
+              ),
+            );
+          },
         ),
         header: (context) =>
             PdfTemplateRenderer.buildHeader(context, entry, style, resolver),
@@ -153,11 +175,6 @@ class PdfExportEngine {
           buildEntryHeader(entry, resolver),
           pw.SizedBox(height: 10),
           ...sectionWidgets,
-          _buildSealColophon(
-            style: style,
-            resolver: resolver,
-            sealText: effectiveSealText,
-          ),
         ],
       ),
     );

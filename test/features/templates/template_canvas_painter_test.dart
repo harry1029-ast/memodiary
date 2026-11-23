@@ -511,5 +511,44 @@ void main() {
         );
       }
     });
+
+    test('paints full Paper Heart vertical column rules without horizontal lines when isVertical is true', () {
+      const canvasSize = Size(412, 800);
+      const linedStyle = TemplateStyle(
+        type: TemplateBackgroundType.lined,
+        backgroundColor: Color(0xFFF7F3E8),
+        lineSpacing: 1.5,
+        marginHorizontal: 24.0,
+        tokens: StationeryVisualTokens(
+          substrate: PaperSubstrate.coldGold,
+          ruleTint: RuleInkTint.vermilion,
+        ),
+      );
+
+      final metrics = StationeryLayoutCalculator.calculate(
+        canvasSize: canvasSize,
+        style: linedStyle,
+      );
+      final horizontalPainter = TemplateCanvasPainter(style: linedStyle);
+      final verticalPainter = TemplateCanvasPainter(style: linedStyle, isVertical: true);
+      expect(verticalPainter.shouldRepaint(horizontalPainter), isTrue);
+
+      final recordingCanvas = RecordingCanvas();
+      verticalPainter.paint(recordingCanvas, canvasSize);
+
+      expect(recordingCanvas.drawnLines, isNotEmpty);
+      for (final line in recordingCanvas.drawnLines) {
+        final (startPoint, endPoint, _) = line;
+        expect(
+          startPoint.dx,
+          equals(endPoint.dx),
+          reason: 'Vertical scroll stationery on lined paper must draw vertical column rules only',
+        );
+        expect(startPoint.dy, greaterThanOrEqualTo(metrics.innerFrameRect.top));
+        expect(endPoint.dy, lessThanOrEqualTo(metrics.innerFrameRect.bottom));
+        expect(startPoint.dx, greaterThan(metrics.innerFrameRect.left));
+        expect(startPoint.dx, lessThan(metrics.innerFrameRect.right));
+      }
+    });
   });
 }
