@@ -1,7 +1,7 @@
 ---
 id: SPEC-024
 title: Five-Realm Shanshui Scenery Expansion (West Lake & Fenghuang) & Scene Visual Polish
-status: ready-for-agent
+status: implemented
 created_at: 2026-11-23T23:58:00+08:00
 ---
 
