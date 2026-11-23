@@ -24,6 +24,8 @@ class MediaSandboxService {
   final VideoThumbnailGenerator _thumbnailGenerator;
   final AspectRatioExtractor _aspectRatioExtractor;
   final Uuid _uuid;
+  Directory? _cachedBaseDir;
+  Future<Directory>? _baseDirFuture;
 
   MediaSandboxService({
     Future<Directory> Function()? baseDirProvider,
@@ -39,6 +41,28 @@ class MediaSandboxService {
         _aspectRatioExtractor =
             aspectRatioExtractor ?? extractMediaImageAspectRatio,
         _uuid = uuid ?? const Uuid();
+
+  Future<Directory> _resolveBaseDir() async {
+    final cached = _cachedBaseDir;
+    if (cached != null) return cached;
+    try {
+      final dir = await (_baseDirFuture ??= _getBaseDir());
+      _cachedBaseDir = dir;
+      return dir;
+    } finally {
+      _baseDirFuture = null;
+    }
+  }
+
+  /// Synchronously resolves [rawPath] when non-relative or once the sandbox base
+  /// directory is cached; returns null if the base directory is not yet warm.
+  File? resolveFileSync(String rawPath) {
+    if (rawPath.isEmpty) return null;
+    if (!isStrictlyRelative(rawPath)) return File(rawPath);
+    final baseDir = _cachedBaseDir;
+    if (baseDir == null) return null;
+    return File(p.join(baseDir.path, rawPath));
+  }
 
   /// Default procedural vector poster thumbnail generator (Watchpoint 1).
   static Future<File?> _defaultThumbnailGenerator(
@@ -75,7 +99,7 @@ class MediaSandboxService {
       throw FileSystemException('Source image does not exist', sourceFile.path);
     }
 
-    final baseDir = await _getBaseDir();
+    final baseDir = await _resolveBaseDir();
     final mediaDir = Directory(p.join(baseDir.path, 'media'));
     if (!await mediaDir.exists()) {
       await mediaDir.create(recursive: true);
@@ -112,7 +136,7 @@ class MediaSandboxService {
       throw FileSystemException('Source image does not exist', sourceFile.path);
     }
 
-    final baseDir = await _getBaseDir();
+    final baseDir = await _resolveBaseDir();
     final mediaDir = Directory(p.join(baseDir.path, 'media'));
     if (!mediaDir.existsSync()) {
       mediaDir.createSync(recursive: true);
@@ -179,7 +203,7 @@ class MediaSandboxService {
       );
     }
 
-    final baseDir = await _getBaseDir();
+    final baseDir = await _resolveBaseDir();
     final mediaDir = Directory(p.join(baseDir.path, 'media'));
     if (!await mediaDir.exists()) {
       await mediaDir.create(recursive: true);
@@ -217,11 +241,11 @@ class MediaSandboxService {
   }
 
   /// Returns the base directory containing the sandboxed `media/` folder.
-  Future<Directory> getBaseDirectory() => _getBaseDir();
+  Future<Directory> getBaseDirectory() => _resolveBaseDir();
 
   /// Resolves a sandboxed relative path (e.g. 'media/{uuid}.webp') into an absolute File
   Future<File> getFileFromRelativePath(String relativePath) async {
-    final baseDir = await _getBaseDir();
+    final baseDir = await _resolveBaseDir();
     final fullPath = p.join(baseDir.path, relativePath);
     return File(fullPath);
   }
@@ -254,7 +278,7 @@ class MediaSandboxService {
         .toSet();
     if (normalizedExts.isEmpty) return const [];
 
-    final baseDir = await _getBaseDir();
+    final baseDir = await _resolveBaseDir();
     final mediaDir = Directory(p.join(baseDir.path, 'media'));
     if (!mediaDir.existsSync()) return const [];
 
@@ -278,7 +302,7 @@ class MediaSandboxService {
 
   /// Batch-deletes strictly relative media paths, tolerating missing or unsafe paths.
   Future<int> deleteMediaPaths(Iterable<String> relativePaths) async {
-    final baseDir = await _getBaseDir();
+    final baseDir = await _resolveBaseDir();
     final seen = <String>{};
     var deletedCount = 0;
     for (final rawPath in relativePaths) {

@@ -28,6 +28,38 @@ class TrialRiceGrid extends StatefulWidget {
   /// The glyph box inside the grid, inset so the brush lands on the paper.
   static const Rect glyphBox = Rect.fromLTWH(4, 4, 52, 52);
 
+  /// Shifts [strokes] in `0..100` normalized space so their axis-aligned
+  /// bounding box center sits at `(50, 50)`, matching the rice-grid crosshair.
+  static List<List<Offset>> centerStrokesInBox(List<List<Offset>> strokes) {
+    var hasPoints = false;
+    var minX = double.infinity;
+    var maxX = double.negativeInfinity;
+    var minY = double.infinity;
+    var maxY = double.negativeInfinity;
+    for (final stroke in strokes) {
+      for (final point in stroke) {
+        hasPoints = true;
+        if (point.dx < minX) minX = point.dx;
+        if (point.dx > maxX) maxX = point.dx;
+        if (point.dy < minY) minY = point.dy;
+        if (point.dy > maxY) maxY = point.dy;
+      }
+    }
+    if (!hasPoints) return strokes;
+
+    final shift = Offset(50.0 - (minX + maxX) / 2, 50.0 - (minY + maxY) / 2);
+    return [
+      for (final stroke in strokes)
+        [
+          for (final point in stroke)
+            Offset(
+              (point.dx + shift.dx).clamp(0.0, 100.0),
+              (point.dy + shift.dy).clamp(0.0, 100.0),
+            ),
+        ],
+    ];
+  }
+
   final InkChoreographyConfig config;
 
   /// Bumped by the compartment on every selector tap to replay the sample.
@@ -94,7 +126,8 @@ class _TrialRiceGridState extends State<TrialRiceGrid> with SingleTickerProvider
       _performance = null;
       return;
     }
-    final plan = InkGlyphPlan.prepare(strokes: strokes.strokes, box: TrialRiceGrid.glyphBox, isCjk: strokes.isCjk);
+    final centeredStrokes = TrialRiceGrid.centerStrokesInBox(strokes.strokes);
+    final plan = InkGlyphPlan.prepare(strokes: centeredStrokes, box: TrialRiceGrid.glyphBox, isCjk: strokes.isCjk);
     _performance = InkGlyphPerformance(
       timeline: InkGlyphTimeline(
         plan: plan,

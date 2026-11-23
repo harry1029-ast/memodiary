@@ -1,11 +1,12 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/services/media_sandbox_service.dart';
 import '../../../scenery/models/shanshui_atmosphere.dart';
 import 'folio_leaf_model.dart';
+import 'folio_mounted_photo_tile.dart';
 import 'folio_polaroid_card_painter.dart';
 import 'folio_shanshui_art_painter.dart';
+import 'folio_silk_corner_mounts_painter.dart';
 
 /// Renders a tactile Polaroid Mini-Card or fanned stack for paired photos
 /// in the Folio Ephemera Overlay Layer without obstructing text lines.
@@ -92,24 +93,11 @@ class FolioPolaroidMiniCard extends StatelessWidget {
                       Positioned.fill(
                         child: _buildFrontCard(activePhoto),
                       ),
-                      // Gold washi tape at top
+                      // Gold washi tape centered at top edge
                       const Positioned(
                         top: -5,
-                        left: 18,
-                        child: GoldWashiTapeWidget(),
-                      ),
-                      // Antique brass paperclip holding stack
-                      const Positioned(
-                        top: -10,
-                        left: 12,
-                        child: SizedBox(
-                          width: 14,
-                          height: 26,
-                          child: CustomPaint(
-                            key: Key('folio_polaroid_paperclip'),
-                            painter: AntiqueBrassPaperclipPainter(),
-                          ),
-                        ),
+                        left: (cardWidth - 38.0) / 2,
+                        child: GoldWashiTapeWidget(rotationAngle: -0.02),
                       ),
                       // Hide button (✕)
                       Positioned(
@@ -170,6 +158,13 @@ class FolioPolaroidMiniCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   _buildPhotoThumbnail(photo),
+                  const CustomPaint(
+                    key: Key('folio_polaroid_silk_mounts'),
+                    painter: FolioSilkCornerMountsPainter(
+                      silkColor: Color(0xC0DFC898),
+                      size: 8.5,
+                    ),
+                  ),
                   Positioned(
                     right: 2,
                     bottom: 2,
@@ -256,36 +251,12 @@ class FolioPolaroidMiniCard extends StatelessWidget {
   }
 
   Widget _buildPhotoThumbnail(FolioPhotoAttachment photo) {
-    final directFile = !MediaSandboxService.isStrictlyRelative(photo.relativePath)
-        ? File(photo.relativePath)
-        : null;
-
-    if (directFile != null && directFile.existsSync()) {
-      return Image.file(
-        directFile,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildFallbackPainter(),
-      );
-    }
-
-    if (mediaService != null) {
-      return FutureBuilder<File>(
-        future: mediaService!.getFileFromRelativePath(photo.relativePath),
-        builder: (context, snapshot) {
-          final file = snapshot.data;
-          if (file != null && file.existsSync()) {
-            return Image.file(
-              file,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => _buildFallbackPainter(),
-            );
-          }
-          return _buildFallbackPainter();
-        },
-      );
-    }
-
-    return _buildFallbackPainter();
+    return FolioSandboxedImage(
+      relativePath: photo.relativePath,
+      mediaService: mediaService,
+      requireFileExists: true,
+      fallbackBuilder: (_) => _buildFallbackPainter(),
+    );
   }
 
   Widget _buildFallbackPainter() {

@@ -165,40 +165,42 @@ class Folio3DStageState extends State<Folio3DStage>
     ),
   );
 
-  Widget _buildReverseBleedThroughSheet(BuildContext context, FolioLeaf leaf) {
-    return Container(
-      key: const Key('folio_reverse_bleed_through'),
-      decoration: BoxDecoration(
-        color: widget.theme.pageBackBg,
-        borderRadius: const BorderRadius.horizontal(left: Radius.circular(6), right: Radius.circular(2)),
-        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 24, offset: Offset(10, 0))],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.17,
-              child: Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.diagonal3Values(-1.0, 1.0, 1.0),
-                child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(sigmaX: 1.1, sigmaY: 1.1),
-                  child: widget.leafBuilder(context, leaf, true),
+  Widget _buildReverseBleedThroughSheet(Widget leafContent) {
+    return RepaintBoundary(
+      child: Container(
+        key: const Key('folio_reverse_bleed_through'),
+        decoration: BoxDecoration(
+          color: widget.theme.pageBackBg,
+          borderRadius: const BorderRadius.horizontal(left: Radius.circular(6), right: Radius.circular(2)),
+          boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 24, offset: Offset(10, 0))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.17,
+                child: Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.diagonal3Values(-1.0, 1.0, 1.0),
+                  child: ImageFiltered(
+                    imageFilter: ui.ImageFilter.blur(sigmaX: 1.1, sigmaY: 1.1),
+                    child: leafContent,
+                  ),
                 ),
               ),
             ),
-          ),
-          Positioned.fill(
-            child: CustomPaint(
-              painter: FolioSubstratePainter(
-                showGoldFlecks: false, isDark: widget.theme.isDark,
-                enableShimmer: false, drawGutterShadow: false,
-                showKraftTexture: widget.theme.showKraftTexture,
+            Positioned.fill(
+              child: CustomPaint(
+                painter: FolioSubstratePainter(
+                  showGoldFlecks: false, isDark: widget.theme.isDark,
+                  enableShimmer: false, drawGutterShadow: false,
+                  showKraftTexture: widget.theme.showKraftTexture,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -270,6 +272,15 @@ class Folio3DStageState extends State<Folio3DStage>
       }
     }
 
+    final baseLeafWidget = RepaintBoundary(
+      child: widget.leafBuilder(context, baseLeaf, false),
+    );
+    final turningLeafWidget = _isFlipping
+        ? RepaintBoundary(
+            child: widget.leafBuilder(context, flippingFrontLeaf, true),
+          )
+        : null;
+
     return AnimatedBuilder(
       animation: _flipController,
       builder: (context, _) {
@@ -303,7 +314,7 @@ class Folio3DStageState extends State<Folio3DStage>
                 children: [
                   Positioned.fill(
                     key: const ValueKey('base_leaf'),
-                    child: widget.leafBuilder(context, baseLeaf, false),
+                    child: baseLeafWidget,
                   ),
                   const Positioned(
                     key: ValueKey('gutter_shadow'),
@@ -351,7 +362,7 @@ class Folio3DStageState extends State<Folio3DStage>
                               ? Stack(
                                   children: [
                                     Positioned.fill(
-                                      child: widget.leafBuilder(context, flippingFrontLeaf, true),
+                                      child: turningLeafWidget!,
                                     ),
                                     Positioned.fill(
                                       child: Opacity(
@@ -371,7 +382,7 @@ class Folio3DStageState extends State<Folio3DStage>
                               : Transform(
                                   alignment: Alignment.center,
                                   transform: Matrix4.identity()..rotateY(math.pi),
-                                  child: _buildReverseBleedThroughSheet(context, flippingFrontLeaf),
+                                  child: _buildReverseBleedThroughSheet(turningLeafWidget!),
                                 ),
                           ),
                         ),

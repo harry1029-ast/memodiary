@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_3d_stage.dart';
@@ -14,6 +16,7 @@ import 'package:memodiary/features/timeline/widgets/folio/folio_reading_perspect
 import 'package:memodiary/features/timeline/widgets/folio/folio_silk_bookmark_painter.dart';
 import 'package:memodiary/features/timeline/widgets/folio/folio_substrate_painter.dart';
 import 'package:memodiary/features/timeline/widgets/folio/thread_bound_folio_screen.dart';
+import '../../../helpers/editor_test_harness.dart';
 
 void main() {
   List<FolioLeaf> createTestLeaves() => const [
@@ -501,6 +504,128 @@ void main() {
           0.55,
         )!;
         expect((ebonyBackdrop.decoration! as BoxDecoration).color, equals(ebonyExpectedBg));
+      },
+    );
+
+    Future<void> pumpPhoneViewport(WidgetTester tester, Widget home) async {
+      tester.view.physicalSize = const Size(412, 915);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(MaterialApp(home: home));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'cover page with image does not rebuild leafBuilder per flip tick, shows zero loading spinner, and animates 3D flip via footer button',
+      (tester) async {
+        final tempDir = Directory.systemTemp.createTempSync('folio_flip_flicker_');
+        addTearDown(() {
+          if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+        });
+        final mediaDir = Directory('${tempDir.path}/media')..createSync(recursive: true);
+        final coverFile = File('${mediaDir.path}/cover_1.png')..writeAsBytesSync(kValid1x1PngBytes);
+        expect(coverFile.existsSync(), isTrue);
+
+        final mediaService = MediaSandboxService(baseDirProvider: () async => tempDir);
+        await mediaService.getBaseDirectory();
+
+        final now = DateTime(2026, 11, 20, 21, 0);
+        final entry = Entry(
+          id: 'folio_cover_flip_entry',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: '封面图测试',
+          contentDelta: jsonEncode([
+            {'insert': '微风轻拂。\n'},
+            {'insert': {'mount': 'att_cover_1'}},
+            {'insert': '\n'},
+          ]),
+          plainText: '微风轻拂。',
+          entryDate: now,
+          isWeeklyReview: false,
+          createdAt: now,
+          updatedAt: now,
+          isLocked: false,
+          legacyMountsPending: false,
+          isDeleted: false,
+        );
+        final attachment = MediaAttachment(
+          id: 'att_cover_1',
+          entryId: entry.id,
+          mediaType: 'image',
+          relativePath: 'media/cover_1.png',
+          createdAt: now,
+        );
+
+        await pumpPhoneViewport(
+          tester,
+          ThreadBoundFolioScreen(
+            entry: entry,
+            attachments: [attachment],
+            mediaService: mediaService,
+            enableAmbientAnimation: false,
+          ),
+        );
+
+        // Cover image renders synchronously with gaplessPlayback and zero loading spinners.
+        final coverImage = tester.widget<Image>(find.byType(Image).first);
+        expect(coverImage.gaplessPlayback, isTrue);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        // Tapping '翻到正文 ›' must run the 3D flip animation instead of hard-cutting.
+        await tester.tap(find.text('翻到正文 ›'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 120));
+
+        final stageState = tester.state<Folio3DStageState>(find.byType(Folio3DStage));
+        expect(stageState.isFlipping, isTrue);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        // Mid-flip past 0.5 should show reverse bleed-through without spinner flash.
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(find.byKey(const Key('folio_reverse_bleed_through')), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        await tester.pumpAndSettle();
+        expect(stageState.isFlipping, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Folio3DStage caches leafBuilder widgets across flip animation frames instead of rebuilding every tick',
+      (tester) async {
+        final stageKey = GlobalKey<Folio3DStageState>();
+        var buildCalls = 0;
+
+        await pumpPhoneViewport(
+          tester,
+          Scaffold(
+            body: Folio3DStage(
+              key: stageKey,
+              leaves: createTestLeaves(),
+              theme: FolioSubstrateTheme.xuan,
+              enableAmbientAnimation: false,
+              leafBuilder: (context, leaf, isTurningLeaf) {
+                buildCalls++;
+                return testLeafBuilder(context, leaf, isTurningLeaf);
+              },
+            ),
+          ),
+        );
+        buildCalls = 0;
+
+        stageKey.currentState!.flipPage(1);
+        await tester.pump();
+        final callsAtFlipStart = buildCalls;
+
+        // Pumping multiple frames during the flip must not invoke leafBuilder again.
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(buildCalls, equals(callsAtFlipStart));
+
+        await tester.pumpAndSettle();
       },
     );
   });

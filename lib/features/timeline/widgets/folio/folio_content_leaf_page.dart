@@ -9,6 +9,7 @@ import 'folio_cinnabar_seal_widget.dart';
 import 'folio_ephemera_overlay_layer.dart';
 import 'folio_leaf_model.dart';
 import 'folio_leaf_scaffold.dart';
+import 'folio_mounted_photo_tile.dart';
 import 'folio_reading_perspective.dart';
 import 'folio_silk_corner_mounts_painter.dart';
 import 'folio_silk_ruling_painter.dart';
@@ -43,6 +44,8 @@ class FolioContentLeafPage extends StatefulWidget {
 
 class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
   bool _isPolaroidHidden = false;
+  Future<File>? _videoFileFuture;
+  String? _videoFilePath;
 
   @override
   Widget build(BuildContext context) {
@@ -211,16 +214,91 @@ class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
     return const SizedBox.shrink();
   }
 
-  File? _resolveFileImmediate(String rawPath) =>
-      !MediaSandboxService.isStrictlyRelative(rawPath) ? File(rawPath) : null;
+  File? _resolveFileImmediate(String rawPath) {
+    if (rawPath.isEmpty) return null;
+    return widget.mediaService?.resolveFileSync(rawPath) ??
+        (!MediaSandboxService.isStrictlyRelative(rawPath) ? File(rawPath) : null);
+  }
 
-  Future<File> _resolveFile(String rawPath) async =>
-      (MediaSandboxService.isStrictlyRelative(rawPath) && widget.mediaService != null)
-          ? await widget.mediaService!.getFileFromRelativePath(rawPath)
-          : File(rawPath);
+  Future<File>? _resolveVideoFuture(String rawPath) {
+    if (rawPath.isEmpty || widget.mediaService == null) return null;
+    if (_videoFilePath != rawPath || _videoFileFuture == null) {
+      _videoFilePath = rawPath;
+      _videoFileFuture = widget.mediaService!.getFileFromRelativePath(rawPath);
+    }
+    return _videoFileFuture;
+  }
+
+  Widget _buildResolvedVideoEphemera(FolioTippedInEphemeraLeaf ephemeraLeaf, File file) {
+    if (!widget.isTurningLeaf && file.existsSync()) {
+      return SandboxedVideoPlayer(
+        videoFile: file,
+        autoPlay: false,
+      );
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.file(
+          file,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) => _buildEphemeraPlaceholder(ephemeraLeaf),
+        ),
+        Center(
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white70, width: 1.5),
+            ),
+            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEphemeraPlaceholder(FolioTippedInEphemeraLeaf ephemeraLeaf) {
+    return Center(
+      child: Icon(
+        ephemeraLeaf.mediaType == 'video' ? Icons.videocam_outlined : Icons.photo_outlined,
+        size: 40,
+        color: widget.theme.inkSecondary.withValues(alpha: 0.5),
+      ),
+    );
+  }
 
   Widget _buildTippedInEphemera(FolioTippedInEphemeraLeaf ephemeraLeaf) {
     final silkColor = widget.theme.isDark ? const Color(0xD0C8A055) : const Color(0xC0DFC898);
+    final Widget mediaChild;
+    if (ephemeraLeaf.mediaType != 'video') {
+      mediaChild = FolioSandboxedImage(
+        relativePath: ephemeraLeaf.sandboxedRelativePath,
+        mediaService: widget.mediaService,
+        fallbackBuilder: (_) => _buildEphemeraPlaceholder(ephemeraLeaf),
+      );
+    } else {
+      final immediateFile = _resolveFileImmediate(ephemeraLeaf.sandboxedRelativePath);
+      if (immediateFile != null) {
+        mediaChild = _buildResolvedVideoEphemera(ephemeraLeaf, immediateFile);
+      } else {
+        final future = _resolveVideoFuture(ephemeraLeaf.sandboxedRelativePath);
+        mediaChild = future == null
+            ? _buildEphemeraPlaceholder(ephemeraLeaf)
+            : FutureBuilder<File>(
+                future: future,
+                builder: (context, snapshot) {
+                  final file = snapshot.data;
+                  return file != null
+                      ? _buildResolvedVideoEphemera(ephemeraLeaf, file)
+                      : _buildEphemeraPlaceholder(ephemeraLeaf);
+                },
+              );
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -235,64 +313,7 @@ class _FolioContentLeafPageState extends State<FolioContentLeafPage> {
                     border: Border.all(color: const Color(0xFF8C7355).withValues(alpha: 0.35)),
                     boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))],
                   ),
-                  child: ClipRRect(
-                    child: FutureBuilder<File>(
-                      initialData: _resolveFileImmediate(ephemeraLeaf.sandboxedRelativePath),
-                      future: _resolveFile(ephemeraLeaf.sandboxedRelativePath),
-                      builder: (context, snapshot) {
-                        final file = snapshot.data;
-                        if (file != null) {
-                          if (ephemeraLeaf.mediaType == 'video' && !widget.isTurningLeaf && file.existsSync()) {
-                            return SandboxedVideoPlayer(
-                              videoFile: file,
-                              autoPlay: false,
-                            );
-                          }
-
-                          return Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Image.file(
-                                file,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Center(
-                                  child: Icon(
-                                    ephemeraLeaf.mediaType == 'video' ? Icons.videocam_outlined : Icons.photo_outlined,
-                                    size: 40,
-                                    color: widget.theme.inkSecondary.withValues(alpha: 0.5),
-                                  ),
-                                ),
-                              ),
-                              if (ephemeraLeaf.mediaType == 'video')
-                                Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.white70, width: 1.5),
-                                    ),
-                                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 32),
-                                  ),
-                                ),
-                            ],
-                          );
-                        }
-
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                        }
-
-                        return Center(
-                          child: Icon(
-                            ephemeraLeaf.mediaType == 'video' ? Icons.videocam_outlined : Icons.photo_outlined,
-                            size: 40,
-                            color: widget.theme.inkSecondary.withValues(alpha: 0.5),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                  child: ClipRRect(child: mediaChild),
                 ),
                 Positioned.fill(child: CustomPaint(painter: FolioSilkCornerMountsPainter(silkColor: silkColor))),
               ],

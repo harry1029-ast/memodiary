@@ -87,20 +87,56 @@ class TrialRiceGridPainter extends CustomPainter {
   }
 
   void _paintPrintedGlyph(Canvas canvas, double opacity) {
+    final fontSize = glyphBox.height * 0.82;
     final glyph = TextPainter(
       text: TextSpan(
         text: sample,
         style: TextStyle(
           fontFamily: fontFamily,
-          fontSize: glyphBox.height * 0.82,
+          fontSize: fontSize,
           height: 1.0,
           color: inkColor.withValues(alpha: inkColor.a * opacity),
         ),
       ),
       textDirection: TextDirection.ltr,
+      textHeightBehavior: const TextHeightBehavior(
+        applyHeightToFirstAscent: false,
+        applyHeightToLastDescent: false,
+      ),
     )..layout();
-    glyph.paint(canvas, glyphBox.center - Offset(glyph.width / 2, glyph.height / 2));
+    final baseline = glyph.computeDistanceToActualBaseline(TextBaseline.alphabetic);
+    final lineMetrics = glyph.computeLineMetrics();
+    final glyphWidth = lineMetrics.isNotEmpty ? lineMetrics.first.width : glyph.width;
+    final isCjk = sample.runes.isNotEmpty && sample.runes.first >= 0x2E80;
+    final origin = resolveGlyphOrigin(
+      glyphBox: glyphBox,
+      glyphWidth: glyphWidth,
+      glyphHeight: glyph.height,
+      alphabeticBaseline: baseline,
+      fontSize: fontSize,
+      isCjk: isCjk,
+    );
+    glyph.paint(canvas, origin);
     glyph.dispose();
+  }
+
+  /// Resolves the top-left paint origin so the glyph's optical ink box centers
+  /// on [glyphBox.center], avoiding upward shift from asymmetric font descent.
+  static Offset resolveGlyphOrigin({
+    required Rect glyphBox,
+    required double glyphWidth,
+    required double glyphHeight,
+    required double alphabeticBaseline,
+    required double fontSize,
+    required bool isCjk,
+  }) {
+    final dx = glyphBox.center.dx - glyphWidth / 2;
+    if (alphabeticBaseline <= 0) {
+      return Offset(dx, glyphBox.center.dy - glyphHeight / 2);
+    }
+    final visualCenterAboveBaseline = fontSize * (isCjk ? 0.38 : 0.36);
+    final dy = glyphBox.center.dy - (alphabeticBaseline - visualCenterAboveBaseline);
+    return Offset(dx, dy);
   }
 
   @override

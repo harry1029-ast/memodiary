@@ -156,6 +156,18 @@ void main() {
       expect(targetB.existsSync(), isFalse);
       expect(outsideFile.existsSync(), isTrue);
     });
+
+    test('resolveFileSync resolves absolute paths immediately and relative paths once base directory is cached', () async {
+      expect(service.resolveFileSync(''), isNull);
+      expect(service.resolveFileSync('/tmp/direct_photo.webp')?.path, '/tmp/direct_photo.webp');
+      expect(service.resolveFileSync('media/uncached.webp'), isNull);
+
+      await service.getBaseDirectory();
+
+      final resolved = service.resolveFileSync('media/cached.webp');
+      expect(resolved, isNotNull);
+      expect(resolved!.path, p.join(tempDir.path, 'media/cached.webp'));
+    });
   });
 }
 

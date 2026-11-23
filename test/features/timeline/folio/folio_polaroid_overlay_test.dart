@@ -82,7 +82,7 @@ void main() {
   }
 
   group('FolioPolaroidMiniCard Visual Styling & Multi-Photo Stack', () {
-    testWidgets('renders single Polaroid mini-card with brass paperclip and gold washi tape', (tester) async {
+    testWidgets('renders single Polaroid mini-card with silk corner mounts and centered gold washi tape', (tester) async {
       final photo = createTestPhoto();
 
       await tester.pumpWidget(
@@ -99,9 +99,16 @@ void main() {
       expect(find.text('拖动 / 点击放大'), findsOneWidget);
       expect(find.text('P1'), findsOneWidget);
 
-      // Verify brass paperclip and gold washi tape widgets
-      expect(find.byKey(const Key('folio_polaroid_paperclip')), findsOneWidget);
-      expect(find.byType(GoldWashiTapeWidget), findsOneWidget);
+      // Verify paperclip is removed, and silk corner mounts + centered gold washi tape are rendered
+      expect(find.byKey(const Key('folio_polaroid_paperclip')), findsNothing);
+      final mountsFinder = find.byKey(const Key('folio_polaroid_silk_mounts'));
+      expect(mountsFinder, findsOneWidget);
+      final washiFinder = find.byType(GoldWashiTapeWidget);
+      expect(washiFinder, findsOneWidget);
+      expect(
+        (tester.getCenter(washiFinder).dx - tester.getCenter(mountsFinder).dx).abs(),
+        lessThan(2.0),
+      );
 
       // Verify hide button is present, reset button is hidden for default position
       expect(find.byKey(const Key('folio_polaroid_hide_button')), findsOneWidget);

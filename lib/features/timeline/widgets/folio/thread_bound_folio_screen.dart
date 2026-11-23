@@ -47,6 +47,7 @@ class ThreadBoundFolioScreen extends StatefulWidget {
 }
 
 class _ThreadBoundFolioScreenState extends State<ThreadBoundFolioScreen> {
+  final GlobalKey<Folio3DStageState> _stageKey = GlobalKey<Folio3DStageState>();
   ReadingPerspective _perspective = ReadingPerspective.faithfulOriginal;
   int _currentPageIndex = 0;
   bool _isChromeVisible = true;
@@ -56,12 +57,16 @@ class _ThreadBoundFolioScreenState extends State<ThreadBoundFolioScreen> {
   @override
   void initState() {
     super.initState();
+    widget.mediaService?.getBaseDirectory();
     _repaginate();
   }
 
   @override
   void didUpdateWidget(covariant ThreadBoundFolioScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.mediaService != widget.mediaService) {
+      widget.mediaService?.getBaseDirectory();
+    }
     if (oldWidget.entry != widget.entry ||
         oldWidget.templateStyle != widget.templateStyle ||
         oldWidget.attachments != widget.attachments) {
@@ -93,6 +98,11 @@ class _ThreadBoundFolioScreenState extends State<ThreadBoundFolioScreen> {
   }
 
   void _handlePageTurn(int delta) {
+    final stage = _stageKey.currentState;
+    if (stage != null) {
+      stage.flipPage(delta);
+      return;
+    }
     final nextIndex = _currentPageIndex + delta;
     if (nextIndex >= 0 && nextIndex < _leaves.length) {
       setState(() => _currentPageIndex = nextIndex);
@@ -141,6 +151,7 @@ class _ThreadBoundFolioScreenState extends State<ThreadBoundFolioScreen> {
             // Center Folio Stage
             Positioned.fill(
               child: Folio3DStage(
+                key: _stageKey,
                 leaves: _leaves,
                 theme: _substrateTheme,
                 currentPageIndex: _currentPageIndex,

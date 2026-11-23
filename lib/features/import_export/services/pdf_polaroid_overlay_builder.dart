@@ -126,10 +126,10 @@ class PdfPolaroidOverlayBuilder {
               ],
             ),
           ),
-          // Gold washi tape corner accent
+          // Gold washi tape centered at top edge
           pw.Positioned(
             top: -4.0,
-            left: 18.0,
+            left: (cardWidth - 32.0) / 2,
             child: pw.Container(
               width: 32.0,
               height: 7.0,
@@ -139,23 +139,6 @@ class PdfPolaroidOverlayBuilder {
                 border: pw.Border.all(
                   color: const PdfColor(0.95, 0.85, 0.45),
                   width: 0.5,
-                ),
-              ),
-            ),
-          ),
-          // Antique brass paperclip at top edge
-          pw.Positioned(
-            top: -7.0,
-            left: 10.0,
-            child: pw.Container(
-              width: 8.0,
-              height: 18.0,
-              decoration: pw.BoxDecoration(
-                color: const PdfColor(0.70, 0.55, 0.20),
-                borderRadius: pw.BorderRadius.circular(4.0),
-                border: pw.Border.all(
-                  color: const PdfColor(0.45, 0.32, 0.10),
-                  width: 1.0,
                 ),
               ),
             ),

@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../../core/services/media_sandbox_service.dart';
 import '../../../scenery/models/shanshui_atmosphere.dart';
 import 'folio_leaf_model.dart';
+import 'folio_mounted_photo_tile.dart';
 import 'folio_reading_perspective.dart';
 import 'folio_shanshui_art_painter.dart';
 
@@ -196,29 +196,12 @@ class FolioPocketSleeveContainer extends StatelessWidget {
   }
 
   Widget _buildFannedThumbnail(FolioPhotoAttachment photo) {
-    if (photo.relativePath.isNotEmpty) {
-      final immediateFile = !MediaSandboxService.isStrictlyRelative(photo.relativePath)
-          ? File(photo.relativePath)
-          : null;
-
-      return FutureBuilder<File>(
-        initialData: immediateFile,
-        future: mediaService != null && MediaSandboxService.isStrictlyRelative(photo.relativePath)
-            ? mediaService!.getFileFromRelativePath(photo.relativePath)
-            : (immediateFile != null ? Future.value(immediateFile) : null),
-        builder: (futureContext, snapshot) {
-          if (snapshot.hasData && snapshot.data!.existsSync()) {
-            return Image.file(
-              snapshot.data!,
-              fit: BoxFit.cover,
-              errorBuilder: (errCtx, err, stack) => _fallbackShanshui(),
-            );
-          }
-          return _fallbackShanshui();
-        },
-      );
-    }
-    return _fallbackShanshui();
+    return FolioSandboxedImage(
+      relativePath: photo.relativePath,
+      mediaService: mediaService,
+      requireFileExists: true,
+      fallbackBuilder: (_) => _fallbackShanshui(),
+    );
   }
 
   Widget _fallbackShanshui() {

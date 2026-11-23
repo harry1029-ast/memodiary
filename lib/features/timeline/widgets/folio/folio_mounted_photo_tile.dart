@@ -179,32 +179,11 @@ class FolioMountedPhotoTile extends StatelessWidget {
   }
 
   Widget _buildPhotoContent() {
-    if (photo.relativePath.isNotEmpty) {
-      final immediateFile = !MediaSandboxService.isStrictlyRelative(photo.relativePath)
-          ? File(photo.relativePath)
-          : null;
-
-      return FutureBuilder<File>(
-        initialData: immediateFile,
-        future: mediaService != null && MediaSandboxService.isStrictlyRelative(photo.relativePath)
-            ? mediaService!.getFileFromRelativePath(photo.relativePath)
-            : (immediateFile != null ? Future.value(immediateFile) : null),
-        builder: (futureContext, snapshot) {
-          if (snapshot.hasData) {
-            return Image.file(
-              snapshot.data!,
-              fit: BoxFit.cover,
-              errorBuilder: (errCtx, err, stack) => _fallbackPaint(),
-            );
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-          }
-          return _fallbackPaint();
-        },
-      );
-    }
-    return _fallbackPaint();
+    return FolioSandboxedImage(
+      relativePath: photo.relativePath,
+      mediaService: mediaService,
+      fallbackBuilder: (_) => _fallbackPaint(),
+    );
   }
 
   Widget _fallbackPaint() {
@@ -213,6 +192,103 @@ class FolioMountedPhotoTile extends StatelessWidget {
         realm: atmosphereRealm,
         isDark: theme.isDark,
       ),
+    );
+  }
+}
+
+/// Renders a sandboxed folio image synchronously once [MediaSandboxService]
+/// has cached its base directory, avoiding [FutureBuilder] flashes and frame
+/// drops during 3D page flips.
+class FolioSandboxedImage extends StatefulWidget {
+  final String relativePath;
+  final MediaSandboxService? mediaService;
+  final WidgetBuilder fallbackBuilder;
+  final bool requireFileExists;
+
+  const FolioSandboxedImage({
+    super.key,
+    required this.relativePath,
+    required this.fallbackBuilder,
+    this.mediaService,
+    this.requireFileExists = false,
+  });
+
+  @override
+  State<FolioSandboxedImage> createState() => _FolioSandboxedImageState();
+}
+
+class _FolioSandboxedImageState extends State<FolioSandboxedImage> {
+  Future<File>? _pendingFileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareFutureIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant FolioSandboxedImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.relativePath != widget.relativePath ||
+        oldWidget.mediaService != widget.mediaService) {
+      _prepareFutureIfNeeded();
+    }
+  }
+
+  File? _resolveSync() {
+    if (widget.relativePath.isEmpty) return null;
+    return widget.mediaService?.resolveFileSync(widget.relativePath) ??
+        (!MediaSandboxService.isStrictlyRelative(widget.relativePath)
+            ? File(widget.relativePath)
+            : null);
+  }
+
+  void _prepareFutureIfNeeded() {
+    final syncFile = _resolveSync();
+    if (syncFile != null ||
+        widget.relativePath.isEmpty ||
+        widget.mediaService == null ||
+        !MediaSandboxService.isStrictlyRelative(widget.relativePath)) {
+      _pendingFileFuture = null;
+      return;
+    }
+    _pendingFileFuture = widget.mediaService!.getFileFromRelativePath(widget.relativePath);
+  }
+
+  Widget _buildFileImage(BuildContext context, File file) {
+    if (widget.requireFileExists && !file.existsSync()) {
+      return widget.fallbackBuilder(context);
+    }
+    return Image.file(
+      file,
+      fit: BoxFit.cover,
+      gaplessPlayback: true,
+      errorBuilder: (errCtx, err, stack) => widget.fallbackBuilder(errCtx),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.relativePath.isEmpty) {
+      return widget.fallbackBuilder(context);
+    }
+    final syncFile = _resolveSync();
+    if (syncFile != null) {
+      return _buildFileImage(context, syncFile);
+    }
+    final future = _pendingFileFuture;
+    if (future == null) {
+      return widget.fallbackBuilder(context);
+    }
+    return FutureBuilder<File>(
+      future: future,
+      builder: (futureContext, snapshot) {
+        final resolved = snapshot.data;
+        if (resolved != null) {
+          return _buildFileImage(futureContext, resolved);
+        }
+        return widget.fallbackBuilder(futureContext);
+      },
     );
   }
 }
