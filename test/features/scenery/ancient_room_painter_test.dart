@@ -357,6 +357,47 @@ void main() {
       expect(hiddenSealSpot.r * 255, lessThan(90));
     });
 
+    test('renders full 20-char Winter Indoor poem across 10-row 2-column span above y=915 seal', () async {
+      final titleOnly = await _renderRoomRgba(
+        season: ShanshuiSeason.winter,
+        timeOfDay: ShanshuiTimeOfDay.day,
+        showCalligraphy: true,
+        fullPoem: false,
+      );
+      final fullPoem = await _renderRoomRgba(
+        season: ShanshuiSeason.winter,
+        timeOfDay: ShanshuiTimeOfDay.day,
+        showCalligraphy: true,
+        fullPoem: true,
+      );
+
+      int countDiffPixels(Rect rect) {
+        int changed = 0;
+        for (int y = rect.top.toInt(); y < rect.bottom.toInt(); y++) {
+          for (int x = rect.left.toInt(); x < rect.right.toInt(); x++) {
+            final offset = (y * 1500 + x) * 4;
+            if (titleOnly.getUint8(offset) != fullPoem.getUint8(offset) ||
+                titleOnly.getUint8(offset + 1) != fullPoem.getUint8(offset + 1) ||
+                titleOnly.getUint8(offset + 2) != fullPoem.getUint8(offset + 2)) {
+              changed++;
+            }
+          }
+        }
+        return changed;
+      }
+
+      // First row of both columns (y ~ 668)
+      expect(countDiffPixels(const Rect.fromLTWH(1386, 664, 24, 26)), greaterThan(15));
+      expect(countDiffPixels(const Rect.fromLTWH(1360, 664, 24, 26)), greaterThan(15));
+
+      // Tenth row (chars 10 & 20: '炉' and '无', y ~ 866..890) in both columns
+      expect(countDiffPixels(const Rect.fromLTWH(1386, 862, 24, 30)), greaterThan(15));
+      expect(countDiffPixels(const Rect.fromLTWH(1360, 862, 24, 30)), greaterThan(15));
+
+      // Poem columns do not overflow into the y >= 915 seal zone
+      expect(countDiffPixels(const Rect.fromLTWH(1356, 915, 60, 45)), equals(0));
+    });
+
     test('shouldRepaint responds to calligraphy, poem, palette, lightning, and picture changes', () {
       const atmosphere = ShanshuiAtmosphereState(
         realm: ShanshuiRealm.indoor,

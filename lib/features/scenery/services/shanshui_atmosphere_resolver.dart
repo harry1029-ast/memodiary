@@ -110,16 +110,8 @@ class ShanshuiAtmosphereResolver {
 
     // 1. Explicit user override takes priority
     if (realmPreference != SceneryRealmPreference.auto) {
-      final realm = switch (realmPreference) {
-        SceneryRealmPreference.nature => ShanshuiRealm.nature,
-        SceneryRealmPreference.westLake => ShanshuiRealm.westLake,
-        SceneryRealmPreference.fenghuang => ShanshuiRealm.fenghuang,
-        SceneryRealmPreference.indoor => ShanshuiRealm.indoor,
-        SceneryRealmPreference.outdoor => ShanshuiRealm.outdoor,
-        SceneryRealmPreference.auto => ShanshuiRealm.nature,
-      };
       return ShanshuiAtmosphereState(
-        realm: realm,
+        realm: realmPreference.defaultRealm,
         season: season,
         timeOfDay: timeOfDay,
         weather: weather,

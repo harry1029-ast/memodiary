@@ -299,8 +299,8 @@ class OutdoorStreetPainter extends CustomPainter {
         rippleColor: rippleColor,
         minY: 615.0,
         spanY: 340.0,
-        minXAt: (y) => OutdoorStreetCrowd.avenueLeftX(y) + 35.0,
-        maxXAt: (y) => OutdoorStreetCrowd.avenueRightX(y) - 35.0,
+        minXAt: (avenueY) => OutdoorStreetCrowd.avenueLeftX(avenueY) + 35.0,
+        maxXAt: (avenueY) => OutdoorStreetCrowd.avenueRightX(avenueY) - 35.0,
         aspectRatio: 0.56,
         strokeWidth: 1.5,
         minRadius: 2.0,
@@ -346,11 +346,11 @@ class OutdoorStreetPainter extends CustomPainter {
       Paint()..color = streetPalette.ambientOverlay,
     );
 
-    final roomDim = atmosphere.weather.indoorRoomDimming;
-    if (roomDim > 0) {
+    final exteriorDim = atmosphere.weather.exteriorDimming;
+    if (exteriorDim > 0) {
       canvas.drawRect(
         const Rect.fromLTWH(0, 0, 1500, 1000),
-        Paint()..color = Color.fromRGBO(14, 20, 28, (roomDim * 0.85).clamp(0.0, 1.0)),
+        Paint()..color = Color.fromRGBO(14, 20, 28, exteriorDim.clamp(0.0, 1.0)),
       );
     }
 
@@ -409,6 +409,35 @@ class OutdoorStreetPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
       tp.paint(canvas, Offset(388, 62.0 + index * 30.0));
+    }
+
+    if (fullPoem) {
+      final poemChars = atmosphere.season
+          .poemFor(ShanshuiRealm.outdoor)
+          .replaceAll(RegExp(r'[，。、；：！？\s]'), '');
+      if (poemChars.isNotEmpty) {
+        final colLen = (poemChars.length / 2).ceil();
+        final poemStyle = TextStyle(
+          color: textColor.withValues(alpha: 0.82),
+          fontSize: 17,
+          fontFamily: 'serif',
+          shadows: [
+            Shadow(
+              color: isNight ? Colors.black54 : Colors.white70,
+              blurRadius: 6,
+            ),
+          ],
+        );
+        for (int index = 0; index < poemChars.length; index++) {
+          final col = index ~/ colLen;
+          final row = index % colLen;
+          final tp = TextPainter(
+            text: TextSpan(text: poemChars[index], style: poemStyle),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          tp.paint(canvas, Offset(424.0 + col * 26.0, 62.0 + row * 19.0));
+        }
+      }
     }
 
     ShanshuiAtmosphericEffects.drawCinnabarSeal(

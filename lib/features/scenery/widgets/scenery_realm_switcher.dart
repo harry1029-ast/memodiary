@@ -272,16 +272,8 @@ ShanshuiAtmosphereState resolveAtmosphereForRealmPreference({
       isJournalInferred: target.isJournalInferred,
     );
   }
-  final realm = switch (preference) {
-    SceneryRealmPreference.nature => ShanshuiRealm.nature,
-    SceneryRealmPreference.westLake => ShanshuiRealm.westLake,
-    SceneryRealmPreference.fenghuang => ShanshuiRealm.fenghuang,
-    SceneryRealmPreference.indoor => ShanshuiRealm.indoor,
-    SceneryRealmPreference.outdoor => ShanshuiRealm.outdoor,
-    SceneryRealmPreference.auto => ShanshuiRealm.nature,
-  };
   return currentAtmosphere.copyWith(
-    realm: realm,
+    realm: preference.defaultRealm,
     isJournalInferred: false,
   );
 }

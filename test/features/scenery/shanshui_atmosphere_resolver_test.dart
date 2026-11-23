@@ -434,6 +434,13 @@ void main() {
       );
       expect(fenghuangState.realm, equals(ShanshuiRealm.fenghuang));
       expect(fenghuangState.isJournalInferred, isFalse);
+
+      expect(SceneryRealmPreference.auto.defaultRealm, equals(ShanshuiRealm.nature));
+      expect(SceneryRealmPreference.nature.defaultRealm, equals(ShanshuiRealm.nature));
+      expect(SceneryRealmPreference.westLake.defaultRealm, equals(ShanshuiRealm.westLake));
+      expect(SceneryRealmPreference.fenghuang.defaultRealm, equals(ShanshuiRealm.fenghuang));
+      expect(SceneryRealmPreference.indoor.defaultRealm, equals(ShanshuiRealm.indoor));
+      expect(SceneryRealmPreference.outdoor.defaultRealm, equals(ShanshuiRealm.outdoor));
     });
 
     test('infers indoor, outdoor, westLake, fenghuang, and nature realms from Chinese and English keywords', () {

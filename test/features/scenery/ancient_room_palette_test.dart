@@ -66,6 +66,11 @@ void main() {
 
       expect(ShanshuiWeather.snowy.indoorBeamMultiplier, 0.50);
       expect(ShanshuiWeather.snowy.indoorRoomDimming, 0.08);
+
+      for (final weather in ShanshuiWeather.values) {
+        expect(weather.ambientDimming, equals(weather.indoorRoomDimming));
+        expect(weather.exteriorDimming, closeTo(weather.ambientDimming * 0.85, 1e-6));
+      }
     });
 
     test('indoor weather badges match classical atmospheric phrases', () {

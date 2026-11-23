@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_scenery_geometry.dart';
+import 'shanshui_atmospheric_effects.dart';
 import 'west_lake_static_architecture.dart';
 
 /// Dynamic lake features for Hangzhou West Lake (`西湖`): Three Pools Mirroring
@@ -327,20 +328,22 @@ class WestLakeWaterFeatures {
     }
 
     if (isWetWeather) {
-      for (int index = 0; index < 8; index++) {
-        final cycle = (animationTime * (isStormy ? 1.3 : 0.9) + index * 0.37) % 1.0;
-        final rx = 150.0 + ((index * 197 + 83) % 1200);
-        final ry = 550.0 + ((index * 131 + 41) % 410);
-        final radius = 2.0 + cycle * 32.0;
-        final alpha = (1.0 - cycle) * (isStormy ? 0.55 : 0.36);
-        canvas.drawOval(
-          Rect.fromCenter(center: Offset(rx, ry), width: radius * 2, height: radius * 0.48),
-          Paint()
-            ..color = Color.fromRGBO(225, 245, 240, alpha.clamp(0.0, 1.0))
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5,
-        );
-      }
+      ShanshuiAtmosphericEffects.drawRainPuddleRipples(
+        canvas,
+        time: animationTime,
+        isStormy: isStormy,
+        rippleColor: const Color(0xFFE1F5F0),
+        minY: 550.0,
+        spanY: 410.0,
+        minXAt: (_) => 150.0,
+        maxXAt: (_) => 1350.0,
+        aspectRatio: 0.48,
+        strokeWidth: 1.5,
+        minRadius: 2.0,
+        maxRadiusExpand: isStormy ? 26.0 : 20.0,
+        baseAlpha: isStormy ? 0.55 : 0.36,
+        seedMultiplier: 89,
+      );
     }
   }
 }

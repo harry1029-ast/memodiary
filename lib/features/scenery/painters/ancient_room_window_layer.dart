@@ -5,6 +5,7 @@ import '../models/ancient_room_palette.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_scenery_geometry.dart';
 import 'ancient_room_furniture_layers.dart';
+import 'shanshui_atmospheric_effects.dart';
 
 /// Live courtyard renderer and perspective-rotated frame helpers for the left
 /// Moon Window (`月洞窗`) in the Indoor Tea Hall (`室内`).
@@ -244,22 +245,19 @@ class AncientRoomWindowLayer {
 
     // Stormy multi-segment jagged lightning bolt
     if (atmosphere.weather == ShanshuiWeather.stormy && lightningAlpha > 0.08) {
-      final boltSeed = (animationTime * 0.6).floor();
-      final boltRng = math.Random(boltSeed + 7);
-      double currX = 110.0 + boltRng.nextDouble() * 140.0;
-      double currY = 140.0;
-      final boltPath = Path()..moveTo(currX, currY);
-      for (int segIndex = 0; segIndex < 7; segIndex++) {
-        currX += (boltRng.nextDouble() - 0.5) * 45.0;
-        currY += 35.0 + boltRng.nextDouble() * 25.0;
-        boltPath.lineTo(currX, currY);
-      }
-      canvas.drawPath(
-        boltPath,
-        Paint()
-          ..color = Colors.white.withValues(alpha: lightningAlpha.clamp(0.0, 1.0))
-          ..strokeWidth = 2.6
-          ..style = PaintingStyle.stroke,
+      ShanshuiAtmosphericEffects.drawJaggedLightningBolt(
+        canvas,
+        time: animationTime,
+        alpha: lightningAlpha,
+        startXMin: 110.0,
+        startXSpan: 140.0,
+        startY: 140.0,
+        segmentCount: 7,
+        horizontalSpread: 45.0,
+        verticalStepBase: 35.0,
+        verticalStepSpan: 25.0,
+        includeOuterGlow: false,
+        strokeWidth: 2.6,
       );
     }
 

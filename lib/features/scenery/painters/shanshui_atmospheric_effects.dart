@@ -5,7 +5,7 @@ import '../models/shanshui_scenery_geometry.dart';
 
 /// Shared dynamic atmospheric rendering helpers (stormy lightning bolts,
 /// seasonal particles & fireflies, rain puddle ripples, precipitation, and
-/// carved cinnabar seals) used by both Nature (`山水`) and Outdoor (`街市`).
+/// carved cinnabar seals) across the five scenery realms.
 class ShanshuiAtmosphericEffects {
   const ShanshuiAtmosphericEffects._();
 
@@ -14,33 +14,44 @@ class ShanshuiAtmosphericEffects {
     Canvas canvas, {
     required double time,
     required double alpha,
+    double startXMin = 520.0,
+    double startXSpan = 460.0,
+    double startY = 15.0,
+    int segmentCount = 8,
+    double horizontalSpread = 60.0,
+    double verticalStepBase = 34.0,
+    double verticalStepSpan = 26.0,
+    bool includeOuterGlow = true,
+    double strokeWidth = 3.0,
   }) {
     final strikeSeed = (time / 2.5).floor();
     final rng = math.Random(strikeSeed * 97 + 13);
-    var currX = 520.0 + rng.nextDouble() * 460.0;
-    var currY = 15.0;
+    var currX = startXMin + rng.nextDouble() * startXSpan;
+    var currY = startY;
     final boltPath = Path()..moveTo(currX, currY);
 
-    for (int segment = 0; segment < 8; segment++) {
-      currX += (rng.nextDouble() - 0.5) * 60.0;
-      currY += 34.0 + rng.nextDouble() * 26.0;
+    for (int segment = 0; segment < segmentCount; segment++) {
+      currX += (rng.nextDouble() - 0.5) * horizontalSpread;
+      currY += verticalStepBase + rng.nextDouble() * verticalStepSpan;
       boltPath.lineTo(currX, currY);
     }
 
-    canvas.drawPath(
-      boltPath,
-      Paint()
-        ..color = Colors.lightBlueAccent.withValues(alpha: (alpha * 0.35).clamp(0.0, 1.0))
-        ..strokeWidth = 7.0
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..style = PaintingStyle.stroke,
-    );
+    if (includeOuterGlow) {
+      canvas.drawPath(
+        boltPath,
+        Paint()
+          ..color = Colors.lightBlueAccent.withValues(alpha: (alpha * 0.35).clamp(0.0, 1.0))
+          ..strokeWidth = 7.0
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..style = PaintingStyle.stroke,
+      );
+    }
     canvas.drawPath(
       boltPath,
       Paint()
         ..color = Colors.white.withValues(alpha: alpha.clamp(0.0, 1.0))
-        ..strokeWidth = 3.0
+        ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..style = PaintingStyle.stroke,
@@ -187,19 +198,27 @@ class ShanshuiAtmosphericEffects {
     required double size,
     required String sealText,
     double fontSize = 12,
+    String fontFamily = 'serif',
+    double alpha = 1.0,
+    double? strokeWidth,
     double colStep = 0,
     double rowOffset1 = 5,
     double rowOffset2 = 18,
     double leftPad = 5,
     bool verticalColumns = false,
   }) {
-    canvas.drawRect(Rect.fromLTWH(x, y, size, size), Paint()..color = const Color(0xFFB8332A));
+    final clampedAlpha = alpha.clamp(0.0, 1.0);
+    final creamColor = const Color(0xFFF7F4EB).withValues(alpha: clampedAlpha);
+    canvas.drawRect(
+      Rect.fromLTWH(x, y, size, size),
+      Paint()..color = const Color(0xFFB8332A).withValues(alpha: clampedAlpha),
+    );
     canvas.drawRect(
       Rect.fromLTWH(x + 3, y + 3, size - 6, size - 6),
       Paint()
-        ..color = const Color(0xFFF7F4EB)
+        ..color = creamColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = size >= 40 ? 1.5 : 1.4,
+        ..strokeWidth = strokeWidth ?? (size >= 40 ? 1.5 : 1.4),
     );
 
     if (sealText.length < 4) return;
@@ -207,8 +226,8 @@ class ShanshuiAtmosphericEffects {
     final sealStyle = TextStyle(
       fontSize: fontSize,
       fontWeight: FontWeight.bold,
-      color: const Color(0xFFF7F4EB),
-      fontFamily: 'serif',
+      color: creamColor,
+      fontFamily: fontFamily,
       height: verticalColumns ? 1.1 : null,
     );
 

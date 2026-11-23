@@ -14,6 +14,8 @@ Future<Uint8List> _paintOutdoor(
   double animationTime = 0.0,
   List<ShanshuiParticle> particles = const [],
   List<ShanshuiWeatherDrop> weatherDrops = const [],
+  bool showCalligraphy = false,
+  bool fullPoem = false,
   double lightningAlpha = 0.0,
   ui.Picture? cachedStaticPicture,
 }) async {
@@ -23,6 +25,8 @@ Future<Uint8List> _paintOutdoor(
     animationTime: animationTime,
     particles: particles,
     weatherDrops: weatherDrops,
+    showCalligraphy: showCalligraphy,
+    fullPoem: fullPoem,
     lightningAlpha: lightningAlpha,
     cachedStaticPicture: cachedStaticPicture,
   );
@@ -464,6 +468,71 @@ void main() {
         }
       }
       expect(foundWhiteSole, isTrue);
+    });
+
+    test('renders punctuation-stripped 2-column vertical poem in open sky when fullPoem is true', () async {
+      for (final atmosphere in const [
+        ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.outdoor,
+          season: ShanshuiSeason.spring,
+          timeOfDay: ShanshuiTimeOfDay.day,
+          weather: ShanshuiWeather.sunny,
+        ),
+        ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.outdoor,
+          season: ShanshuiSeason.winter,
+          timeOfDay: ShanshuiTimeOfDay.night,
+          weather: ShanshuiWeather.sunny,
+        ),
+      ]) {
+        final palette = OutdoorStreetPalette.of(atmosphere.season, atmosphere.timeOfDay);
+        final titleOnly = await _paintOutdoor(
+          atmosphere,
+          palette: palette,
+          showCalligraphy: true,
+          fullPoem: false,
+        );
+        final withPoem = await _paintOutdoor(
+          atmosphere,
+          palette: palette,
+          showCalligraphy: true,
+          fullPoem: true,
+        );
+
+        int countDiffPixels(Rect rect) {
+          int changed = 0;
+          for (int y = rect.top.toInt(); y < rect.bottom.toInt(); y++) {
+            for (int x = rect.left.toInt(); x < rect.right.toInt(); x++) {
+              final offset = (y * 1500 + x) * 4;
+              if (titleOnly[offset] != withPoem[offset] ||
+                  titleOnly[offset + 1] != withPoem[offset + 1] ||
+                  titleOnly[offset + 2] != withPoem[offset + 2]) {
+                changed++;
+              }
+            }
+          }
+          return changed;
+        }
+
+        // Column 0 (x=424) and Column 1 (x=450) in open sky clear of left eave & Paifang
+        expect(
+          countDiffPixels(const Rect.fromLTWH(420, 56, 24, 155)),
+          greaterThan(25),
+        );
+        expect(
+          countDiffPixels(const Rect.fromLTWH(446, 56, 26, 145)),
+          greaterThan(25),
+        );
+        // Does not bleed into the Paifang gate sky/roof zone (x >= 580)
+        expect(
+          _regionPixelsEqual(
+            titleOnly,
+            withPoem,
+            const Rect.fromLTWH(580, 56, 340, 300),
+          ),
+          isTrue,
+        );
+      }
     });
   });
 }

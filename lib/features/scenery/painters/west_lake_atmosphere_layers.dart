@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_scenery_geometry.dart';
 import '../models/west_lake_palette.dart';
+import 'shanshui_atmospheric_effects.dart';
 import 'west_lake_static_architecture.dart';
 
 /// Sky, reflections, weeping willow curtains, seasonal particles/fireflies,
@@ -94,21 +95,10 @@ class WestLakeAtmosphereLayers {
     );
 
     if (atmosphere.weather == ShanshuiWeather.stormy && lightningAlpha > 0.08) {
-      final random = math.Random((animationTime * 0.4).floor() + 7);
-      double currX = 480.0 + random.nextDouble() * 540.0;
-      double currY = 15.0;
-      final boltPath = Path()..moveTo(currX, currY);
-      for (int segment = 0; segment < 8; segment++) {
-        currX += (random.nextDouble() - 0.5) * 58.0;
-        currY += 32.0 + random.nextDouble() * 26.0;
-        boltPath.lineTo(currX, currY);
-      }
-      canvas.drawPath(
-        boltPath,
-        Paint()
-          ..color = Colors.white.withValues(alpha: lightningAlpha.clamp(0.0, 1.0))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.8,
+      ShanshuiAtmosphericEffects.drawJaggedLightningBolt(
+        canvas,
+        time: animationTime,
+        alpha: lightningAlpha,
       );
     }
   }
@@ -251,57 +241,35 @@ class WestLakeAtmosphereLayers {
     final isWetWeather = atmosphere.weather == ShanshuiWeather.rainy ||
         atmosphere.weather == ShanshuiWeather.stormy;
     final isSnowWeather = atmosphere.weather == ShanshuiWeather.snowy;
-    final isFireflies =
-        westLakePalette.particleType == 'fireflies' && !isWetWeather && !isSnowWeather;
 
-    for (final particle in particles) {
-      final baseColor = particle.colorToggle
-          ? westLakePalette.particleColor1
-          : westLakePalette.particleColor2;
-      if (isFireflies) {
-        final pulse = 0.3 + 0.7 * math.sin(animationTime * 2.6 + particle.phase).abs();
-        final alpha = (isNight || isDusk ? pulse * 0.92 : pulse * 0.45).clamp(0.0, 1.0);
-        // Upward firefly drift decoupled from shared downward particle physics
-        final fy = 980.0 - ((particle.phase * 137.0 + animationTime * 26.0) % 860.0);
-        canvas.drawCircle(
-          Offset(particle.x, fy),
-          particle.size * 0.7,
-          Paint()..color = baseColor.withValues(alpha: alpha),
-        );
-      } else {
-        canvas.save();
-        canvas.translate(particle.x, particle.y);
-        canvas.rotate(particle.angle);
-        final paint = Paint()..color = baseColor.withValues(alpha: 0.85);
-        if (westLakePalette.particleType == 'snow') {
-          canvas.drawCircle(Offset.zero, particle.size * 0.55, paint);
-        } else {
-          canvas.drawOval(
-            Rect.fromCenter(center: Offset.zero, width: particle.size * 2, height: particle.size * 0.96),
-            paint,
-          );
-        }
-        canvas.restore();
-      }
-    }
+    ShanshuiAtmosphericEffects.drawSeasonalParticles(
+      canvas,
+      particles,
+      time: animationTime,
+      wind: atmosphere.weather.windFactor,
+      isNight: isNight,
+      isDusk: isDusk,
+      isFireflies: westLakePalette.particleKind == SeasonalParticleKind.fireflies &&
+          !isWetWeather &&
+          !isSnowWeather,
+      isSnow: westLakePalette.particleKind == SeasonalParticleKind.snow,
+      color1: westLakePalette.particleColor1,
+      color2: westLakePalette.particleColor2,
+    );
 
-    if (isWetWeather) {
-      final isStorm = atmosphere.weather == ShanshuiWeather.stormy;
-      final slantX = isStorm ? -6.5 : -2.6;
-      final rainPaint = Paint()
-        ..color = (isNight || isDawn)
-            ? const Color.fromRGBO(215, 232, 248, 0.46)
-            : const Color.fromRGBO(80, 100, 115, 0.42)
-        ..strokeWidth = isStorm ? 1.8 : 1.3;
-      for (final drop in weatherDrops) {
-        canvas.drawLine(Offset(drop.x, drop.y), Offset(drop.x + slantX * 2.1, drop.y + drop.len), rainPaint);
-      }
-    } else if (isSnowWeather) {
-      final snowPaint = Paint()..color = Colors.white.withValues(alpha: 0.82);
-      for (final drop in weatherDrops) {
-        canvas.drawCircle(Offset(drop.x, drop.y), drop.size * 0.72, snowPaint);
-      }
-    }
+    final isStorm = atmosphere.weather == ShanshuiWeather.stormy;
+    ShanshuiAtmosphericEffects.drawPrecipitation(
+      canvas,
+      weatherDrops,
+      weather: atmosphere.weather,
+      rainColor: (isNight || isDawn)
+          ? const Color.fromRGBO(215, 232, 248, 0.46)
+          : const Color.fromRGBO(80, 100, 115, 0.42),
+      rainStrokeWidth: isStorm ? 1.8 : 1.3,
+      slantMultiplier: 2.1,
+      lengthMultiplier: 1.0,
+      snowAlpha: 0.82,
+    );
   }
 
   static void paintCalligraphyAndSeal(
@@ -363,37 +331,17 @@ class WestLakeAtmosphereLayers {
       }
     }
 
-    const sealX = 1408.0;
-    final sealY = 66.0 + title.length * 30.0;
-    canvas.drawRect(Rect.fromLTWH(sealX, sealY, 36, 36), Paint()..color = const Color(0xFFB8332A));
-    canvas.drawRect(
-      Rect.fromLTWH(sealX + 3, sealY + 3, 30, 30),
-      Paint()
-        ..color = const Color(0xFFF7F4EB)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4,
+    ShanshuiAtmosphericEffects.drawCinnabarSeal(
+      canvas,
+      x: 1408.0,
+      y: 66.0 + title.length * 30.0,
+      size: 36.0,
+      sealText: atmosphere.season.sealTextFor(ShanshuiRealm.westLake),
+      fontSize: 12,
+      leftPad: 5,
+      rowOffset1: 5,
+      rowOffset2: 18,
     );
-
-    final sealText = atmosphere.season.sealTextFor(ShanshuiRealm.westLake);
-    if (sealText.length >= 4) {
-      const sealStyle = TextStyle(
-        color: Color(0xFFF7F4EB),
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        fontFamily: 'serif',
-      );
-      final tp1 = TextPainter(
-        text: TextSpan(text: sealText.substring(0, 2), style: sealStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp1.paint(canvas, Offset(sealX + 5, sealY + 5));
-
-      final tp2 = TextPainter(
-        text: TextSpan(text: sealText.substring(2, 4), style: sealStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp2.paint(canvas, Offset(sealX + 5, sealY + 18));
-    }
   }
 
   static void paintVignette(Canvas canvas, {required bool isNight}) {

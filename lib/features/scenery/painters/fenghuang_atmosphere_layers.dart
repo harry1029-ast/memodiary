@@ -165,8 +165,10 @@ class FenghuangAtmosphereLayers {
       wind: atmosphere.weather.windFactor,
       isNight: isNight,
       isDusk: isDusk,
-      isFireflies: fenghuangPalette.particleType == 'fireflies' && !isWet && !isSnow,
-      isSnow: fenghuangPalette.particleType == 'snow',
+      isFireflies: fenghuangPalette.particleKind == SeasonalParticleKind.fireflies &&
+          !isWet &&
+          !isSnow,
+      isSnow: fenghuangPalette.particleKind == SeasonalParticleKind.snow,
       color1: fenghuangPalette.particleColor1,
       color2: fenghuangPalette.particleColor2,
     );

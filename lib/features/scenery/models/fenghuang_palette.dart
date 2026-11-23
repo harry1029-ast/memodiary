@@ -23,9 +23,11 @@ class FenghuangPalette {
   final Color foliageSecondary;
 
   // Seasonal particles
-  final String particleType;
+  final SeasonalParticleKind particleKind;
   final Color particleColor1;
   final Color particleColor2;
+
+  String get particleType => particleKind.id;
 
   const FenghuangPalette({
     required this.skyTop,
@@ -40,7 +42,7 @@ class FenghuangPalette {
     required this.mtnBase,
     required this.foliagePrimary,
     required this.foliageSecondary,
-    required this.particleType,
+    required this.particleKind,
     required this.particleColor1,
     required this.particleColor2,
   });
@@ -65,7 +67,7 @@ class FenghuangPalette {
       mtnBase: seasonBase.mtnBase,
       foliagePrimary: seasonBase.foliagePrimary,
       foliageSecondary: seasonBase.foliageSecondary,
-      particleType: seasonBase.particleType,
+      particleKind: seasonBase.particleKind,
       particleColor1: seasonBase.particleColor1,
       particleColor2: seasonBase.particleColor2,
     );
@@ -87,7 +89,7 @@ class FenghuangPalette {
         other.mtnBase == mtnBase &&
         other.foliagePrimary == foliagePrimary &&
         other.foliageSecondary == foliageSecondary &&
-        other.particleType == particleType &&
+        other.particleKind == particleKind &&
         other.particleColor1 == particleColor1 &&
         other.particleColor2 == particleColor2;
   }
@@ -106,7 +108,7 @@ class FenghuangPalette {
         mtnBase,
         foliagePrimary,
         foliageSecondary,
-        particleType,
+        particleKind,
         particleColor1,
         particleColor2,
       );
@@ -120,7 +122,7 @@ class FenghuangPalette {
         Color mtnBase,
         Color foliagePrimary,
         Color foliageSecondary,
-        String particleType,
+        SeasonalParticleKind particleKind,
         Color particleColor1,
         Color particleColor2,
       })> _seasonalBases = {
@@ -131,7 +133,7 @@ class FenghuangPalette {
       mtnBase: Color(0xFF52735D),
       foliagePrimary: Color(0xFFE57383),
       foliageSecondary: Color(0xFFF9B8C2),
-      particleType: 'petals',
+      particleKind: SeasonalParticleKind.petals,
       particleColor1: Color(0xFFF08090),
       particleColor2: Color(0xFFFADCE2),
     ),
@@ -142,7 +144,7 @@ class FenghuangPalette {
       mtnBase: Color(0xFF2D523D),
       foliagePrimary: Color(0xFF2E6E49),
       foliageSecondary: Color(0xFF5CA377),
-      particleType: 'fireflies',
+      particleKind: SeasonalParticleKind.fireflies,
       particleColor1: Color(0xFFB5F56C),
       particleColor2: Color(0xFFFFE57F),
     ),
@@ -153,7 +155,7 @@ class FenghuangPalette {
       mtnBase: Color(0xFF784E30),
       foliagePrimary: Color(0xFFC8462C),
       foliageSecondary: Color(0xFFE88B38),
-      particleType: 'leaves',
+      particleKind: SeasonalParticleKind.leaves,
       particleColor1: Color(0xFFD14B30),
       particleColor2: Color(0xFFEB963E),
     ),
@@ -164,7 +166,7 @@ class FenghuangPalette {
       mtnBase: Color(0xFF64748B),
       foliagePrimary: Color(0xFFF8FAFC),
       foliageSecondary: Color(0xFFD93848),
-      particleType: 'snow',
+      particleKind: SeasonalParticleKind.snow,
       particleColor1: Color(0xFFFFFFFF),
       particleColor2: Color(0xFFE2E8F0),
     ),

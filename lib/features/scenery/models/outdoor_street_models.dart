@@ -75,11 +75,11 @@ class OutdoorSteamWisp {
   });
 
   static List<OutdoorSteamWisp> createDefaultWisps() {
-    return List.generate(24, (i) {
+    return List.generate(24, (index) {
       return OutdoorSteamWisp(
-        progress: (i / 24.0) % 1.0,
-        phase: (i * 0.785) % 6.28,
-        isLeftStall: i % 2 == 0,
+        progress: (index / 24.0) % 1.0,
+        phase: (index * 0.785) % 6.28,
+        isLeftStall: index % 2 == 0,
       );
     });
   }

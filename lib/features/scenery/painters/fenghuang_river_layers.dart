@@ -337,7 +337,7 @@ class FenghuangRiverLayers {
     }
   }
 
-  /// Paints interactive tap ripples and rain-spawned ripples across the river.
+  /// Paints interactive tap ripples and rain-spawned ripples clipped inside the open river.
   static void paintRiverRipples(
     Canvas canvas, {
     required List<ShanshuiRipple> ripples,
@@ -345,6 +345,11 @@ class FenghuangRiverLayers {
     required bool isStormy,
     required double animationTime,
   }) {
+    if (ripples.isEmpty && !isWetWeather) return;
+
+    canvas.save();
+    canvas.clipPath(_buildOpenRiverWaterClipPath());
+
     for (final ripple in ripples) {
       canvas.drawOval(
         Rect.fromCenter(
@@ -360,8 +365,6 @@ class FenghuangRiverLayers {
     }
 
     if (isWetWeather) {
-      canvas.save();
-      canvas.clipPath(_buildOpenRiverWaterClipPath());
       ShanshuiAtmosphericEffects.drawRainPuddleRipples(
         canvas,
         time: animationTime,
@@ -378,7 +381,8 @@ class FenghuangRiverLayers {
         baseAlpha: isStormy ? 0.55 : 0.36,
         seedMultiplier: 79,
       );
-      canvas.restore();
     }
+
+    canvas.restore();
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,16 +45,32 @@ void main() {
         equals('petals'),
       );
       expect(
+        FenghuangPalette.of(ShanshuiSeason.spring, ShanshuiTimeOfDay.day).particleKind,
+        equals(SeasonalParticleKind.petals),
+      );
+      expect(
         FenghuangPalette.of(ShanshuiSeason.summer, ShanshuiTimeOfDay.day).particleType,
         equals('fireflies'),
+      );
+      expect(
+        FenghuangPalette.of(ShanshuiSeason.summer, ShanshuiTimeOfDay.day).particleKind,
+        equals(SeasonalParticleKind.fireflies),
       );
       expect(
         FenghuangPalette.of(ShanshuiSeason.fall, ShanshuiTimeOfDay.day).particleType,
         equals('leaves'),
       );
       expect(
+        FenghuangPalette.of(ShanshuiSeason.fall, ShanshuiTimeOfDay.day).particleKind,
+        equals(SeasonalParticleKind.leaves),
+      );
+      expect(
         FenghuangPalette.of(ShanshuiSeason.winter, ShanshuiTimeOfDay.day).particleType,
         equals('snow'),
+      );
+      expect(
+        FenghuangPalette.of(ShanshuiSeason.winter, ShanshuiTimeOfDay.day).particleKind,
+        equals(SeasonalParticleKind.snow),
       );
 
       final springDay = FenghuangPalette.of(ShanshuiSeason.spring, ShanshuiTimeOfDay.day);
@@ -250,6 +267,77 @@ void main() {
       expect(painterA.shouldRepaint(painterA), isFalse);
       expect(painterA.shouldRepaint(painterB), isTrue);
       expect(painterA.shouldRepaint(painterC), isTrue);
+    });
+
+    test('clips interactive tap ripples strictly inside open Tuojiang water away from stilt houses', () async {
+      const atmosphere = ShanshuiAtmosphereState(
+        realm: ShanshuiRealm.fenghuang,
+        season: ShanshuiSeason.summer,
+        timeOfDay: ShanshuiTimeOfDay.day,
+        weather: ShanshuiWeather.sunny,
+      );
+      final palette = FenghuangPalette.of(atmosphere.season, atmosphere.timeOfDay);
+      final staticPicture = FenghuangPainter.recordStaticPicture(
+        atmosphere: atmosphere,
+        fenghuangPalette: palette,
+      );
+
+      Future<Uint8List> paintWithRipples(List<ShanshuiRipple> ripples) async {
+        final painter = FenghuangPainter(
+          atmosphere: atmosphere,
+          fenghuangPalette: palette,
+          animationTime: 0.0,
+          particles: const [],
+          weatherDrops: const [],
+          ripples: ripples,
+          cachedStaticPicture: staticPicture,
+        );
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, 1500, 1000));
+        painter.paint(canvas, const Size(1500, 1000));
+        final picture = recorder.endRecording();
+        final image = await picture.toImage(1500, 1000);
+        final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        image.dispose();
+        picture.dispose();
+        return bytes!.buffer.asUint8List();
+      }
+
+      try {
+        final baseline = await paintWithRipples(const []);
+        final rippled = await paintWithRipples([
+          ShanshuiRipple(
+            x: 225,
+            y: 740,
+            radius: 60,
+            maxRadius: 130,
+            alpha: 0.9,
+          ),
+        ]);
+
+        int diffPixels(Rect rect) {
+          int changed = 0;
+          for (int y = rect.top.toInt(); y < rect.bottom.toInt(); y++) {
+            for (int x = rect.left.toInt(); x < rect.right.toInt(); x++) {
+              final offset = (y * 1500 + x) * 4;
+              if (baseline[offset] != rippled[offset] ||
+                  baseline[offset + 1] != rippled[offset + 1] ||
+                  baseline[offset + 2] != rippled[offset + 2]) {
+                changed++;
+              }
+            }
+          }
+          return changed;
+        }
+
+        // Open Tuojiang water side of the ripple (x >= 221) receives ripple ink
+        expect(diffPixels(const Rect.fromLTWH(255, 725, 35, 32)), greaterThan(10));
+
+        // Left stilt-house/bank side outside _buildOpenRiverWaterClipPath (x < 221) receives ZERO ripple ink
+        expect(diffPixels(const Rect.fromLTWH(160, 720, 60, 40)), equals(0));
+      } finally {
+        staticPicture.dispose();
+      }
     });
   });
 

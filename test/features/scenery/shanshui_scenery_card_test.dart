@@ -108,7 +108,7 @@ void main() {
     );
 
     testWidgets(
-      'collapsed strip displays only pull-up pill and time-weather badge without realm or seasonal duplicates',
+      'collapsed strip displays pull-up pill, 5-realm seal badge, and time-weather badge without realm or title duplicates',
       (tester) async {
         // Pre-configure collapsed in settings
         mockStorage.data['memodiary_scenery_card_collapsed'] = 'true';
@@ -127,16 +127,83 @@ void main() {
         expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
         expect(find.byKey(const Key('scenery_collapsed_blind_bar')), findsOneWidget);
         expect(
-          find.bySemanticsLabel('展开山水画卷，${indoorAtmosphere.timeWeatherBadgeZh}'),
+          find.bySemanticsLabel(
+            '展开山水画卷，${indoorAtmosphere.sealBadgeZh}，${indoorAtmosphere.timeWeatherBadgeZh}',
+          ),
           findsOneWidget,
         );
         expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
+        expect(find.text(indoorAtmosphere.sealBadgeZh), findsOneWidget);
         expect(find.text(indoorAtmosphere.timeWeatherBadgeZh), findsOneWidget);
         expect(find.textContaining('竹帘低垂'), findsNothing);
         expect(find.byKey(const Key('scenery_realm_badge')), findsNothing);
         expect(find.text('自动 · 室内'), findsNothing);
-        expect(find.text(indoorAtmosphere.sealBadgeZh), findsNothing);
         expect(find.text(indoorAtmosphere.titleZh), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'BambooBlindCollapsedBar renders 5-realm seal badges cleanly at 320px width and clamped 1.3x text scale',
+      (tester) async {
+        const longBadgeAtmospheres = [
+          ShanshuiAtmosphereState(
+            realm: ShanshuiRealm.westLake,
+            season: ShanshuiSeason.spring,
+            timeOfDay: ShanshuiTimeOfDay.night,
+            weather: ShanshuiWeather.snowy,
+          ),
+          ShanshuiAtmosphereState(
+            realm: ShanshuiRealm.fenghuang,
+            season: ShanshuiSeason.summer,
+            timeOfDay: ShanshuiTimeOfDay.dawn,
+            weather: ShanshuiWeather.stormy,
+          ),
+          ShanshuiAtmosphereState(
+            realm: ShanshuiRealm.outdoor,
+            season: ShanshuiSeason.spring,
+            timeOfDay: ShanshuiTimeOfDay.night,
+            weather: ShanshuiWeather.snowy,
+          ),
+        ];
+
+        for (final atmosphere in longBadgeAtmospheres) {
+          await tester.pumpWidget(
+            MediaQuery(
+              data: const MediaQueryData(textScaler: TextScaler.linear(2.0)),
+              child: MaterialApp(
+                theme: InkDiaryTheme.light,
+                home: Scaffold(
+                  body: Center(
+                    child: SizedBox(
+                      width: 320,
+                      child: BambooBlindCollapsedBar(
+                        atmosphere: atmosphere,
+                        onExpand: () {},
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
+          expect(find.text(atmosphere.sealBadgeZh), findsOneWidget);
+          expect(find.text(atmosphere.timeWeatherBadgeZh), findsOneWidget);
+          expect(
+            find.bySemanticsLabel(
+              '展开山水画卷，${atmosphere.sealBadgeZh}，${atmosphere.timeWeatherBadgeZh}',
+            ),
+            findsOneWidget,
+          );
+          final textContext = tester.element(find.text(atmosphere.sealBadgeZh));
+          expect(
+            MediaQuery.textScalerOf(textContext).scale(10.0),
+            lessThanOrEqualTo(13.0),
+          );
+          expect(tester.takeException(), isNull);
+        }
       },
     );
 
@@ -468,10 +535,10 @@ void main() {
           equals(44.0),
         );
         expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
+        expect(find.text(atmosphere.sealBadgeZh), findsOneWidget);
         expect(find.text(atmosphere.timeWeatherBadgeZh), findsOneWidget);
         expect(find.textContaining('竹帘低垂'), findsNothing);
         expect(find.byKey(const Key('scenery_realm_badge')), findsNothing);
-        expect(find.text(atmosphere.sealBadgeZh), findsNothing);
         expect(mockStorage.data['memodiary_scenery_card_collapsed'], equals('true'));
 
         // Tapping the collapsed bar restores expanded state
@@ -592,7 +659,7 @@ void main() {
         expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
         expect(find.textContaining('竹帘低垂'), findsNothing);
         expect(find.byKey(const Key('scenery_realm_badge')), findsNothing);
-        expect(find.text(atmosphere.sealBadgeZh), findsNothing);
+        expect(find.text(atmosphere.sealBadgeZh), findsOneWidget);
         expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
         expect(find.text(atmosphere.timeWeatherBadgeZh), findsOneWidget);
 
@@ -670,6 +737,7 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.byKey(const Key('scenery_card_collapsed')), findsOneWidget);
         expect(find.text('拽绳卷帘 ↑'), findsOneWidget);
+        expect(find.text(atmosphere.sealBadgeZh), findsOneWidget);
         expect(find.text(atmosphere.timeWeatherBadgeZh), findsOneWidget);
       },
     );

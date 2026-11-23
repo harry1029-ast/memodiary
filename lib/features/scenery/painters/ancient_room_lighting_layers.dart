@@ -5,6 +5,7 @@ import '../models/ancient_room_palette.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_scenery_geometry.dart';
 import 'ancient_room_furniture_layers.dart';
+import 'shanshui_atmospheric_effects.dart';
 
 /// Dynamic lighting, atmospheric glow, smoke, particle, and calligraphy
 /// rendering helpers for the Indoor Tea Hall (`室内`).
@@ -144,7 +145,7 @@ class AncientRoomLightingLayers {
     const fullRoomRect = Rect.fromLTWH(0, 0, 1500, 1000);
     canvas.drawRect(fullRoomRect, Paint()..color = palette.ambientOverlay);
 
-    final dimming = atmosphere.weather.indoorRoomDimming;
+    final dimming = atmosphere.weather.ambientDimming;
     if (dimming > 0.0) {
       canvas.drawRect(
         fullRoomRect,
@@ -349,65 +350,44 @@ class AncientRoomLightingLayers {
       final poemChars = atmosphere.season
           .poemFor(atmosphere.realm)
           .replaceAll(RegExp(r'[，。、；：！？\s]'), '');
-      final maxChars = math.min(14, poemChars.length);
-      final poemStyle = TextStyle(
-        fontFamily: 'NotoSerifSC',
-        fontSize: 18.0,
-        color: textColor.withValues(alpha: 0.85),
-        shadows: shadows,
-      );
-      for (int index = 0; index < maxChars; index++) {
-        final col = index ~/ 7;
-        final row = index % 7;
-        final charPainter = TextPainter(
-          text: TextSpan(text: poemChars[index], style: poemStyle),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        charPainter.paint(
-          canvas,
-          Offset(1390.0 - col * 26.0, 685.0 + row * 24.0),
+      if (poemChars.isNotEmpty) {
+        final colLen = (poemChars.length / 2).ceil();
+        final poemStyle = TextStyle(
+          fontFamily: 'NotoSerifSC',
+          fontSize: 18.0,
+          color: textColor.withValues(alpha: 0.85),
+          shadows: shadows,
         );
+        for (int index = 0; index < poemChars.length; index++) {
+          final col = index ~/ colLen;
+          final row = index % colLen;
+          final charPainter = TextPainter(
+            text: TextSpan(text: poemChars[index], style: poemStyle),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          charPainter.paint(
+            canvas,
+            Offset(1390.0 - col * 26.0, 668.0 + row * 22.0),
+          );
+        }
       }
     }
 
     // Carved 2x2 Cinnabar Seal Stamp (朱砂印章)
-    const sealX = 1420.0;
-    const sealY = 915.0;
-    const sealOuterRect = Rect.fromLTWH(sealX, sealY, 38, 38);
-    const sealInnerRect = Rect.fromLTWH(sealX + 3, sealY + 3, 32, 32);
-
-    canvas.drawRect(
-      sealOuterRect,
-      Paint()..color = const Color(0xFFB8332A).withValues(alpha: 0.92),
+    ShanshuiAtmosphericEffects.drawCinnabarSeal(
+      canvas,
+      x: 1420.0,
+      y: 915.0,
+      size: 38.0,
+      sealText: atmosphere.season.sealTextFor(atmosphere.realm),
+      fontSize: 12.0,
+      fontFamily: 'NotoSerifSC',
+      alpha: 0.92,
+      strokeWidth: 1.5,
+      leftPad: 6.5,
+      rowOffset1: 5.0,
+      rowOffset2: 19.0,
     );
-    canvas.drawRect(
-      sealInnerRect,
-      Paint()
-        ..color = const Color(0xFFF7F4EB).withValues(alpha: 0.92)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
-
-    final sealText = atmosphere.season.sealTextFor(atmosphere.realm);
-    if (sealText.length >= 4) {
-      final sealStyle = TextStyle(
-        fontFamily: 'NotoSerifSC',
-        fontSize: 12.0,
-        fontWeight: FontWeight.bold,
-        color: const Color(0xFFF7F4EB).withValues(alpha: 0.92),
-      );
-      final topRowPainter = TextPainter(
-        text: TextSpan(text: sealText.substring(0, 2), style: sealStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      topRowPainter.paint(canvas, const Offset(sealX + 6.5, sealY + 5.0));
-
-      final bottomRowPainter = TextPainter(
-        text: TextSpan(text: sealText.substring(2, 4), style: sealStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      bottomRowPainter.paint(canvas, const Offset(sealX + 6.5, sealY + 19.0));
-    }
   }
 
   /// Paints the soft radial cinematic vignette around the 3:2 room frame.

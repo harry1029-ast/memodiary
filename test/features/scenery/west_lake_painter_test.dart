@@ -34,16 +34,32 @@ void main() {
         equals('petals'),
       );
       expect(
+        WestLakePalette.of(ShanshuiSeason.spring, ShanshuiTimeOfDay.day).particleKind,
+        equals(SeasonalParticleKind.petals),
+      );
+      expect(
         WestLakePalette.of(ShanshuiSeason.summer, ShanshuiTimeOfDay.day).particleType,
         equals('fireflies'),
+      );
+      expect(
+        WestLakePalette.of(ShanshuiSeason.summer, ShanshuiTimeOfDay.day).particleKind,
+        equals(SeasonalParticleKind.fireflies),
       );
       expect(
         WestLakePalette.of(ShanshuiSeason.fall, ShanshuiTimeOfDay.day).particleType,
         equals('leaves'),
       );
       expect(
+        WestLakePalette.of(ShanshuiSeason.fall, ShanshuiTimeOfDay.day).particleKind,
+        equals(SeasonalParticleKind.leaves),
+      );
+      expect(
         WestLakePalette.of(ShanshuiSeason.winter, ShanshuiTimeOfDay.day).particleType,
         equals('snow'),
+      );
+      expect(
+        WestLakePalette.of(ShanshuiSeason.winter, ShanshuiTimeOfDay.day).particleKind,
+        equals(SeasonalParticleKind.snow),
       );
 
       final springDay = WestLakePalette.of(ShanshuiSeason.spring, ShanshuiTimeOfDay.day);
