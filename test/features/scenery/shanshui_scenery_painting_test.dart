@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/scenery/models/shanshui_atmosphere.dart';
+import 'package:memodiary/features/scenery/painters/fenghuang_painter.dart';
 import 'package:memodiary/features/scenery/painters/outdoor_street_painter.dart';
 import 'package:memodiary/features/scenery/painters/west_lake_painter.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_canvas_painter.dart';
@@ -344,8 +345,9 @@ void main() {
       expect(stateKey.currentState!.ripples.last.y, greaterThanOrEqualTo(520.0));
     });
 
-    testWidgets('dispatches through westLakePainterBuilder and uses temporary Nature fallback for fenghuang', (tester) async {
+    testWidgets('dispatches through westLakePainterBuilder and fenghuangPainterBuilder', (tester) async {
       bool westLakeBuilderCalled = false;
+      bool fenghuangBuilderCalled = false;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -386,19 +388,63 @@ void main() {
       expect(westLakeBuilderCalled, isTrue);
 
       await tester.pumpWidget(
-        const MaterialApp(
+        MaterialApp(
           home: Scaffold(
             body: Center(
               child: SizedBox(
                 width: 300,
                 height: 200,
                 child: ShanshuiSceneryPainting(
-                  atmosphere: ShanshuiAtmosphereState(
+                  atmosphere: const ShanshuiAtmosphereState(
                     realm: ShanshuiRealm.fenghuang,
                     season: ShanshuiSeason.spring,
                     timeOfDay: ShanshuiTimeOfDay.day,
                     weather: ShanshuiWeather.sunny,
                   ),
+                  enableAmbientAnimation: false,
+                  fenghuangPainterBuilder: ({
+                    required atmosphere,
+                    required palette,
+                    required animationTime,
+                    required particles,
+                    required weatherDrops,
+                    required cranes,
+                    required ripples,
+                    required showCalligraphy,
+                    required fullPoem,
+                    required lightningAlpha,
+                  }) {
+                    fenghuangBuilderCalled = true;
+                    return const _MockCustomPainter('fenghuang');
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(fenghuangBuilderCalled, isTrue);
+    });
+
+    testWidgets('dispatches to FenghuangPainter for fenghuang realm and clamps sky taps to y >= 555', (tester) async {
+      final stateKey = GlobalKey<ShanshuiSceneryPaintingState>();
+      const atmosphere = ShanshuiAtmosphereState(
+        realm: ShanshuiRealm.fenghuang,
+        season: ShanshuiSeason.summer,
+        timeOfDay: ShanshuiTimeOfDay.dusk,
+        weather: ShanshuiWeather.sunny,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                height: 200,
+                child: ShanshuiSceneryPainting(
+                  key: stateKey,
+                  atmosphere: atmosphere,
                   enableAmbientAnimation: false,
                 ),
               ),
@@ -413,7 +459,19 @@ void main() {
           matching: find.byType(CustomPaint),
         ),
       );
-      expect(customPaint.painter, isA<ShanshuiCanvasPainter>());
+      expect(customPaint.painter, isA<FenghuangPainter>());
+
+      // Tap near top sky (y=20 out of 200 -> normalized y=100) and verify ripple is clamped to y >= 555
+      final paintingTopLeft = tester.getTopLeft(find.byType(ShanshuiSceneryPainting));
+      final particlesBefore = stateKey.currentState!.particleCount;
+      final ripplesBefore = stateKey.currentState!.rippleCount;
+
+      await tester.tapAt(paintingTopLeft + const Offset(150, 20));
+      await tester.pump();
+
+      expect(stateKey.currentState!.rippleCount, equals(ripplesBefore + 1));
+      expect(stateKey.currentState!.particleCount, greaterThan(particlesBefore));
+      expect(stateKey.currentState!.ripples.last.y, greaterThanOrEqualTo(555.0));
     });
   });
 }

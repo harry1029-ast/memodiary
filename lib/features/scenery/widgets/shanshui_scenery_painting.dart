@@ -1,17 +1,10 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../../core/utils/ambient_animation_utils.dart';
-import '../models/ancient_room_palette.dart';
-import '../models/outdoor_street_palette.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_palette.dart';
 import '../models/shanshui_scenery_geometry.dart';
-import '../models/west_lake_palette.dart';
-import '../painters/ancient_room_painter.dart';
-import '../painters/outdoor_street_painter.dart';
-import '../painters/west_lake_painter.dart';
-import 'shanshui_canvas_painter.dart';
+import 'scenery_realm_painter_factory.dart';
 
 /// Pluggable builder function signature for modular realm painters.
 typedef RealmPainterBuilder = CustomPainter Function({
@@ -41,6 +34,7 @@ class ShanshuiSceneryPainting extends StatefulWidget {
   final RealmPainterBuilder? indoorPainterBuilder;
   final RealmPainterBuilder? outdoorPainterBuilder;
   final RealmPainterBuilder? westLakePainterBuilder;
+  final RealmPainterBuilder? fenghuangPainterBuilder;
 
   const ShanshuiSceneryPainting({
     super.key,
@@ -54,6 +48,7 @@ class ShanshuiSceneryPainting extends StatefulWidget {
     this.indoorPainterBuilder,
     this.outdoorPainterBuilder,
     this.westLakePainterBuilder,
+    this.fenghuangPainterBuilder,
   });
 
   @override
@@ -72,9 +67,7 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
   double _lightningAlpha = 0.0;
   double _nextLightningTime = 2.5;
 
-  ui.Picture? _cachedIndoorPicture;
-  ui.Picture? _cachedOutdoorPicture;
-  ui.Picture? _cachedWestLakePicture;
+  final SceneryRealmPictureCache _pictureCache = SceneryRealmPictureCache();
 
   int get particleCount => _particles.length;
   int get rippleCount => _ripples.length;
@@ -105,7 +98,7 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
   void didUpdateWidget(covariant ShanshuiSceneryPainting oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.atmosphere.matchesEnvironment(oldWidget.atmosphere)) {
-      _disposeCachedPictures();
+      _pictureCache.dispose();
     }
     if (widget.isVisible != oldWidget.isVisible) {
       if (!widget.isVisible) {
@@ -116,15 +109,6 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
         }
       }
     }
-  }
-
-  void _disposeCachedPictures() {
-    _cachedIndoorPicture?.dispose();
-    _cachedIndoorPicture = null;
-    _cachedOutdoorPicture?.dispose();
-    _cachedOutdoorPicture = null;
-    _cachedWestLakePicture?.dispose();
-    _cachedWestLakePicture = null;
   }
 
   void _initParticlePools() {
@@ -281,7 +265,6 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
           ),
         );
       }
-      // Bounded pool so particles never grow unbounded
       if (_particles.length > 72) {
         _particles.removeRange(0, _particles.length - 72);
       }
@@ -330,133 +313,10 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
 
   @override
   void dispose() {
-    _disposeCachedPictures();
+    _pictureCache.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
-  }
-
-  CustomPainter _buildPainter(ShanshuiPalette palette) {
-    switch (widget.atmosphere.realm) {
-      case ShanshuiRealm.nature:
-      case ShanshuiRealm.fenghuang:
-        return ShanshuiCanvasPainter(
-          atmosphere: widget.atmosphere,
-          palette: palette,
-          animationTime: _elapsedSeconds,
-          particles: _particles,
-          weatherDrops: _weatherDrops,
-          cranes: _cranes,
-          ripples: _ripples,
-          showCalligraphy: widget.showCalligraphy,
-          fullPoem: widget.fullPoem,
-          lightningAlpha: _lightningAlpha,
-        );
-      case ShanshuiRealm.westLake:
-        if (widget.westLakePainterBuilder != null) {
-          return widget.westLakePainterBuilder!(
-            atmosphere: widget.atmosphere,
-            palette: palette,
-            animationTime: _elapsedSeconds,
-            particles: _particles,
-            weatherDrops: _weatherDrops,
-            cranes: _cranes,
-            ripples: _ripples,
-            showCalligraphy: widget.showCalligraphy,
-            fullPoem: widget.fullPoem,
-            lightningAlpha: _lightningAlpha,
-          );
-        }
-        final westLakePalette = WestLakePalette.of(
-          widget.atmosphere.season,
-          widget.atmosphere.timeOfDay,
-        );
-        _cachedWestLakePicture ??= WestLakePainter.recordStaticPicture(
-          atmosphere: widget.atmosphere,
-          westLakePalette: westLakePalette,
-        );
-        return WestLakePainter(
-          atmosphere: widget.atmosphere,
-          westLakePalette: westLakePalette,
-          animationTime: _elapsedSeconds,
-          particles: _particles,
-          weatherDrops: _weatherDrops,
-          ripples: _ripples,
-          showCalligraphy: widget.showCalligraphy,
-          fullPoem: widget.fullPoem,
-          lightningAlpha: _lightningAlpha,
-          cachedStaticPicture: _cachedWestLakePicture,
-        );
-      case ShanshuiRealm.indoor:
-        if (widget.indoorPainterBuilder != null) {
-          return widget.indoorPainterBuilder!(
-            atmosphere: widget.atmosphere,
-            palette: palette,
-            animationTime: _elapsedSeconds,
-            particles: _particles,
-            weatherDrops: _weatherDrops,
-            cranes: _cranes,
-            ripples: _ripples,
-            showCalligraphy: widget.showCalligraphy,
-            fullPoem: widget.fullPoem,
-            lightningAlpha: _lightningAlpha,
-          );
-        }
-        final roomPalette = AncientRoomPalette.of(
-          widget.atmosphere.season,
-          widget.atmosphere.timeOfDay,
-        );
-        _cachedIndoorPicture ??= AncientRoomPainter.recordStaticPicture(
-          atmosphere: widget.atmosphere,
-          roomPalette: roomPalette,
-        );
-        return AncientRoomPainter(
-          atmosphere: widget.atmosphere,
-          roomPalette: roomPalette,
-          animationTime: _elapsedSeconds,
-          particles: _particles,
-          weatherDrops: _weatherDrops,
-          showCalligraphy: widget.showCalligraphy,
-          fullPoem: widget.fullPoem,
-          lightningAlpha: _lightningAlpha,
-          cachedStaticPicture: _cachedIndoorPicture,
-        );
-      case ShanshuiRealm.outdoor:
-        if (widget.outdoorPainterBuilder != null) {
-          return widget.outdoorPainterBuilder!(
-            atmosphere: widget.atmosphere,
-            palette: palette,
-            animationTime: _elapsedSeconds,
-            particles: _particles,
-            weatherDrops: _weatherDrops,
-            cranes: _cranes,
-            ripples: _ripples,
-            showCalligraphy: widget.showCalligraphy,
-            fullPoem: widget.fullPoem,
-            lightningAlpha: _lightningAlpha,
-          );
-        }
-        final streetPalette = OutdoorStreetPalette.of(
-          widget.atmosphere.season,
-          widget.atmosphere.timeOfDay,
-        );
-        _cachedOutdoorPicture ??= OutdoorStreetPainter.recordStaticPicture(
-          atmosphere: widget.atmosphere,
-          streetPalette: streetPalette,
-        );
-        return OutdoorStreetPainter(
-          atmosphere: widget.atmosphere,
-          streetPalette: streetPalette,
-          animationTime: _elapsedSeconds,
-          particles: _particles,
-          weatherDrops: _weatherDrops,
-          ripples: _ripples,
-          showCalligraphy: widget.showCalligraphy,
-          fullPoem: widget.fullPoem,
-          lightningAlpha: _lightningAlpha,
-          cachedStaticPicture: _cachedOutdoorPicture,
-        );
-    }
   }
 
   @override
@@ -475,7 +335,23 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: CustomPaint(
-                painter: _buildPainter(palette),
+                painter: buildSceneryRealmPainter(
+                  atmosphere: widget.atmosphere,
+                  palette: palette,
+                  cache: _pictureCache,
+                  animationTime: _elapsedSeconds,
+                  particles: _particles,
+                  weatherDrops: _weatherDrops,
+                  cranes: _cranes,
+                  ripples: _ripples,
+                  showCalligraphy: widget.showCalligraphy,
+                  fullPoem: widget.fullPoem,
+                  lightningAlpha: _lightningAlpha,
+                  indoorPainterBuilder: widget.indoorPainterBuilder,
+                  outdoorPainterBuilder: widget.outdoorPainterBuilder,
+                  westLakePainterBuilder: widget.westLakePainterBuilder,
+                  fenghuangPainterBuilder: widget.fenghuangPainterBuilder,
+                ),
                 size: Size.infinite,
               ),
             ),
