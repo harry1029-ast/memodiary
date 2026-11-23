@@ -89,6 +89,15 @@ void main() {
 
       // Verify all 5 compartments and matching accessibility semantics exist
       expect(find.byKey(const Key('chest_artifact_twin_brushes')), findsOneWidget);
+      expect(find.byKey(const Key('chest_twin_brushes_badge')), findsOneWidget);
+      final twinBrushesArt = find.descendant(
+        of: find.byKey(const Key('chest_artifact_twin_brushes')),
+        matching: find.byType(CustomPaint),
+      );
+      expect(
+        tester.getRect(twinBrushesArt).right,
+        lessThanOrEqualTo(tester.getRect(find.byKey(const Key('chest_twin_brushes_badge'))).left),
+      );
       expect(find.byKey(const Key('chest_artifact_stationery_fan')), findsOneWidget);
       expect(find.byKey(const Key('chest_artifact_brush_mountain')), findsOneWidget);
       expect(find.byKey(const Key('chest_artifact_guqin_zither')), findsOneWidget);

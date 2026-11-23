@@ -136,7 +136,6 @@ void main() {
                     dictationService: dictationService,
                     onPickImage: () {},
                     onPickVideo: () {},
-                    onShuffleSpark: () {},
                     surfaceColor: const Color(0xFF2B2219),
                     inkColor: const Color(0xFFE9DFCB),
                     ruleColor: const Color(0x598C6D46),

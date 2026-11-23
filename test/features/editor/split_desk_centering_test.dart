@@ -11,9 +11,7 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/editor/widgets/desk_workstation/desk_space_budget.dart';
 import 'package:memodiary/features/editor/widgets/editor_paper_canvas.dart';
-import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
-import 'package:memodiary/features/editor/widgets/thought_spark_banner.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_container.dart';
 import '../../helpers/editor_test_harness.dart';
 
@@ -59,11 +57,9 @@ void main() {
         viewportSize: const Size(360.0, 780.0),
       );
 
-      // Prototype switcher pill and prompt banners must be absent
+      // Prototype switcher pill must be absent
       expect(find.byKey(const Key('prototype_variant_switcher')), findsNothing);
       expect(find.text('PROTOTYPE'), findsNothing);
-      expect(find.byType(GhostPromptView), findsNothing);
-      expect(find.byType(ThoughtSparkBanner), findsNothing);
 
       // Elevated EditorPaperCanvas is mounted
       expect(find.byType(EditorPaperCanvas), findsOneWidget);

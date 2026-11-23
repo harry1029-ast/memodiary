@@ -19,7 +19,6 @@ class EditorWritingPanels extends StatelessWidget {
   final DictationService dictationService;
   final VoidCallback onPickImage;
   final VoidCallback onPickVideo;
-  final VoidCallback onShuffleSpark;
   final Color surfaceColor;
   final Color inkColor;
   final Color ruleColor;
@@ -33,7 +32,6 @@ class EditorWritingPanels extends StatelessWidget {
     required this.dictationService,
     required this.onPickImage,
     required this.onPickVideo,
-    required this.onShuffleSpark,
     required this.surfaceColor,
     required this.inkColor,
     required this.ruleColor,
@@ -84,7 +82,6 @@ class EditorWritingPanels extends StatelessWidget {
             onPickImage: onPickImage,
             onPickVideo: onPickVideo,
             onToggleDictation: _toggleDictation,
-            onShuffleSpark: onShuffleSpark,
             isFormattingOpen: chrome.isFormattingOpen,
             onToggleFormatting: _toggleFormatting,
             isDictating: chrome.isDictating,

@@ -27,7 +27,6 @@ void main() {
       VoidCallback? onPickImage,
       VoidCallback? onPickVideo,
       VoidCallback? onToggleDictation,
-      VoidCallback? onShuffleSpark,
       bool isDictating = false,
       bool initialFormattingOpen = false,
       VoidCallback? onToggleFormatting,
@@ -46,7 +45,6 @@ void main() {
                   onPickImage: onPickImage ?? () {},
                   onPickVideo: onPickVideo,
                   onToggleDictation: onToggleDictation ?? () {},
-                  onShuffleSpark: onShuffleSpark,
                   isFormattingOpen: isFormattingOpen,
                   onToggleFormatting: includeToggleFormatting
                       ? (onToggleFormatting ??
@@ -61,19 +59,18 @@ void main() {
       );
     }
 
-    testWidgets('renders all 5 primary tools in Tier 1', (tester) async {
+    testWidgets('renders all 4 primary tools in Tier 1', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         onPickVideo: () {},
-        onShuffleSpark: () {},
       ));
       await tester.pumpAndSettle();
 
-      // Check 5 primary tools
+      // Check 4 primary tools
       expect(find.byKey(const Key('writing_dock_format_btn')), findsOneWidget);
       expect(find.byKey(const Key('writing_dock_photo_btn')), findsOneWidget);
       expect(find.byKey(const Key('writing_dock_video_btn')), findsOneWidget);
       expect(find.byKey(const Key('writing_dock_dictation_btn')), findsOneWidget);
-      expect(find.byKey(const Key('writing_dock_spark_btn')), findsOneWidget);
+      expect(find.byKey(const Key('writing_dock_spark_btn')), findsNothing);
     });
 
     testWidgets('tapping Aa expands and collapses the inline formatting ribbon', (tester) async {
@@ -115,17 +112,15 @@ void main() {
       expect(style.containsKey(Attribute.bold.key), isTrue);
     });
 
-    testWidgets('media, dictation, and spark callbacks trigger properly', (tester) async {
+    testWidgets('media and dictation callbacks trigger properly', (tester) async {
       bool photoPicked = false;
       bool videoPicked = false;
       bool dictationToggled = false;
-      bool sparkShuffled = false;
 
       await tester.pumpWidget(buildTestWidget(
         onPickImage: () => photoPicked = true,
         onPickVideo: () => videoPicked = true,
         onToggleDictation: () => dictationToggled = true,
-        onShuffleSpark: () => sparkShuffled = true,
       ));
       await tester.pumpAndSettle();
 
@@ -140,10 +135,6 @@ void main() {
       // Dictation
       await tester.tap(find.byKey(const Key('writing_dock_dictation_btn')));
       expect(dictationToggled, isTrue);
-
-      // Spark
-      await tester.tap(find.byKey(const Key('writing_dock_spark_btn')));
-      expect(sparkShuffled, isTrue);
     });
 
     testWidgets('formatting ribbon contains interlinear note action with accessible semantics', (tester) async {
@@ -179,7 +170,6 @@ void main() {
     testWidgets('primary tools expose plain modern Chinese tooltips', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         onPickVideo: () {},
-        onShuffleSpark: () {},
       ));
       await tester.pumpAndSettle();
 
@@ -188,7 +178,6 @@ void main() {
         '插入图片',
         '插入短视频',
         '语音听写',
-        '写作灵感',
       ]) {
         expect(find.byTooltip(expectedTooltip), findsOneWidget, reason: expectedTooltip);
       }

@@ -13,7 +13,6 @@ import 'package:memodiary/features/editor/ink_choreography/ink_choreography_conf
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/editor/services/audio_sanctum_service.dart';
 import 'package:memodiary/features/editor/services/editor_settings_service.dart';
-import 'package:memodiary/features/editor/services/thought_spark_service.dart';
 
 import 'mock_secure_storage.dart';
 
@@ -262,7 +261,6 @@ Future<void> pumpEntryEditorScreen(
   required String entryId,
   ImagePicker? imagePicker,
   DictationService? dictationService,
-  ThoughtSparkService? thoughtSparkService,
   AudioSanctumService? audioSanctumService,
   EditorSettingsService? editorSettings,
   InkDeliveryMode? inkDeliveryMode = InkDeliveryMode.off,
@@ -294,7 +292,6 @@ Future<void> pumpEntryEditorScreen(
         entryId: entryId,
         imagePicker: imagePicker,
         dictationService: dictationService,
-        thoughtSparkService: thoughtSparkService,
         audioSanctumService: audioSanctumService,
         editorSettings: resolvedSettings,
       );

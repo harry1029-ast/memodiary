@@ -29,7 +29,6 @@ void main() {
               controller: controller,
               onPickImage: () {},
               onToggleDictation: () {},
-              onShuffleSpark: () {},
               isPaperDark: isPaperDark,
               inkColor: inkColor,
             ),
@@ -56,15 +55,6 @@ void main() {
         ),
       );
       expect(micIcon.color, equals(const Color(0xFFB83B2E)));
-
-      // Thought spark should use amber gold (#D4AF37)
-      final sparkIcon = tester.widget<Icon>(
-        find.descendant(
-          of: find.byKey(const Key('writing_dock_spark_btn')),
-          matching: find.byType(Icon),
-        ),
-      );
-      expect(sparkIcon.color, equals(const Color(0xFFD4AF37)));
 
       // Photo button should use deep ink, NOT dark mode nongmo (#DCD6CA)
       final photoIcon = tester.widget<Icon>(

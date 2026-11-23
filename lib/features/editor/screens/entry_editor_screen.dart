@@ -20,7 +20,6 @@ import '../models/stationery_sheet_configs.dart';
 import '../models/typography_settings.dart';
 import '../services/audio_sanctum_service.dart';
 import '../services/editor_pagination_coordinator.dart';
-import '../services/thought_spark_service.dart';
 import '../widgets/desk_workstation/desk_palette.dart';
 import '../widgets/editor_app_bar_slide.dart';
 import '../widgets/editor_paper_canvas.dart';
@@ -39,7 +38,6 @@ class EntryEditorScreen extends StatefulWidget {
   final MediaSandboxService mediaSandboxService;
   final String entryId;
   final DictationService? dictationService;
-  final ThoughtSparkService? thoughtSparkService;
   final AudioSanctumService? audioSanctumService;
   final ImagePicker? imagePicker;
   final EditorSettingsService? editorSettings;
@@ -50,7 +48,6 @@ class EntryEditorScreen extends StatefulWidget {
     required this.mediaSandboxService,
     required this.entryId,
     this.dictationService,
-    this.thoughtSparkService,
     this.audioSanctumService,
     this.imagePicker,
     this.editorSettings,
@@ -62,7 +59,6 @@ class EntryEditorScreen extends StatefulWidget {
 
 class _EntryEditorScreenState extends State<EntryEditorScreen> {
   late final DictationService _dictationService;
-  late final ThoughtSparkService _thoughtSparkService;
   late final AudioSanctumService _audioSanctumService;
   late final ImagePicker _imagePicker;
 
@@ -95,7 +91,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
   void initState() {
     super.initState();
     _dictationService = widget.dictationService ?? DictationService();
-    _thoughtSparkService = widget.thoughtSparkService ?? ThoughtSparkService();
     _audioSanctumService = widget.audioSanctumService ?? AudioSanctumService();
     _imagePicker = widget.imagePicker ?? ImagePicker();
     final settings = widget.editorSettings ?? EditorSettingsService();
@@ -278,24 +273,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
     );
   }
 
-  void _handleShuffleSpark() {
-    EditorOverlayActions.handleShuffleSpark(
-      context: context,
-      thoughtSparkService: _thoughtSparkService,
-      onAdoptPrompt: _handleInsertPrompt,
-    );
-  }
-
-  void _handleInsertPrompt(String prompt) {
-    final active = _paginationHandler?.ensureActiveTextSheet() ?? _activeController;
-    EditorOverlayActions.handleInsertPrompt(
-      controller: active,
-      prompt: prompt,
-      autosaveManager: _autosaveManager,
-      onStateChanged: () => setState(() {}),
-    );
-  }
-
   Future<void> _handleDeleteEphemera(int sheetIndex) async {
     final deletion = _mediaBinding?.deleteLegacyEphemera(sheetIndex);
     _paginationHandler?.syncViewportToActiveSheet();
@@ -419,7 +396,6 @@ class _EntryEditorScreenState extends State<EntryEditorScreen> {
               dictationService: _dictationService,
               onPickImage: () => _collectMedia(isVideo: false),
               onPickVideo: () => _collectMedia(isVideo: true),
-              onShuffleSpark: _handleShuffleSpark,
               surfaceColor: desk.chromeSurface,
               inkColor: DeskPalette.chromeInk,
               ruleColor: desk.chromeRule,

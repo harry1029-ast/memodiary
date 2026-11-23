@@ -10,7 +10,7 @@ import 'writing_dock_tool_button.dart';
 /// Progressive two-tier bottom writing dock at the foot of the editor while
 /// the software keyboard is closed; the KeyboardAccessoryRow stands in for it
 /// while the diarist types.
-/// Tier 1 presents 5 high-frequency tools: Aa Formatting, Photo, Video, Dictation, Spark.
+/// Tier 1 presents 4 high-frequency tools: Aa Formatting, Photo, Video, Dictation.
 /// Tier 2 smoothly unfolds on-demand as an inline formatting ribbon.
 class WritingDock extends StatelessWidget {
   final QuillController controller;
@@ -19,7 +19,6 @@ class WritingDock extends StatelessWidget {
   final VoidCallback? onPickVideo;
   final VoidCallback onToggleDictation;
   final VoidCallback? onHide;
-  final VoidCallback? onShuffleSpark;
   final bool isFormattingOpen;
   final VoidCallback? onToggleFormatting;
   final bool isDictating;
@@ -36,7 +35,6 @@ class WritingDock extends StatelessWidget {
     this.onPickVideo,
     required this.onToggleDictation,
     this.onHide,
-    this.onShuffleSpark,
     this.isFormattingOpen = false,
     this.onToggleFormatting,
     this.isDictating = false,
@@ -116,7 +114,6 @@ class WritingDock extends StatelessWidget {
     final activeBackdrop =
         isPaperDark ? const Color(0x38D4AF37) : tokens.agedFiber.withValues(alpha: 0.85);
     final pickVideo = onPickVideo;
-    final shuffleSpark = onShuffleSpark;
 
     return Container(
       height: 48,
@@ -158,15 +155,6 @@ class WritingDock extends StatelessWidget {
             isDictating: isDictating,
             onTap: onToggleDictation,
           ),
-          if (shuffleSpark != null)
-            _buildPrimaryToolBtn(
-              key: const Key('writing_dock_spark_btn'),
-              icon: Icons.auto_awesome_outlined,
-              tooltip: '写作灵感',
-              isActive: false,
-              color: const Color(0xFFD4AF37),
-              onTap: shuffleSpark,
-            ),
         ],
       ),
     );

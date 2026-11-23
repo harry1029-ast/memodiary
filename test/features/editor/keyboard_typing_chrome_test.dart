@@ -145,7 +145,7 @@ void main() {
       expect(accessoryRow, findsOneWidget);
       expect(find.byType(WritingDock), findsNothing);
       expect(restoreTab, findsNothing);
-      for (final dockOnly in ['writing_dock_photo_btn', 'writing_dock_video_btn', 'writing_dock_spark_btn']) {
+      for (final dockOnly in ['writing_dock_photo_btn', 'writing_dock_video_btn']) {
         expect(find.byKey(Key(dockOnly)), findsNothing, reason: '$dockOnly is not shown while typing');
       }
       for (final control in [formatButton, dictationButton, hideTab]) {

@@ -96,45 +96,42 @@ class _ArtifactTwinBrushesState extends State<ArtifactTwinBrushes>
                   ),
                 ],
               ),
-              child: Stack(
+              child: Row(
                 children: [
-                  Positioned.fill(
-                    child: CustomPaint(
-                      painter: TwinBambooBrushesPainter(
-                        hoverProgress: _liftAnimation.value,
+                  Expanded(
+                    child: SizedBox.expand(
+                      child: CustomPaint(
+                        painter: TwinBambooBrushesPainter(
+                          hoverProgress: _liftAnimation.value,
+                        ),
                       ),
                     ),
                   ),
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    bottom: 8,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E1A17),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: widget.isSelected
-                                ? const Color(0xFFD4AF37)
-                                : const Color(0xFF8C7148),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Text(
-                          widget.activeMode.badge,
-                          style: TextStyle(
-                            fontFamily: InkDiaryTheme.fontKaiti,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFFE6C875),
-                            letterSpacing: 1.0,
-                          ),
-                        ),
+                  const SizedBox(width: 8),
+                  Container(
+                    key: const Key('chest_twin_brushes_badge'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1A17),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: widget.isSelected
+                            ? const Color(0xFFD4AF37)
+                            : const Color(0xFF8C7148),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      widget.activeMode.badge,
+                      style: TextStyle(
+                        fontFamily: InkDiaryTheme.fontKaiti,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFE6C875),
+                        letterSpacing: 1.0,
                       ),
                     ),
                   ),
@@ -171,18 +168,18 @@ class TwinBambooBrushesPainter extends CustomPainter {
         end: Alignment.bottomCenter,
       ).createShader(
         Rect.fromLTWH(
-          canvasWidth * 0.08,
+          canvasWidth * 0.065,
           canvasHeight * 0.20,
-          canvasWidth * 0.54,
+          canvasWidth * 0.68,
           8,
         ),
       );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
-          canvasWidth * 0.08,
+          canvasWidth * 0.065,
           canvasHeight * 0.20,
-          canvasWidth * 0.54,
+          canvasWidth * 0.68,
           7.5,
         ),
         const Radius.circular(3),
@@ -194,9 +191,9 @@ class TwinBambooBrushesPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
-          canvasWidth * 0.05,
-          canvasHeight * 0.20,
           canvasWidth * 0.03,
+          canvasHeight * 0.20,
+          canvasWidth * 0.035,
           7.5,
         ),
         const Radius.circular(2),
@@ -208,9 +205,9 @@ class TwinBambooBrushesPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
-          canvasWidth * 0.62,
+          canvasWidth * 0.745,
           canvasHeight * 0.19,
-          canvasWidth * 0.06,
+          canvasWidth * 0.07,
           8.5,
         ),
         const Radius.circular(2),
@@ -220,23 +217,23 @@ class TwinBambooBrushesPainter extends CustomPainter {
 
     // Spotted bamboo markings (湘妃斑竹)
     final bambooSpotPaint = Paint()..color = const Color(0x6652361B);
-    canvas.drawCircle(Offset(canvasWidth * 0.20, canvasHeight * 0.24), 1.2, bambooSpotPaint);
-    canvas.drawCircle(Offset(canvasWidth * 0.34, canvasHeight * 0.23), 1.4, bambooSpotPaint);
-    canvas.drawCircle(Offset(canvasWidth * 0.48, canvasHeight * 0.25), 1.2, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.22, canvasHeight * 0.24), 1.2, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.40, canvasHeight * 0.23), 1.4, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.58, canvasHeight * 0.25), 1.2, bambooSpotPaint);
 
     // Purple wolf-hair brush tip (紫毫 · 狼毫濃墨)
     final tipPath1 = Path()
-      ..moveTo(canvasWidth * 0.68, canvasHeight * 0.20)
+      ..moveTo(canvasWidth * 0.815, canvasHeight * 0.20)
       ..quadraticBezierTo(
-        canvasWidth * 0.74,
+        canvasWidth * 0.885,
         canvasHeight * 0.21,
-        canvasWidth * 0.79,
+        canvasWidth * 0.95,
         canvasHeight * 0.24,
       )
       ..quadraticBezierTo(
-        canvasWidth * 0.74,
+        canvasWidth * 0.885,
         canvasHeight * 0.27,
-        canvasWidth * 0.68,
+        canvasWidth * 0.815,
         canvasHeight * 0.28,
       )
       ..close();
@@ -255,18 +252,18 @@ class TwinBambooBrushesPainter extends CustomPainter {
         end: Alignment.bottomCenter,
       ).createShader(
         Rect.fromLTWH(
-          canvasWidth * 0.06,
+          canvasWidth * 0.045,
           canvasHeight * 0.54,
-          canvasWidth * 0.56,
+          canvasWidth * 0.70,
           8.5,
         ),
       );
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
-          canvasWidth * 0.06,
+          canvasWidth * 0.045,
           canvasHeight * 0.54,
-          canvasWidth * 0.56,
+          canvasWidth * 0.70,
           8.5,
         ),
         const Radius.circular(3),
@@ -275,17 +272,17 @@ class TwinBambooBrushesPainter extends CustomPainter {
     );
 
     // Spotted bamboo markings on lower shaft
-    canvas.drawCircle(Offset(canvasWidth * 0.18, canvasHeight * 0.58), 1.3, bambooSpotPaint);
-    canvas.drawCircle(Offset(canvasWidth * 0.32, canvasHeight * 0.57), 1.5, bambooSpotPaint);
-    canvas.drawCircle(Offset(canvasWidth * 0.46, canvasHeight * 0.59), 1.2, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.20, canvasHeight * 0.58), 1.3, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.38, canvasHeight * 0.57), 1.5, bambooSpotPaint);
+    canvas.drawCircle(Offset(canvasWidth * 0.56, canvasHeight * 0.59), 1.2, bambooSpotPaint);
 
     // Dark horn end-cap
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
-          canvasWidth * 0.03,
+          canvasWidth * 0.01,
           canvasHeight * 0.54,
-          canvasWidth * 0.03,
+          canvasWidth * 0.035,
           8.5,
         ),
         const Radius.circular(2),
@@ -297,9 +294,9 @@ class TwinBambooBrushesPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
-          canvasWidth * 0.62,
+          canvasWidth * 0.745,
           canvasHeight * 0.53,
-          canvasWidth * 0.07,
+          canvasWidth * 0.08,
           9.5,
         ),
         const Radius.circular(2),
@@ -309,17 +306,17 @@ class TwinBambooBrushesPainter extends CustomPainter {
 
     // White goat-hair brush tip
     final tipPath2 = Path()
-      ..moveTo(canvasWidth * 0.69, canvasHeight * 0.54)
+      ..moveTo(canvasWidth * 0.825, canvasHeight * 0.54)
       ..quadraticBezierTo(
-        canvasWidth * 0.75,
+        canvasWidth * 0.90,
         canvasHeight * 0.55,
-        canvasWidth * 0.81,
+        canvasWidth * 0.97,
         canvasHeight * 0.58,
       )
       ..quadraticBezierTo(
-        canvasWidth * 0.75,
+        canvasWidth * 0.90,
         canvasHeight * 0.62,
-        canvasWidth * 0.69,
+        canvasWidth * 0.825,
         canvasHeight * 0.63,
       )
       ..close();
@@ -338,7 +335,7 @@ class TwinBambooBrushesPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
-          canvasWidth * 0.18,
+          canvasWidth * 0.22,
           canvasHeight * 0.14,
           5.0,
           canvasHeight * 0.64,
@@ -350,7 +347,7 @@ class TwinBambooBrushesPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(
-          canvasWidth * 0.54,
+          canvasWidth * 0.64,
           canvasHeight * 0.12,
           5.5,
           canvasHeight * 0.66,

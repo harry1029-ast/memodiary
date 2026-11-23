@@ -13,9 +13,7 @@ import 'package:memodiary/features/editor/widgets/editor_top_app_bar.dart';
 import 'package:memodiary/features/editor/widgets/keepsake_scroll_view.dart';
 import 'package:memodiary/features/editor/widgets/editor_quill_styles_builder.dart';
 import 'package:memodiary/features/editor/widgets/editor_toolbar.dart';
-import 'package:memodiary/features/editor/widgets/ghost_prompt_view.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead.dart';
-import 'package:memodiary/features/editor/widgets/thought_spark_banner.dart';
 import 'package:memodiary/features/editor/widgets/writing_dock.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/services/stationery_layout_calculator.dart';
@@ -79,12 +77,11 @@ void main() {
 
       // Verify new architecture widgets are rendered
       expect(find.byType(JournalLetterhead), findsOneWidget);
-      expect(find.byType(GhostPromptView), findsNothing, reason: 'Inline ghost prompt should be removed from canvas');
       expect(find.byType(QuillEditor), findsOneWidget);
       expect(find.byType(WritingDock), findsOneWidget);
+      expect(find.byKey(const Key('writing_dock_spark_btn')), findsNothing);
 
       // Verify old cluttered components are completely retired
-      expect(find.byType(ThoughtSparkBanner), findsNothing);
       expect(find.byType(EditorToolbar), findsNothing);
 
       // Verify status and title
@@ -92,30 +89,6 @@ void main() {
       expect(find.text('Test Diary Title'), findsOneWidget);
       expect(find.byKey(const Key('editor_seal_done_btn')), findsOneWidget);
       expect(find.byKey(const Key('top_bar_scholar_chest_button')), findsOneWidget);
-    });
-
-    testWidgets('tapping sparkle button in WritingDock displays thought spark SnackBar and adopts it into editor', (tester) async {
-      await pumpEntryEditorScreen(
-        tester,
-        database: db,
-        mediaSandboxService: sandboxService,
-        entryId: 'editor_test_entry',
-        dictationService: dictationService,
-      );
-
-      // Tap sparkle tool in WritingDock
-      expect(find.byKey(const Key('writing_dock_spark_btn')), findsOneWidget);
-      await tester.tap(find.byKey(const Key('writing_dock_spark_btn')));
-      await tester.pumpAndSettle();
-
-      // Verify SnackBar with '使用此提示' appears
-      expect(find.textContaining('使用此提示'), findsOneWidget);
-      await tester.tap(find.textContaining('使用此提示'));
-      await tester.pumpAndSettle();
-
-      // Verify database gets updated with quoted prompt content
-      final entry = await db.entriesDao.getEntryById('editor_test_entry');
-      expect(entry!.plainText.contains('【写作灵感】'), isTrue);
     });
 
     testWidgets('synchronizes typography from template on load and template switch', (tester) async {
@@ -357,9 +330,6 @@ void main() {
       // Verify canvas container fills the screen vertically
       final canvasFinder = find.byType(Positioned);
       expect(canvasFinder, findsWidgets);
-
-      // Verify no old ThoughtSparkBanner is present
-      expect(find.byType(ThoughtSparkBanner), findsNothing);
 
       // Verify Cinnabar Signature Seal is present
       final sealFinder = find.byKey(const Key('cinnabar_signature_seal'));
