@@ -17,7 +17,7 @@ The full-screen interactive modal displaying the complete 3:2 living Shanshui pa
 _Avoid_: Fullscreen canvas, scenery dialog, zoom view
 
 **Scenery Realm**:
-The spatial setting dimension (`ShanshuiRealm`) rendered inside the Shanshui Scenery Card and Contemplation View across three domains—**Nature** (`山水`), **Indoor** (`室内`), and **Outdoor** (`街市`)—either inferred automatically from recent entries (`自动`) or pinned manually by the diarist.
+The spatial setting dimension (`ShanshuiRealm`) rendered inside the Shanshui Scenery Card and Contemplation View across five domains—**Nature** (`山水`), **West Lake** (`西湖`), **Fenghuang** (`凤凰`), **Outdoor** (`街市`), and **Indoor** (`室内`)—either inferred automatically from recent entries (`自动`) or pinned manually by the diarist.
 _Avoid_: Scene mode, location theme, indoor/outdoor toggle, 随文入境, 林泉, 雅室, 市井
 
 **Atmosphere Theme**:
