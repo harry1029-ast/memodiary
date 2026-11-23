@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/scenery/models/shanshui_atmosphere.dart';
 import 'package:memodiary/features/scenery/painters/outdoor_street_painter.dart';
+import 'package:memodiary/features/scenery/painters/west_lake_painter.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_canvas_painter.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_painting.dart';
 
@@ -293,6 +294,126 @@ void main() {
         ),
       );
       expect(customPaint.painter, isA<OutdoorStreetPainter>());
+    });
+
+    testWidgets('dispatches to WestLakePainter for westLake realm and clamps sky taps to y >= 520', (tester) async {
+      final stateKey = GlobalKey<ShanshuiSceneryPaintingState>();
+      const atmosphere = ShanshuiAtmosphereState(
+        realm: ShanshuiRealm.westLake,
+        season: ShanshuiSeason.spring,
+        timeOfDay: ShanshuiTimeOfDay.day,
+        weather: ShanshuiWeather.sunny,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                height: 200,
+                child: ShanshuiSceneryPainting(
+                  key: stateKey,
+                  atmosphere: atmosphere,
+                  enableAmbientAnimation: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final customPaint = tester.widget<CustomPaint>(
+        find.descendant(
+          of: find.byType(AspectRatio),
+          matching: find.byType(CustomPaint),
+        ),
+      );
+      expect(customPaint.painter, isA<WestLakePainter>());
+
+      // Tap near top sky (y=20 out of 200 -> normalized y=100) and verify ripple is clamped to y >= 520
+      final paintingTopLeft = tester.getTopLeft(find.byType(ShanshuiSceneryPainting));
+      final particlesBefore = stateKey.currentState!.particleCount;
+      final ripplesBefore = stateKey.currentState!.rippleCount;
+
+      await tester.tapAt(paintingTopLeft + const Offset(150, 20));
+      await tester.pump();
+
+      expect(stateKey.currentState!.rippleCount, equals(ripplesBefore + 1));
+      expect(stateKey.currentState!.particleCount, greaterThan(particlesBefore));
+      expect(stateKey.currentState!.ripples.last.y, greaterThanOrEqualTo(520.0));
+    });
+
+    testWidgets('dispatches through westLakePainterBuilder and uses temporary Nature fallback for fenghuang', (tester) async {
+      bool westLakeBuilderCalled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                height: 200,
+                child: ShanshuiSceneryPainting(
+                  atmosphere: const ShanshuiAtmosphereState(
+                    realm: ShanshuiRealm.westLake,
+                    season: ShanshuiSeason.fall,
+                    timeOfDay: ShanshuiTimeOfDay.dusk,
+                    weather: ShanshuiWeather.sunny,
+                  ),
+                  enableAmbientAnimation: false,
+                  westLakePainterBuilder: ({
+                    required atmosphere,
+                    required palette,
+                    required animationTime,
+                    required particles,
+                    required weatherDrops,
+                    required cranes,
+                    required ripples,
+                    required showCalligraphy,
+                    required fullPoem,
+                    required lightningAlpha,
+                  }) {
+                    westLakeBuilderCalled = true;
+                    return const _MockCustomPainter('westLake');
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(westLakeBuilderCalled, isTrue);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 300,
+                height: 200,
+                child: ShanshuiSceneryPainting(
+                  atmosphere: ShanshuiAtmosphereState(
+                    realm: ShanshuiRealm.fenghuang,
+                    season: ShanshuiSeason.spring,
+                    timeOfDay: ShanshuiTimeOfDay.day,
+                    weather: ShanshuiWeather.sunny,
+                  ),
+                  enableAmbientAnimation: false,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final customPaint = tester.widget<CustomPaint>(
+        find.descendant(
+          of: find.byType(AspectRatio),
+          matching: find.byType(CustomPaint),
+        ),
+      );
+      expect(customPaint.painter, isA<ShanshuiCanvasPainter>());
     });
   });
 }

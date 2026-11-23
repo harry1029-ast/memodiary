@@ -32,7 +32,11 @@ void main() {
       }
     });
 
-    Future<void> pumpSettings(WidgetTester tester, {double width = 800}) async {
+    Future<void> pumpSettings(
+      WidgetTester tester, {
+      double width = 800,
+      double textScaleFactor = 1.0,
+    }) async {
       tester.view.physicalSize = Size(width, 2400);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -41,19 +45,22 @@ void main() {
       });
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: SettingsScreen(
-            database: db,
-            mediaService: mediaService,
-            scenerySettingsService: scenerySettings,
-            permissionChecker: () async => {},
-            initialStats: const StorageStats(
-              activeEntriesCount: 0,
-              totalMediaFiles: 0,
-              totalMediaBytes: 0,
-              orphanMediaFiles: 0,
-              orphanMediaBytes: 0,
+        MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(textScaleFactor)),
+          child: MaterialApp(
+            theme: InkDiaryTheme.light,
+            home: SettingsScreen(
+              database: db,
+              mediaService: mediaService,
+              scenerySettingsService: scenerySettings,
+              permissionChecker: () async => {},
+              initialStats: const StorageStats(
+                activeEntriesCount: 0,
+                totalMediaFiles: 0,
+                totalMediaBytes: 0,
+                orphanMediaFiles: 0,
+                orphanMediaBytes: 0,
+              ),
             ),
           ),
         ),
@@ -88,11 +95,38 @@ void main() {
         // Verify options in dialog
         expect(find.byKey(const Key('settings_realm_option_auto')), findsOneWidget);
         expect(find.byKey(const Key('settings_realm_option_nature')), findsOneWidget);
+        expect(find.byKey(const Key('settings_realm_option_westLake')), findsOneWidget);
+        expect(find.byKey(const Key('settings_realm_option_fenghuang')), findsOneWidget);
         expect(find.byKey(const Key('settings_realm_option_indoor')), findsOneWidget);
         expect(find.byKey(const Key('settings_realm_option_outdoor')), findsOneWidget);
 
-        // Select Indoor (室内)
-        await tester.tap(find.byKey(const Key('settings_realm_option_indoor')));
+        // Select West Lake (西湖)
+        final westLakeOption = find.byKey(const Key('settings_realm_option_westLake'));
+        await tester.ensureVisible(westLakeOption);
+        await tester.tap(westLakeOption);
+        await tester.pumpAndSettle();
+
+        expect(mockStorage.data['memodiary_scenery_realm_preference'], equals('westLake'));
+        expect(find.textContaining('已设置画卷场景为：西湖'), findsOneWidget);
+        expect(find.textContaining('西湖'), findsAtLeast(1));
+
+        // Re-open dialog and select Fenghuang (凤凰)
+        await tester.tap(find.byKey(const Key('settings_scenery_realm_tile')));
+        await tester.pumpAndSettle();
+        final fenghuangOption = find.byKey(const Key('settings_realm_option_fenghuang'));
+        await tester.ensureVisible(fenghuangOption);
+        await tester.tap(fenghuangOption);
+        await tester.pumpAndSettle();
+
+        expect(mockStorage.data['memodiary_scenery_realm_preference'], equals('fenghuang'));
+        expect(find.textContaining('已设置画卷场景为：凤凰'), findsOneWidget);
+
+        // Re-open dialog and select Indoor (室内)
+        await tester.tap(find.byKey(const Key('settings_scenery_realm_tile')));
+        await tester.pumpAndSettle();
+        final indoorOption = find.byKey(const Key('settings_realm_option_indoor'));
+        await tester.ensureVisible(indoorOption);
+        await tester.tap(indoorOption);
         await tester.pumpAndSettle();
 
         // Dialog should be dismissed
@@ -141,9 +175,15 @@ void main() {
     );
 
     testWidgets(
-      'renders cleanly without overflow down to 320px width',
+      'renders cleanly without overflow down to 320px width and 1.3x text scale including realm dialog',
       (tester) async {
-        await pumpSettings(tester, width: 320);
+        await pumpSettings(tester, width: 320, textScaleFactor: 1.3);
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(find.byKey(const Key('settings_scenery_realm_tile')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('settings_realm_option_westLake')), findsOneWidget);
+        expect(find.byKey(const Key('settings_realm_option_fenghuang')), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

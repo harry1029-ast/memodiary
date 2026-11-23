@@ -119,8 +119,10 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
     return Scaffold(
       backgroundColor: const Color(0xFF141210),
       body: SafeArea(
-        child: Column(
-          children: [
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: Column(
+            children: [
             // Top Bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -164,6 +166,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                               Text(
                                 '${_atmosphere.titleZh} · ${_atmosphere.weather.badgeZh}',
                                 overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                                 style: const TextStyle(
                                   color: Color(0xFFF7F4EB),
                                   fontSize: 14,
@@ -174,6 +177,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                               Text(
                                 '「${_atmosphere.poem}」',
                                 overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
                                 style: const TextStyle(
                                   color: Color(0xFFC8BFA8),
                                   fontSize: 11,
@@ -272,12 +276,10 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               color: const Color(0xFF1E1A17),
-              child: MediaQuery.withClampedTextScaling(
-                maxScaleFactor: 1.3,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                     // Scenery Realm row
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -386,11 +388,11 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
                         ],
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

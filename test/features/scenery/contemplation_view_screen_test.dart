@@ -21,8 +21,11 @@ void main() {
       ShanshuiAtmosphereState realTimeAtmosphere = baseSpringDayAtmosphere,
       AudioSanctumService? audioService,
       bool enableAmbientAnimation = true,
+      double width = 800,
+      double height = 1200,
+      double textScaleFactor = 1.0,
     }) async {
-      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.physicalSize = Size(width, height);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
         tester.view.resetPhysicalSize();
@@ -30,14 +33,17 @@ void main() {
       });
 
       await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: ContemplationViewScreen(
-            initialAtmosphere: initialAtmosphere,
-            realTimeAtmosphere: realTimeAtmosphere,
-            audioService: audioService ??
-                AudioSanctumService(enablePlatformAudio: false),
-            enableAmbientAnimation: enableAmbientAnimation,
+        MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(textScaleFactor)),
+          child: MaterialApp(
+            theme: InkDiaryTheme.light,
+            home: ContemplationViewScreen(
+              initialAtmosphere: initialAtmosphere,
+              realTimeAtmosphere: realTimeAtmosphere,
+              audioService: audioService ??
+                  AudioSanctumService(enablePlatformAudio: false),
+              enableAmbientAnimation: enableAmbientAnimation,
+            ),
           ),
         ),
       );
@@ -187,18 +193,45 @@ void main() {
 
         // Verify realm chips exist
         expect(find.byKey(const Key('contemplation_realm_chip_nature')), findsOneWidget);
+        expect(find.byKey(const Key('contemplation_realm_chip_westLake')), findsOneWidget);
+        expect(find.byKey(const Key('contemplation_realm_chip_fenghuang')), findsOneWidget);
         expect(find.byKey(const Key('contemplation_realm_chip_indoor')), findsOneWidget);
         expect(find.byKey(const Key('contemplation_realm_chip_outdoor')), findsOneWidget);
 
         expect(find.text('山水'), findsOneWidget);
+        expect(find.text('西湖'), findsOneWidget);
+        expect(find.text('凤凰'), findsOneWidget);
         expect(find.text('室内'), findsOneWidget);
         expect(find.text('街市'), findsOneWidget);
         for (final label in ['清晨', '白天', '傍晚', '夜晚', '晴天', '多云', '小雨', '雷雨', '下雪']) {
           expect(find.text(label), findsOneWidget);
         }
 
+        // Switch to West Lake (西湖)
+        final westLakeChip = find.byKey(const Key('contemplation_realm_chip_westLake'));
+        await tester.ensureVisible(westLakeChip);
+        await tester.tap(westLakeChip);
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.textContaining('春 · 苏堤春晓柳如烟'), findsOneWidget);
+        expect(find.text('苏堤春晓'), findsOneWidget);
+        expect(find.textContaining('间株杨柳间株桃，水光潋滟晴方好'), findsOneWidget);
+        expect(find.byKey(const Key('contemplation_sync_realtime_button')), findsOneWidget);
+
+        // Switch to Fenghuang (凤凰)
+        final fenghuangChip = find.byKey(const Key('contemplation_realm_chip_fenghuang'));
+        await tester.ensureVisible(fenghuangChip);
+        await tester.tap(fenghuangChip);
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.textContaining('春 · 烟雨桃花映沱江'), findsOneWidget);
+        expect(find.text('湘西春晓'), findsOneWidget);
+        expect(find.textContaining('江水初平翠黛低，吊脚楼前桃花溪'), findsOneWidget);
+
         // Switch to Indoor (雅室)
-        await tester.tap(find.byKey(const Key('contemplation_realm_chip_indoor')));
+        final indoorChip = find.byKey(const Key('contemplation_realm_chip_indoor'));
+        await tester.ensureVisible(indoorChip);
+        await tester.tap(indoorChip);
         await tester.pump(const Duration(milliseconds: 100));
 
         // Seasonal title for indoor spring: 春 · 桃夭茶寮
@@ -263,20 +296,43 @@ void main() {
 
         expect(audioService.isPlaying, isTrue);
         expect(audioService.activePreset, equals(SoundscapePreset.bambooBreeze));
+
+        // Switch to West Lake (spring sunny day) -> bambooBreeze
+        final westLakeChip = find.byKey(const Key('contemplation_realm_chip_westLake'));
+        await tester.ensureVisible(westLakeChip);
+        await tester.tap(westLakeChip);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(audioService.activePreset, equals(SoundscapePreset.bambooBreeze));
+
+        // Switch West Lake to Winter -> vintageLibrary
+        await tester.tap(find.byKey(const Key('contemplation_season_chip_winter')));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(audioService.activePreset, equals(SoundscapePreset.vintageLibrary));
+
+        // Switch West Lake to Rainy -> gentleRain
+        await tester.tap(find.byKey(const Key('contemplation_weather_chip_rainy')));
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(audioService.activePreset, equals(SoundscapePreset.gentleRain));
       },
     );
 
     testWidgets(
       'renders cleanly without overflow down to 320px width with clamped text scaling',
       (tester) async {
-        tester.view.physicalSize = const Size(320, 700);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() {
-          tester.view.resetPhysicalSize();
-          tester.view.resetDevicePixelRatio();
-        });
-
-        await pumpContemplationViewScreen(tester);
+        await pumpContemplationViewScreen(
+          tester,
+          width: 320,
+          height: 700,
+          textScaleFactor: 1.5,
+          initialAtmosphere: const ShanshuiAtmosphereState(
+            realm: ShanshuiRealm.westLake,
+            season: ShanshuiSeason.winter,
+            timeOfDay: ShanshuiTimeOfDay.night,
+            weather: ShanshuiWeather.snowy,
+            isManualPreview: true,
+          ),
+        );
+        expect(find.byKey(const Key('contemplation_sync_realtime_button')), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

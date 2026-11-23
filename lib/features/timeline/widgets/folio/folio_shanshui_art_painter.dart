@@ -53,10 +53,12 @@ class FolioShanshuiArtPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     switch (realm) {
       case ShanshuiRealm.nature:
+      case ShanshuiRealm.westLake:
         _paintNatureRealm(canvas, size);
       case ShanshuiRealm.indoor:
         _paintIndoorRealm(canvas, size);
       case ShanshuiRealm.outdoor:
+      case ShanshuiRealm.fenghuang:
         _paintOutdoorRealm(canvas, size);
     }
   }

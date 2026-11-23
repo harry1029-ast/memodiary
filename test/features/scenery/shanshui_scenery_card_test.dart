@@ -158,15 +158,19 @@ void main() {
             onRealmPreferenceChanged: (pref) => changedPref = pref,
           ),
         );
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
 
         // Tap the realm badge
         await tester.tap(find.byKey(const Key('scenery_realm_badge')));
-        await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
 
         // Verify bottom sheet options
         expect(find.byKey(const Key('scenery_realm_option_auto')), findsOneWidget);
         expect(find.byKey(const Key('scenery_realm_option_nature')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_realm_option_westLake')), findsOneWidget);
+        expect(find.byKey(const Key('scenery_realm_option_fenghuang')), findsOneWidget);
         expect(find.byKey(const Key('scenery_realm_option_indoor')), findsOneWidget);
         expect(find.byKey(const Key('scenery_realm_option_outdoor')), findsOneWidget);
 
@@ -181,6 +185,20 @@ void main() {
           find.descendant(
             of: find.byKey(const Key('scenery_realm_option_nature')),
             matching: find.text('山水'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('scenery_realm_option_westLake')),
+            matching: find.text('西湖'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('scenery_realm_option_fenghuang')),
+            matching: find.text('凤凰'),
           ),
           findsOneWidget,
         );
@@ -201,9 +219,29 @@ void main() {
         expect(find.textContaining('Auto'), findsNothing);
         expect(find.textContaining('Indoor'), findsNothing);
 
-        // Tap Indoor option
-        await tester.tap(find.byKey(const Key('scenery_realm_option_indoor')));
-        await tester.pumpAndSettle();
+        // Tap West Lake option (scroll into view on headless viewport)
+        final westLakeOption = find.byKey(const Key('scenery_realm_option_westLake'));
+        await tester.ensureVisible(westLakeOption);
+        await tester.pump();
+        await tester.tap(westLakeOption);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(changedPref, equals(SceneryRealmPreference.westLake));
+        expect(mockStorage.data['memodiary_scenery_realm_preference'], equals('westLake'));
+        expect(find.text('春 · 苏堤'), findsOneWidget);
+        expect(find.text('西湖'), findsOneWidget);
+
+        // Re-open and tap Indoor option
+        await tester.tap(find.byKey(const Key('scenery_realm_badge')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        final indoorOption = find.byKey(const Key('scenery_realm_option_indoor'));
+        await tester.ensureVisible(indoorOption);
+        await tester.pump();
+        await tester.tap(indoorOption);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
 
         // Sheet closed
         expect(find.byKey(const Key('scenery_realm_option_indoor')), findsNothing);
@@ -216,6 +254,48 @@ void main() {
         expect(find.text('春 · 桃夭茶寮'), findsNothing);
         expect(find.text('春 · 桃夭'), findsOneWidget);
         expect(find.text('室内'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'westLake card and 6-option realm switcher sheet render cleanly at 320px width and 1.3x text scale',
+      (tester) async {
+        const westLakeInferred = ShanshuiAtmosphereState(
+          realm: ShanshuiRealm.westLake,
+          season: ShanshuiSeason.winter,
+          timeOfDay: ShanshuiTimeOfDay.night,
+          weather: ShanshuiWeather.snowy,
+          isJournalInferred: true,
+        );
+
+        await tester.pumpWidget(
+          MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
+            child: buildTestHarness(atmosphere: westLakeInferred, width: 320),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+
+        expect(find.text('冬 · 残雪'), findsOneWidget);
+        expect(find.text('自动 · 西湖'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(find.byKey(const Key('scenery_realm_badge')));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(find.byKey(const Key('scenery_realm_option_fenghuang')), findsOneWidget);
+        final fenghuangOption = find.byKey(const Key('scenery_realm_option_fenghuang'));
+        await tester.ensureVisible(fenghuangOption);
+        await tester.pump();
+        await tester.tap(fenghuangOption);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(find.text('冬 · 凤凰'), findsOneWidget);
+        expect(find.text('凤凰'), findsOneWidget);
+        expect(tester.takeException(), isNull);
       },
     );
 
