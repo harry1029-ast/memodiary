@@ -1,7 +1,7 @@
 ---
 id: SPEC-025
 title: Timeline Scrubber, Month Spine Dividers and Scroll Performance
-status: ready-for-agent
+status: completed
 created_at: 2026-11-26T17:58:23+08:00
 adr: ADR-0015
 ---
