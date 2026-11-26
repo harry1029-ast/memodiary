@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead_models.dart';
@@ -43,7 +44,7 @@ class EntrySummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
-    final palette = FoldedXuanSlipPalette.of(context);
+    final palette = context.atmospherePalette;
     final entry = item.entry;
 
     final timestampText = DateFormat('yyyy-MM-dd HH:mm').format(entry.entryDate);
@@ -90,7 +91,7 @@ class EntrySummaryCard extends StatelessWidget {
             Container(
               height: 1.0,
               margin: const EdgeInsets.symmetric(vertical: 8),
-              color: palette.dividerColor,
+              color: palette.slipDividerColor,
             ),
 
             // Tier 2: Snippet on left + Thumbnail on right

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_scenery_geometry.dart';
 import '../models/west_lake_palette.dart';
+import 'scenery_canvas_painter_base.dart';
+import 'shanshui_atmospheric_effects.dart';
 import 'west_lake_atmosphere_layers.dart';
 import 'west_lake_bridges.dart';
 import 'west_lake_static_architecture.dart';
@@ -13,29 +15,29 @@ import 'west_lake_water_features.dart';
 /// Pairs an immutable cached `ui.Picture` static backdrop (northern hills,
 /// Baochu Pagoda, Xizhao Hill, 5-story Leifeng Pagoda, and lake base) with
 /// dynamic 60 FPS animations across all 4 seasons, 4 times of day, and 5 weathers.
-class WestLakePainter extends CustomPainter {
-  final ShanshuiAtmosphereState atmosphere;
+class WestLakePainter extends SceneryCanvasPainterBase {
   final WestLakePalette westLakePalette;
-  final double animationTime;
-  final List<ShanshuiParticle> particles;
-  final List<ShanshuiWeatherDrop> weatherDrops;
   final List<ShanshuiRipple> ripples;
-  final bool showCalligraphy;
-  final bool fullPoem;
-  final double lightningAlpha;
-  final ui.Picture? cachedStaticPicture;
+
+  static const _calligraphyConfig = SceneryCalligraphyConfig(
+    titleX: 1418.0,
+    titleY: 58.0,
+    poemStartX: 1372.0,
+    poemStartY: 66.0,
+    sealX: 1408.0,
+  );
 
   WestLakePainter({
-    required this.atmosphere,
+    required super.atmosphere,
     WestLakePalette? westLakePalette,
-    required this.animationTime,
-    required this.particles,
-    required this.weatherDrops,
+    required super.animationTime,
+    required super.particles,
+    required super.weatherDrops,
     this.ripples = const [],
-    this.showCalligraphy = false,
-    this.fullPoem = false,
-    this.lightningAlpha = 0.0,
-    this.cachedStaticPicture,
+    super.showCalligraphy = false,
+    super.fullPoem = false,
+    super.lightningAlpha = 0.0,
+    super.cachedStaticPicture,
   }) : westLakePalette = westLakePalette ??
             WestLakePalette.of(atmosphere.season, atmosphere.timeOfDay);
 
@@ -68,11 +70,14 @@ class WestLakePainter extends CustomPainter {
       WestLakeBridges.visibleVisitorCount(timeOfDay);
 
   @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 1500.0, size.height / 1000.0);
-    canvas.clipRect(const Rect.fromLTWH(0, 0, 1500, 1000));
+  int get rippleCount => ripples.length;
 
+  @override
+  bool shouldRepaintExtra(covariant WestLakePainter oldDelegate) =>
+      oldDelegate.westLakePalette != westLakePalette;
+
+  @override
+  void paintScene(Canvas canvas) {
     final isNight = atmosphere.timeOfDay == ShanshuiTimeOfDay.night;
     final isDawn = atmosphere.timeOfDay == ShanshuiTimeOfDay.dawn;
     final isDusk = atmosphere.timeOfDay == ShanshuiTimeOfDay.dusk;
@@ -194,27 +199,20 @@ class WestLakePainter extends CustomPainter {
 
     // 11. Calligraphy colophon, poetic couplet & cinnabar seal
     if (showCalligraphy) {
-      WestLakeAtmosphereLayers.paintCalligraphyAndSeal(
+      ShanshuiAtmosphericEffects.drawCalligraphyAndSeal(
         canvas,
         atmosphere: atmosphere,
         isNight: isNight,
         fullPoem: fullPoem,
+        config: _calligraphyConfig,
       );
     }
 
     // 12. Soft radial vignette
-    WestLakeAtmosphereLayers.paintVignette(canvas, isNight: isNight);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant WestLakePainter oldDelegate) {
-    return oldDelegate.animationTime != animationTime ||
-        oldDelegate.atmosphere != atmosphere ||
-        oldDelegate.lightningAlpha != lightningAlpha ||
-        oldDelegate.showCalligraphy != showCalligraphy ||
-        oldDelegate.fullPoem != fullPoem ||
-        oldDelegate.ripples.length != ripples.length;
+    ShanshuiAtmosphericEffects.drawVignette(
+      canvas,
+      isNight: isNight,
+      dayEdgeColor: const Color.fromRGBO(32, 22, 14, 0.20),
+    );
   }
 }

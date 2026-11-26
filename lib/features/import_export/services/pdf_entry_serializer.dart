@@ -4,8 +4,8 @@ import '../../../core/documents/entry_content_decoder.dart';
 import '../../../core/documents/media_embed_data.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
-import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
+import 'pdf_sandboxed_image_loader.dart';
 
 /// Converts canonical diary content blocks into a sequential list of flowable
 /// [pw.Widget] items for multi-page horizontal PDF generation.
@@ -285,26 +285,6 @@ class PdfEntrySerializer {
     );
   }
 
-  static Future<pw.MemoryImage?> _loadMemoryImage(
-    String relativePath,
-    MediaSandboxService mediaService,
-  ) async {
-    try {
-      if (!MediaSandboxService.isStrictlyRelative(relativePath)) {
-        return null;
-      }
-      final file = await mediaService.getFileFromRelativePath(relativePath);
-      if (await file.exists()) {
-        final rawBytes = await file.readAsBytes();
-        final pngBytes = await ImageFormatTranscoder.ensurePdfCompatibleBytes(rawBytes);
-        return pw.MemoryImage(pngBytes);
-      }
-    } catch (_) {
-      // Fallback on decode/transcode failure
-    }
-    return null;
-  }
-
   static pw.Widget _roundedImage(pw.MemoryImage memoryImage) {
     return pw.ClipRRect(
       horizontalRadius: 6,
@@ -318,7 +298,10 @@ class PdfEntrySerializer {
     MediaSandboxService mediaService,
     PdfFontResolver fontResolver,
   ) async {
-    final memoryImage = await _loadMemoryImage(media.path, mediaService);
+    final memoryImage = await PdfSandboxedImageLoader.load(
+      relativePath: media.path,
+      mediaService: mediaService,
+    );
     final mediaWidget = memoryImage != null
         ? pw.Container(
             margin: const pw.EdgeInsets.symmetric(vertical: 8),
@@ -350,7 +333,10 @@ class PdfEntrySerializer {
     PdfFontResolver fontResolver,
   ) async {
     final thumbPath = media.thumbnailPath(isVideo: true);
-    final memoryImage = await _loadMemoryImage(thumbPath, mediaService);
+    final memoryImage = await PdfSandboxedImageLoader.load(
+      relativePath: thumbPath,
+      mediaService: mediaService,
+    );
 
     final videoWidget = pw.Container(
       margin: const pw.EdgeInsets.symmetric(vertical: 8),

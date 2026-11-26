@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../templates/models/template_style.dart';
+import '../../../templates/services/stationery_geometry.dart';
+import '../../../templates/widgets/stationery_canvas_framing.dart';
 import 'folio_reading_perspective.dart';
 
 /// Paints the integer-locked Paper Heart frame (320px x 448px) with a classical
@@ -41,127 +43,134 @@ class FolioSilkRulingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
+    final frame = StationeryGeometry.buildFolioFrame(
+      size: size,
+      showFishtail: showFishtail,
+    );
 
     // 1. Classical Double Outer Border (文武双栏: outer 2.0px, inner 0.8px, gap 3.0px)
     final outerFramePaint = Paint()
       ..color = frameColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = frame.outerStrokeWidth;
 
     final innerFramePaint = Paint()
       ..color = frameColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8;
+      ..strokeWidth = frame.innerStrokeWidth;
 
-    canvas.drawRect(rect.inflate(3.0), outerFramePaint);
-    canvas.drawRect(rect, innerFramePaint);
+    canvas.drawRect(frame.outerRect, outerFramePaint);
+    canvas.drawRect(frame.innerRect, innerFramePaint);
 
     // 2. Conditional Fishtail Mark (版心黑鱼尾)
-    if (showFishtail) {
-      _paintFishtailMark(canvas, size);
+    final fishtail = frame.fishtailPolygon;
+    if (fishtail != null) {
+      final fishtailPaint = Paint()
+        ..color = isDark ? const Color(0x4AFFFFFF) : frameColor.withValues(alpha: 0.85)
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(
+        StationeryCanvasFraming.pathFromPolygon(fishtail),
+        fishtailPaint,
+      );
     }
 
-    // 3. Ruling Lines
-    final rulePaint = Paint()
-      ..color = ruleColor
-      ..strokeWidth = 1.0;
+    // 3. Ruling Lines & Dots from StationeryGeometry
+    final rulings = StationeryGeometry.buildFolioRulings(
+      size: size,
+      isVerticalColumns: layout == FolioRulingLayout.vermilionVertical,
+      isGenkoVertical: layout == FolioRulingLayout.genkoVertical,
+      backgroundType: backgroundType,
+      showLeftMarginRule: showLeftMarginRule,
+    );
 
+    _paintRulings(canvas, rulings);
+  }
+
+  void _paintRulings(Canvas canvas, StationeryRulingGeometry rulings) {
     switch (layout) {
       case FolioRulingLayout.vermilionVertical:
-        _paintVerticalLines(canvas, size.height, rulePaint);
+        _drawLines(
+          canvas,
+          rulings.primaryLines,
+          Paint()
+            ..color = ruleColor
+            ..strokeWidth = 1.0,
+        );
 
       case FolioRulingLayout.genkoVertical:
-        _paintVerticalLines(canvas, size.height, rulePaint);
-        final cellPaint = Paint()
-          ..color = ruleColor.withValues(alpha: 0.38)
-          ..strokeWidth = 0.8;
-        for (int row = 1; row < 16; row++) {
-          final y = row * 28.0;
-          canvas.drawLine(Offset(0, y), Offset(size.width, y), cellPaint);
-        }
+        _drawLines(
+          canvas,
+          rulings.primaryLines,
+          Paint()
+            ..color = ruleColor
+            ..strokeWidth = 1.0,
+        );
+        _drawLines(
+          canvas,
+          rulings.secondaryLines,
+          Paint()
+            ..color = ruleColor.withValues(alpha: 0.38)
+            ..strokeWidth = 0.8,
+        );
 
       case FolioRulingLayout.faithfulHorizontal:
-        _paintHorizontalRuling(canvas, size, rulePaint);
+        _paintHorizontalRulings(canvas, rulings);
     }
   }
 
-  void _paintVerticalLines(Canvas canvas, double height, Paint paint) {
-    for (int column = 1; column < 10; column++) {
-      final x = column * 32.0;
-      canvas.drawLine(Offset(x, 0), Offset(x, height), paint);
-    }
-  }
-
-  void _paintHorizontalLines(Canvas canvas, double width, Paint paint) {
-    for (int row = 1; row < 14; row++) {
-      final y = row * 32.0;
-      canvas.drawLine(Offset(0, y), Offset(width, y), paint);
-    }
-  }
-
-  void _paintHorizontalRuling(Canvas canvas, Size size, Paint rulePaint) {
+  void _paintHorizontalRulings(Canvas canvas, StationeryRulingGeometry rulings) {
     switch (backgroundType) {
       case TemplateBackgroundType.color:
         break;
       case TemplateBackgroundType.lined:
       case TemplateBackgroundType.paperTexture:
-        final linePaint = backgroundType == TemplateBackgroundType.paperTexture
-            ? (Paint()
-              ..color = ruleColor
-              ..strokeWidth = 0.9)
-            : rulePaint;
-        _paintHorizontalLines(canvas, size.width, linePaint);
-        if (showLeftMarginRule) {
+        _drawLines(
+          canvas,
+          rulings.primaryLines,
+          Paint()
+            ..color = ruleColor
+            ..strokeWidth =
+                backgroundType == TemplateBackgroundType.paperTexture ? 0.9 : 1.0,
+        );
+        if (rulings.leftMarginRule case final marginRule?) {
           final marginPaint = Paint()
             ..color = isDark ? const Color(0x38EF9A9A) : const Color(0x52C04851)
             ..strokeWidth = 1.2;
-          canvas.drawLine(const Offset(24.0, 0), Offset(24.0, size.height), marginPaint);
+          canvas.drawLine(marginRule.start, marginRule.end, marginPaint);
         }
       case TemplateBackgroundType.grid:
-        final vGridPaint = Paint()
-          ..color = ruleColor.withValues(alpha: ruleColor.a * 0.85)
-          ..strokeWidth = 0.6;
-        final hGridPaint = Paint()
-          ..color = ruleColor
-          ..strokeWidth = 0.8;
-        _paintVerticalLines(canvas, size.height, vGridPaint);
-        _paintHorizontalLines(canvas, size.width, hGridPaint);
+        _drawLines(
+          canvas,
+          rulings.secondaryLines,
+          Paint()
+            ..color = ruleColor.withValues(alpha: ruleColor.a * 0.85)
+            ..strokeWidth = 0.6,
+        );
+        _drawLines(
+          canvas,
+          rulings.primaryLines,
+          Paint()
+            ..color = ruleColor
+            ..strokeWidth = 0.8,
+        );
       case TemplateBackgroundType.dotGrid:
         final dotPaint = Paint()
           ..color = ruleColor
           ..style = PaintingStyle.fill;
-        for (int row = 1; row < 14; row++) {
-          final y = row * 32.0;
-          for (int column = 1; column < 10; column++) {
-            canvas.drawCircle(Offset(column * 32.0, y), 1.2, dotPaint);
-          }
+        for (final dot in rulings.dots) {
+          canvas.drawCircle(dot, 1.2, dotPaint);
         }
     }
   }
 
-  void _paintFishtailMark(Canvas canvas, Size size) {
-    final midX = size.width / 2;
-    final leftX = midX - 14.0;
-    final rightX = midX + 14.0;
-    const topY = 2.0;
-    const tailHeight = 18.0;
-    const bottomY = topY + tailHeight;
-
-    final fishtailPath = Path()
-      ..moveTo(leftX, topY)
-      ..lineTo(midX, topY + tailHeight * 0.45)
-      ..lineTo(rightX, topY)
-      ..lineTo(rightX, bottomY - tailHeight * 0.15)
-      ..lineTo(midX, bottomY)
-      ..lineTo(leftX, bottomY - tailHeight * 0.15)
-      ..close();
-
-    final fishtailPaint = Paint()
-      ..color = isDark ? const Color(0x4AFFFFFF) : frameColor.withValues(alpha: 0.85)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawPath(fishtailPath, fishtailPaint);
+  void _drawLines(
+    Canvas canvas,
+    List<StationeryLineSegment> lines,
+    Paint paint,
+  ) {
+    for (final line in lines) {
+      canvas.drawLine(line.start, line.end, paint);
+    }
   }
 
   @override

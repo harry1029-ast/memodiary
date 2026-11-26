@@ -8,6 +8,7 @@ import '../models/shanshui_scenery_geometry.dart';
 import 'outdoor_street_crowd_layers.dart';
 import 'outdoor_street_shop_layers.dart';
 import 'outdoor_street_static_architecture.dart';
+import 'scenery_canvas_painter_base.dart';
 import 'shanshui_atmospheric_effects.dart';
 
 /// Full interactive vector painter for the Outdoor Ancient Market Street (`街市`) realm.
@@ -18,29 +19,36 @@ import 'shanshui_atmospheric_effects.dart';
 /// reflections, behind-counter vendors occluded by foreground stall counters,
 /// foreground customers and avenue walkers, multi-stop radial lanterns,
 /// upward-pulsing summer fireflies, rain puddle ripples, and classical colophons.
-class OutdoorStreetPainter extends CustomPainter {
-  final ShanshuiAtmosphereState atmosphere;
+class OutdoorStreetPainter extends SceneryCanvasPainterBase {
   final OutdoorStreetPalette streetPalette;
-  final double animationTime;
-  final List<ShanshuiParticle> particles;
-  final List<ShanshuiWeatherDrop> weatherDrops;
   final List<dynamic>? ripples;
-  final bool showCalligraphy;
-  final bool fullPoem;
-  final double lightningAlpha;
-  final ui.Picture? cachedStaticPicture;
+
+  static const _calligraphyConfig = SceneryCalligraphyConfig(
+    titleX: 388.0,
+    titleY: 62.0,
+    poemStartX: 424.0,
+    poemStartY: 62.0,
+    poemColumnStepX: 26.0,
+    poemStepY: 19.0,
+    sealX: 378.0,
+    sealTopGap: 6.0,
+    dayTextColor: Color.fromRGBO(42, 30, 22, 0.86),
+    nightTextColor: Color.fromRGBO(248, 244, 232, 0.90),
+    dayShadowColor: Colors.white70,
+    nightShadowColor: Colors.black54,
+  );
 
   OutdoorStreetPainter({
-    required this.atmosphere,
+    required super.atmosphere,
     OutdoorStreetPalette? streetPalette,
-    required this.animationTime,
-    required this.particles,
-    required this.weatherDrops,
+    required super.animationTime,
+    required super.particles,
+    required super.weatherDrops,
     this.ripples,
-    this.showCalligraphy = false,
-    this.fullPoem = false,
-    this.lightningAlpha = 0.0,
-    this.cachedStaticPicture,
+    super.showCalligraphy = false,
+    super.fullPoem = false,
+    super.lightningAlpha = 0.0,
+    super.cachedStaticPicture,
   }) : streetPalette = streetPalette ??
             OutdoorStreetPalette.of(atmosphere.season, atmosphere.timeOfDay);
 
@@ -62,10 +70,14 @@ class OutdoorStreetPainter extends CustomPainter {
   }
 
   @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 1500.0, size.height / 1000.0);
+  int get rippleCount => ripples?.length ?? 0;
 
+  @override
+  bool shouldRepaintExtra(covariant OutdoorStreetPainter oldDelegate) =>
+      oldDelegate.streetPalette != streetPalette;
+
+  @override
+  void paintScene(Canvas canvas) {
     final isNight = atmosphere.timeOfDay == ShanshuiTimeOfDay.night;
     final isDawn = atmosphere.timeOfDay == ShanshuiTimeOfDay.dawn;
     final isDusk = atmosphere.timeOfDay == ShanshuiTimeOfDay.dusk;
@@ -173,13 +185,22 @@ class OutdoorStreetPainter extends CustomPainter {
 
     // 13. Classical calligraphy colophon & cinnabar seal
     if (showCalligraphy) {
-      _paintCalligraphyAndSeal(canvas, isNight: isNight);
+      ShanshuiAtmosphericEffects.drawCalligraphyAndSeal(
+        canvas,
+        atmosphere: atmosphere,
+        isNight: isNight,
+        fullPoem: fullPoem,
+        config: _calligraphyConfig,
+      );
     }
 
     // 14. Soft vignette around canvas borders
-    _paintVignette(canvas, isNight: isNight);
-
-    canvas.restore();
+    ShanshuiAtmosphericEffects.drawVignette(
+      canvas,
+      isNight: isNight,
+      nightEdgeColor: const Color.fromRGBO(5, 8, 14, 0.48),
+      dayEdgeColor: const Color.fromRGBO(38, 24, 14, 0.22),
+    );
   }
 
   void _paintSkyAndCelestial(
@@ -380,101 +401,5 @@ class OutdoorStreetPainter extends CustomPainter {
       lengthMultiplier: 1.0,
       snowAlpha: 0.82,
     );
-  }
-
-  void _paintCalligraphyAndSeal(Canvas canvas, {required bool isNight}) {
-    canvas.save();
-    final title = atmosphere.season.nameZhFor(ShanshuiRealm.outdoor).replaceAll(' · ', '');
-    final textColor = isNight
-        ? const Color.fromRGBO(248, 244, 232, 0.90)
-        : const Color.fromRGBO(42, 30, 22, 0.86);
-
-    for (int index = 0; index < title.length; index++) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: title[index],
-          style: TextStyle(
-            color: textColor,
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'serif',
-            shadows: [
-              Shadow(
-                color: isNight ? Colors.black54 : Colors.white70,
-                blurRadius: 6,
-              ),
-            ],
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(388, 62.0 + index * 30.0));
-    }
-
-    if (fullPoem) {
-      final poemChars = atmosphere.season
-          .poemFor(ShanshuiRealm.outdoor)
-          .replaceAll(RegExp(r'[，。、；：！？\s]'), '');
-      if (poemChars.isNotEmpty) {
-        final colLen = (poemChars.length / 2).ceil();
-        final poemStyle = TextStyle(
-          color: textColor.withValues(alpha: 0.82),
-          fontSize: 17,
-          fontFamily: 'serif',
-          shadows: [
-            Shadow(
-              color: isNight ? Colors.black54 : Colors.white70,
-              blurRadius: 6,
-            ),
-          ],
-        );
-        for (int index = 0; index < poemChars.length; index++) {
-          final col = index ~/ colLen;
-          final row = index % colLen;
-          final tp = TextPainter(
-            text: TextSpan(text: poemChars[index], style: poemStyle),
-            textDirection: TextDirection.ltr,
-          )..layout();
-          tp.paint(canvas, Offset(424.0 + col * 26.0, 62.0 + row * 19.0));
-        }
-      }
-    }
-
-    ShanshuiAtmosphericEffects.drawCinnabarSeal(
-      canvas,
-      x: 378.0,
-      y: 68.0 + title.length * 30.0,
-      size: 36.0,
-      sealText: atmosphere.season.sealTextFor(ShanshuiRealm.outdoor),
-      fontSize: 12,
-      leftPad: 5,
-      rowOffset1: 5,
-      rowOffset2: 18,
-    );
-    canvas.restore();
-  }
-
-  void _paintVignette(Canvas canvas, {required bool isNight}) {
-    final vigPaint = Paint()
-      ..shader = RadialGradient(
-        center: Alignment.center,
-        radius: 0.85,
-        colors: [
-          Colors.transparent,
-          isNight ? const Color.fromRGBO(5, 8, 14, 0.48) : const Color.fromRGBO(38, 24, 14, 0.22),
-        ],
-        stops: const [0.65, 1.0],
-      ).createShader(const Rect.fromLTWH(0, 0, 1500, 1000));
-    canvas.drawRect(const Rect.fromLTWH(0, 0, 1500, 1000), vigPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant OutdoorStreetPainter oldDelegate) {
-    return oldDelegate.animationTime != animationTime ||
-        oldDelegate.atmosphere != atmosphere ||
-        oldDelegate.lightningAlpha != lightningAlpha ||
-        oldDelegate.showCalligraphy != showCalligraphy ||
-        oldDelegate.fullPoem != fullPoem ||
-        (oldDelegate.ripples?.length ?? 0) != (ripples?.length ?? 0);
   }
 }

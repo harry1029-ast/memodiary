@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/min_tap_target.dart';
 import 'package:memodiary/features/editor/widgets/journal_letterhead_models.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
-import 'chronicle_desk_palette.dart';
 
 /// Modal bottom sheet for filtering the `Chronicle Desk` timeline by
 /// Mood (`心绪`), Weather (`天时`), With Media (`含图影`), and Weekly Review (`周志复盘`).
@@ -71,7 +71,7 @@ class _ChronicleCharmFilterSheetState extends State<ChronicleCharmFilterSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ChronicleDeskPalette.of(context);
+    final palette = context.atmospherePalette;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.85;
     final moodOptions = JournalLetterheadUtils.moodOptions.reversed.toList();
 
@@ -117,7 +117,7 @@ class _ChronicleCharmFilterSheetState extends State<ChronicleCharmFilterSheet> {
                   const SizedBox(height: 8),
                   Divider(
                     height: 1,
-                    color: palette.brassGold.withValues(alpha: 0.22),
+                    color: palette.accentSecondary.withValues(alpha: 0.22),
                   ),
                   const SizedBox(height: 14),
                   _CharmSection(
@@ -197,7 +197,7 @@ class _ChronicleCharmFilterSheetState extends State<ChronicleCharmFilterSheet> {
 
 class _CharmSection extends StatelessWidget {
   final String title;
-  final ChronicleDeskPalette palette;
+  final AtmospherePalette palette;
   final List<Widget> children;
 
   const _CharmSection({
@@ -218,7 +218,7 @@ class _CharmSection extends StatelessWidget {
             fontFamily: InkDiaryTheme.fontNotoSerif,
             fontSize: 13,
             fontWeight: FontWeight.bold,
-            color: palette.brassGold,
+            color: palette.accentSecondary,
             letterSpacing: 0.6,
           ),
         ),
@@ -230,7 +230,7 @@ class _CharmSection extends StatelessWidget {
 }
 
 class _CharmSheetHeader extends StatelessWidget {
-  final ChronicleDeskPalette palette;
+  final AtmospherePalette palette;
   final bool hasActiveCharms;
   final VoidCallback onReset;
   final VoidCallback onClose;
@@ -256,7 +256,7 @@ class _CharmSheetHeader extends StatelessWidget {
                     width: 4,
                     height: 16,
                     decoration: BoxDecoration(
-                      color: palette.cinnabar,
+                      color: palette.accentPrimary,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -301,7 +301,7 @@ class _CharmSheetHeader extends StatelessWidget {
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
                 color: hasActiveCharms
-                    ? palette.cinnabar
+                    ? palette.accentPrimary
                     : palette.textFaint,
               ),
             ),
@@ -339,7 +339,7 @@ class _CharmOptionChip extends StatelessWidget {
   final String? leadingEmoji;
   final IconData? leadingIcon;
   final bool isSelected;
-  final ChronicleDeskPalette palette;
+  final AtmospherePalette palette;
   final VoidCallback onTap;
 
   const _CharmOptionChip({
@@ -357,10 +357,10 @@ class _CharmOptionChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
     final bgColor = isSelected
-        ? palette.cinnabar.withValues(alpha: 0.16)
-        : palette.agedChip;
-    final borderColor = isSelected ? palette.cinnabar : palette.deckleBorder;
-    final textColor = isSelected ? palette.cinnabar : palette.textPrimary;
+        ? palette.accentPrimary.withValues(alpha: 0.16)
+        : palette.agedFiberChip;
+    final borderColor = isSelected ? palette.accentPrimary : palette.deckleBorder;
+    final textColor = isSelected ? palette.accentPrimary : palette.textPrimary;
 
     return MinTapTarget(
       selected: isSelected,
@@ -390,7 +390,7 @@ class _CharmOptionChip extends StatelessWidget {
                       Icon(
                         leadingIcon,
                         size: 16,
-                        color: isSelected ? palette.cinnabar : tokens.danmo,
+                        color: isSelected ? palette.accentPrimary : tokens.danmo,
                       ),
                     const SizedBox(width: 6),
                     Text(
@@ -410,7 +410,7 @@ class _CharmOptionChip extends StatelessWidget {
                       Icon(
                         Icons.check_rounded,
                         size: 15,
-                        color: palette.cinnabar,
+                        color: palette.accentPrimary,
                       ),
                     ],
           ],

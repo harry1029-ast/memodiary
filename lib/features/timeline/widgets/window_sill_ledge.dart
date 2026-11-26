@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/utils/ambient_animation_utils.dart';
-import 'chronicle_desk_palette.dart';
 import 'window_sill_ornaments_painter.dart';
 
 /// Merged carved wooden Window Sill Ledge (`窗台案沿`) with brass corner brackets (`铜包角`)
@@ -84,7 +84,7 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
 
   @override
   Widget build(BuildContext context) {
-    final palette = ChronicleDeskPalette.of(context);
+    final palette = context.atmospherePalette;
 
     return SizedBox(
       key: const Key('timeline_window_sill_ledge'),
@@ -130,7 +130,7 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
                     ),
                     border: Border(
                       top: BorderSide(
-                        color: palette.brassGold.withValues(alpha: 0.42),
+                        color: palette.accentSecondary.withValues(alpha: 0.42),
                         width: 0.8,
                       ),
                       bottom: BorderSide(
@@ -148,7 +148,7 @@ class _WindowSillLedgeState extends State<WindowSillLedge>
                   ),
                   child: CustomPaint(
                     painter: BrassCornerBracketsPainter(
-                      brassColor: palette.brassGold,
+                      brassColor: palette.accentSecondary,
                     ),
                   ),
                 ),

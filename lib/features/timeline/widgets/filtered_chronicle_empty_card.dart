@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/widgets/folded_xuan_slip.dart';
-import 'chronicle_desk_palette.dart';
 
 /// Compact inline empty state card displayed when active `Date Index Tray`
 /// filters match 0 entries while active entries still exist in SQLite.
@@ -18,7 +17,7 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ChronicleDeskPalette.of(context);
+    final palette = context.atmospherePalette;
 
     return FoldedXuanSlip(
       key: const Key('timeline_filtered_empty_card'),
@@ -32,7 +31,7 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: palette.cinnabar, width: 1.2),
+              border: Border.all(color: palette.accentPrimary, width: 1.2),
             ),
             alignment: Alignment.center,
             child: Text(
@@ -41,7 +40,7 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
                 fontFamily: InkDiaryTheme.fontNotoSerif,
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: palette.cinnabar,
+                color: palette.accentPrimary,
               ),
             ),
           ),
@@ -70,8 +69,8 @@ class FilteredChronicleEmptyCard extends StatelessWidget {
             key: const Key('timeline_clear_filters_button'),
             onPressed: onClearFilters,
             style: FilledButton.styleFrom(
-              backgroundColor: palette.cinnabar,
-              foregroundColor: context.atmospherePalette.onAccentPrimary,
+              backgroundColor: palette.accentPrimary,
+              foregroundColor: palette.onAccentPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             ),
             child: Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
@@ -23,7 +24,7 @@ class TimeCapsuleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
-    final palette = FoldedXuanSlipPalette.of(context);
+    final palette = context.atmospherePalette;
     final unlockDate = item.entry.unlockAt;
     final unlockDateStr = unlockDate != null
         ? DateFormat('yyyy年M月d日').format(unlockDate)
@@ -121,7 +122,7 @@ class TimeCapsuleCard extends StatelessWidget {
           Container(
             height: 1.0,
             margin: const EdgeInsets.symmetric(vertical: 8),
-            color: palette.dividerColor,
+            color: palette.slipDividerColor,
           ),
 
           // Tier 2: Sealed Countdown Row (Never renders plainText)

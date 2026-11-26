@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/min_tap_target.dart';
-import 'chronicle_desk_palette.dart';
 
 ({Color bgColor, Color borderColor, Color textColor}) _resolveTrayChipColors({
-  required ChronicleDeskPalette palette,
+  required AtmospherePalette palette,
   required bool isActive,
 }) {
   return (
     bgColor: isActive
-        ? palette.cinnabar.withValues(alpha: 0.20)
-        : palette.agedChip,
+        ? palette.accentPrimary.withValues(alpha: 0.20)
+        : palette.agedFiberChip,
     borderColor: isActive
-        ? palette.cinnabar.withValues(alpha: 0.55)
+        ? palette.accentPrimary.withValues(alpha: 0.55)
         : Colors.transparent,
-    textColor: isActive ? palette.cinnabar : palette.textMuted,
+    textColor: isActive ? palette.accentPrimary : palette.textMuted,
   );
 }
 
@@ -23,7 +23,7 @@ class TrayFilterChip extends StatelessWidget {
   final String label;
   final String semanticLabel;
   final bool isActive;
-  final ChronicleDeskPalette palette;
+  final AtmospherePalette palette;
   final VoidCallback onTap;
 
   const TrayFilterChip({
@@ -70,7 +70,7 @@ class TrayFilterChip extends StatelessWidget {
 /// Chronological sort toggle (`最新 ↓` / `最早 ↑`) used in Row 1 of [DateIndexTray].
 class TraySortToggleButton extends StatelessWidget {
   final bool isNewestFirst;
-  final ChronicleDeskPalette palette;
+  final AtmospherePalette palette;
   final VoidCallback onTap;
 
   const TraySortToggleButton({
@@ -89,7 +89,7 @@ class TraySortToggleButton extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 28, minWidth: 44),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: palette.agedChip,
+          color: palette.agedFiberChip,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: palette.deckleBorder, width: 1.0),
         ),
@@ -111,7 +111,7 @@ class TraySortToggleButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: palette.cinnabar,
+                color: palette.accentPrimary,
               ),
             ),
           ],
@@ -127,7 +127,7 @@ class MonthIndexChip extends StatelessWidget {
   final int month;
   final bool isActive;
   final bool hasEntries;
-  final ChronicleDeskPalette palette;
+  final AtmospherePalette palette;
   final VoidCallback onTap;
 
   const MonthIndexChip({
@@ -178,7 +178,7 @@ class MonthIndexChip extends StatelessWidget {
                 height: 4,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: palette.cinnabar,
+                  color: palette.accentPrimary,
                 ),
               )
             else
@@ -195,7 +195,7 @@ class XunSegmentChip extends StatelessWidget {
   final String label;
   final String rangeLabel;
   final bool isActive;
-  final ChronicleDeskPalette palette;
+  final AtmospherePalette palette;
   final VoidCallback onTap;
 
   const XunSegmentChip({

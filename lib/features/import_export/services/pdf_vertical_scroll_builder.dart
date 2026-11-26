@@ -1,19 +1,18 @@
 import 'dart:math' as math;
-import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../../core/documents/entry_content_decoder.dart';
 import '../../../core/documents/entry_vertical_packer.dart';
-import '../../../core/documents/media_embed_data.dart';
 import '../../../core/documents/vertical_typography_mapper.dart';
 import '../../../core/services/media_sandbox_service.dart';
 import '../../templates/models/template_style.dart';
+import '../../templates/services/stationery_geometry.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
 import '../../timeline/services/folio_media_pairing.dart';
-import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
 import 'pdf_polaroid_overlay_builder.dart';
+import 'pdf_sandboxed_image_loader.dart';
 import 'pdf_template_renderer.dart';
 
 sealed class _PdfKeepsakeItem {
@@ -22,9 +21,7 @@ sealed class _PdfKeepsakeItem {
 
 class _PdfKeepsakeColumnItem extends _PdfKeepsakeItem {
   final List<VerticalStyledToken> styledTokens;
-  final bool isTitle;
-  final bool isHeader;
-  final bool isQuote;
+  final bool isTitle, isHeader, isQuote;
 
   _PdfKeepsakeColumnItem({
     required this.styledTokens,
@@ -76,24 +73,28 @@ class PdfVerticalScrollBuilder {
     return result;
   }
 
-  static pw.EdgeInsets _resolvePaperHeartMargin(
+  static StationeryLayoutMetrics _resolveVerticalMetrics(
     PdfPageFormat landscapeFormat,
     TemplateStyle style,
-  ) {
-    final metrics = StationeryLayoutCalculator.calculateMetrics(
-      canvasWidth: landscapeFormat.width,
-      canvasHeight: landscapeFormat.height,
-      backgroundType: style.type,
-      horizontalMargin: style.resolvedHorizontalMargin,
-      lineSpacing: style.lineSpacing,
-    );
-    return pw.EdgeInsets.fromLTRB(
-      metrics.innerFrameRect.left,
-      metrics.heavenMarginPx + 6.0,
-      landscapeFormat.width - metrics.innerFrameRect.right,
-      metrics.earthMarginPx + 6.0,
-    );
-  }
+  ) =>
+      StationeryLayoutCalculator.calculateMetrics(
+        canvasWidth: landscapeFormat.width,
+        canvasHeight: landscapeFormat.height,
+        backgroundType: style.type,
+        horizontalMargin: style.resolvedHorizontalMargin,
+        lineSpacing: style.lineSpacing,
+      );
+
+  static pw.EdgeInsets _marginFromMetrics(
+    PdfPageFormat landscapeFormat,
+    StationeryLayoutMetrics metrics,
+  ) =>
+      pw.EdgeInsets.fromLTRB(
+        metrics.innerFrameRect.left,
+        metrics.heavenMarginPx + 6.0,
+        landscapeFormat.width - metrics.innerFrameRect.right,
+        metrics.earthMarginPx + 6.0,
+      );
 
   /// Compiles entry content into landscape vector PDF pages in authentic right-to-left vertical flow.
   static Future<List<pw.Page>> buildVerticalScrollPages({
@@ -106,7 +107,8 @@ class PdfVerticalScrollBuilder {
     PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
     final landscapeFormat = pageFormat.landscape;
-    final pageMargin = _resolvePaperHeartMargin(landscapeFormat, style);
+    final metrics = _resolveVerticalMetrics(landscapeFormat, style);
+    final pageMargin = _marginFromMetrics(landscapeFormat, metrics);
 
     final pageWidgets = await buildPageWidgets(
       entry: entry,
@@ -116,6 +118,7 @@ class PdfVerticalScrollBuilder {
       sealText: sealText,
       mountPlan: mountPlan,
       pageFormat: pageFormat,
+      precomputedMetrics: metrics,
     );
 
     return pageWidgets
@@ -128,6 +131,7 @@ class PdfVerticalScrollBuilder {
                 context,
                 style,
                 isVertical: true,
+                metrics: metrics,
               ),
             ),
             build: (context) => pageWidget,
@@ -145,9 +149,11 @@ class PdfVerticalScrollBuilder {
     required String sealText,
     FolioMountPlan mountPlan = const FolioMountPlan([]),
     PdfPageFormat pageFormat = PdfPageFormat.a4,
+    StationeryLayoutMetrics? precomputedMetrics,
   }) async {
     final landscapeFormat = pageFormat.landscape;
-    final pageMargin = _resolvePaperHeartMargin(landscapeFormat, style);
+    final metrics = precomputedMetrics ?? _resolveVerticalMetrics(landscapeFormat, style);
+    final pageMargin = _marginFromMetrics(landscapeFormat, metrics);
 
     final availableHeight = landscapeFormat.height - pageMargin.vertical;
     final availableWidth = landscapeFormat.width - pageMargin.horizontal;
@@ -385,10 +391,17 @@ class PdfVerticalScrollBuilder {
         );
 
       case _PdfKeepsakeColophonItem colophon:
-        final dateStr = DateFormat('yyyy年M月d日').format(colophon.entry.entryDate);
-        const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
-        final colophonText = '$dateStr 星期${weekdays[colophon.entry.entryDate.weekday - 1]}';
+        final data = StationeryGeometry.buildColophon(colophon.entry);
         final dateStyle = pw.TextStyle(font: resolver.regularFont, fontSize: 8.0, color: PdfColors.grey700);
+        pw.Widget buildRun(String text) => pw.Column(
+              mainAxisSize: pw.MainAxisSize.min,
+              children: text.split('').map((ch) => ch == ' '
+                  ? pw.SizedBox(height: 4.0)
+                  : pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
+                      child: pw.Text(resolver.sanitizeText(ch), style: dateStyle),
+                    )).toList(),
+            );
 
         return pw.Container(
           width: colophon.estimatedWidth,
@@ -403,15 +416,13 @@ class PdfVerticalScrollBuilder {
                   width: PdfTemplateRenderer.kVerticalColumnStride,
                   child: pw.Column(
                     mainAxisSize: pw.MainAxisSize.min,
-                    children: colophonText
-                        .split('')
-                        .map(
-                          (character) => pw.Padding(
-                            padding: const pw.EdgeInsets.symmetric(vertical: 0.5),
-                            child: pw.Text(resolver.sanitizeText(character), style: dateStyle),
-                          ),
-                        )
-                        .toList(),
+                    children: [
+                      buildRun(data.dateLine),
+                      if (data.detailParts.isNotEmpty) ...[
+                        pw.SizedBox(height: 8.0),
+                        buildRun(data.detailLine),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -457,10 +468,9 @@ class PdfVerticalScrollBuilder {
             isQuote: textCol.isQuote,
           ));
         case VerticalMediaColumn mediaCol:
-          final img = await _loadTranscodedImage(
-            mediaCol.media,
-            mediaService,
-            isVideo: mediaCol.isVideo,
+          final img = await PdfSandboxedImageLoader.load(
+            relativePath: mediaCol.media.thumbnailPath(isVideo: mediaCol.isVideo),
+            mediaService: mediaService,
           );
           items.add(_PdfKeepsakeMediaItem(
             image: img,
@@ -472,24 +482,5 @@ class PdfVerticalScrollBuilder {
 
     items.add(_PdfKeepsakeColophonItem(entry: entry, sealText: sealText));
     return items;
-  }
-
-  static Future<pw.MemoryImage?> _loadTranscodedImage(
-    MediaEmbedData media,
-    MediaSandboxService mediaService, {
-    bool isVideo = false,
-  }) async {
-    try {
-      final resolvedPath = media.thumbnailPath(isVideo: isVideo);
-      final file = MediaSandboxService.isStrictlyRelative(resolvedPath)
-          ? await mediaService.getFileFromRelativePath(resolvedPath)
-          : null;
-      if (file != null && await file.exists()) {
-        final rawBytes = await file.readAsBytes();
-        final pngBytes = await ImageFormatTranscoder.ensurePdfCompatibleBytes(rawBytes);
-        return pw.MemoryImage(pngBytes);
-      }
-    } catch (_) {}
-    return null;
   }
 }

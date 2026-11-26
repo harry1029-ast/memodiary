@@ -5,7 +5,7 @@ import 'atmosphere_theme_models.dart';
 
 /// Semantic ink & Xuan paper design tokens embodying classical Chinese literati aesthetics.
 @immutable
-class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
+class InkDiaryTokens {
   // Ground & Paper Foundation
   final Color xuanGround;
   final Color xuanPureLeaf;
@@ -77,90 +77,10 @@ class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
   Color get ricePaper => xuanGround;
 
   /// Light theme default tokens (`云岚昼`).
-  static const light = InkDiaryTokens(
-    xuanGround: Color(0xFFEFF3F6), xuanPureLeaf: Color(0xFFFFFFFF),
-    agedFiber: Color(0xFFE3E9EF), deckleBorder: Color(0xFFCCD5DF),
-    jiaomo: Color(0xFF1E2A38), nongmo: Color(0xFF344658),
-    danmo: Color(0xFF516578), qingmo: Color(0xFF7E93A6),
-    cinnabar: Color(0xFF4A7A9C), cinnabarWash: Color(0xFFE2ECF3),
-    cinnabarDark: Color(0xFF355C78), onAccentPrimary: Colors.white,
-    sealCinnabar: Color(0xFFC24D43), sealCinnabarWash: Color(0xFFF5E5E3),
-    sealCinnabarDark: Color(0xFF9A3830), emeraldSaved: Color(0xFF059669),
-  );
+  static final light = InkDiaryTokens.fromAtmosphere(AtmospherePalettes.yunhaoDay);
 
   /// Dark theme default tokens (`皓月夜`).
-  static const dark = InkDiaryTokens(
-    xuanGround: Color(0xFF0E1520), xuanPureLeaf: Color(0xFF1B2738),
-    agedFiber: Color(0xFF202E40), deckleBorder: Color(0xFF2D4057),
-    jiaomo: Color(0xFFEEF2F6), nongmo: Color(0xFFCBD6E2),
-    danmo: Color(0xFF9EB0C4), qingmo: Color(0xFF6D8299),
-    cinnabar: Color(0xFFF2B866), cinnabarWash: Color(0xFF2E2417),
-    cinnabarDark: Color(0xFFB88339), onAccentPrimary: Color(0xFF1A140B),
-    sealCinnabar: Color(0xFFD16B62), sealCinnabarWash: Color(0xFF351F22),
-    sealCinnabarDark: Color(0xFFA84A42), emeraldSaved: Color(0xFF10B981),
-  );
-
-  @override
-  InkDiaryTokens copyWith({
-    Color? xuanGround,
-    Color? xuanPureLeaf,
-    Color? agedFiber,
-    Color? deckleBorder,
-    Color? jiaomo,
-    Color? nongmo,
-    Color? danmo,
-    Color? qingmo,
-    Color? cinnabar,
-    Color? cinnabarWash,
-    Color? cinnabarDark,
-    Color? onAccentPrimary,
-    Color? sealCinnabar,
-    Color? sealCinnabarWash,
-    Color? sealCinnabarDark,
-    Color? emeraldSaved,
-  }) {
-    return InkDiaryTokens(
-      xuanGround: xuanGround ?? this.xuanGround,
-      xuanPureLeaf: xuanPureLeaf ?? this.xuanPureLeaf,
-      agedFiber: agedFiber ?? this.agedFiber,
-      deckleBorder: deckleBorder ?? this.deckleBorder,
-      jiaomo: jiaomo ?? this.jiaomo,
-      nongmo: nongmo ?? this.nongmo,
-      danmo: danmo ?? this.danmo,
-      qingmo: qingmo ?? this.qingmo,
-      cinnabar: cinnabar ?? this.cinnabar,
-      cinnabarWash: cinnabarWash ?? this.cinnabarWash,
-      cinnabarDark: cinnabarDark ?? this.cinnabarDark,
-      onAccentPrimary: onAccentPrimary ?? this.onAccentPrimary,
-      sealCinnabar: sealCinnabar ?? this.sealCinnabar,
-      sealCinnabarWash: sealCinnabarWash ?? this.sealCinnabarWash,
-      sealCinnabarDark: sealCinnabarDark ?? this.sealCinnabarDark,
-      emeraldSaved: emeraldSaved ?? this.emeraldSaved,
-    );
-  }
-
-  @override
-  InkDiaryTokens lerp(ThemeExtension<InkDiaryTokens>? other, double t) {
-    if (other is! InkDiaryTokens) return this;
-    return InkDiaryTokens(
-      xuanGround: Color.lerp(xuanGround, other.xuanGround, t)!,
-      xuanPureLeaf: Color.lerp(xuanPureLeaf, other.xuanPureLeaf, t)!,
-      agedFiber: Color.lerp(agedFiber, other.agedFiber, t)!,
-      deckleBorder: Color.lerp(deckleBorder, other.deckleBorder, t)!,
-      jiaomo: Color.lerp(jiaomo, other.jiaomo, t)!,
-      nongmo: Color.lerp(nongmo, other.nongmo, t)!,
-      danmo: Color.lerp(danmo, other.danmo, t)!,
-      qingmo: Color.lerp(qingmo, other.qingmo, t)!,
-      cinnabar: Color.lerp(cinnabar, other.cinnabar, t)!,
-      cinnabarWash: Color.lerp(cinnabarWash, other.cinnabarWash, t)!,
-      cinnabarDark: Color.lerp(cinnabarDark, other.cinnabarDark, t)!,
-      onAccentPrimary: Color.lerp(onAccentPrimary, other.onAccentPrimary, t)!,
-      sealCinnabar: Color.lerp(sealCinnabar, other.sealCinnabar, t)!,
-      sealCinnabarWash: Color.lerp(sealCinnabarWash, other.sealCinnabarWash, t)!,
-      sealCinnabarDark: Color.lerp(sealCinnabarDark, other.sealCinnabarDark, t)!,
-      emeraldSaved: Color.lerp(emeraldSaved, other.emeraldSaved, t)!,
-    );
-  }
+  static final dark = InkDiaryTokens.fromAtmosphere(AtmospherePalettes.yunhaoNight);
 
   @override
   bool operator ==(Object other) {
@@ -188,11 +108,7 @@ class InkDiaryTokens extends ThemeExtension<InkDiaryTokens> {
 
 /// Convenience extension on [BuildContext] to access [InkDiaryTokens] directly.
 extension InkDiaryContext on BuildContext {
-  InkDiaryTokens get inkTokens =>
-      Theme.of(this).extension<InkDiaryTokens>() ??
-      (Theme.of(this).brightness == Brightness.dark
-          ? InkDiaryTokens.dark
-          : InkDiaryTokens.light);
+  InkDiaryTokens get inkTokens => InkDiaryTokens.fromAtmosphere(atmospherePalette);
 }
 
 /// Comprehensive [ThemeData] builder for 云皓日记 (MemoDiary).
@@ -203,11 +119,7 @@ class InkDiaryTheme {
   static const String fontMaShanZheng = 'Ma Shan Zheng';
 
   /// Convenience lookup for current [InkDiaryTokens] in [context].
-  static InkDiaryTokens tokensOf(BuildContext context) =>
-      Theme.of(context).extension<InkDiaryTokens>() ??
-      (Theme.of(context).brightness == Brightness.dark
-          ? InkDiaryTokens.dark
-          : InkDiaryTokens.light);
+  static InkDiaryTokens tokensOf(BuildContext context) => context.inkTokens;
 
   /// Default light theme (`云岚昼`).
   static ThemeData get light => forLightPalette(LightAtmospherePaletteId.yunhaoDay);
@@ -283,7 +195,7 @@ class InkDiaryTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: colorScheme.surface,
-      extensions: [tokens, palette],
+      extensions: [palette],
       fontFamily: fontNotoSerif,
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,

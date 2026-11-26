@@ -38,15 +38,4 @@ class FolioMetadataFormatter {
     final minute = date.minute.toString().padLeft(2, '0');
     return '$year.$month.$day · $hour:$minute';
   }
-
-  /// Pads seal inscription to exactly 4 characters with '印' if shorter.
-  static String normalizeSealText(String text) {
-    final clean = text.replaceAll(RegExp(r'\s+'), '');
-    final runes = clean.runes.map((rune) => String.fromCharCode(rune)).toList();
-    if (runes.isEmpty) return '心迹安放';
-    while (runes.length < 4) {
-      runes.add('印');
-    }
-    return runes.take(4).join('');
-  }
 }

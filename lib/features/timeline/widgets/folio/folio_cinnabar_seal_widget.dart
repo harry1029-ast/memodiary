@@ -2,18 +2,15 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../editor/widgets/cinnabar_signature_seal.dart';
 import '../../../templates/models/template_style.dart';
 import 'folio_reading_perspective.dart';
 
-/// Interactive Cinnabar Signature Seal widget that stamps onto the concluding leaf.
+/// Interactive Cinnabar Signature Seal animation adapter that stamps onto the concluding leaf.
 ///
-/// Features:
-/// - 2x2 carved Seal block with Zhuwen (朱文 relief) or Baiwen (白文 intaglio) carving.
-/// - Dynamic landing pop animation (1.42 scale -> 0.94 overshoot -> 1.0 settling at -4° tilt).
-/// - Expanding cinnabar shockwave ripple ring on impact.
-/// - Medium haptic feedback ([HapticFeedback.mediumImpact]).
-/// - Tap-to-restamp animation replay.
-/// - Accessible semantics labeled '钤印' and identified by [Key('folio_seal_stamp')].
+/// Delegates 2×2 R-to-L seal carving to [CinnabarSignatureSeal] (backed by
+/// `StationeryGeometry.buildSealLayout`), while owning the 620ms landing pop,
+/// shockwave ripple ring, haptic impact, and tap-to-restamp replay.
 class FolioCinnabarSealWidget extends StatefulWidget {
   final String sealText;
   final FolioSubstrateTheme theme;
@@ -49,10 +46,12 @@ class _FolioCinnabarSealWidgetState extends State<FolioCinnabarSealWidget>
 
     _controller.addListener(_handleAnimationProgress);
 
-    if (widget.animateOnMount) {
-      _controller.forward();
-    } else {
-      _controller.value = 1.0;
+    if (widget.sealStyle != SealCarvingStyle.hidden) {
+      if (widget.animateOnMount) {
+        _controller.forward();
+      } else {
+        _controller.value = 1.0;
+      }
     }
   }
 
@@ -79,9 +78,8 @@ class _FolioCinnabarSealWidgetState extends State<FolioCinnabarSealWidget>
 
   @override
   Widget build(BuildContext context) {
-    final chars = widget.sealText.runes.map(String.fromCharCode).toList();
-    while (chars.length < 4) {
-      chars.add('印');
+    if (widget.sealStyle == SealCarvingStyle.hidden) {
+      return const SizedBox.shrink();
     }
 
     final isZhuwen = widget.sealStyle == SealCarvingStyle.zhuwen;
@@ -135,51 +133,32 @@ class _FolioCinnabarSealWidgetState extends State<FolioCinnabarSealWidget>
                   ),
                 ),
 
-              // Carved 2x2 Cinnabar Seal Block
+              // Carved 2×2 Cinnabar Seal Block
               Transform.rotate(
                 angle: rotDeg * math.pi / 180,
                 child: Transform.scale(
                   scale: scale,
-                  child: Container(
-                    width: 46,
-                    height: 46,
+                  child: CinnabarSignatureSeal(
+                    sealStyle: widget.sealStyle,
+                    overrideText: widget.sealText,
+                    size: 46.0,
+                    sealColor: sealColor,
+                    intaglioTextColor: widget.theme.pageBg,
+                    zhuwenBackgroundColor: sealColor.withValues(alpha: 0.08),
+                    fontFamily: widget.theme.fontFamily,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.bold,
+                    borderWidth: isZhuwen ? 2.2 : 1.5,
+                    borderRadius: 3.0,
                     padding: const EdgeInsets.all(2.5),
-                    decoration: BoxDecoration(
-                      color: isZhuwen
-                          ? sealColor.withValues(alpha: 0.08)
-                          : sealColor,
-                      border: Border.all(
-                        color: sealColor,
-                        width: isZhuwen ? 2.2 : 1.5,
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
                       ),
-                      borderRadius: BorderRadius.circular(3),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black26,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: EdgeInsets.zero,
-                      children: chars.take(4).map((character) {
-                        return Center(
-                          child: Text(
-                            character,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              height: 1.0,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: widget.theme.fontFamily,
-                              color: isZhuwen ? sealColor : widget.theme.pageBg,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                    ],
+                    includeSemantics: false,
                   ),
                 ),
               ),

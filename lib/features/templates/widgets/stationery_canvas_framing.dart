@@ -1,26 +1,16 @@
 import 'package:flutter/material.dart';
 import '../models/template_style.dart';
+import '../services/stationery_geometry.dart';
 import '../services/stationery_layout_calculator.dart';
 
-/// Modular drawing service responsible for classical Double Outer Border (文武双栏)
+/// Flutter [Canvas] adapter for classical Double Outer Border (文武双栏)
 /// and central folding Fishtail Mark (版心黑鱼尾) geometry.
 class StationeryCanvasFraming {
   const StationeryCanvasFraming._();
 
   /// Determines whether the Double Outer Border should be drawn for a template.
-  static bool shouldDrawDoubleBorder(TemplateStyle style) {
-    if (style.type == TemplateBackgroundType.lined ||
-        style.type == TemplateBackgroundType.grid ||
-        style.type == TemplateBackgroundType.paperTexture) {
-      return true;
-    }
-    // Solid color / dotGrid with non-minimal substrate or non-default tint
-    if (style.tokens.substrate != PaperSubstrate.minimal ||
-        style.tokens.ruleTint != RuleInkTint.slate) {
-      return true;
-    }
-    return false;
-  }
+  static bool shouldDrawDoubleBorder(TemplateStyle style) =>
+      StationeryGeometry.shouldDrawDoubleBorder(style);
 
   /// Resolves the stroke color for outer or inner border rectangles,
   /// adapting automatically for low-glare contrast on [PaperSubstrate.obsidian].
@@ -47,12 +37,11 @@ class StationeryCanvasFraming {
   static bool shouldRenderFishtail({
     required TemplateStyle style,
     required int columnCount,
-  }) {
-    if (style.type != TemplateBackgroundType.grid) {
-      return false;
-    }
-    return columnCount >= 7;
-  }
+  }) =>
+      StationeryGeometry.shouldRenderFishtail(
+        style: style,
+        columnCount: columnCount,
+      );
 
   /// Resolves the fill color for the Fishtail Mark.
   static Color resolveFishtailColor({
@@ -68,47 +57,16 @@ class StationeryCanvasFraming {
     return const Color(0xD94A4B4D);
   }
 
-  /// Paints the Double Outer Border (文武双栏) and conditional Fishtail Mark (版心黑鱼尾).
-  static void paintFraming({
-    required Canvas canvas,
-    required StationeryLayoutMetrics metrics,
-    required TemplateStyle style,
-    double scrollOffsetY = 0.0,
-  }) {
-    if (!shouldDrawDoubleBorder(style)) return;
-
-    final isDark = style.tokens.substrate == PaperSubstrate.obsidian ||
-        ThemeData.estimateBrightnessForColor(style.backgroundColor) == Brightness.dark;
-
-    final translatedRect = metrics.innerFrameRect.translate(0.0, -scrollOffsetY);
-
-    final outerColor = resolveBorderColor(style: style, isOuter: true);
-    final innerColor = resolveBorderColor(style: style, isOuter: false);
-
-    final outerPaint = Paint()
-      ..color = outerColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
-
-    final innerPaint = Paint()
-      ..color = innerColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.9;
-
-    // 文武双栏: Outer stroke inflated by 4.0px, inner stroke on innerFrameRect
-    final outerRect = translatedRect.inflate(4.0);
-    canvas.drawRect(outerRect, outerPaint);
-    canvas.drawRect(translatedRect, innerPaint);
-
-    if (shouldRenderFishtail(style: style, columnCount: metrics.columnCount)) {
-      paintFishtailMark(
-        canvas: canvas,
-        metrics: metrics,
-        style: style,
-        isDark: isDark,
-        scrollOffsetY: scrollOffsetY,
-      );
+  /// Converts a polygon vertex list from [StationeryGeometry] into a closed [Path].
+  static Path pathFromPolygon(List<Offset> vertices) {
+    final path = Path();
+    if (vertices.isEmpty) return path;
+    path.moveTo(vertices.first.dx, vertices.first.dy);
+    for (int index = 1; index < vertices.length; index++) {
+      path.lineTo(vertices[index].dx, vertices[index].dy);
     }
+    path.close();
+    return path;
   }
 
   /// Constructs the classical notched Fishtail Mark (版心黑鱼尾) polygon path.
@@ -116,53 +74,53 @@ class StationeryCanvasFraming {
     required Rect columnRect,
     required double lineStridePx,
   }) {
-    final path = Path();
-    final midX = columnRect.center.dx;
-    final leftX = columnRect.left + 2.0;
-    final rightX = columnRect.right - 2.0;
-
-    final topY = columnRect.top + lineStridePx * 0.2;
-    final tailHeight = lineStridePx * 0.75;
-    final bottomY = topY + tailHeight;
-
-    path.moveTo(leftX, topY);
-    path.lineTo(midX, topY + tailHeight * 0.45);
-    path.lineTo(rightX, topY);
-    path.lineTo(rightX, bottomY - tailHeight * 0.15);
-    path.lineTo(midX, bottomY);
-    path.lineTo(leftX, bottomY - tailHeight * 0.15);
-    path.close();
-
-    return path;
+    return pathFromPolygon(
+      StationeryGeometry.buildFishtailPolygon(
+        leftX: columnRect.left + 2.0,
+        rightX: columnRect.right - 2.0,
+        topY: columnRect.top + lineStridePx * 0.2,
+        tailHeight: lineStridePx * 0.75,
+      ),
+    );
   }
 
-  /// Paints the classical Fishtail Mark near the top of the central folding column.
-  static void paintFishtailMark({
+  /// Paints the Double Outer Border (文武双栏) and conditional Fishtail Mark (版心黑鱼尾).
+  static void paintFraming({
     required Canvas canvas,
     required StationeryLayoutMetrics metrics,
     required TemplateStyle style,
-    required bool isDark,
     double scrollOffsetY = 0.0,
   }) {
-    final translatedRect = metrics.innerFrameRect.translate(0.0, -scrollOffsetY);
-    final midCol = metrics.columnCount ~/ 2;
-    final colLeft = translatedRect.left + midCol * metrics.cellAdvancePx;
-    final colRect = Rect.fromLTWH(
-      colLeft,
-      translatedRect.top,
-      metrics.cellAdvancePx,
-      metrics.lineStridePx,
+    final frame = StationeryGeometry.buildFrame(
+      metrics: metrics,
+      style: style,
+      scrollOffsetY: scrollOffsetY,
     );
+    if (!frame.drawDoubleBorder) return;
 
-    final fishtailPath = createFishtailPath(
-      columnRect: colRect,
-      lineStridePx: metrics.lineStridePx,
-    );
+    final isDark = style.tokens.substrate == PaperSubstrate.obsidian ||
+        ThemeData.estimateBrightnessForColor(style.backgroundColor) == Brightness.dark;
 
-    final fishtailPaint = Paint()
-      ..color = resolveFishtailColor(style: style, isDark: isDark)
-      ..style = PaintingStyle.fill;
+    final outerPaint = Paint()
+      ..color = resolveBorderColor(style: style, isOuter: true)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = frame.outerStrokeWidth;
 
-    canvas.drawPath(fishtailPath, fishtailPaint);
+    final innerPaint = Paint()
+      ..color = resolveBorderColor(style: style, isOuter: false)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = frame.innerStrokeWidth;
+
+    // 文武双栏: Outer stroke inflated by 4.0px, inner stroke on innerFrameRect
+    canvas.drawRect(frame.outerRect, outerPaint);
+    canvas.drawRect(frame.innerRect, innerPaint);
+
+    final fishtail = frame.fishtailPolygon;
+    if (fishtail != null) {
+      final fishtailPaint = Paint()
+        ..color = resolveFishtailColor(style: style, isDark: isDark)
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(pathFromPolygon(fishtail), fishtailPaint);
+    }
   }
 }

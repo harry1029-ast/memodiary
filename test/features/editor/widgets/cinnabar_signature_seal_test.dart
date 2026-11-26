@@ -63,6 +63,24 @@ void main() {
       expect(decoration.color, isNot(Colors.transparent));
     });
 
+    testWidgets('pads 3-character odd seal text with 印 in R-to-L order', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: CinnabarSignatureSeal(
+              sealStyle: SealCarvingStyle.zhuwen,
+              overrideText: '拾光存',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('拾'), findsOneWidget);
+      expect(find.text('光'), findsOneWidget);
+      expect(find.text('存'), findsOneWidget);
+      expect(find.text('印'), findsOneWidget);
+    });
+
     testWidgets('provides accessible Semantics label', (tester) async {
       final handle = tester.ensureSemantics();
       await tester.pumpWidget(

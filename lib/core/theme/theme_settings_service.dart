@@ -11,14 +11,9 @@ class ThemeSettingsService {
   static const String _keyCustomDarkPalette = 'memodiary_custom_dark_palette';
 
   final FlutterSecureStorage _storage;
-  bool _isSyncingNotifiers = false;
 
   /// Shared singleton instance for convenient app-wide access.
   static final ThemeSettingsService instance = ThemeSettingsService();
-
-  /// Reactive notifier holding the current active [ThemeMode].
-  final ValueNotifier<ThemeMode> themeModeNotifier =
-      ValueNotifier<ThemeMode>(ThemeMode.system);
 
   /// Reactive notifier holding the unified two-axis [AtmosphereThemeConfig].
   final ValueNotifier<AtmosphereThemeConfig> configNotifier =
@@ -31,46 +26,9 @@ class ThemeSettingsService {
               iOptions: IOSOptions(
                 accessibility: KeychainAccessibility.first_unlock_this_device,
               ),
-            ) {
-    themeModeNotifier.addListener(_onThemeModeNotifierChanged);
-    configNotifier.addListener(_onConfigNotifierChanged);
-  }
+            );
 
-  void _onThemeModeNotifierChanged() {
-    if (_isSyncingNotifiers) return;
-    final nextMode = themeModeNotifier.value;
-    if (configNotifier.value.themeMode == nextMode) return;
-    _isSyncingNotifiers = true;
-    try {
-      configNotifier.value = configNotifier.value.copyWith(themeMode: nextMode);
-    } finally {
-      _isSyncingNotifiers = false;
-    }
-  }
-
-  void _onConfigNotifierChanged() {
-    if (_isSyncingNotifiers) return;
-    final nextMode = configNotifier.value.themeMode;
-    if (themeModeNotifier.value == nextMode) return;
-    _isSyncingNotifiers = true;
-    try {
-      themeModeNotifier.value = nextMode;
-    } finally {
-      _isSyncingNotifiers = false;
-    }
-  }
-
-  void _applyConfig(AtmosphereThemeConfig nextConfig) {
-    _isSyncingNotifiers = true;
-    try {
-      configNotifier.value = nextConfig;
-      themeModeNotifier.value = nextConfig.themeMode;
-    } finally {
-      _isSyncingNotifiers = false;
-    }
-  }
-
-  /// Loads all four persisted theme keys and synchronizes both notifiers.
+  /// Loads all four persisted theme keys and synchronizes [configNotifier].
   Future<AtmosphereThemeConfig> loadPreferences() async {
     try {
       final results = await Future.wait([
@@ -85,32 +43,32 @@ class ThemeSettingsService {
         customLightPalette: LightAtmospherePaletteId.parse(results[2]),
         customDarkPalette: DarkAtmospherePaletteId.parse(results[3]),
       );
-      _applyConfig(config);
+      configNotifier.value = config;
       return config;
     } catch (_) {
       const fallback = AtmosphereThemeConfig();
-      _applyConfig(fallback);
+      configNotifier.value = fallback;
       return fallback;
     }
   }
 
-  /// Loads the persisted theme mode from secure storage and updates both notifiers.
+  /// Loads the persisted theme mode from secure storage and updates [configNotifier].
   /// Defaults to [ThemeMode.system] if unset or if reading fails.
   Future<ThemeMode> getThemeMode() async {
     try {
       final value = await _storage.read(key: _keyThemeMode);
       final mode = parseThemeMode(value);
-      _applyConfig(configNotifier.value.copyWith(themeMode: mode));
+      configNotifier.value = configNotifier.value.copyWith(themeMode: mode);
       return mode;
     } catch (_) {
-      _applyConfig(configNotifier.value.copyWith(themeMode: ThemeMode.system));
+      configNotifier.value = configNotifier.value.copyWith(themeMode: ThemeMode.system);
       return ThemeMode.system;
     }
   }
 
-  /// Sets and persists a new [ThemeMode], synchronously updating both notifiers.
+  /// Sets and persists a new [ThemeMode], synchronously updating [configNotifier].
   Future<void> setThemeMode(ThemeMode mode) async {
-    _applyConfig(configNotifier.value.copyWith(themeMode: mode));
+    configNotifier.value = configNotifier.value.copyWith(themeMode: mode);
     try {
       await _storage.write(
         key: _keyThemeMode,
@@ -124,7 +82,7 @@ class ThemeSettingsService {
   /// Sets and persists the active [AtmosphereThemePreset] without altering stored
   /// custom Light or Dark palette keys.
   Future<void> setPreset(AtmosphereThemePreset preset) async {
-    _applyConfig(configNotifier.value.copyWith(preset: preset));
+    configNotifier.value = configNotifier.value.copyWith(preset: preset);
     try {
       await _storage.write(
         key: _keyAtmospherePreset,
@@ -137,7 +95,7 @@ class ThemeSettingsService {
 
   /// Sets and persists the custom Light [AtmospherePalette] selection.
   Future<void> setCustomLightPalette(LightAtmospherePaletteId paletteId) async {
-    _applyConfig(configNotifier.value.copyWith(customLightPalette: paletteId));
+    configNotifier.value = configNotifier.value.copyWith(customLightPalette: paletteId);
     try {
       await _storage.write(
         key: _keyCustomLightPalette,
@@ -150,7 +108,7 @@ class ThemeSettingsService {
 
   /// Sets and persists the custom Dark [AtmospherePalette] selection.
   Future<void> setCustomDarkPalette(DarkAtmospherePaletteId paletteId) async {
-    _applyConfig(configNotifier.value.copyWith(customDarkPalette: paletteId));
+    configNotifier.value = configNotifier.value.copyWith(customDarkPalette: paletteId);
     try {
       await _storage.write(
         key: _keyCustomDarkPalette,

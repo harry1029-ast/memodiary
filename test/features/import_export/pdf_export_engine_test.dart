@@ -672,6 +672,59 @@ void main() {
       expect(margin.top, greaterThanOrEqualTo(metrics.heavenMarginPx));
       expect(margin.bottom, greaterThanOrEqualTo(metrics.earthMarginPx));
     });
+
+    for (final layoutMode in PdfLayoutMode.values) {
+      test(
+        'generateConsolidatedPdf ($layoutMode) preserves mounted items and excludes staged items',
+        () async {
+          await db.entriesDao.createEntry(
+            EntriesCompanion.insert(
+              id: 'entry_book_mounted_${layoutMode.name}',
+              notebookId: 'default',
+              templateId: 'template_lined_paper',
+              title: const Value('西湖手记'),
+              contentDelta: jsonEncode([
+                {'insert': '湖畔微风'},
+                {
+                  'insert': {'mount': 'book_photo_mounted_${layoutMode.name}'},
+                },
+                {'insert': '\n'},
+              ]),
+              plainText: '湖畔微风',
+              entryDate: DateTime(2026, 11, 8),
+            ),
+          );
+          await db.mediaOcrDao.attachMediaToEntry(
+            id: 'book_photo_staged_${layoutMode.name}',
+            entryId: 'entry_book_mounted_${layoutMode.name}',
+            relativePath: 'media/book_staged.webp',
+          );
+          await db.mediaOcrDao.attachMediaToEntry(
+            id: 'book_photo_mounted_${layoutMode.name}',
+            entryId: 'entry_book_mounted_${layoutMode.name}',
+            relativePath: 'media/book_mounted.webp',
+          );
+
+          final entry = (await db.entriesDao.getEntryById(
+            'entry_book_mounted_${layoutMode.name}',
+          ))!;
+          final recordingService = _RecordingMediaService(tempDir);
+
+          final bytes = await PdfExportEngine.generateConsolidatedPdf(
+            entries: [entry],
+            database: db,
+            mediaService: recordingService,
+            bookTitle: '秋日合集',
+            layoutMode: layoutMode,
+            sealText: '心迹安放',
+          );
+
+          expect(String.fromCharCodes(bytes.take(5)), equals('%PDF-'));
+          expect(recordingService.requestedPaths, contains('media/book_mounted.webp'));
+          expect(recordingService.requestedPaths, isNot(contains('media/book_staged.webp')));
+        },
+      );
+    }
   });
 }
 

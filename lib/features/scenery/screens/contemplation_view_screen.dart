@@ -114,7 +114,7 @@ class _ContemplationViewScreenState extends State<ContemplationViewScreen>
 
   @override
   Widget build(BuildContext context) {
-    final tokens = Theme.of(context).extension<InkDiaryTokens>() ?? InkDiaryTokens.light;
+    final tokens = context.inkTokens;
 
     return Scaffold(
       backgroundColor: const Color(0xFF141210),

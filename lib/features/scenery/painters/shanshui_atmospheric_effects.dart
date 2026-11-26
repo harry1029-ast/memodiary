@@ -1,7 +1,63 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../templates/services/stationery_geometry.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_scenery_geometry.dart';
+
+/// Placement and typography configuration for a realm's calligraphy colophon
+/// (题跋), poetic couplet, and carved cinnabar seal (朱砂印).
+@immutable
+class SceneryCalligraphyConfig {
+  final double titleX;
+  final double titleY;
+  final double titleStepY;
+  final double titleFontSize;
+  final double poemStartX;
+  final double poemStartY;
+  final double poemColumnStepX;
+  final double poemStepY;
+  final double poemFontSize;
+  final double poemAlpha;
+  final double sealX;
+  final double? sealY;
+  final double sealTopGap;
+  final double sealSize;
+  final double sealFontSize;
+  final double sealAlpha;
+  final double? sealStrokeWidth;
+  final String fontFamily;
+  final Color dayTextColor;
+  final Color nightTextColor;
+  final Color? dayShadowColor;
+  final Color? nightShadowColor;
+  final double shadowBlurRadius;
+
+  const SceneryCalligraphyConfig({
+    required this.titleX,
+    required this.titleY,
+    this.titleStepY = 30.0,
+    this.titleFontSize = 26.0,
+    required this.poemStartX,
+    required this.poemStartY,
+    this.poemColumnStepX = -28.0,
+    this.poemStepY = 22.0,
+    this.poemFontSize = 17.0,
+    this.poemAlpha = 0.82,
+    required this.sealX,
+    this.sealY,
+    this.sealTopGap = 8.0,
+    this.sealSize = 36.0,
+    this.sealFontSize = 12.0,
+    this.sealAlpha = 1.0,
+    this.sealStrokeWidth,
+    this.fontFamily = 'serif',
+    this.dayTextColor = const Color.fromRGBO(38, 28, 20, 0.86),
+    this.nightTextColor = const Color.fromRGBO(248, 244, 232, 0.92),
+    this.dayShadowColor = const Color(0xBFFFF8EB),
+    this.nightShadowColor = const Color(0xBF000000),
+    this.shadowBlurRadius = 6.0,
+  });
+}
 
 /// Shared dynamic atmospheric rendering helpers (stormy lightning bolts,
 /// seasonal particles & fireflies, rain puddle ripples, precipitation, and
@@ -190,7 +246,126 @@ class ShanshuiAtmosphericEffects {
     }
   }
 
-  /// Renders a 2x2 carved square cinnabar seal stamp (`朱砂印`).
+  /// Splits a poetic couplet into at most two vertical columns at natural
+  /// sentence or clause boundaries, falling back to a balanced midpoint split.
+  static List<String> splitPoemColumns(String rawPoem) {
+    final stripPunct = RegExp(r'[，。、；：！？,\.\s]+');
+    final sentences = rawPoem
+        .split(RegExp(r'[。！？]+'))
+        .map((part) => part.replaceAll(stripPunct, ''))
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (sentences.length == 2) return sentences;
+
+    final clauses = rawPoem
+        .split(stripPunct)
+        .where((part) => part.isNotEmpty)
+        .toList();
+    if (clauses.length == 2) return clauses;
+
+    final clean = clauses.join();
+    if (clean.isEmpty) return const [];
+    if (clean.length < 2) return [clean];
+    final mid = (clean.length / 2).ceil();
+    return [clean.substring(0, mid), clean.substring(mid)];
+  }
+
+  /// Paints a realm's vertical title, optional poetic couplet, and R-to-L cinnabar seal.
+  static void drawCalligraphyAndSeal(
+    Canvas canvas, {
+    required ShanshuiAtmosphereState atmosphere,
+    required bool isNight,
+    required bool fullPoem,
+    required SceneryCalligraphyConfig config,
+  }) {
+    final title =
+        atmosphere.season.nameZhFor(atmosphere.realm).replaceAll(' · ', '');
+    final textColor = isNight ? config.nightTextColor : config.dayTextColor;
+    final shadowColor =
+        isNight ? config.nightShadowColor : config.dayShadowColor;
+    final shadows = shadowColor == null
+        ? null
+        : [Shadow(color: shadowColor, blurRadius: config.shadowBlurRadius)];
+
+    for (int index = 0; index < title.length; index++) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: title[index],
+          style: TextStyle(
+            color: textColor,
+            fontSize: config.titleFontSize,
+            fontWeight: FontWeight.bold,
+            fontFamily: config.fontFamily,
+            shadows: shadows,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(config.titleX, config.titleY + index * config.titleStepY));
+    }
+
+    if (fullPoem) {
+      final columns = splitPoemColumns(atmosphere.season.poemFor(atmosphere.realm));
+      final poemStyle = TextStyle(
+        color: textColor.withValues(alpha: config.poemAlpha),
+        fontSize: config.poemFontSize,
+        fontFamily: config.fontFamily,
+        shadows: shadows,
+      );
+      for (int col = 0; col < columns.length; col++) {
+        final colText = columns[col];
+        final colX = config.poemStartX + col * config.poemColumnStepX;
+        for (int row = 0; row < colText.length; row++) {
+          final tp = TextPainter(
+            text: TextSpan(text: colText[row], style: poemStyle),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          tp.paint(canvas, Offset(colX, config.poemStartY + row * config.poemStepY));
+        }
+      }
+    }
+
+    final resolvedSealY =
+        config.sealY ?? (config.titleY + title.length * config.titleStepY + config.sealTopGap);
+    drawCinnabarSeal(
+      canvas,
+      x: config.sealX,
+      y: resolvedSealY,
+      size: config.sealSize,
+      sealText: atmosphere.season.sealTextFor(atmosphere.realm),
+      fontSize: config.sealFontSize,
+      fontFamily: config.fontFamily,
+      alpha: config.sealAlpha,
+      strokeWidth: config.sealStrokeWidth,
+    );
+  }
+
+  /// Renders a soft radial vignette across the normalized 1500x1000 scene frame.
+  static void drawVignette(
+    Canvas canvas, {
+    required bool isNight,
+    double radius = 0.85,
+    double innerStop = 0.65,
+    Color dayEdgeColor = const Color.fromRGBO(32, 22, 14, 0.22),
+    Color nightEdgeColor = const Color.fromRGBO(4, 8, 14, 0.48),
+  }) {
+    const fullRect = Rect.fromLTWH(0, 0, 1500, 1000);
+    canvas.drawRect(
+      fullRect,
+      Paint()
+        ..shader = RadialGradient(
+          center: Alignment.center,
+          radius: radius,
+          colors: [
+            Colors.transparent,
+            isNight ? nightEdgeColor : dayEdgeColor,
+          ],
+          stops: [innerStop, 1.0],
+        ).createShader(fullRect),
+    );
+  }
+
+  /// Renders a 2x2 carved square cinnabar seal stamp (`朱砂印`) in R-to-L columns.
   static void drawCinnabarSeal(
     Canvas canvas, {
     required double x,
@@ -201,11 +376,6 @@ class ShanshuiAtmosphericEffects {
     String fontFamily = 'serif',
     double alpha = 1.0,
     double? strokeWidth,
-    double colStep = 0,
-    double rowOffset1 = 5,
-    double rowOffset2 = 18,
-    double leftPad = 5,
-    bool verticalColumns = false,
   }) {
     final clampedAlpha = alpha.clamp(0.0, 1.0);
     final creamColor = const Color(0xFFF7F4EB).withValues(alpha: clampedAlpha);
@@ -221,40 +391,39 @@ class ShanshuiAtmosphericEffects {
         ..strokeWidth = strokeWidth ?? (size >= 40 ? 1.5 : 1.4),
     );
 
-    if (sealText.length < 4) return;
+    final layout = StationeryGeometry.buildSealLayout(text: sealText);
+    final columns = [layout.colRight, layout.colLeft]
+        .where((col) => col.isNotEmpty)
+        .toList();
+    if (columns.isEmpty) return;
 
     final sealStyle = TextStyle(
       fontSize: fontSize,
       fontWeight: FontWeight.bold,
       color: creamColor,
       fontFamily: fontFamily,
-      height: verticalColumns ? 1.1 : null,
+      height: 1.0,
     );
 
-    if (verticalColumns) {
-      final col1 = '${sealText[0]}\n${sealText[1]}';
-      final col2 = '${sealText[2]}\n${sealText[3]}';
-      final p1 = TextPainter(
-        text: TextSpan(text: col1, style: sealStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      final p2 = TextPainter(
-        text: TextSpan(text: col2, style: sealStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      p1.paint(canvas, Offset(x + leftPad, y + rowOffset1));
-      p2.paint(canvas, Offset(x + leftPad + colStep, y + rowOffset1));
-    } else {
-      final tp1 = TextPainter(
-        text: TextSpan(text: sealText.substring(0, 2), style: sealStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      final tp2 = TextPainter(
-        text: TextSpan(text: sealText.substring(2, 4), style: sealStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp1.paint(canvas, Offset(x + leftPad, y + rowOffset1));
-      tp2.paint(canvas, Offset(x + leftPad, y + rowOffset2));
+    final innerSize = size - 6.0;
+    final colWidth = innerSize / columns.length;
+    for (int colIndex = 0; colIndex < columns.length; colIndex++) {
+      // Right-to-left traditional seal order: colRight sits on the right.
+      final visualCol = (columns.length - 1) - colIndex;
+      final colCenterX = x + 3.0 + (visualCol + 0.5) * colWidth;
+      final chars = columns[colIndex];
+      final rowHeight = innerSize / chars.length;
+      for (int rowIndex = 0; rowIndex < chars.length; rowIndex++) {
+        final tp = TextPainter(
+          text: TextSpan(text: chars[rowIndex], style: sealStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final rowCenterY = y + 3.0 + (rowIndex + 0.5) * rowHeight;
+        tp.paint(
+          canvas,
+          Offset(colCenterX - tp.width / 2, rowCenterY - tp.height / 2),
+        );
+      }
     }
   }
 }

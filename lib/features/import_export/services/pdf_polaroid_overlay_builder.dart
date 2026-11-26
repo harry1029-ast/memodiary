@@ -2,8 +2,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
-import 'image_format_transcoder.dart';
 import 'pdf_font_resolver.dart';
+import 'pdf_sandboxed_image_loader.dart';
 
 /// Helper for rendering tactile Polaroid Mini-Card overlays in vector PDF export
 /// positioned at the diarist's custom saved coordinates with 100% parity.
@@ -172,24 +172,6 @@ class PdfPolaroidOverlayBuilder {
     );
   }
 
-  /// Loads and transcodes sandboxed photo image bytes into PDF-compatible [pw.MemoryImage].
-  static Future<pw.MemoryImage?> loadCompatibleImage(
-    String relativePath,
-    MediaSandboxService mediaService,
-  ) async {
-    try {
-      final file = await mediaService.getFileFromRelativePath(relativePath);
-      if (await file.exists()) {
-        final rawBytes = await file.readAsBytes();
-        final pngBytes = await ImageFormatTranscoder.ensurePdfCompatibleBytes(rawBytes);
-        return pw.MemoryImage(pngBytes);
-      }
-    } catch (_) {
-      // Graceful fallback if image cannot be read or transcoded
-    }
-    return null;
-  }
-
   /// Pre-loads and positions [attachments] into tactile Polaroid overlay widgets.
   static Future<List<pw.Widget>> buildOverlayCards({
     required List<MediaAttachment> attachments,
@@ -210,7 +192,10 @@ class PdfPolaroidOverlayBuilder {
       isVertical: isVertical,
     );
 
-    final image = await loadCompatibleImage(primary.relativePath, mediaService);
+    final image = await PdfSandboxedImageLoader.load(
+      relativePath: primary.relativePath,
+      mediaService: mediaService,
+    );
     final count = attachments.length;
 
     final stackWidgets = <pw.Widget>[];

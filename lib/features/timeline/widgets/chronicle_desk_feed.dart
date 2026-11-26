@@ -11,7 +11,6 @@ import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_desk_header.dart';
-import 'package:memodiary/features/timeline/widgets/chronicle_desk_palette.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 import 'package:memodiary/features/timeline/widgets/filtered_chronicle_empty_card.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
@@ -260,7 +259,7 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ChronicleDeskPalette.of(context);
+    final palette = context.atmospherePalette;
     final entries = feedData.entries;
     final hasMore = feedData.hasMore;
     final isEmpty = entries.isEmpty;
@@ -339,7 +338,7 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
   }
 
   Widget _wrapInDeskMat({
-    required ChronicleDeskPalette palette,
+    required AtmospherePalette palette,
     required Widget child,
     bool isBottomCap = false,
   }) {

@@ -5,7 +5,6 @@ import '../models/ancient_room_palette.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_scenery_geometry.dart';
 import 'ancient_room_furniture_layers.dart';
-import 'shanshui_atmospheric_effects.dart';
 
 /// Dynamic lighting, atmospheric glow, smoke, particle, and calligraphy
 /// rendering helpers for the Indoor Tea Hall (`室内`).
@@ -307,105 +306,5 @@ class AncientRoomLightingLayers {
           ),
       );
     }
-  }
-
-  /// Paints bottom-right vertical calligraphy colophon (`x=1430, y=680`),
-  /// punctuation-stripped two-column couplet (`x=1390, 1364`), and 2x2 cinnabar seal (`x=1420, y=915`).
-  static void paintCalligraphyAndSeal(
-    Canvas canvas, {
-    required ShanshuiAtmosphereState atmosphere,
-    required bool isNight,
-    required bool fullPoem,
-  }) {
-    final textColor = isNight
-        ? const Color.fromRGBO(245, 240, 230, 0.88)
-        : const Color.fromRGBO(250, 244, 232, 0.92);
-    const shadows = [
-      Shadow(
-        color: Color.fromRGBO(20, 10, 5, 0.65),
-        blurRadius: 8.0,
-      ),
-    ];
-
-    final titleChars =
-        atmosphere.season.nameZhFor(atmosphere.realm).replaceAll(' · ', '');
-    for (int index = 0; index < titleChars.length; index++) {
-      final charPainter = TextPainter(
-        text: TextSpan(
-          text: titleChars[index],
-          style: TextStyle(
-            fontFamily: 'NotoSerifSC',
-            fontSize: 26.0,
-            fontWeight: FontWeight.bold,
-            color: textColor,
-            shadows: shadows,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      charPainter.paint(canvas, Offset(1430.0, 680.0 + index * 32.0));
-    }
-
-    if (fullPoem) {
-      final poemChars = atmosphere.season
-          .poemFor(atmosphere.realm)
-          .replaceAll(RegExp(r'[，。、；：！？\s]'), '');
-      if (poemChars.isNotEmpty) {
-        final colLen = (poemChars.length / 2).ceil();
-        final poemStyle = TextStyle(
-          fontFamily: 'NotoSerifSC',
-          fontSize: 18.0,
-          color: textColor.withValues(alpha: 0.85),
-          shadows: shadows,
-        );
-        for (int index = 0; index < poemChars.length; index++) {
-          final col = index ~/ colLen;
-          final row = index % colLen;
-          final charPainter = TextPainter(
-            text: TextSpan(text: poemChars[index], style: poemStyle),
-            textDirection: TextDirection.ltr,
-          )..layout();
-          charPainter.paint(
-            canvas,
-            Offset(1390.0 - col * 26.0, 668.0 + row * 22.0),
-          );
-        }
-      }
-    }
-
-    // Carved 2x2 Cinnabar Seal Stamp (朱砂印章)
-    ShanshuiAtmosphericEffects.drawCinnabarSeal(
-      canvas,
-      x: 1420.0,
-      y: 915.0,
-      size: 38.0,
-      sealText: atmosphere.season.sealTextFor(atmosphere.realm),
-      fontSize: 12.0,
-      fontFamily: 'NotoSerifSC',
-      alpha: 0.92,
-      strokeWidth: 1.5,
-      leftPad: 6.5,
-      rowOffset1: 5.0,
-      rowOffset2: 19.0,
-    );
-  }
-
-  /// Paints the soft radial cinematic vignette around the 3:2 room frame.
-  static void paintVignette(Canvas canvas, {required bool isNight}) {
-    canvas.drawRect(
-      const Rect.fromLTWH(0, 0, 1500, 1000),
-      Paint()
-        ..shader = ui.Gradient.radial(
-          const Offset(750, 500),
-          940.0,
-          [
-            const Color(0x00000000),
-            isNight
-                ? const Color.fromRGBO(5, 8, 14, 0.52)
-                : const Color.fromRGBO(28, 16, 8, 0.28),
-          ],
-          const [520.0 / 940.0, 1.0],
-        ),
-    );
   }
 }

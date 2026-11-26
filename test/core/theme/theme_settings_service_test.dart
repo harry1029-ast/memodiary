@@ -18,12 +18,12 @@ void main() {
 
     test('defaults to ThemeMode.system when no preference is saved', () async {
       expect(await service.getThemeMode(), equals(ThemeMode.system));
-      expect(service.themeModeNotifier.value, equals(ThemeMode.system));
+      expect(service.configNotifier.value.themeMode, equals(ThemeMode.system));
     });
 
     test('persists and retrieves ThemeMode.light', () async {
       await service.setThemeMode(ThemeMode.light);
-      expect(service.themeModeNotifier.value, equals(ThemeMode.light));
+      expect(service.configNotifier.value.themeMode, equals(ThemeMode.light));
 
       final retrieved = await service.getThemeMode();
       expect(retrieved, equals(ThemeMode.light));
@@ -32,7 +32,7 @@ void main() {
 
     test('persists and retrieves ThemeMode.dark', () async {
       await service.setThemeMode(ThemeMode.dark);
-      expect(service.themeModeNotifier.value, equals(ThemeMode.dark));
+      expect(service.configNotifier.value.themeMode, equals(ThemeMode.dark));
 
       final retrieved = await service.getThemeMode();
       expect(retrieved, equals(ThemeMode.dark));
@@ -41,10 +41,10 @@ void main() {
 
     test('reverts to ThemeMode.system and updates notifier', () async {
       await service.setThemeMode(ThemeMode.dark);
-      expect(service.themeModeNotifier.value, equals(ThemeMode.dark));
+      expect(service.configNotifier.value.themeMode, equals(ThemeMode.dark));
 
       await service.setThemeMode(ThemeMode.system);
-      expect(service.themeModeNotifier.value, equals(ThemeMode.system));
+      expect(service.configNotifier.value.themeMode, equals(ThemeMode.system));
 
       final retrieved = await service.getThemeMode();
       expect(retrieved, equals(ThemeMode.system));
@@ -95,7 +95,7 @@ void main() {
       expect(loaded.activeLightPalette, equals(LightAtmospherePaletteId.yunhaoDay));
       expect(loaded.activeDarkPalette, equals(DarkAtmospherePaletteId.yunhaoNight));
       expect(service.configNotifier.value, equals(loaded));
-      expect(service.themeModeNotifier.value, equals(ThemeMode.system));
+      expect(service.configNotifier.value.themeMode, equals(ThemeMode.system));
     });
 
     test('loadPreferences falls back safely on corrupted storage values and broken keystore', () async {
@@ -147,21 +147,16 @@ void main() {
       expect(restored.activeDarkPalette, equals(DarkAtmospherePaletteId.blossomLantern));
     });
 
-    test('bidirectional sync keeps themeModeNotifier and configNotifier aligned without recursion', () async {
-      var modeEvents = 0;
+    test('configNotifier emits once per setThemeMode change', () async {
       var configEvents = 0;
-      service.themeModeNotifier.addListener(() => modeEvents++);
       service.configNotifier.addListener(() => configEvents++);
 
-      service.themeModeNotifier.value = ThemeMode.dark;
+      await service.setThemeMode(ThemeMode.dark);
       expect(service.configNotifier.value.themeMode, equals(ThemeMode.dark));
-      expect(modeEvents, equals(1));
       expect(configEvents, equals(1));
 
       await service.setThemeMode(ThemeMode.light);
-      expect(service.themeModeNotifier.value, equals(ThemeMode.light));
       expect(service.configNotifier.value.themeMode, equals(ThemeMode.light));
-      expect(modeEvents, equals(2));
       expect(configEvents, equals(2));
     });
   });

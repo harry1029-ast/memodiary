@@ -44,12 +44,24 @@ void main() {
   }
 
   group('FolioMetadataFormatter & Utility Tests', () {
-    test('normalizes seal text to 4 characters', () {
-      expect(FolioMetadataFormatter.normalizeSealText('心迹'), equals('心迹印印'));
-      expect(FolioMetadataFormatter.normalizeSealText('拾光存'), equals('拾光存印'));
-      expect(FolioMetadataFormatter.normalizeSealText('心迹安放'), equals('心迹安放'));
-      expect(FolioMetadataFormatter.normalizeSealText(''), equals('心迹安放'));
-      expect(FolioMetadataFormatter.normalizeSealText('   '), equals('心迹安放'));
+    test('preserves canonical seal text via StationeryGeometry across blank and custom seals', () {
+      final blankSealLeaves = FolioPaginationEngine.paginate(
+        entry: createTestEntry(plainText: '一叶知秋。'),
+        sealText: '   ',
+      );
+      expect(
+        (blankSealLeaves.first as FolioFrontispieceCoverLeaf).sealText,
+        equals('心迹安放'),
+      );
+
+      final shortSealLeaves = FolioPaginationEngine.paginate(
+        entry: createTestEntry(plainText: '一叶知秋。'),
+        sealText: '拾光',
+      );
+      expect(
+        (shortSealLeaves.first as FolioFrontispieceCoverLeaf).sealText,
+        equals('拾光'),
+      );
     });
 
     test('formats classical lunar and Gregorian dates', () {

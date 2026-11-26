@@ -189,7 +189,7 @@ void main() {
   });
 
   group('FolioCinnabarSealWidget Widget Tests', () {
-    testWidgets('renders 4 characters and restamps on tap', (tester) async {
+    testWidgets('renders 2-char seal unpadded and 3-char seal padded with 印 in R-to-L order', (tester) async {
       bool stampedFired = false;
 
       await tester.pumpWidget(
@@ -209,10 +209,10 @@ void main() {
         ),
       );
 
-      // Padded to 4 characters: 拾, 光, 印, 印
+      // 2-character seal stays exact without '印' padding
       expect(find.text('拾'), findsOneWidget);
       expect(find.text('光'), findsOneWidget);
-      expect(find.text('印'), findsNWidgets(2));
+      expect(find.text('印'), findsNothing);
       expect(find.byKey(const Key('folio_seal_stamp')), findsOneWidget);
 
       await tester.pumpAndSettle();
@@ -224,6 +224,46 @@ void main() {
       await tester.pump();
       await tester.pumpAndSettle();
       expect(stampedFired, isTrue);
+
+      // 3-character odd seal pads once with '印'
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: FolioCinnabarSealWidget(
+                sealText: '拾光存',
+                theme: FolioSubstrateTheme.xuan,
+                sealStyle: SealCarvingStyle.zhuwen,
+                animateOnMount: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('拾'), findsOneWidget);
+      expect(find.text('光'), findsOneWidget);
+      expect(find.text('存'), findsOneWidget);
+      expect(find.text('印'), findsOneWidget);
+    });
+
+    testWidgets('hides FolioCinnabarSealWidget when sealStyle is hidden', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: FolioCinnabarSealWidget(
+                sealText: '拾光',
+                theme: FolioSubstrateTheme.xuan,
+                sealStyle: SealCarvingStyle.hidden,
+                animateOnMount: false,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byKey(const Key('cinnabar_signature_seal')), findsNothing);
+      expect(find.text('拾'), findsNothing);
     });
 
     testWidgets('renders Baiwen carving style with solid background', (tester) async {

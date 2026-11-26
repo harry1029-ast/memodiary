@@ -3,6 +3,7 @@ import '../../../../core/documents/entry_content_decoder.dart';
 import '../../../editor/domain/stationery_sheet_descriptor.dart';
 import '../../../scenery/services/shanshui_atmosphere_resolver.dart';
 import '../../../templates/models/template_style.dart';
+import '../../../templates/services/stationery_geometry.dart';
 import '../../services/folio_media_pairing.dart';
 import 'folio_horizontal_paginator.dart';
 import 'folio_leaf_model.dart';
@@ -28,7 +29,7 @@ class FolioPaginationEngine {
     final entryDate = entry.entryDate;
     final lunarDateStr = FolioMetadataFormatter.formatFullLunarDate(entryDate);
     final gregorianDateStr = FolioMetadataFormatter.formatGregorianDate(entryDate);
-    final effectiveSeal = FolioMetadataFormatter.normalizeSealText(sealText ?? '心迹安放');
+    final effectiveSeal = StationeryGeometry.buildSealLayout(text: sealText).semanticText;
     final effectiveSealStyle =
         sealStyle ?? perspective.resolveSealStyle(templateStyle: templateStyle);
 

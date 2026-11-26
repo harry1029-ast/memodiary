@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'chronicle_desk_palette.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 
 /// Sculpted brass knot grommet (`黄铜绳扣`) anchored at the bottom-left spine axis
 /// of the `Date Index Tray`, feeding the vertical `TimelineDateSpineItem` cord.
@@ -13,7 +13,7 @@ class ChronicleBrassGrommet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ChronicleDeskPalette.of(context);
+    final palette = context.atmospherePalette;
 
     // Inside the desk mat container, TimelineDateSpineItem renders its vertical
     // spine line at left: 36.0 (width 2.0 -> center X = 37.0).
@@ -32,7 +32,7 @@ class ChronicleBrassGrommet extends StatelessWidget {
               bottom: 0.0,
               child: Container(
                 width: 2.0,
-                color: palette.cinnabar.withValues(alpha: 0.78),
+                color: palette.accentPrimary.withValues(alpha: 0.78),
               ),
             ),
           Positioned(
@@ -69,7 +69,7 @@ class ChronicleBrassGrommet extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: palette.deskMat,
                   border: Border.all(
-                    color: palette.brassDim,
+                    color: palette.accentSecondaryDim,
                     width: 0.6,
                   ),
                 ),

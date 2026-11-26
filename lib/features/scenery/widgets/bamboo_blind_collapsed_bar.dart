@@ -20,7 +20,7 @@ class BambooBlindCollapsedBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = context.atmospherePalette;
-    final tokens = Theme.of(context).extension<InkDiaryTokens>() ?? InkDiaryTokens.light;
+    final tokens = context.inkTokens;
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,

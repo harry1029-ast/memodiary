@@ -1,68 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:memodiary/core/theme/atmosphere_palette.dart';
-import 'package:memodiary/core/theme/atmosphere_palettes.dart';
-
-/// Color tokens for the folded Xuan-paper slip (*折笺影札*) surface.
-@immutable
-class FoldedXuanSlipPalette {
-  final Color cardColor;
-  final Color lipColor;
-  final Color borderColor;
-  final Color vermilionRuleColor;
-  final Color innerFrameColor;
-  final Color dividerColor;
-  final Color shadowColor;
-
-  const FoldedXuanSlipPalette({
-    required this.cardColor,
-    required this.lipColor,
-    required this.borderColor,
-    required this.vermilionRuleColor,
-    required this.innerFrameColor,
-    required this.dividerColor,
-    required this.shadowColor,
-  });
-
-  /// Derives slip tokens from an [AtmospherePalette].
-  factory FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalette palette) {
-    return FoldedXuanSlipPalette(
-      cardColor: palette.cardPaper,
-      lipColor: palette.cardStackLip,
-      borderColor: palette.deckleBorder,
-      vermilionRuleColor: palette.slipRuleColor,
-      innerFrameColor: palette.slipInnerFrameColor,
-      dividerColor: palette.slipDividerColor,
-      shadowColor: palette.slipShadowColor,
-    );
-  }
-
-  /// Classic dark theme ("碑拓乌木" — Stone Rubbing & Ebony) palette.
-  static final FoldedXuanSlipPalette classicDark =
-      FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalettes.classicEbony);
-
-  /// Classic light theme ("宣纸胡桃" — Xuan Paper & Walnut) palette.
-  static final FoldedXuanSlipPalette classicLight =
-      FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalettes.classicWalnut);
-
-  /// Default dark theme ("皓月夜" — Yunhao Night) palette.
-  static final FoldedXuanSlipPalette dark =
-      FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalettes.yunhaoNight);
-
-  /// Default light theme ("云岚昼" — Yunhao Day) palette.
-  static final FoldedXuanSlipPalette light =
-      FoldedXuanSlipPalette.fromAtmosphere(AtmospherePalettes.yunhaoDay);
-
-  /// Resolves the palette matching the active [AtmospherePalette] extension,
-  /// falling back to [dark] / [light] by [ThemeData.brightness].
-  static FoldedXuanSlipPalette of(BuildContext context) {
-    final atmosphere = Theme.of(context).extension<AtmospherePalette>();
-    if (atmosphere != null) {
-      return FoldedXuanSlipPalette.fromAtmosphere(atmosphere);
-    }
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? dark : light;
-  }
-}
 
 /// Folded Xuan-paper slip (*折笺影札*) card container.
 ///
@@ -89,16 +26,16 @@ class FoldedXuanSlip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = FoldedXuanSlipPalette.of(context);
+    final palette = context.atmospherePalette;
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(borderRadius),
-      side: BorderSide(color: palette.borderColor, width: 1.0),
+      side: BorderSide(color: palette.deckleBorder, width: 1.0),
     );
 
     Widget slipContent = CustomPaint(
       painter: _FoldedXuanSlipPainter(
-        vermilionRuleColor: palette.vermilionRuleColor,
-        innerFrameColor: palette.innerFrameColor,
+        vermilionRuleColor: palette.slipRuleColor,
+        innerFrameColor: palette.slipInnerFrameColor,
         borderRadius: borderRadius,
       ),
       child: Padding(
@@ -120,18 +57,18 @@ class FoldedXuanSlip extends StatelessWidget {
       margin: margin,
       padding: const EdgeInsets.only(bottom: 3),
       decoration: BoxDecoration(
-        color: palette.lipColor,
+        color: palette.cardStackLip,
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: palette.shadowColor,
+            color: palette.slipShadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
-        color: palette.cardColor,
+        color: palette.cardPaper,
         shape: shape,
         clipBehavior: Clip.antiAlias,
         child: slipContent,

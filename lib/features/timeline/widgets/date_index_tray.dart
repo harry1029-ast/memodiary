@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:memodiary/core/calendar/lunar_calendar.dart';
+import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
-import 'chronicle_desk_palette.dart';
 import 'date_index_chips.dart';
 
 /// Three-row chronological index and sorter tray (`案头岁时检目`):
@@ -89,10 +89,10 @@ class _DateIndexTrayState extends State<DateIndexTray> {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ChronicleDeskPalette.of(context);
+    final palette = context.atmospherePalette;
     final isNewestFirst =
         widget.filters.sortOrder == TimelineSortOrder.newestFirst;
-    final dividerColor = palette.brassGold.withValues(alpha: 0.16);
+    final dividerColor = palette.accentSecondary.withValues(alpha: 0.16);
 
     return MediaQuery.withClampedTextScaling(
       maxScaleFactor: 1.3,

@@ -4,8 +4,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../templates/models/template_style.dart';
+import '../../templates/services/stationery_geometry.dart';
 import '../../templates/services/stationery_layout_calculator.dart';
-import '../../templates/widgets/stationery_canvas_framing.dart';
 import 'pdf_font_resolver.dart';
 
 /// Procedural vector canvas background renderer for PDF documents.
@@ -22,6 +22,7 @@ class PdfTemplateRenderer {
     pw.Context context,
     TemplateStyle style, {
     bool isVertical = false,
+    StationeryLayoutMetrics? metrics,
   }) {
     final pdfBgColor = PdfColor.fromInt(style.backgroundColor.toARGB32());
 
@@ -38,15 +39,16 @@ class PdfTemplateRenderer {
             _paintColdGoldFlecks(canvas, size);
           }
 
-          final metrics = StationeryLayoutCalculator.calculateMetrics(
-            canvasWidth: size.x,
-            canvasHeight: size.y,
-            backgroundType: style.type,
-            horizontalMargin: style.resolvedHorizontalMargin,
-            lineSpacing: style.lineSpacing,
-          );
+          final resolvedMetrics = metrics ??
+              StationeryLayoutCalculator.calculateMetrics(
+                canvasWidth: size.x,
+                canvasHeight: size.y,
+                backgroundType: style.type,
+                horizontalMargin: style.resolvedHorizontalMargin,
+                lineSpacing: style.lineSpacing,
+              );
 
-          _paintFraming(canvas, size, style, metrics);
+          _paintFraming(canvas, size, style, resolvedMetrics);
 
           if (isVertical &&
               (style.type == TemplateBackgroundType.lined ||
@@ -54,7 +56,7 @@ class PdfTemplateRenderer {
             if (style.type == TemplateBackgroundType.paperTexture) {
               _paintKraftBands(canvas, size);
             }
-            _paintVerticalColumnPaper(canvas, style, metrics);
+            _paintVerticalColumnPaper(canvas, size, style, resolvedMetrics);
             return;
           }
 
@@ -62,16 +64,16 @@ class PdfTemplateRenderer {
             case TemplateBackgroundType.color:
               break;
             case TemplateBackgroundType.lined:
-              _paintLinedPaper(canvas, size, style, metrics);
+              _paintLinedPaper(canvas, size, style, resolvedMetrics);
               break;
             case TemplateBackgroundType.grid:
-              _paintGridPaper(canvas, size, style, metrics);
+              _paintGridPaper(canvas, size, style, resolvedMetrics);
               break;
             case TemplateBackgroundType.dotGrid:
-              _paintDotGridPaper(canvas, size, style, metrics);
+              _paintDotGridPaper(canvas, size, style, resolvedMetrics);
               break;
             case TemplateBackgroundType.paperTexture:
-              _paintPaperTexture(canvas, size, style, metrics);
+              _paintPaperTexture(canvas, size, style, resolvedMetrics);
               break;
           }
         },
@@ -116,13 +118,8 @@ class PdfTemplateRenderer {
     TemplateStyle style,
     StationeryLayoutMetrics metrics,
   ) {
-    if (!StationeryCanvasFraming.shouldDrawDoubleBorder(style)) return;
-
-    final frameLeft = metrics.innerFrameRect.left;
-    final frameBottom = metrics.earthMarginPx;
-    final frameWidth = metrics.innerFrameRect.width;
-    final frameHeight = metrics.innerFrameRect.height;
-    final frameTop = frameBottom + frameHeight;
+    final frame = StationeryGeometry.buildFrame(metrics: metrics, style: style);
+    if (!frame.drawDoubleBorder) return;
 
     final outerColor = pdfRuleColor(style.tokens.ruleTint, alphaMultiplier: 0.85);
     final innerColor = pdfRuleColor(style.tokens.ruleTint, alphaMultiplier: 0.70);
@@ -130,38 +127,36 @@ class PdfTemplateRenderer {
     // Outer stroke (2.0px inflated by 4.0px) and inner stroke (0.9px)
     canvas
       ..setStrokeColor(outerColor)
-      ..setLineWidth(2.0)
-      ..drawRect(frameLeft - 4.0, frameBottom - 4.0, frameWidth + 8.0, frameHeight + 8.0)
+      ..setLineWidth(frame.outerStrokeWidth)
+      ..drawRect(
+        frame.outerRect.left,
+        size.y - frame.outerRect.bottom,
+        frame.outerRect.width,
+        frame.outerRect.height,
+      )
       ..strokePath()
       ..setStrokeColor(innerColor)
-      ..setLineWidth(0.9)
-      ..drawRect(frameLeft, frameBottom, frameWidth, frameHeight)
+      ..setLineWidth(frame.innerStrokeWidth)
+      ..drawRect(
+        frame.innerRect.left,
+        size.y - frame.innerRect.bottom,
+        frame.innerRect.width,
+        frame.innerRect.height,
+      )
       ..strokePath();
 
     // Fishtail Mark on manuscript grid with columnCount >= 7
-    if (StationeryCanvasFraming.shouldRenderFishtail(style: style, columnCount: metrics.columnCount)) {
-      final midCol = metrics.columnCount ~/ 2;
-      final colLeft = frameLeft + midCol * metrics.cellAdvancePx;
-      final colRight = colLeft + metrics.cellAdvancePx;
-      final midX = (colLeft + colRight) / 2.0;
-
-      final tailTopY = frameTop - metrics.lineStridePx * 0.2;
-      final tailHeight = metrics.lineStridePx * 0.75;
-      final tailBottomY = tailTopY - tailHeight;
-      final tailLeft = colLeft + 2.0;
-      final tailRight = colRight - 2.0;
-
+    final fishtail = frame.fishtailPolygon;
+    if (fishtail != null && fishtail.isNotEmpty) {
       final fishtailColor = style.tokens.ruleTint == RuleInkTint.vermilion
           ? const PdfColor(0.75, 0.22, 0.17, 0.85)
           : const PdfColor(0.25, 0.26, 0.27, 0.85);
 
+      canvas.moveTo(fishtail.first.dx, size.y - fishtail.first.dy);
+      for (int index = 1; index < fishtail.length; index++) {
+        canvas.lineTo(fishtail[index].dx, size.y - fishtail[index].dy);
+      }
       canvas
-        ..moveTo(tailLeft, tailTopY)
-        ..lineTo(midX, tailTopY - tailHeight * 0.45)
-        ..lineTo(tailRight, tailTopY)
-        ..lineTo(tailRight, tailBottomY + tailHeight * 0.15)
-        ..lineTo(midX, tailBottomY)
-        ..lineTo(tailLeft, tailBottomY + tailHeight * 0.15)
         ..closePath()
         ..setFillColor(fishtailColor)
         ..fillPath();
@@ -175,28 +170,33 @@ class PdfTemplateRenderer {
     TemplateStyle style,
     StationeryLayoutMetrics metrics,
   ) {
-    final frameLeft = metrics.innerFrameRect.left;
-    final frameRight = metrics.innerFrameRect.right;
-    final frameBottom = metrics.earthMarginPx;
-    final frameTop = frameBottom + metrics.innerFrameRect.height;
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+      leftMarginInset: 12.0,
+    );
+    _drawPdfLines(
+      canvas,
+      size,
+      rulings.primaryLines,
+      color: pdfRuleColor(style.tokens.ruleTint),
+      lineWidth: 0.6,
+    );
 
-    canvas
-      ..setStrokeColor(pdfRuleColor(style.tokens.ruleTint))
-      ..setLineWidth(0.6);
-    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
-      final y = frameTop - rowIndex * metrics.lineStridePx;
-      canvas.drawLine(frameLeft, y, frameRight, y);
+    if (rulings.leftMarginRule case final marginRule?) {
+      canvas
+        ..setStrokeColor(style.tokens.ruleTint == RuleInkTint.vermilion
+            ? const PdfColor(0.85, 0.30, 0.25, 0.45)
+            : const PdfColor(0.90, 0.45, 0.45, 0.25))
+        ..setLineWidth(1.0)
+        ..drawLine(
+          marginRule.start.dx,
+          size.y - marginRule.start.dy,
+          marginRule.end.dx,
+          size.y - marginRule.end.dy,
+        )
+        ..strokePath();
     }
-    canvas.strokePath();
-
-    final marginX = frameLeft + 12.0;
-    canvas
-      ..setStrokeColor(style.tokens.ruleTint == RuleInkTint.vermilion
-          ? const PdfColor(0.85, 0.30, 0.25, 0.45)
-          : const PdfColor(0.90, 0.45, 0.45, 0.25))
-      ..setLineWidth(1.0)
-      ..drawLine(marginX, frameBottom, marginX, frameTop)
-      ..strokePath();
   }
 
   /// Orthogonal manuscript grid strictly bounded within innerFrameRect
@@ -206,38 +206,18 @@ class PdfTemplateRenderer {
     TemplateStyle style,
     StationeryLayoutMetrics metrics,
   ) {
-    final frameLeft = metrics.innerFrameRect.left;
-    final frameRight = metrics.innerFrameRect.right;
-    final frameBottom = metrics.earthMarginPx;
-    final frameTop = frameBottom + metrics.innerFrameRect.height;
-
-    canvas
-      ..setStrokeColor(pdfRuleColor(style.tokens.ruleTint))
-      ..setLineWidth(0.5);
-
-    for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
-      final x = frameLeft + colIndex * metrics.cellAdvancePx;
-      canvas.drawLine(x, frameBottom, x, frameTop);
-    }
-
-    final isManuscript = StationeryCanvasFraming.shouldRenderFishtail(
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
       style: style,
-      columnCount: metrics.columnCount,
     );
-    final midCol = metrics.columnCount ~/ 2;
-    final midColLeft = frameLeft + midCol * metrics.cellAdvancePx;
-    final midColRight = midColLeft + metrics.cellAdvancePx;
-
-    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
-      final y = frameTop - rowIndex * metrics.lineStridePx;
-      if (isManuscript) {
-        canvas.drawLine(frameLeft, y, midColLeft, y);
-        canvas.drawLine(midColRight, y, frameRight, y);
-      } else {
-        canvas.drawLine(frameLeft, y, frameRight, y);
-      }
-    }
-    canvas.strokePath();
+    final ruleColor = pdfRuleColor(style.tokens.ruleTint);
+    _drawPdfLines(
+      canvas,
+      size,
+      [...rulings.secondaryLines, ...rulings.primaryLines],
+      color: ruleColor,
+      lineWidth: 0.5,
+    );
   }
 
   /// Minimalist dot grid in PDF vector coordinates strictly bounded within innerFrameRect
@@ -247,17 +227,13 @@ class PdfTemplateRenderer {
     TemplateStyle style,
     StationeryLayoutMetrics metrics,
   ) {
-    final frameLeft = metrics.innerFrameRect.left;
-    final frameBottom = metrics.earthMarginPx;
-    final frameTop = frameBottom + metrics.innerFrameRect.height;
-
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+    );
     canvas.setFillColor(pdfRuleColor(style.tokens.ruleTint));
-    for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
-      final x = frameLeft + colIndex * metrics.cellAdvancePx;
-      for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
-        final y = frameTop - rowIndex * metrics.lineStridePx;
-        canvas.drawEllipse(x, y, 0.8, 0.8);
-      }
+    for (final dot in rulings.dots) {
+      canvas.drawEllipse(dot.dx, size.y - dot.dy, 0.8, 0.8);
     }
     canvas.fillPath();
   }
@@ -273,23 +249,23 @@ class PdfTemplateRenderer {
   /// Vertical column silk rulings (朱丝栏/乌丝栏) bounded within innerFrameRect.
   static void _paintVerticalColumnPaper(
     PdfGraphics canvas,
+    PdfPoint size,
     TemplateStyle style,
     StationeryLayoutMetrics metrics,
   ) {
-    final frameLeft = metrics.innerFrameRect.left;
-    final frameRight = metrics.innerFrameRect.right;
-    final frameBottom = metrics.earthMarginPx;
-    final frameTop = frameBottom + metrics.innerFrameRect.height;
-
-    canvas
-      ..setStrokeColor(pdfRuleColor(style.tokens.ruleTint))
-      ..setLineWidth(0.5);
-    for (double x = frameRight - kVerticalColumnStride;
-        x >= frameLeft + kVerticalColumnStride;
-        x -= kVerticalColumnStride) {
-      canvas.drawLine(x, frameBottom, x, frameTop);
-    }
-    canvas.strokePath();
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+      isVertical: true,
+      verticalColumnStride: kVerticalColumnStride,
+    );
+    _drawPdfLines(
+      canvas,
+      size,
+      rulings.primaryLines,
+      color: pdfRuleColor(style.tokens.ruleTint),
+      lineWidth: 0.5,
+    );
   }
 
   /// Vintage kraft paper with guidelines strictly bounded within innerFrameRect
@@ -301,17 +277,37 @@ class PdfTemplateRenderer {
   ) {
     _paintKraftBands(canvas, size);
 
-    final frameLeft = metrics.innerFrameRect.left;
-    final frameRight = metrics.innerFrameRect.right;
-    final frameBottom = metrics.earthMarginPx;
-    final frameTop = frameBottom + metrics.innerFrameRect.height;
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+    );
+    _drawPdfLines(
+      canvas,
+      size,
+      rulings.primaryLines,
+      color: pdfRuleColor(style.tokens.ruleTint),
+      lineWidth: 0.6,
+    );
+  }
 
+  static void _drawPdfLines(
+    PdfGraphics canvas,
+    PdfPoint size,
+    List<StationeryLineSegment> lines, {
+    required PdfColor color,
+    required double lineWidth,
+  }) {
+    if (lines.isEmpty) return;
     canvas
-      ..setStrokeColor(pdfRuleColor(style.tokens.ruleTint))
-      ..setLineWidth(0.6);
-    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
-      final y = frameTop - rowIndex * metrics.lineStridePx;
-      canvas.drawLine(frameLeft, y, frameRight, y);
+      ..setStrokeColor(color)
+      ..setLineWidth(lineWidth);
+    for (final line in lines) {
+      canvas.drawLine(
+        line.start.dx,
+        size.y - line.start.dy,
+        line.end.dx,
+        size.y - line.end.dy,
+      );
     }
     canvas.strokePath();
   }
@@ -323,40 +319,33 @@ class PdfTemplateRenderer {
     String sealText = '心迹安放',
     double size = 42.0,
   }) {
-    if (style.tokens.sealStyle == SealCarvingStyle.hidden) {
+    final layout = StationeryGeometry.buildSealLayout(
+      text: sealText,
+      sealStyle: style.tokens.sealStyle,
+    );
+    if (!layout.isVisible) {
       return pw.SizedBox.shrink();
     }
 
-    final isBaiwen = style.tokens.sealStyle == SealCarvingStyle.baiwen;
-    final cinnabar = const PdfColor(0.73, 0.15, 0.10);
-    final text = sealText.trim().isEmpty ? '心迹安放' : sealText.trim();
-    final (colRight, colLeft) = _partitionSealText(text);
+    const cinnabar = PdfColor(0.73, 0.15, 0.10);
 
     return pw.Container(
       width: size,
       height: size,
       padding: pw.EdgeInsets.all(size * 0.06),
       decoration: pw.BoxDecoration(
-        color: isBaiwen ? cinnabar : null,
+        color: layout.isBaiwen ? cinnabar : null,
         border: pw.Border.all(color: cinnabar, width: size * 0.05),
         borderRadius: pw.BorderRadius.circular(size * 0.08),
       ),
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
         children: [
-          _buildSealCol(colLeft, isBaiwen, fontResolver, size),
-          _buildSealCol(colRight, isBaiwen, fontResolver, size),
+          _buildSealCol(layout.colLeft, layout.isBaiwen, fontResolver, size),
+          _buildSealCol(layout.colRight, layout.isBaiwen, fontResolver, size),
         ],
       ),
     );
-  }
-
-  static (List<String>, List<String>) _partitionSealText(String text) {
-    final chars = text.runes.map((rune) => String.fromCharCode(rune)).toList();
-    if (chars.length == 2) return ([chars[0]], [chars[1]]);
-    if (chars.length == 3) return ([chars[0], chars[1]], [chars[2], '印']);
-    if (chars.length >= 4) return ([chars[0], chars[1]], [chars[2], chars[3]]);
-    return ([chars.first], ['印']);
   }
 
   static pw.Widget _buildSealCol(
@@ -394,22 +383,24 @@ class PdfTemplateRenderer {
     pw.Context context,
     Entry entry,
     TemplateStyle style,
-    PdfFontResolver fontResolver,
-  ) {
+    PdfFontResolver fontResolver, {
+    StationeryLayoutMetrics? metrics,
+  }) {
     final dateStr = DateFormat('yyyy-MM-dd').format(entry.entryDate);
     final rawTitle = (entry.title?.trim().isNotEmpty ?? false)
         ? entry.title!.trim()
         : '云皓日记';
     final title = fontResolver.sanitizeText(rawTitle);
 
-    final metrics = StationeryLayoutCalculator.calculateMetrics(
-      canvasWidth: context.page.pageFormat.width,
-      canvasHeight: context.page.pageFormat.height,
-      backgroundType: style.type,
-      horizontalMargin: style.resolvedHorizontalMargin,
-      lineSpacing: style.lineSpacing,
-    );
-    final bottomGap = math.max(12.0, metrics.heavenMarginPx - 34.0);
+    final resolvedMetrics = metrics ??
+        StationeryLayoutCalculator.calculateMetrics(
+          canvasWidth: context.page.pageFormat.width,
+          canvasHeight: context.page.pageFormat.height,
+          backgroundType: style.type,
+          horizontalMargin: style.resolvedHorizontalMargin,
+          lineSpacing: style.lineSpacing,
+        );
+    final bottomGap = math.max(12.0, resolvedMetrics.heavenMarginPx - 34.0);
 
     return pw.Container(
       margin: pw.EdgeInsets.only(bottom: bottomGap),
@@ -446,16 +437,18 @@ class PdfTemplateRenderer {
     pw.Context context,
     Entry entry,
     TemplateStyle style,
-    PdfFontResolver fontResolver,
-  ) {
-    final metrics = StationeryLayoutCalculator.calculateMetrics(
-      canvasWidth: context.page.pageFormat.width,
-      canvasHeight: context.page.pageFormat.height,
-      backgroundType: style.type,
-      horizontalMargin: style.resolvedHorizontalMargin,
-      lineSpacing: style.lineSpacing,
-    );
-    final topGap = math.max(12.0, metrics.earthMarginPx - 28.0);
+    PdfFontResolver fontResolver, {
+    StationeryLayoutMetrics? metrics,
+  }) {
+    final resolvedMetrics = metrics ??
+        StationeryLayoutCalculator.calculateMetrics(
+          canvasWidth: context.page.pageFormat.width,
+          canvasHeight: context.page.pageFormat.height,
+          backgroundType: style.type,
+          horizontalMargin: style.resolvedHorizontalMargin,
+          lineSpacing: style.lineSpacing,
+        );
+    final topGap = math.max(12.0, resolvedMetrics.earthMarginPx - 28.0);
 
     return pw.Container(
       margin: pw.EdgeInsets.only(top: topGap),

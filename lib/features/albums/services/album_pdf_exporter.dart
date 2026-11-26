@@ -3,8 +3,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../../../core/database/app_database.dart';
 import '../../../core/services/media_sandbox_service.dart';
-import '../../import_export/services/image_format_transcoder.dart';
 import '../../import_export/services/pdf_font_resolver.dart';
+import '../../import_export/services/pdf_sandboxed_image_loader.dart';
 import '../models/album_studio_models.dart';
 import 'album_layout_engine.dart';
 import 'album_studio_pdf_renderer.dart';
@@ -123,10 +123,10 @@ class AlbumPdfExporter {
 
     final imageCache = <String, pw.MemoryImage>{};
     for (final relativePath in referencedPaths) {
-      final decodedImage = await _loadPdfImage(
+      final decodedImage = await PdfSandboxedImageLoader.load(
         relativePath: relativePath,
         mediaService: mediaService,
-        imageTranscoder: imageTranscoder,
+        customTranscoder: imageTranscoder,
       );
       if (decodedImage != null) {
         imageCache[relativePath] = decodedImage;
@@ -144,29 +144,5 @@ class AlbumPdfExporter {
     );
 
     return document.save();
-  }
-
-  static Future<pw.MemoryImage?> _loadPdfImage({
-    required String relativePath,
-    required MediaSandboxService mediaService,
-    Future<Uint8List> Function(Uint8List)? imageTranscoder,
-  }) async {
-    final trimmed = relativePath.trim();
-    if (trimmed.isEmpty || !MediaSandboxService.isStrictlyRelative(trimmed)) {
-      return null;
-    }
-    try {
-      final file = await mediaService.getFileFromRelativePath(trimmed);
-      if (!file.existsSync()) return null;
-      final rawBytes = file.readAsBytesSync();
-      if (rawBytes.isEmpty) return null;
-      final pdfBytes = await ImageFormatTranscoder.ensurePdfCompatibleBytes(
-        rawBytes,
-        customTranscoder: imageTranscoder,
-      );
-      return pw.MemoryImage(pdfBytes);
-    } catch (_) {
-      return null;
-    }
   }
 }

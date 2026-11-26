@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/theme/ink_diary_theme.dart';
 import '../../../templates/models/template_style.dart';
+import '../../../templates/services/stationery_geometry.dart';
 import '../../../templates/widgets/template_canvas_painter.dart';
 import '../cinnabar_signature_seal.dart';
 
@@ -23,22 +23,7 @@ class KeepsakeColophon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormatted = DateFormat('yyyy年M月d日').format(entry.entryDate);
-    const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
-    final dayOfWeek = '星期${weekdays[entry.entryDate.weekday - 1]}';
-
-    final colophonDetails = <String>[];
-    if (entry.isWeeklyReview) {
-      colophonDetails.add('第${entry.weekNumber ?? ""}周复盘');
-    }
-    if (entry.mood != null) {
-      colophonDetails.add('心情 ${entry.mood}/5');
-    }
-    if (entry.weather != null && entry.weather!.trim().isNotEmpty) {
-      colophonDetails.add('天气 ${entry.weather!.trim()}');
-    }
-
-    final fullColophonText = '$dateFormatted $dayOfWeek ${colophonDetails.join(" · ")}';
+    final colophon = StationeryGeometry.buildColophon(entry);
 
     return Container(
       width: TemplateCanvasPainter.kVerticalColumnStride * 2,
@@ -58,14 +43,14 @@ class KeepsakeColophon extends StatelessWidget {
                   alignment: Alignment.topCenter,
                   child: Semantics(
                     container: true,
-                    label: fullColophonText,
+                    label: colophon.fullLabel,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildVerticalRun('$dateFormatted $dayOfWeek'),
-                        if (colophonDetails.isNotEmpty) ...[
+                        _buildVerticalRun(colophon.dateLine),
+                        if (colophon.detailParts.isNotEmpty) ...[
                           const SizedBox(height: 10.0),
-                          _buildVerticalRun(colophonDetails.join(' ')),
+                          _buildVerticalRun(colophon.detailLine),
                         ],
                       ],
                     ),

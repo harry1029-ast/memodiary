@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_desk_header.dart';
-import 'package:memodiary/features/timeline/widgets/chronicle_desk_palette.dart';
 import 'package:memodiary/features/timeline/widgets/date_index_tray.dart';
 
 void main() {
@@ -120,10 +120,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
-      expect(ChronicleDeskPalette.light.deskSurroundTop, const Color(0xFFE4EBF0));
-      expect(ChronicleDeskPalette.light.deskSurroundBottom, const Color(0xFFDDE5EC));
-      expect(ChronicleDeskPalette.classicLight.deskSurroundTop, const Color(0xFFDFD3C0));
-      expect(ChronicleDeskPalette.classicLight.deskSurroundBottom, const Color(0xFFDFD3C0));
+      expect(AtmospherePalettes.yunhaoDay.deskSurroundTop, const Color(0xFFE4EBF0));
+      expect(AtmospherePalettes.yunhaoDay.deskSurroundBottom, const Color(0xFFDDE5EC));
+      expect(AtmospherePalettes.classicWalnut.deskSurroundTop, const Color(0xFFDFD3C0));
+      expect(AtmospherePalettes.classicWalnut.deskSurroundBottom, const Color(0xFFDFD3C0));
 
       expect(find.text('最早'), findsOneWidget);
       expect(find.text('↑'), findsOneWidget);
@@ -214,7 +214,7 @@ void main() {
       final decoration = activeContainer.decoration! as BoxDecoration;
       expect(
         decoration.color,
-        ChronicleDeskPalette.dark.cinnabar.withValues(alpha: 0.20),
+        AtmospherePalettes.yunhaoNight.accentPrimary.withValues(alpha: 0.20),
       );
       expect(decoration.boxShadow ?? const [], isEmpty);
     });

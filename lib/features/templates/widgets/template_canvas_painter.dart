@@ -1,9 +1,8 @@
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../editor/models/typography_settings.dart';
 import '../models/template_style.dart';
-import '../models/template_text_insets.dart';
+import '../services/stationery_geometry.dart';
 import '../services/stationery_layout_calculator.dart';
 import 'stationery_canvas_framing.dart';
 import 'template_thumbnail_painter.dart';
@@ -270,67 +269,57 @@ class TemplateCanvasPainter extends CustomPainter {
     Size size,
     StationeryLayoutMetrics metrics,
   ) {
-    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
-    final topY = math.max(0.0, math.max(innerRect.top, innerRect.top + headerHeight));
-    final bottomY = math.min(size.height, innerRect.bottom);
-    if (topY >= bottomY) return;
-
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+      isVertical: true,
+      verticalColumnStride: kVerticalColumnStride,
+      scrollOffsetY: scrollOffset,
+      headerHeight: headerHeight,
+      viewportHeight: size.height,
+    );
     final rulePaint = Paint()
       ..color = _isDark ? const Color(0x22FFFFFF) : style.tokens.ruleTint.color
       ..strokeWidth = 0.8;
-
-    for (double x = innerRect.right - kVerticalColumnStride;
-        x >= innerRect.left + kVerticalColumnStride;
-        x -= kVerticalColumnStride) {
-      canvas.drawLine(Offset(x, topY), Offset(x, bottomY), rulePaint);
-    }
+    _drawLineSegments(canvas, rulings.primaryLines, rulePaint);
   }
 
   void _paintLinedPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
-    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
-    final effectiveHeaderY = innerRect.top + headerHeight;
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+      scrollOffsetY: scrollOffset,
+      headerHeight: headerHeight,
+      viewportHeight: size.height,
+    );
 
     final linePaint = Paint()
       ..color = _isDark
           ? const Color(0x18FFFFFF)
           : style.tokens.ruleTint.color
       ..strokeWidth = 1.0;
+    _drawLineSegments(canvas, rulings.primaryLines, linePaint);
 
-    // Horizontal baseline rules strictly bounded within innerFrameRect and below letterhead
-    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
-      final y = innerRect.top + rowIndex * metrics.lineStridePx;
-      if (y > size.height) break;
-      if (y < effectiveHeaderY) continue;
-      canvas.drawLine(
-        Offset(innerRect.left, y),
-        Offset(innerRect.right, y),
-        linePaint,
-      );
-    }
-
-    // Left vertical margin rule strictly inside innerFrameRect and below letterhead
-    final marginPaint = Paint()
-      ..color = _isDark
-          ? const Color(0x38EF9A9A)
-          : (style.tokens.ruleTint == RuleInkTint.vermilion
-              ? const Color(0x52C04851)
-              : const Color(0x33E57373))
-      ..strokeWidth = 1.2;
-
-    final marginX = innerRect.left + kLinedMarginRuleInset;
-    final topMarginY = math.max(effectiveHeaderY, innerRect.top);
-    if (topMarginY < innerRect.bottom) {
-      canvas.drawLine(
-        Offset(marginX, math.max(0.0, topMarginY)),
-        Offset(marginX, math.min(size.height, innerRect.bottom)),
-        marginPaint,
-      );
+    if (rulings.leftMarginRule case final marginRule?) {
+      final marginPaint = Paint()
+        ..color = _isDark
+            ? const Color(0x38EF9A9A)
+            : (style.tokens.ruleTint == RuleInkTint.vermilion
+                ? const Color(0x52C04851)
+                : const Color(0x33E57373))
+        ..strokeWidth = 1.2;
+      canvas.drawLine(marginRule.start, marginRule.end, marginPaint);
     }
   }
 
   void _paintGridPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
-    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
-    final effectiveHeaderY = innerRect.top + headerHeight;
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+      scrollOffsetY: scrollOffset,
+      headerHeight: headerHeight,
+      viewportHeight: size.height,
+    );
 
     final hGridPaint = Paint()
       ..color = _isDark ? const Color(0x18FFFFFF) : style.tokens.ruleTint.color
@@ -342,58 +331,25 @@ class TemplateCanvasPainter extends CustomPainter {
           : style.tokens.ruleTint.color.withValues(alpha: (style.tokens.ruleTint.color.a * 0.85))
       ..strokeWidth = 0.6;
 
-    final topY = math.max(0.0, math.max(innerRect.top, effectiveHeaderY));
-    final bottomY = math.min(size.height, innerRect.bottom);
-
-    // Vertical grid guidelines strictly within innerFrameRect and below letterhead
-    if (topY < bottomY) {
-      for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
-        final x = innerRect.left + colIndex * metrics.cellAdvancePx;
-        canvas.drawLine(Offset(x, topY), Offset(x, bottomY), vGridPaint);
-      }
-    }
-
-    // Horizontal grid rules strictly below letterhead
-    final isManuscript = StationeryCanvasFraming.shouldRenderFishtail(
-      style: style,
-      columnCount: metrics.columnCount,
-    );
-    final midCol = metrics.columnCount ~/ 2;
-    final midColLeft = innerRect.left + midCol * metrics.cellAdvancePx;
-    final midColRight = midColLeft + metrics.cellAdvancePx;
-
-    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
-      final y = innerRect.top + rowIndex * metrics.lineStridePx;
-      if (y > size.height) break;
-      if (y < effectiveHeaderY) continue;
-
-      if (isManuscript) {
-        // Leave central folding column unruled horizontally
-        canvas.drawLine(Offset(innerRect.left, y), Offset(midColLeft, y), hGridPaint);
-        canvas.drawLine(Offset(midColRight, y), Offset(innerRect.right, y), hGridPaint);
-      } else {
-        canvas.drawLine(Offset(innerRect.left, y), Offset(innerRect.right, y), hGridPaint);
-      }
-    }
+    _drawLineSegments(canvas, rulings.secondaryLines, vGridPaint);
+    _drawLineSegments(canvas, rulings.primaryLines, hGridPaint);
   }
 
   void _paintDotGridPaper(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
-    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
-    final effectiveHeaderY = innerRect.top + headerHeight;
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+      scrollOffsetY: scrollOffset,
+      headerHeight: headerHeight,
+      viewportHeight: size.height,
+    );
 
     final dotPaint = Paint()
       ..color = _isDark ? const Color(0x24FFFFFF) : style.tokens.ruleTint.color
       ..style = PaintingStyle.fill;
 
-    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
-      final y = innerRect.top + rowIndex * metrics.lineStridePx;
-      if (y > size.height) break;
-      if (y < effectiveHeaderY) continue;
-
-      for (int colIndex = 1; colIndex < metrics.columnCount; colIndex++) {
-        final x = innerRect.left + colIndex * metrics.cellAdvancePx;
-        canvas.drawCircle(Offset(x, y), 1.2, dotPaint);
-      }
+    for (final dot in rulings.dots) {
+      canvas.drawCircle(dot, 1.2, dotPaint);
     }
   }
 
@@ -422,21 +378,27 @@ class TemplateCanvasPainter extends CustomPainter {
   void _paintPaperTexture(Canvas canvas, Size size, StationeryLayoutMetrics metrics) {
     _paintKraftSurface(canvas, size);
 
+    final rulings = StationeryGeometry.buildRulings(
+      metrics: metrics,
+      style: style,
+      scrollOffsetY: scrollOffset,
+      headerHeight: headerHeight,
+      viewportHeight: size.height,
+    );
+
     final guidePaint = Paint()
       ..color = const Color(0x148D6E63)
       ..strokeWidth = 0.9;
+    _drawLineSegments(canvas, rulings.primaryLines, guidePaint);
+  }
 
-    final innerRect = metrics.innerFrameRect.translate(0.0, -scrollOffset);
-    final effectiveHeaderY = innerRect.top + headerHeight;
-    for (int rowIndex = 1; rowIndex < metrics.rowCount; rowIndex++) {
-      final y = innerRect.top + rowIndex * metrics.lineStridePx;
-      if (y > size.height) break;
-      if (y < effectiveHeaderY) continue;
-      canvas.drawLine(
-        Offset(innerRect.left, y),
-        Offset(innerRect.right, y),
-        guidePaint,
-      );
+  void _drawLineSegments(
+    Canvas canvas,
+    List<StationeryLineSegment> lines,
+    Paint paint,
+  ) {
+    for (final line in lines) {
+      canvas.drawLine(line.start, line.end, paint);
     }
   }
 

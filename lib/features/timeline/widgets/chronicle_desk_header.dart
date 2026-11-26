@@ -4,7 +4,6 @@ import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'chronicle_brass_grommet.dart';
-import 'chronicle_desk_palette.dart';
 import 'date_index_tray.dart';
 
 /// Pinned `SliverPersistentHeaderDelegate` rendering the `Chronicle Desk` (`案头卷匣`)
@@ -134,8 +133,7 @@ class _ChronicleDeskHeaderBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = ChronicleDeskPalette.of(context);
-    final atmosphere = context.atmospherePalette;
+    final palette = context.atmospherePalette;
     final tokens = context.inkTokens;
     final hasActiveCharms = filters.hasActiveCharmFilters;
     final charmSummary = filters.charmSummaryLabel();
@@ -197,7 +195,7 @@ class _ChronicleDeskHeaderBody extends StatelessWidget {
                                         width: 4,
                                         height: 14,
                                         decoration: BoxDecoration(
-                                          color: palette.cinnabar,
+                                          color: palette.accentPrimary,
                                           borderRadius: BorderRadius.circular(2),
                                         ),
                                       ),
@@ -224,7 +222,7 @@ class _ChronicleDeskHeaderBody extends StatelessWidget {
                                           vertical: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: palette.agedChip,
+                                          color: palette.agedFiberChip,
                                           borderRadius: BorderRadius.circular(12),
                                           border: Border.all(
                                             color: palette.deckleBorder,
@@ -237,7 +235,7 @@ class _ChronicleDeskHeaderBody extends StatelessWidget {
                                             fontFamily: InkDiaryTheme.fontNotoSerif,
                                             fontSize: 10,
                                             fontWeight: FontWeight.w600,
-                                            color: palette.brassGold,
+                                            color: palette.accentSecondary,
                                           ),
                                         ),
                                       ),
@@ -263,14 +261,14 @@ class _ChronicleDeskHeaderBody extends StatelessWidget {
                                           : Icons.local_offer_outlined,
                                       size: 13,
                                       color: hasActiveCharms
-                                          ? atmosphere.tallyFeaturedText
+                                          ? palette.tallyFeaturedText
                                           : tokens.cinnabar,
                                     ),
                                     trailing: Icon(
                                       Icons.keyboard_arrow_down_rounded,
                                       size: 15,
                                       color: hasActiveCharms
-                                          ? atmosphere.tallyFeaturedText
+                                          ? palette.tallyFeaturedText
                                           : tokens.danmo,
                                     ),
                                     onTap: onOpenCharmFilter,

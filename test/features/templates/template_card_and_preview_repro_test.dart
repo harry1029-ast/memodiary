@@ -2,7 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
-import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 import 'package:memodiary/features/templates/models/template_style.dart';
 import 'package:memodiary/features/templates/screens/custom_template_editor_screen.dart';
 import 'package:memodiary/features/templates/widgets/template_canvas_painter.dart';
@@ -93,7 +93,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData.dark().copyWith(
-            extensions: const [InkDiaryTokens.dark],
+            extensions: const [AtmospherePalettes.yunhaoNight],
           ),
           home: CustomTemplateEditorScreen(database: db),
         ),

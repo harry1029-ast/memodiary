@@ -205,24 +205,24 @@ void main() {
       await pumpSettingsScreen(tester, themeSettings: themeSettings);
 
       // Default is system
-      expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.system));
+      expect(themeSettings.configNotifier.value.themeMode, equals(ThemeMode.system));
 
       // Tap Light Mode
       await tester.tap(find.byKey(const Key('settings_theme_mode_light')));
       await tester.pumpAndSettle();
-      expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.light));
+      expect(themeSettings.configNotifier.value.themeMode, equals(ThemeMode.light));
       expect(mockStorage.data['memodiary_theme_mode'], equals('light'));
 
       // Tap Dark Mode
       await tester.tap(find.byKey(const Key('settings_theme_mode_dark')));
       await tester.pumpAndSettle();
-      expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.dark));
+      expect(themeSettings.configNotifier.value.themeMode, equals(ThemeMode.dark));
       expect(mockStorage.data['memodiary_theme_mode'], equals('dark'));
 
       // Tap System Mode
       await tester.tap(find.byKey(const Key('settings_theme_mode_system')));
       await tester.pumpAndSettle();
-      expect(themeSettings.themeModeNotifier.value, equals(ThemeMode.system));
+      expect(themeSettings.configNotifier.value.themeMode, equals(ThemeMode.system));
       expect(mockStorage.data['memodiary_theme_mode'], equals('system'));
     });
 

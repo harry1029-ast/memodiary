@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/ink_diary_theme.dart';
 import '../../settings/services/signature_seal_service.dart';
 import '../../templates/models/template_style.dart';
+import '../../templates/services/stationery_geometry.dart';
 
 /// Renders the diarist's persistent colophon Cinnabar Signature Seal (落款朱砂印)
 /// in 2×2 seal-carving calligraphy layout governed by the active template's [SealCarvingStyle].
@@ -10,6 +11,17 @@ class CinnabarSignatureSeal extends StatelessWidget {
   final String? overrideText;
   final SignatureSealService? sealService;
   final double size;
+  final Color? sealColor;
+  final Color? intaglioTextColor;
+  final Color? zhuwenBackgroundColor;
+  final String? fontFamily;
+  final double? fontSize;
+  final FontWeight fontWeight;
+  final double? borderWidth;
+  final double? borderRadius;
+  final EdgeInsetsGeometry? padding;
+  final List<BoxShadow>? boxShadow;
+  final bool includeSemantics;
 
   const CinnabarSignatureSeal({
     super.key,
@@ -17,6 +29,17 @@ class CinnabarSignatureSeal extends StatelessWidget {
     this.overrideText,
     this.sealService,
     this.size = 48.0,
+    this.sealColor,
+    this.intaglioTextColor,
+    this.zhuwenBackgroundColor,
+    this.fontFamily,
+    this.fontSize,
+    this.fontWeight = FontWeight.w900,
+    this.borderWidth,
+    this.borderRadius,
+    this.padding,
+    this.boxShadow,
+    this.includeSemantics = true,
   });
 
   @override
@@ -41,49 +64,65 @@ class CinnabarSignatureSeal extends StatelessWidget {
 
   Widget _buildSeal(BuildContext context, String rawText) {
     final tokens = InkDiaryTheme.tokensOf(context);
-    final text = rawText.trim().isEmpty ? SignatureSealService.defaultSealText : rawText.trim();
-    final cinnabar = tokens.sealCinnabar;
-    final isBaiwen = sealStyle == SealCarvingStyle.baiwen;
+    final layout = StationeryGeometry.buildSealLayout(
+      text: rawText,
+      sealStyle: sealStyle,
+    );
+    if (!layout.isVisible) {
+      return const SizedBox.shrink();
+    }
 
-    // Split text into 2 columns for traditional right-to-left seal carving
-    final (colRight, colLeft) = _partitionSealText(text);
+    final cinnabar = sealColor ?? tokens.sealCinnabar;
+    final groundColor = intaglioTextColor ?? tokens.xuanGround;
 
     final sealWidget = Container(
       key: const Key('cinnabar_signature_seal'),
       width: size,
       height: size,
-      padding: EdgeInsets.all(size * 0.08),
+      padding: padding ?? EdgeInsets.all(size * 0.08),
       decoration: BoxDecoration(
-        color: isBaiwen ? cinnabar : Colors.transparent,
+        color: layout.isBaiwen
+            ? cinnabar
+            : (zhuwenBackgroundColor ?? Colors.transparent),
         border: Border.all(
           color: cinnabar,
-          width: size * 0.05,
+          width: borderWidth ?? size * 0.05,
         ),
-        borderRadius: BorderRadius.circular(size * 0.08),
+        borderRadius: BorderRadius.circular(borderRadius ?? size * 0.08),
+        boxShadow: boxShadow,
       ),
       child: Row(
         textDirection: TextDirection.ltr,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           // Left column (read second in traditional R-to-L seal order)
-          _buildColumn(colLeft, isBaiwen, tokens),
+          _buildColumn(layout.colLeft, layout.isBaiwen, cinnabar, groundColor),
           // Right column (read first in traditional R-to-L seal order)
-          _buildColumn(colRight, isBaiwen, tokens),
+          _buildColumn(layout.colRight, layout.isBaiwen, cinnabar, groundColor),
         ],
       ),
     );
 
+    if (!includeSemantics) {
+      return sealWidget;
+    }
+
     return Semantics(
-      label: '签名印章：$text',
+      label: '签名印章：${layout.semanticText}',
       container: true,
       excludeSemantics: true,
       child: sealWidget,
     );
   }
 
-  Widget _buildColumn(List<String> chars, bool isBaiwen, InkDiaryTokens tokens) {
-    final textColor = isBaiwen ? tokens.xuanGround : tokens.sealCinnabar;
-    final fontSize = size * 0.32;
+  Widget _buildColumn(
+    List<String> chars,
+    bool isBaiwen,
+    Color cinnabar,
+    Color groundColor,
+  ) {
+    final textColor = isBaiwen ? groundColor : cinnabar;
+    final resolvedFontSize = fontSize ?? size * 0.32;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -91,32 +130,14 @@ class CinnabarSignatureSeal extends StatelessWidget {
         return Text(
           character,
           style: TextStyle(
-            fontFamily: InkDiaryTheme.fontNotoSerif,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
+            fontFamily: fontFamily ?? InkDiaryTheme.fontNotoSerif,
+            fontSize: resolvedFontSize,
+            fontWeight: fontWeight,
             color: textColor,
             height: 1.0,
           ),
         );
       }).toList(),
     );
-  }
-
-  /// Partitions 2 to 4 characters into traditional Right and Left seal columns.
-  /// Standard 4-char seal:
-  ///   ColRight (Top to bottom): char 0, char 1
-  ///   ColLeft  (Top to bottom): char 2, char 3
-  (List<String>, List<String>) _partitionSealText(String text) {
-    final chars = text.characters.take(4).toList();
-    if (chars.length == 4) {
-      return ([chars[0], chars[1]], [chars[2], chars[3]]);
-    } else if (chars.length == 3) {
-      return ([chars[0], chars[1]], [chars[2]]);
-    } else if (chars.length == 2) {
-      return ([chars[0]], [chars[1]]);
-    } else if (chars.length == 1) {
-      return ([chars[0]], []);
-    }
-    return (['心', '迹'], ['安', '放']);
   }
 }

@@ -1,22 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/features/scenery/models/shanshui_atmosphere.dart';
+import 'package:memodiary/features/scenery/painters/ancient_room_painter.dart';
 import 'package:memodiary/features/scenery/painters/fenghuang_painter.dart';
 import 'package:memodiary/features/scenery/painters/outdoor_street_painter.dart';
 import 'package:memodiary/features/scenery/painters/west_lake_painter.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_canvas_painter.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_painting.dart';
-
-class _MockCustomPainter extends CustomPainter {
-  final String label;
-  const _MockCustomPainter(this.label);
-
-  @override
-  void paint(Canvas canvas, Size size) {}
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 void main() {
   group('ShanshuiSceneryPainting modular painter dispatch and interactions', () {
@@ -57,8 +47,7 @@ void main() {
       expect(customPaint.painter, isA<ShanshuiCanvasPainter>());
     });
 
-    testWidgets('dispatches through indoorPainterBuilder when indoor realm is active', (tester) async {
-      bool indoorBuilderCalled = false;
+    testWidgets('dispatches to AncientRoomPainter when indoor realm is active', (tester) async {
       const atmosphere = ShanshuiAtmosphereState(
         realm: ShanshuiRealm.indoor,
         season: ShanshuiSeason.spring,
@@ -67,7 +56,7 @@ void main() {
       );
 
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: Center(
               child: SizedBox(
@@ -76,21 +65,6 @@ void main() {
                 child: ShanshuiSceneryPainting(
                   atmosphere: atmosphere,
                   enableAmbientAnimation: false,
-                  indoorPainterBuilder: ({
-                    required atmosphere,
-                    required palette,
-                    required animationTime,
-                    required particles,
-                    required weatherDrops,
-                    required cranes,
-                    required ripples,
-                    required showCalligraphy,
-                    required fullPoem,
-                    required lightningAlpha,
-                  }) {
-                    indoorBuilderCalled = true;
-                    return const _MockCustomPainter('indoor');
-                  },
                 ),
               ),
             ),
@@ -98,67 +72,13 @@ void main() {
         ),
       );
 
-      expect(indoorBuilderCalled, isTrue);
-
       final customPaint = tester.widget<CustomPaint>(
         find.descendant(
           of: find.byType(AspectRatio),
           matching: find.byType(CustomPaint),
         ),
       );
-      expect(customPaint.painter, isA<_MockCustomPainter>());
-    });
-
-    testWidgets('dispatches through outdoorPainterBuilder when outdoor realm is active', (tester) async {
-      bool outdoorBuilderCalled = false;
-      const atmosphere = ShanshuiAtmosphereState(
-        realm: ShanshuiRealm.outdoor,
-        season: ShanshuiSeason.summer,
-        timeOfDay: ShanshuiTimeOfDay.day,
-        weather: ShanshuiWeather.sunny,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 300,
-                height: 200,
-                child: ShanshuiSceneryPainting(
-                  atmosphere: atmosphere,
-                  enableAmbientAnimation: false,
-                  outdoorPainterBuilder: ({
-                    required atmosphere,
-                    required palette,
-                    required animationTime,
-                    required particles,
-                    required weatherDrops,
-                    required cranes,
-                    required ripples,
-                    required showCalligraphy,
-                    required fullPoem,
-                    required lightningAlpha,
-                  }) {
-                    outdoorBuilderCalled = true;
-                    return const _MockCustomPainter('outdoor');
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-
-      expect(outdoorBuilderCalled, isTrue);
-
-      final customPaint = tester.widget<CustomPaint>(
-        find.descendant(
-          of: find.byType(AspectRatio),
-          matching: find.byType(CustomPaint),
-        ),
-      );
-      expect(customPaint.painter, isA<_MockCustomPainter>());
+      expect(customPaint.painter, isA<AncientRoomPainter>());
     });
 
     testWidgets('triggers petal swirls on indoor tap and ripples on nature tap', (tester) async {
@@ -343,87 +263,6 @@ void main() {
       expect(stateKey.currentState!.rippleCount, equals(ripplesBefore + 1));
       expect(stateKey.currentState!.particleCount, greaterThan(particlesBefore));
       expect(stateKey.currentState!.ripples.last.y, greaterThanOrEqualTo(520.0));
-    });
-
-    testWidgets('dispatches through westLakePainterBuilder and fenghuangPainterBuilder', (tester) async {
-      bool westLakeBuilderCalled = false;
-      bool fenghuangBuilderCalled = false;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 300,
-                height: 200,
-                child: ShanshuiSceneryPainting(
-                  atmosphere: const ShanshuiAtmosphereState(
-                    realm: ShanshuiRealm.westLake,
-                    season: ShanshuiSeason.fall,
-                    timeOfDay: ShanshuiTimeOfDay.dusk,
-                    weather: ShanshuiWeather.sunny,
-                  ),
-                  enableAmbientAnimation: false,
-                  westLakePainterBuilder: ({
-                    required atmosphere,
-                    required palette,
-                    required animationTime,
-                    required particles,
-                    required weatherDrops,
-                    required cranes,
-                    required ripples,
-                    required showCalligraphy,
-                    required fullPoem,
-                    required lightningAlpha,
-                  }) {
-                    westLakeBuilderCalled = true;
-                    return const _MockCustomPainter('westLake');
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      expect(westLakeBuilderCalled, isTrue);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: Center(
-              child: SizedBox(
-                width: 300,
-                height: 200,
-                child: ShanshuiSceneryPainting(
-                  atmosphere: const ShanshuiAtmosphereState(
-                    realm: ShanshuiRealm.fenghuang,
-                    season: ShanshuiSeason.spring,
-                    timeOfDay: ShanshuiTimeOfDay.day,
-                    weather: ShanshuiWeather.sunny,
-                  ),
-                  enableAmbientAnimation: false,
-                  fenghuangPainterBuilder: ({
-                    required atmosphere,
-                    required palette,
-                    required animationTime,
-                    required particles,
-                    required weatherDrops,
-                    required cranes,
-                    required ripples,
-                    required showCalligraphy,
-                    required fullPoem,
-                    required lightningAlpha,
-                  }) {
-                    fenghuangBuilderCalled = true;
-                    return const _MockCustomPainter('fenghuang');
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-      expect(fenghuangBuilderCalled, isTrue);
     });
 
     testWidgets('dispatches to FenghuangPainter for fenghuang realm and clamps sky taps to y >= 555', (tester) async {

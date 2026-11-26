@@ -8,6 +8,8 @@ import 'fenghuang_atmosphere_layers.dart';
 import 'fenghuang_river_layers.dart';
 import 'fenghuang_static_architecture.dart';
 import 'fenghuang_stepping_stones_layer.dart';
+import 'scenery_canvas_painter_base.dart';
+import 'shanshui_atmospheric_effects.dart';
 
 /// Full interactive 1500x1000 vector painter for Xiangxi Fenghuang Ancient Town (`凤凰`).
 ///
@@ -16,29 +18,29 @@ import 'fenghuang_stepping_stones_layer.dart';
 /// 3-arch Hongqiao Wind & Rain Covered Bridge, riverbank seasonal trees, and 10
 /// multi-story wooden Stilt Houses) with dynamic 60 FPS animations across all
 /// 4 seasons, 4 times of day, and 5 weathers.
-class FenghuangPainter extends CustomPainter {
-  final ShanshuiAtmosphereState atmosphere;
+class FenghuangPainter extends SceneryCanvasPainterBase {
   final FenghuangPalette fenghuangPalette;
-  final double animationTime;
-  final List<ShanshuiParticle> particles;
-  final List<ShanshuiWeatherDrop> weatherDrops;
   final List<ShanshuiRipple> ripples;
-  final bool showCalligraphy;
-  final bool fullPoem;
-  final double lightningAlpha;
-  final ui.Picture? cachedStaticPicture;
+
+  static const _calligraphyConfig = SceneryCalligraphyConfig(
+    titleX: 1422.0,
+    titleY: 58.0,
+    poemStartX: 1376.0,
+    poemStartY: 66.0,
+    sealX: 1412.0,
+  );
 
   FenghuangPainter({
-    required this.atmosphere,
+    required super.atmosphere,
     FenghuangPalette? fenghuangPalette,
-    required this.animationTime,
-    required this.particles,
-    required this.weatherDrops,
+    required super.animationTime,
+    required super.particles,
+    required super.weatherDrops,
     this.ripples = const [],
-    this.showCalligraphy = false,
-    this.fullPoem = false,
-    this.lightningAlpha = 0.0,
-    this.cachedStaticPicture,
+    super.showCalligraphy = false,
+    super.fullPoem = false,
+    super.lightningAlpha = 0.0,
+    super.cachedStaticPicture,
   }) : fenghuangPalette = fenghuangPalette ??
             FenghuangPalette.of(atmosphere.season, atmosphere.timeOfDay);
 
@@ -79,11 +81,14 @@ class FenghuangPainter extends CustomPainter {
       FenghuangRiverLayers.floatingLanternCount(timeOfDay);
 
   @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 1500.0, size.height / 1000.0);
-    canvas.clipRect(const Rect.fromLTWH(0, 0, 1500, 1000));
+  int get rippleCount => ripples.length;
 
+  @override
+  bool shouldRepaintExtra(covariant FenghuangPainter oldDelegate) =>
+      oldDelegate.fenghuangPalette != fenghuangPalette;
+
+  @override
+  void paintScene(Canvas canvas) {
     final isNight = atmosphere.timeOfDay == ShanshuiTimeOfDay.night;
     final isWetWeather = atmosphere.weather == ShanshuiWeather.rainy ||
         atmosphere.weather == ShanshuiWeather.stormy;
@@ -196,29 +201,14 @@ class FenghuangPainter extends CustomPainter {
 
     // 10. Top-right vertical calligraphy colophon, 2x2 cinnabar seal & vignette
     if (showCalligraphy) {
-      FenghuangAtmosphereLayers.paintCalligraphyAndSeal(
+      ShanshuiAtmosphericEffects.drawCalligraphyAndSeal(
         canvas,
         atmosphere: atmosphere,
         isNight: isNight,
         fullPoem: fullPoem,
+        config: _calligraphyConfig,
       );
     }
-    FenghuangAtmosphereLayers.paintVignette(canvas, isNight: isNight);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant FenghuangPainter oldDelegate) {
-    return oldDelegate.animationTime != animationTime ||
-        oldDelegate.atmosphere != atmosphere ||
-        oldDelegate.fenghuangPalette != fenghuangPalette ||
-        oldDelegate.lightningAlpha != lightningAlpha ||
-        oldDelegate.showCalligraphy != showCalligraphy ||
-        oldDelegate.fullPoem != fullPoem ||
-        oldDelegate.ripples.length != ripples.length ||
-        oldDelegate.particles.length != particles.length ||
-        oldDelegate.weatherDrops.length != weatherDrops.length ||
-        oldDelegate.cachedStaticPicture != cachedStaticPicture;
+    ShanshuiAtmosphericEffects.drawVignette(canvas, isNight: isNight);
   }
 }

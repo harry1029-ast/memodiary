@@ -30,10 +30,10 @@ void main() {
     }
   });
 
-  testWidgets('MemoDiaryApp rebuilds MaterialApp when themeModeNotifier changes',
+  testWidgets('MemoDiaryApp rebuilds MaterialApp when themeMode changes',
       (WidgetTester tester) async {
-    final themeSettings = ThemeSettingsService();
-    themeSettings.themeModeNotifier.value = ThemeMode.system;
+    final themeSettings = ThemeSettingsService(storage: MockSecureStorage());
+    await themeSettings.setThemeMode(ThemeMode.system);
 
     await tester.pumpWidget(
       MemoDiaryApp(
@@ -52,18 +52,20 @@ void main() {
     expect(app.darkTheme, equals(InkDiaryTheme.dark));
 
     // Update to ThemeMode.light
-    themeSettings.themeModeNotifier.value = ThemeMode.light;
+    await themeSettings.setThemeMode(ThemeMode.light);
     await tester.pumpAndSettle();
 
     app = tester.widget(find.byType(MaterialApp));
     expect(app.themeMode, equals(ThemeMode.light));
+    expect(themeSettings.configNotifier.value.themeMode, equals(ThemeMode.light));
 
     // Update to ThemeMode.dark
-    themeSettings.themeModeNotifier.value = ThemeMode.dark;
+    await themeSettings.setThemeMode(ThemeMode.dark);
     await tester.pumpAndSettle();
 
     app = tester.widget(find.byType(MaterialApp));
     expect(app.themeMode, equals(ThemeMode.dark));
+    expect(themeSettings.configNotifier.value.themeMode, equals(ThemeMode.dark));
   });
 
   testWidgets('MemoDiaryApp updates light and dark ThemeData live on preset and custom palette changes',
@@ -83,7 +85,7 @@ void main() {
     MaterialApp app = tester.widget(find.byType(MaterialApp));
     expect(app.theme?.extension<AtmospherePalette>()?.id, equals('yunhaoDay'));
     expect(app.darkTheme?.extension<AtmospherePalette>()?.id, equals('yunhaoNight'));
-    expect(app.theme?.extension<InkDiaryTokens>()?.sealCinnabar, equals(const Color(0xFFC24D43)));
+    expect(app.theme?.extension<AtmospherePalette>()?.sealAccent, equals(const Color(0xFFC24D43)));
     expect(app.darkTheme?.colorScheme.onSecondary, equals(const Color(0xFF1A140B)));
     expect(app.darkTheme?.floatingActionButtonTheme.foregroundColor, equals(const Color(0xFF1A140B)));
 
@@ -104,7 +106,7 @@ void main() {
     app = tester.widget(find.byType(MaterialApp));
     expect(app.theme?.extension<AtmospherePalette>()?.id, equals('mistyTwilight'));
     expect(app.darkTheme?.extension<AtmospherePalette>()?.id, equals('blossomLantern'));
-    expect(app.darkTheme?.extension<InkDiaryTokens>()?.onAccentPrimary, equals(const Color(0xFF261015)));
+    expect(app.darkTheme?.extension<AtmospherePalette>()?.onAccentPrimary, equals(const Color(0xFF261015)));
   });
 }
 

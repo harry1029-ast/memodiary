@@ -6,20 +6,6 @@ import '../models/shanshui_palette.dart';
 import '../models/shanshui_scenery_geometry.dart';
 import 'scenery_realm_painter_factory.dart';
 
-/// Pluggable builder function signature for modular realm painters.
-typedef RealmPainterBuilder = CustomPainter Function({
-  required ShanshuiAtmosphereState atmosphere,
-  required ShanshuiPalette palette,
-  required double animationTime,
-  required List<ShanshuiParticle> particles,
-  required List<ShanshuiWeatherDrop> weatherDrops,
-  required List<ShanshuiCrane> cranes,
-  required List<ShanshuiRipple> ripples,
-  required bool showCalligraphy,
-  required bool fullPoem,
-  required double lightningAlpha,
-});
-
 /// Interactive stateful painting widget managing the 60 FPS animation ticker,
 /// particle physics, crane flocking, modular realm painter dispatch,
 /// lake touch ripples, and lifecycle pause.
@@ -31,10 +17,6 @@ class ShanshuiSceneryPainting extends StatefulWidget {
   final bool? enableAmbientAnimation;
   final VoidCallback? onSceneryTap;
   final bool isVisible;
-  final RealmPainterBuilder? indoorPainterBuilder;
-  final RealmPainterBuilder? outdoorPainterBuilder;
-  final RealmPainterBuilder? westLakePainterBuilder;
-  final RealmPainterBuilder? fenghuangPainterBuilder;
 
   const ShanshuiSceneryPainting({
     super.key,
@@ -45,10 +27,6 @@ class ShanshuiSceneryPainting extends StatefulWidget {
     this.enableAmbientAnimation,
     this.onSceneryTap,
     this.isVisible = true,
-    this.indoorPainterBuilder,
-    this.outdoorPainterBuilder,
-    this.westLakePainterBuilder,
-    this.fenghuangPainterBuilder,
   });
 
   @override
@@ -278,25 +256,12 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
     final nx = details.localPosition.dx * scaleX;
     final ny = details.localPosition.dy * scaleY;
 
-    switch (widget.atmosphere.realm) {
-      case ShanshuiRealm.nature:
-        addRippleAtNormalized(nx, ny);
-        break;
-      case ShanshuiRealm.westLake:
-        addRippleAtNormalized(nx, ny, minY: 520.0);
-        addPetalSwirlAtNormalized(nx, ny);
-        break;
-      case ShanshuiRealm.fenghuang:
-        addRippleAtNormalized(nx, ny, minY: 555.0);
-        addPetalSwirlAtNormalized(nx, ny);
-        break;
-      case ShanshuiRealm.indoor:
-        addPetalSwirlAtNormalized(nx, ny);
-        break;
-      case ShanshuiRealm.outdoor:
-        addRippleAtNormalized(nx, ny);
-        addPetalSwirlAtNormalized(nx, ny);
-        break;
+    final descriptor = SceneryRealmDescriptor.of(widget.atmosphere.realm);
+    if (descriptor.rippleMinY != null) {
+      addRippleAtNormalized(nx, ny, minY: descriptor.rippleMinY!);
+    }
+    if (descriptor.spawnPetalSwirl) {
+      addPetalSwirlAtNormalized(nx, ny);
     }
 
     widget.onSceneryTap?.call();
@@ -347,10 +312,6 @@ class ShanshuiSceneryPaintingState extends State<ShanshuiSceneryPainting>
                   showCalligraphy: widget.showCalligraphy,
                   fullPoem: widget.fullPoem,
                   lightningAlpha: _lightningAlpha,
-                  indoorPainterBuilder: widget.indoorPainterBuilder,
-                  outdoorPainterBuilder: widget.outdoorPainterBuilder,
-                  westLakePainterBuilder: widget.westLakePainterBuilder,
-                  fenghuangPainterBuilder: widget.fenghuangPainterBuilder,
                 ),
                 size: Size.infinite,
               ),

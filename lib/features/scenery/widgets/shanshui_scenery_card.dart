@@ -329,8 +329,7 @@ class _ShanshuiSceneryCardState extends State<ShanshuiSceneryCard>
         onExpand: _triggerOpenChoreography,
       );
     } else {
-      final tokens =
-          Theme.of(context).extension<InkDiaryTokens>() ?? InkDiaryTokens.light;
+      final tokens = context.inkTokens;
       child = _buildExpandedWindow(tokens);
     }
 

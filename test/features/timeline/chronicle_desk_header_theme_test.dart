@@ -9,7 +9,6 @@ import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/theme_settings_service.dart';
-import 'package:memodiary/features/timeline/widgets/chronicle_desk_palette.dart';
 import 'package:memodiary/main.dart';
 
 import '../../helpers/mock_secure_storage.dart';
@@ -105,7 +104,6 @@ void main() {
         AtmospherePalette palette,
         String stage,
       ) async {
-        final expectedDesk = ChronicleDeskPalette.fromAtmosphere(palette);
         final headerFinder = find.byType(SliverPersistentHeader);
         final headerContainers = tester.widgetList<Container>(
           find.descendant(
@@ -118,7 +116,7 @@ void main() {
           return dec is BoxDecoration &&
               dec.gradient is LinearGradient &&
               (dec.gradient! as LinearGradient).colors.first ==
-                  expectedDesk.deskSurroundTop;
+                  palette.deskSurroundTop;
         });
         expect(
           hasSurroundGradient,
@@ -129,7 +127,7 @@ void main() {
           final dec = c.decoration;
           return dec is BoxDecoration &&
               dec.borderRadius != null &&
-              dec.color == expectedDesk.deskMat;
+              dec.color == palette.deskMat;
         });
         expect(
           hasDeskMatColor,
@@ -141,7 +139,7 @@ void main() {
             await _samplePixel(tester, boundaryKey, surroundSample);
         _expectColorClose(
           actualSurround,
-          expectedDesk.deskSurroundTop,
+          palette.deskSurroundTop,
           label: '$stage surround pixel',
         );
 

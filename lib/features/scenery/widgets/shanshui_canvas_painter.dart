@@ -3,40 +3,59 @@ import 'package:flutter/material.dart';
 import '../models/shanshui_atmosphere.dart';
 import '../models/shanshui_palette.dart';
 import '../models/shanshui_scenery_geometry.dart';
+import '../painters/scenery_canvas_painter_base.dart';
 import '../painters/shanshui_atmospheric_effects.dart';
 import '../painters/shanshui_nature_layers.dart';
 
 /// 11-layer procedural vector painter rendering the classical Chinese Shanshui
 /// landscape painting in true vector coordinates ($1500 \times 1000$ internal space).
-class ShanshuiCanvasPainter extends CustomPainter {
-  final ShanshuiAtmosphereState atmosphere;
+class ShanshuiCanvasPainter extends SceneryCanvasPainterBase {
   final ShanshuiPalette palette;
-  final double animationTime; // elapsed time in seconds
-  final List<ShanshuiParticle> particles;
-  final List<ShanshuiWeatherDrop> weatherDrops;
   final List<ShanshuiCrane> cranes;
   final List<ShanshuiRipple> ripples;
-  final bool showCalligraphy;
-  final bool fullPoem;
-  final double lightningAlpha;
+
+  static const _calligraphyConfig = SceneryCalligraphyConfig(
+    titleX: 1415.0,
+    titleY: 75.0,
+    titleStepY: 32.5,
+    poemStartX: 1372.0,
+    poemStartY: 80.0,
+    poemColumnStepX: -30.0,
+    poemStepY: 23.4,
+    poemFontSize: 18.0,
+    poemAlpha: 0.75,
+    sealX: 1404.0,
+    sealTopGap: 15.0,
+    sealSize: 40.0,
+    sealFontSize: 11.0,
+    dayTextColor: Color(0xD1231F1C),
+    nightTextColor: Color(0xDDF1F5F9),
+    dayShadowColor: null,
+    nightShadowColor: null,
+  );
 
   const ShanshuiCanvasPainter({
-    required this.atmosphere,
+    required super.atmosphere,
     required this.palette,
-    required this.animationTime,
-    required this.particles,
-    required this.weatherDrops,
+    required super.animationTime,
+    required super.particles,
+    required super.weatherDrops,
     required this.cranes,
     required this.ripples,
-    this.showCalligraphy = true,
-    this.fullPoem = true,
-    this.lightningAlpha = 0.0,
+    super.showCalligraphy = true,
+    super.fullPoem = true,
+    super.lightningAlpha = 0.0,
   });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 1500.0, size.height / 1000.0);
+  int get rippleCount => ripples.length;
+
+  @override
+  bool shouldRepaintExtra(covariant ShanshuiCanvasPainter oldDelegate) =>
+      oldDelegate.palette != palette;
+
+  @override
+  void paintScene(Canvas canvas) {
 
     final isWinter = atmosphere.season == ShanshuiSeason.winter;
     final isSnowWeather = atmosphere.weather == ShanshuiWeather.snowy;
@@ -152,21 +171,24 @@ class ShanshuiCanvasPainter extends CustomPainter {
 
     // 7. Vertical Calligraphy Colophon & Cinnabar Seal
     if (showCalligraphy) {
-      _drawCalligraphy(canvas, isNight);
+      ShanshuiAtmosphericEffects.drawCalligraphyAndSeal(
+        canvas,
+        atmosphere: atmosphere,
+        isNight: isNight,
+        fullPoem: fullPoem,
+        config: _calligraphyConfig,
+      );
     }
 
     // 8. Soft Radial Vignette
-    final vignettePaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          Colors.transparent,
-          isNight ? const Color(0x66050A0E) : const Color(0x2E3A3026),
-        ],
-        stops: const [0.55, 1.0],
-      ).createShader(const Rect.fromLTWH(0, 0, 1500, 1000));
-    canvas.drawRect(const Rect.fromLTWH(0, 0, 1500, 1000), vignettePaint);
-
-    canvas.restore();
+    ShanshuiAtmosphericEffects.drawVignette(
+      canvas,
+      isNight: isNight,
+      radius: 0.5,
+      innerStop: 0.55,
+      dayEdgeColor: const Color(0x2E3A3026),
+      nightEdgeColor: const Color(0x66050A0E),
+    );
   }
 
   void _drawSkyAndCelestial(
@@ -313,78 +335,5 @@ class ShanshuiCanvasPainter extends CustomPainter {
           ..strokeWidth = 2.0,
       );
     }
-  }
-
-  void _drawCalligraphy(Canvas canvas, bool isNight) {
-    final textColor = isNight ? const Color(0xDDF1F5F9) : const Color(0xD1231F1C);
-
-    final titleText = atmosphere.season.nameZh.replaceAll(' · ', '');
-    final titleSpan = TextSpan(
-      text: titleText.split('').join('\n'),
-      style: TextStyle(
-        fontSize: 26,
-        fontWeight: FontWeight.bold,
-        color: textColor,
-        fontFamily: 'serif',
-        height: 1.25,
-      ),
-    );
-    final titlePainter = TextPainter(
-      text: titleSpan,
-      textDirection: TextDirection.ltr,
-    )..layout();
-    titlePainter.paint(canvas, const Offset(1415, 75));
-
-    if (fullPoem) {
-      final cleanPoem = atmosphere.poem.replaceAll(RegExp(r'[，。、；：！？,\.]'), '');
-      if (cleanPoem.isNotEmpty) {
-        final splitIndex = (cleanPoem.length / 2).ceil();
-        final rightColumn = cleanPoem.substring(0, splitIndex);
-        final leftColumn = cleanPoem.substring(splitIndex);
-        final poemStyle = TextStyle(
-          fontSize: 18,
-          color: textColor.withValues(alpha: 0.75),
-          fontFamily: 'serif',
-          height: 1.3,
-        );
-
-        final rightPainter = TextPainter(
-          text: TextSpan(text: rightColumn.split('').join('\n'), style: poemStyle),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        rightPainter.paint(canvas, const Offset(1372, 80));
-
-        if (leftColumn.isNotEmpty) {
-          final leftPainter = TextPainter(
-            text: TextSpan(text: leftColumn.split('').join('\n'), style: poemStyle),
-            textDirection: TextDirection.ltr,
-          )..layout();
-          leftPainter.paint(canvas, const Offset(1342, 80));
-        }
-      }
-    }
-
-    ShanshuiAtmosphericEffects.drawCinnabarSeal(
-      canvas,
-      x: 1404.0,
-      y: 75.0 + titlePainter.height + 15.0,
-      size: 40.0,
-      sealText: atmosphere.season.sealText,
-      fontSize: 11,
-      leftPad: 6,
-      colStep: 15,
-      rowOffset1: 7,
-      verticalColumns: true,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant ShanshuiCanvasPainter oldDelegate) {
-    return oldDelegate.animationTime != animationTime ||
-        oldDelegate.atmosphere != atmosphere ||
-        oldDelegate.ripples.length != ripples.length ||
-        oldDelegate.lightningAlpha != lightningAlpha ||
-        oldDelegate.showCalligraphy != showCalligraphy ||
-        oldDelegate.fullPoem != fullPoem;
   }
 }
