@@ -7,19 +7,7 @@ import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 
-class _SqlCaptureInterceptor extends QueryInterceptor {
-  final List<String> executedSql = [];
-
-  @override
-  Future<List<Map<String, Object?>>> runSelect(
-    QueryExecutor executor,
-    String statement,
-    List<Object?> args,
-  ) {
-    executedSql.add(statement);
-    return super.runSelect(executor, statement, args);
-  }
-}
+import '../../helpers/sql_capture_interceptor.dart';
 
 void main() {
   late AppDatabase db;
@@ -585,7 +573,7 @@ void main() {
 
   group('Timeline Summary Projection DAO Tests', () {
     test('getFilteredTimelineSummaries projects metadata and snippet without selecting content_delta', () async {
-      final interceptor = _SqlCaptureInterceptor();
+      final interceptor = SqlCaptureInterceptor();
       final interceptedDb = AppDatabase.forTesting(
         NativeDatabase.memory().interceptWith(interceptor),
       );
@@ -613,7 +601,7 @@ void main() {
         ),
       );
 
-      interceptor.executedSql.clear();
+      interceptor.clear();
       final summaries = await interceptedDb.entriesDao.getFilteredTimelineSummaries();
 
       expect(summaries, hasLength(1));
@@ -781,7 +769,7 @@ void main() {
     });
 
     test('getFilteredTimelineDateIndex returns ordered (id, entryDate) pairs matching filters without heavy columns', () async {
-      final interceptor = _SqlCaptureInterceptor();
+      final interceptor = SqlCaptureInterceptor();
       final interceptedDb = AppDatabase.forTesting(
         NativeDatabase.memory().interceptWith(interceptor),
       );
@@ -812,7 +800,7 @@ void main() {
         );
       }
 
-      interceptor.executedSql.clear();
+      interceptor.clear();
       final newestIndex = await interceptedDb.entriesDao.getFilteredTimelineDateIndex();
       expect(
         newestIndex.map((item) => (item.id, item.entryDate)).toList(),

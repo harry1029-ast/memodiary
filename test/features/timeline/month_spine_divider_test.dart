@@ -99,6 +99,25 @@ void main() {
         const ChronicleMonthDividerItem(year: 2025, month: 11, isFirstInFeed: false),
       );
     });
+
+    test('countChronicleMonthDividersThrough matches buildChronicleFeedItems divider boundaries', () {
+      final entries = [
+        _summary('nov_20', DateTime(2026, 11, 20)),
+        _summary('nov_05', DateTime(2026, 11, 5)),
+        _summary('oct_18', DateTime(2026, 10, 18)),
+        _summary('oct_02', DateTime(2026, 10, 2)),
+        _summary('nov_2025', DateTime(2025, 11, 28)),
+      ];
+
+      expect(countChronicleMonthDividersThrough(const [], 0), equals(0));
+      expect(countChronicleMonthDividersThrough(entries, -1), equals(0));
+      expect(countChronicleMonthDividersThrough(entries, 0), equals(1));
+      expect(countChronicleMonthDividersThrough(entries, 1), equals(1));
+      expect(countChronicleMonthDividersThrough(entries, 2), equals(2));
+      expect(countChronicleMonthDividersThrough(entries, 3), equals(2));
+      expect(countChronicleMonthDividersThrough(entries, 4), equals(3));
+      expect(countChronicleMonthDividersThrough(entries, 99), equals(3));
+    });
   });
 
   group('MonthSpineDivider Widget Tests', () {

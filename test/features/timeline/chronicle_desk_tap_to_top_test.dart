@@ -6,9 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
-import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
 import 'package:memodiary/features/timeline/widgets/window_sill_ledge.dart';
+
+import '../../helpers/timeline_test_harness.dart';
+import '../../helpers/widget_test_helpers.dart';
 
 void main() {
   late AppDatabase db;
@@ -42,39 +44,6 @@ void main() {
     }
   }
 
-  Future<void> pumpTimelineScreen(
-    WidgetTester tester, {
-    Size? surfaceSize,
-    double textScale = 1.0,
-    bool disableAnimations = false,
-  }) async {
-    if (surfaceSize != null) {
-      tester.view.physicalSize = surfaceSize;
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-    }
-
-    await tester.pumpWidget(
-      MaterialApp(
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(textScale),
-            disableAnimations: disableAnimations,
-          ),
-          child: child ?? const SizedBox.shrink(),
-        ),
-        home: TimelineScreen(
-          database: db,
-          mediaService: mediaService,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-  }
-
   double currentScrollOffset(WidgetTester tester) {
     final scrollable = tester.state<ScrollableState>(
       find
@@ -91,26 +60,40 @@ void main() {
     testWidgets(
       'tapping pinned title area when scrolled down returns timeline to offset 0 and reveals scenery',
       (tester) async {
-        await seedEntries(15);
-        await pumpTimelineScreen(tester);
+        final semanticsHandle = tester.ensureSemantics();
+        try {
+          await seedEntries(15);
+          await pumpTimelineScreen(
+            tester,
+            database: db,
+            mediaService: mediaService,
+          );
 
-        expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
-        expect(find.byType(WindowSillLedge), findsOneWidget);
-        expect(currentScrollOffset(tester), 0.0);
+          expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
+          expect(find.byType(WindowSillLedge), findsOneWidget);
+          expect(currentScrollOffset(tester), 0.0);
 
-        await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
-        await tester.pumpAndSettle();
+          await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
+          await tester.pumpAndSettle();
 
-        expect(currentScrollOffset(tester), greaterThan(0.0));
-        expect(find.byType(ShanshuiSceneryCard), findsNothing);
-        expect(find.bySemanticsLabel('点击返回顶部'), findsOneWidget);
+          expect(currentScrollOffset(tester), greaterThan(0.0));
+          expect(find.byType(ShanshuiSceneryCard), findsNothing);
+          expect(find.bySemanticsLabel(RegExp('日记 · 共 15 篇')), findsOneWidget);
+          expect(find.bySemanticsLabel(RegExp('点击返回顶部')), findsOneWidget);
+          await expectAccessibleTapTargets(
+            tester,
+            within: find.byKey(const Key('timeline_tap_to_top_button')),
+          );
 
-        await tester.tap(find.byKey(const Key('timeline_tap_to_top_button')));
-        await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const Key('timeline_tap_to_top_button')));
+          await tester.pumpAndSettle();
 
-        expect(currentScrollOffset(tester), 0.0);
-        expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
-        expect(find.byType(WindowSillLedge), findsOneWidget);
+          expect(currentScrollOffset(tester), 0.0);
+          expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
+          expect(find.byType(WindowSillLedge), findsOneWidget);
+        } finally {
+          semanticsHandle.dispose();
+        }
       },
     );
 
@@ -118,10 +101,14 @@ void main() {
       'tapping title or count badge at offset 0 is a harmless no-op without return-to-top semantics',
       (tester) async {
         await seedEntries(15);
-        await pumpTimelineScreen(tester);
+        await pumpTimelineScreen(
+          tester,
+          database: db,
+          mediaService: mediaService,
+        );
 
         expect(currentScrollOffset(tester), 0.0);
-        expect(find.bySemanticsLabel('点击返回顶部'), findsNothing);
+        expect(find.bySemanticsLabel(RegExp('点击返回顶部')), findsNothing);
 
         await tester.tap(find.byKey(const Key('timeline_tap_to_top_button')));
         await tester.pumpAndSettle();
@@ -136,7 +123,11 @@ void main() {
       'deep scroll far down pre-jumps closer to top and briskly animates to offset 0',
       (tester) async {
         await seedEntries(30);
-        await pumpTimelineScreen(tester);
+        await pumpTimelineScreen(
+          tester,
+          database: db,
+          mediaService: mediaService,
+        );
 
         for (int swipe = 0; swipe < 5; swipe++) {
           await tester.drag(
@@ -149,7 +140,8 @@ void main() {
 
         final deepOffset = currentScrollOffset(tester);
         expect(deepOffset, greaterThan(1800.0));
-        expect(find.bySemanticsLabel('点击返回顶部'), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('日记 · 共 30 篇')), findsOneWidget);
+        expect(find.bySemanticsLabel(RegExp('点击返回顶部')), findsOneWidget);
 
         await tester.tap(find.byKey(const Key('timeline_entry_count_badge')));
         await tester.pump();
@@ -170,7 +162,12 @@ void main() {
       'reduced motion jumps immediately to offset 0 on a single frame',
       (tester) async {
         await seedEntries(15);
-        await pumpTimelineScreen(tester, disableAnimations: true);
+        await pumpTimelineScreen(
+          tester,
+          database: db,
+          mediaService: mediaService,
+          disableAnimations: true,
+        );
 
         await tester.drag(find.byType(CustomScrollView), const Offset(0, -600));
         await tester.pumpAndSettle();
@@ -190,6 +187,8 @@ void main() {
         await seedEntries(15);
         await pumpTimelineScreen(
           tester,
+          database: db,
+          mediaService: mediaService,
           surfaceSize: const Size(320, 640),
           textScale: 1.3,
         );

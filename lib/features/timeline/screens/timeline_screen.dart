@@ -321,28 +321,30 @@ class _TimelineScreenState extends State<TimelineScreen>
 
   Future<void> _handleScrubberJump(int targetIndex) {
     return _jumpController.jumpToIndex(
-      rawTargetIndex: targetIndex,
-      database: widget.database,
-      filters: _filters,
-      totalFilteredCount: _totalFilteredCount,
-      currentEntries: _entries,
-      currentMediaMap: _mediaMap,
-      scrollController: _scrollController,
-      viewportTracker: _viewportTracker,
-      isMounted: () => mounted,
-      onApplyLoadedState: ({
-        required entries,
-        required mediaMap,
-        required offset,
-        required hasMore,
-      }) {
-        setState(() {
-          _entries = entries;
-          _mediaMap = mediaMap;
-          _offset = offset;
-          _hasMore = hasMore;
-        });
-      },
+      TimelineScrubberJumpRequest(
+        rawTargetIndex: targetIndex,
+        database: widget.database,
+        filters: _filters,
+        totalFilteredCount: _totalFilteredCount,
+        currentEntries: _entries,
+        currentMediaMap: _mediaMap,
+        scrollController: _scrollController,
+        viewportTracker: _viewportTracker,
+        isMounted: () => mounted,
+        onApplyLoadedState: ({
+          required entries,
+          required mediaMap,
+          required offset,
+          required hasMore,
+        }) {
+          setState(() {
+            _entries = entries;
+            _mediaMap = mediaMap;
+            _offset = offset;
+            _hasMore = hasMore;
+          });
+        },
+      ),
     );
   }
 

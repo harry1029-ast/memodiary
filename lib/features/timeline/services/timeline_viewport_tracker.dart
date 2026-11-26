@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 /// upper scenery window inside `ChronicleDeskScrollBody` without `GlobalKey`
 /// overhead, enabling accurate thumb progress and multi-step scrubber jumps.
 class TimelineViewportTracker {
+  static const double _defaultEntryHeight = 128.0;
+  static const double _defaultDividerHeight = 34.0;
+  static const double _defaultUpperWindowHeight = 260.0;
+
   final ValueNotifier<bool> isScrollableNotifier = ValueNotifier(false);
   final Map<int, BuildContext> _entryContexts = {};
   final Map<int, BuildContext> _dividerContexts = {};
@@ -136,31 +140,28 @@ class TimelineViewportTracker {
     return (minIndex, maxIndex);
   }
 
-  /// Average measured height across currently mounted entry cards, or `128.0`.
-  double averageEntryHeight() {
+  double _averageMountedHeight(
+    Map<int, BuildContext> contexts, {
+    required double fallback,
+  }) {
     var totalHeight = 0.0;
     var count = 0;
-    for (final context in _entryContexts.values) {
+    for (final context in contexts.values) {
       final box = _attachedBox(context);
       if (box == null) continue;
       totalHeight += box.size.height;
       count++;
     }
-    return count > 0 ? totalHeight / count : 128.0;
+    return count > 0 ? totalHeight / count : fallback;
   }
 
+  /// Average measured height across currently mounted entry cards, or `128.0`.
+  double averageEntryHeight() =>
+      _averageMountedHeight(_entryContexts, fallback: _defaultEntryHeight);
+
   /// Average measured height across currently mounted month dividers, or `34.0`.
-  double averageDividerHeight() {
-    var totalHeight = 0.0;
-    var count = 0;
-    for (final context in _dividerContexts.values) {
-      final box = _attachedBox(context);
-      if (box == null) continue;
-      totalHeight += box.size.height;
-      count++;
-    }
-    return count > 0 ? totalHeight / count : 34.0;
-  }
+  double averageDividerHeight() =>
+      _averageMountedHeight(_dividerContexts, fallback: _defaultDividerHeight);
 
   /// Returns the exact scroll delta needed to align [targetEntryIndex] (or its
   /// preceding `Month Spine Divider` when present) with [feedTopGlobalY],
@@ -189,10 +190,113 @@ class TimelineViewportTracker {
     final box = _attachedBox(_entryContexts[entryIndex]);
     return box?.localToGlobal(Offset.zero).dy;
   }
+
+  /// Estimates the initial scroll offset for [targetEntryIndex] using the
+  /// measured upper window height, [dividerCount] preceding month dividers, and
+  /// average mounted card/divider heights.
+  double estimateScrollOffsetToEntry({
+    required int targetEntryIndex,
+    required int dividerCount,
+  }) {
+    final upperHeight = measureUpperWindowHeight() ?? _defaultUpperWindowHeight;
+    return upperHeight +
+        dividerCount * averageDividerHeight() +
+        targetEntryIndex * averageEntryHeight();
+  }
+
+  /// Resolves the exact scroll delta for [targetEntryIndex] when mounted, or an
+  /// estimated delta relative to the nearest mounted anchor entry.
+  double? resolveAlignmentDeltaToEntry({
+    required int targetEntryIndex,
+    required double pinnedHeaderHeight,
+  }) {
+    final exactDelta = exactDeltaToEntry(
+      targetEntryIndex: targetEntryIndex,
+      pinnedHeaderHeight: pinnedHeaderHeight,
+    );
+    if (exactDelta != null) return exactDelta;
+
+    final mountedRange = mountedEntryRange();
+    if (mountedRange == null) return null;
+
+    final anchorIndex =
+        targetEntryIndex > mountedRange.$2 ? mountedRange.$2 : mountedRange.$1;
+    final anchorTopY = mountedEntryTopY(anchorIndex);
+    final feedTop = feedTopGlobalY(pinnedHeaderHeight);
+    final anchorAdjust =
+        (anchorTopY != null && feedTop != null) ? (anchorTopY - feedTop) : 0.0;
+    return (targetEntryIndex - anchorIndex) * averageEntryHeight() +
+        anchorAdjust;
+  }
+}
+
+typedef _TrackerContextCallback = void Function(
+  TimelineViewportTracker tracker,
+  BuildContext context,
+);
+
+/// Shared lifecycle widget that registers and updates a widget's [BuildContext]
+/// against a [TimelineViewportTracker] slot.
+class _TimelineTrackerMarker extends StatefulWidget {
+  final TimelineViewportTracker? tracker;
+  final Object? slotKey;
+  final _TrackerContextCallback onAttach;
+  final _TrackerContextCallback onDetach;
+  final Widget child;
+
+  const _TimelineTrackerMarker({
+    required this.tracker,
+    this.slotKey,
+    required this.onAttach,
+    required this.onDetach,
+    required this.child,
+  });
+
+  @override
+  State<_TimelineTrackerMarker> createState() => _TimelineTrackerMarkerState();
+}
+
+class _TimelineTrackerMarkerState extends State<_TimelineTrackerMarker> {
+  @override
+  void initState() {
+    super.initState();
+    final tracker = widget.tracker;
+    if (tracker != null) {
+      widget.onAttach(tracker, context);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _TimelineTrackerMarker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tracker != widget.tracker ||
+        oldWidget.slotKey != widget.slotKey) {
+      final oldTracker = oldWidget.tracker;
+      if (oldTracker != null) {
+        oldWidget.onDetach(oldTracker, context);
+      }
+      final newTracker = widget.tracker;
+      if (newTracker != null) {
+        widget.onAttach(newTracker, context);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    final tracker = widget.tracker;
+    if (tracker != null) {
+      widget.onDetach(tracker, context);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Registers a mounted entry card's [BuildContext] with [tracker].
-class TimelineViewportMarker extends StatefulWidget {
+class TimelineViewportMarker extends StatelessWidget {
   final int entryIndex;
   final TimelineViewportTracker? tracker;
   final Widget child;
@@ -205,39 +309,22 @@ class TimelineViewportMarker extends StatefulWidget {
   });
 
   @override
-  State<TimelineViewportMarker> createState() => _TimelineViewportMarkerState();
-}
-
-class _TimelineViewportMarkerState extends State<TimelineViewportMarker> {
-  @override
-  void initState() {
-    super.initState();
-    widget.tracker?.registerEntry(widget.entryIndex, context);
+  Widget build(BuildContext context) {
+    return _TimelineTrackerMarker(
+      tracker: tracker,
+      slotKey: entryIndex,
+      onAttach: (targetTracker, markerContext) =>
+          targetTracker.registerEntry(entryIndex, markerContext),
+      onDetach: (targetTracker, markerContext) =>
+          targetTracker.unregisterEntry(entryIndex, markerContext),
+      child: child,
+    );
   }
-
-  @override
-  void didUpdateWidget(covariant TimelineViewportMarker oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.tracker != widget.tracker ||
-        oldWidget.entryIndex != widget.entryIndex) {
-      oldWidget.tracker?.unregisterEntry(oldWidget.entryIndex, context);
-      widget.tracker?.registerEntry(widget.entryIndex, context);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.tracker?.unregisterEntry(widget.entryIndex, context);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// Registers a mounted `Month Spine Divider` with [tracker] under the
 /// [firstEntryIndex] that begins that month group.
-class TimelineDividerViewportMarker extends StatefulWidget {
+class TimelineDividerViewportMarker extends StatelessWidget {
   final int firstEntryIndex;
   final TimelineViewportTracker? tracker;
   final Widget child;
@@ -250,40 +337,21 @@ class TimelineDividerViewportMarker extends StatefulWidget {
   });
 
   @override
-  State<TimelineDividerViewportMarker> createState() =>
-      _TimelineDividerViewportMarkerState();
-}
-
-class _TimelineDividerViewportMarkerState
-    extends State<TimelineDividerViewportMarker> {
-  @override
-  void initState() {
-    super.initState();
-    widget.tracker?.registerDivider(widget.firstEntryIndex, context);
+  Widget build(BuildContext context) {
+    return _TimelineTrackerMarker(
+      tracker: tracker,
+      slotKey: firstEntryIndex,
+      onAttach: (targetTracker, markerContext) =>
+          targetTracker.registerDivider(firstEntryIndex, markerContext),
+      onDetach: (targetTracker, markerContext) =>
+          targetTracker.unregisterDivider(firstEntryIndex, markerContext),
+      child: child,
+    );
   }
-
-  @override
-  void didUpdateWidget(covariant TimelineDividerViewportMarker oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.tracker != widget.tracker ||
-        oldWidget.firstEntryIndex != widget.firstEntryIndex) {
-      oldWidget.tracker?.unregisterDivider(oldWidget.firstEntryIndex, context);
-      widget.tracker?.registerDivider(widget.firstEntryIndex, context);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.tracker?.unregisterDivider(widget.firstEntryIndex, context);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// Registers the `UpperWindowAndSill` sliver container with [tracker].
-class TimelineUpperWindowMarker extends StatefulWidget {
+class TimelineUpperWindowMarker extends StatelessWidget {
   final TimelineViewportTracker? tracker;
   final Widget child;
 
@@ -294,38 +362,20 @@ class TimelineUpperWindowMarker extends StatefulWidget {
   });
 
   @override
-  State<TimelineUpperWindowMarker> createState() =>
-      _TimelineUpperWindowMarkerState();
-}
-
-class _TimelineUpperWindowMarkerState extends State<TimelineUpperWindowMarker> {
-  @override
-  void initState() {
-    super.initState();
-    widget.tracker?.attachUpperWindow(context);
+  Widget build(BuildContext context) {
+    return _TimelineTrackerMarker(
+      tracker: tracker,
+      onAttach: (targetTracker, markerContext) =>
+          targetTracker.attachUpperWindow(markerContext),
+      onDetach: (targetTracker, markerContext) =>
+          targetTracker.detachUpperWindow(markerContext),
+      child: child,
+    );
   }
-
-  @override
-  void didUpdateWidget(covariant TimelineUpperWindowMarker oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.tracker != widget.tracker) {
-      oldWidget.tracker?.detachUpperWindow(context);
-      widget.tracker?.attachUpperWindow(context);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.tracker?.detachUpperWindow(context);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// Registers the `CustomScrollView` viewport container with [tracker].
-class TimelineScrollViewMarker extends StatefulWidget {
+class TimelineScrollViewMarker extends StatelessWidget {
   final TimelineViewportTracker? tracker;
   final Widget child;
 
@@ -336,32 +386,14 @@ class TimelineScrollViewMarker extends StatefulWidget {
   });
 
   @override
-  State<TimelineScrollViewMarker> createState() =>
-      _TimelineScrollViewMarkerState();
-}
-
-class _TimelineScrollViewMarkerState extends State<TimelineScrollViewMarker> {
-  @override
-  void initState() {
-    super.initState();
-    widget.tracker?.attachScrollView(context);
+  Widget build(BuildContext context) {
+    return _TimelineTrackerMarker(
+      tracker: tracker,
+      onAttach: (targetTracker, markerContext) =>
+          targetTracker.attachScrollView(markerContext),
+      onDetach: (targetTracker, markerContext) =>
+          targetTracker.detachScrollView(markerContext),
+      child: child,
+    );
   }
-
-  @override
-  void didUpdateWidget(covariant TimelineScrollViewMarker oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.tracker != widget.tracker) {
-      oldWidget.tracker?.detachScrollView(context);
-      widget.tracker?.attachScrollView(context);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.tracker?.detachScrollView(context);
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }

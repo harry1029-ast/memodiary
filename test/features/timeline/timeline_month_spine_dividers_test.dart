@@ -7,9 +7,10 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/atmosphere_palettes.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
-import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/month_spine_divider.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_date_spine_item.dart';
+
+import '../../helpers/timeline_test_harness.dart';
 
 void main() {
   late AppDatabase db;
@@ -70,43 +71,27 @@ void main() {
     }
   }
 
-  Future<void> pumpTimelineScreen(
+  Future<void> pumpScreen(
     WidgetTester tester, {
     ThemeData? theme,
     Size? surfaceSize,
     double textScale = 1.0,
-  }) async {
-    if (surfaceSize != null) {
-      tester.view.physicalSize = surfaceSize;
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-    }
-
-    await tester.pumpWidget(
-      MaterialApp(
+  }) =>
+      pumpTimelineScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
         theme: theme ?? InkDiaryTheme.light,
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(textScale),
-          ),
-          child: child ?? const SizedBox.shrink(),
-        ),
-        home: TimelineScreen(
-          database: db,
-          mediaService: mediaService,
-          enableSceneryAnimation: false,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-  }
+        surfaceSize: surfaceSize,
+        textScale: textScale,
+      );
 
   group('TimelineScreen Month Spine Dividers', () {
     testWidgets(
       'inserts YYYY年M月 dividers at feed start and month/year boundaries in both sort orders',
       (tester) async {
         await seedCrossMonthEntries();
-        await pumpTimelineScreen(tester, surfaceSize: const Size(400, 900));
+        await pumpScreen(tester, surfaceSize: const Size(400, 900));
 
         // Newest first: 2026年11月 -> Late Nov, Early Nov -> 2026年10月 -> Oct -> 2025年12月 -> Dec
         expect(find.text('2026年11月'), findsOneWidget);
@@ -168,7 +153,7 @@ void main() {
       'updates Month Spine Dividers under Date Index Tray and charm filters',
       (tester) async {
         await seedCrossMonthEntries();
-        await pumpTimelineScreen(tester, surfaceSize: const Size(400, 900));
+        await pumpScreen(tester, surfaceSize: const Size(400, 900));
 
         // Filter by charm mood = 5 (喜悦) -> keeps 2026-11-20 and 2026-10-18 only
         await tester.tap(find.byKey(const Key('timeline_charm_filter_button')));
@@ -209,7 +194,7 @@ void main() {
           ThemeData theme,
           Color expectedDarkOrLightLabelColor,
         ) async {
-          await pumpTimelineScreen(
+          await pumpScreen(
             tester,
             theme: theme,
             surfaceSize: const Size(400, 900),
@@ -271,7 +256,7 @@ void main() {
       'renders cleanly without clipping or overflow on 320dp viewport at 1.3x text scale',
       (tester) async {
         await seedCrossMonthEntries();
-        await pumpTimelineScreen(
+        await pumpScreen(
           tester,
           surfaceSize: const Size(320, 640),
           textScale: 1.3,

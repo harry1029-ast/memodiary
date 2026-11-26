@@ -452,7 +452,7 @@ class _ChronicleDeskTapToTopTitleState
       return Semantics(
         button: true,
         enabled: true,
-        label: '点击返回顶部',
+        label: '日记 · 共 ${widget.totalFilteredCount} 篇，点击返回顶部',
         excludeSemantics: true,
         child: tapArea,
       );

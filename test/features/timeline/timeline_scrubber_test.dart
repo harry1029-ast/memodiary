@@ -8,24 +8,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
-import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/wet_mounted_thumbnail.dart';
 
 import '../../helpers/editor_test_harness.dart';
-
-class _ScrubberSqlCaptureInterceptor extends QueryInterceptor {
-  final List<(String sql, List<Object?> args)> executedSelects = [];
-
-  @override
-  Future<List<Map<String, Object?>>> runSelect(
-    QueryExecutor executor,
-    String statement,
-    List<Object?> args,
-  ) {
-    executedSelects.add((statement, args));
-    return super.runSelect(executor, statement, args);
-  }
-}
+import '../../helpers/sql_capture_interceptor.dart';
+import '../../helpers/timeline_test_harness.dart';
 
 void main() {
   late AppDatabase db;
@@ -64,34 +51,20 @@ void main() {
     }
   }
 
-  Future<void> pumpTimelineScreen(
+  Future<void> pumpScreen(
     WidgetTester tester, {
     Size surfaceSize = const Size(360, 780),
     double textScale = 1.0,
     bool disableAnimations = false,
-  }) async {
-    tester.view.physicalSize = surfaceSize;
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(textScale),
-            disableAnimations: disableAnimations,
-          ),
-          child: child ?? const SizedBox.shrink(),
-        ),
-        home: TimelineScreen(
-          database: db,
-          mediaService: mediaService,
-          enableSceneryAnimation: false,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-  }
+  }) =>
+      pumpTimelineScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
+        surfaceSize: surfaceSize,
+        textScale: textScale,
+        disableAnimations: disableAnimations,
+      );
 
   double scrubberOpacity(WidgetTester tester) {
     final widget = tester.widget<AnimatedOpacity>(
@@ -105,7 +78,7 @@ void main() {
       'stays hidden when fewer than 15 entries or when feed is not scrollable',
       (tester) async {
         await seedMonthlyEntries(count: 14);
-        await pumpTimelineScreen(tester);
+        await pumpScreen(tester);
 
         expect(find.byKey(const Key('timeline_scrubber_track')), findsNothing);
         expect(find.bySemanticsLabel('时间轴快速滚动条'), findsNothing);
@@ -125,7 +98,7 @@ void main() {
           ),
         );
 
-        await pumpTimelineScreen(tester, surfaceSize: const Size(400, 6000));
+        await pumpScreen(tester, surfaceSize: const Size(400, 6000));
         expect(find.byKey(const Key('timeline_scrubber_track')), findsNothing);
       },
     );
@@ -134,7 +107,7 @@ void main() {
       'fades in on scroll, auto-fades after 1.5s idle, stays visible while dragging, and respects reduced motion',
       (tester) async {
         await seedMonthlyEntries(count: 20, daysStep: 10);
-        await pumpTimelineScreen(tester);
+        await pumpScreen(tester);
 
         // Eligible (20 entries, scrollable), starts hidden
         expect(find.byKey(const Key('timeline_scrubber_track')), findsOneWidget);
@@ -183,11 +156,49 @@ void main() {
         expect(scrubberOpacity(tester), equals(0.0));
 
         // Reduced motion uses Duration.zero for visibility transitions
-        await pumpTimelineScreen(tester, disableAnimations: true);
+        await pumpScreen(tester, disableAnimations: true);
         final reducedOpacityWidget = tester.widget<AnimatedOpacity>(
           find.byKey(const Key('timeline_scrubber_visibility')),
         );
         expect(reducedOpacityWidget.duration, equals(Duration.zero));
+      },
+    );
+
+    testWidgets(
+      'stays visible during motionless press-and-hold > 1.5s before drag slop and auto-fades after cancel',
+      (tester) async {
+        await seedMonthlyEntries(count: 20, daysStep: 10);
+        await pumpScreen(tester);
+
+        expect(scrubberOpacity(tester), equals(0.0));
+
+        final trackRect = tester.getRect(
+          find.byKey(const Key('timeline_scrubber_track')),
+        );
+        final gesture = await tester.startGesture(
+          Offset(trackRect.center.dx, trackRect.top + 20),
+        );
+        await tester.pump();
+
+        // Down reveals scrubber without entering drag mode or showing plaque.
+        expect(scrubberOpacity(tester), equals(1.0));
+        expect(find.byKey(const Key('timeline_scrubber_plaque')), findsNothing);
+
+        // Holding motionless past 1.5s before crossing drag slop must stay visible.
+        await tester.pump(const Duration(milliseconds: 2000));
+        expect(scrubberOpacity(tester), equals(1.0));
+        expect(find.byKey(const Key('timeline_scrubber_plaque')), findsNothing);
+
+        // Releasing without dragging triggers drag cancel and restarts 1.5s auto-fade.
+        await gesture.up();
+        await tester.pump();
+        expect(scrubberOpacity(tester), equals(1.0));
+
+        await tester.pump(const Duration(milliseconds: 1000));
+        expect(scrubberOpacity(tester), equals(1.0));
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pumpAndSettle();
+        expect(scrubberOpacity(tester), equals(0.0));
       },
     );
   });
@@ -197,7 +208,7 @@ void main() {
       'tracks progress across totalFilteredCount with Month Spine Dividers and never jumps backward on _loadMore()',
       (tester) async {
         await seedMonthlyEntries(count: 45, daysStep: 12);
-        await pumpTimelineScreen(tester);
+        await pumpScreen(tester);
 
         final trackFinder = find.byKey(const Key('timeline_scrubber_track'));
         final thumbFinder = find.byKey(const Key('timeline_scrubber_thumb'));
@@ -241,7 +252,7 @@ void main() {
       (tester) async {
         // 30 entries, 15 days apart (~15 months from 2026-11 back to 2025-09)
         await seedMonthlyEntries(count: 30, daysStep: 15);
-        await pumpTimelineScreen(tester);
+        await pumpScreen(tester);
 
         final hapticCalls = <dynamic>[];
         tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -334,7 +345,7 @@ void main() {
           '${mediaDir.path}/landing_45.webp',
         );
 
-        final interceptor = _ScrubberSqlCaptureInterceptor();
+        final interceptor = SqlCaptureInterceptor();
         final interceptedDb = AppDatabase.forTesting(
           NativeDatabase.memory().interceptWith(interceptor),
         );
@@ -368,20 +379,12 @@ void main() {
           relativePath: 'media/landing_45.webp',
         );
 
-        tester.view.physicalSize = const Size(360, 780);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(tester.view.reset);
-
-        await tester.pumpWidget(
-          MaterialApp(
-            home: TimelineScreen(
-              database: interceptedDb,
-              mediaService: sandbox,
-              enableSceneryAnimation: false,
-            ),
-          ),
+        await pumpTimelineScreen(
+          tester,
+          database: interceptedDb,
+          mediaService: sandbox,
+          surfaceSize: const Size(360, 780),
         );
-        await tester.pumpAndSettle();
 
         expect(find.text('共 80 篇'), findsOneWidget);
         expect(find.text('Jump Entry 0'), findsOneWidget);
@@ -483,7 +486,7 @@ void main() {
           );
         }
 
-        await pumpTimelineScreen(tester);
+        await pumpScreen(tester);
         expect(find.text('共 40 篇'), findsOneWidget);
 
         // Switch to oldestFirst (最早 ↑)
@@ -549,7 +552,7 @@ void main() {
       'satisfies 44x44dp target, right-edge inset, horizontal gesture safety, semantics, and 320dp at 1.3x text scale',
       (tester) async {
         await seedMonthlyEntries(count: 24, daysStep: 12);
-        await pumpTimelineScreen(
+        await pumpScreen(
           tester,
           surfaceSize: const Size(320, 640),
           textScale: 1.3,
@@ -590,6 +593,28 @@ void main() {
         await gesture.up();
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'handles short < 420dp landscape viewport gracefully when trackHeight < thumbHeight + 8',
+      (tester) async {
+        await seedMonthlyEntries(count: 24, daysStep: 12);
+        await pumpScreen(
+          tester,
+          surfaceSize: const Size(640, 360),
+        );
+
+        // At offset 0 on 640x360, remainingUpper + pinnedHeader leaves trackHeight < 52dp,
+        // so the scrubber gracefully suppresses itself without crash or overflow.
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('timeline_scrubber_track')), findsNothing);
+
+        // Scrolling down collapses the upper window and lets the scrubber appear cleanly.
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('timeline_scrubber_track')), findsOneWidget);
       },
     );
   });

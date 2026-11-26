@@ -49,6 +49,7 @@ class TimelineScrubberState extends State<TimelineScrubber> {
   Timer? _hideTimer;
   bool _isVisible = false;
   bool _isDragging = false;
+  bool _isPressHoldActive = false;
   bool _syncScheduled = false;
   double _progress = 0.0;
   double _lastReportedScrollOffset = 0.0;
@@ -100,6 +101,7 @@ class TimelineScrubberState extends State<TimelineScrubber> {
         _hideTimer?.cancel();
         _isVisible = false;
         _isDragging = false;
+        _isPressHoldActive = false;
       }
     });
   }
@@ -139,17 +141,21 @@ class TimelineScrubberState extends State<TimelineScrubber> {
     }
   }
 
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    if (_isDragging || _isPressHoldActive) return;
+    _hideTimer = Timer(TimelineScrubber.idleHideDelay, () {
+      if (!mounted || _isDragging || _isPressHoldActive) return;
+      setState(() => _isVisible = false);
+    });
+  }
+
   void _revealAndScheduleHide() {
     _hideTimer?.cancel();
     if (!_isVisible) {
       setState(() => _isVisible = true);
     }
-    if (!_isDragging) {
-      _hideTimer = Timer(TimelineScrubber.idleHideDelay, () {
-        if (!mounted || _isDragging) return;
-        setState(() => _isVisible = false);
-      });
-    }
+    _scheduleHide();
   }
 
   int _indexForProgress(double normalizedProgress) {
@@ -167,12 +173,17 @@ class TimelineScrubberState extends State<TimelineScrubber> {
 
   void _handleVerticalDragDown(DragDownDetails details) {
     if (!_hasEnoughEntries || !widget.isScrollableListenable.value) return;
-    _revealAndScheduleHide();
+    _hideTimer?.cancel();
+    _isPressHoldActive = true;
+    if (!_isVisible) {
+      setState(() => _isVisible = true);
+    }
   }
 
   void _handleVerticalDragStart(DragStartDetails details, double trackHeight) {
     if (!_hasEnoughEntries || !widget.isScrollableListenable.value) return;
     _hideTimer?.cancel();
+    _isPressHoldActive = false;
     final progress = _progressForLocalY(details.localPosition.dy, trackHeight);
     final targetIndex = _indexForProgress(progress);
     final date = widget.dateIndex[targetIndex].entryDate;
@@ -203,8 +214,23 @@ class TimelineScrubberState extends State<TimelineScrubber> {
     });
   }
 
+  void _handleVerticalDragCancel() {
+    if (_isDragging) {
+      unawaited(_finishDrag());
+      return;
+    }
+    if (_isPressHoldActive) {
+      _isPressHoldActive = false;
+      _scheduleHide();
+    }
+  }
+
   Future<void> _finishDrag() async {
-    if (!_isDragging) return;
+    _isPressHoldActive = false;
+    if (!_isDragging) {
+      _scheduleHide();
+      return;
+    }
     final targetIndex = _dragTargetIndex;
     setState(() {
       _isDragging = false;
@@ -297,7 +323,7 @@ class TimelineScrubberState extends State<TimelineScrubber> {
                             onVerticalDragUpdate: (details) =>
                                 _handleVerticalDragUpdate(details, trackHeight),
                             onVerticalDragEnd: (_) => unawaited(_finishDrag()),
-                            onVerticalDragCancel: () => unawaited(_finishDrag()),
+                            onVerticalDragCancel: _handleVerticalDragCancel,
                             child: AnimatedOpacity(
                               key: const Key('timeline_scrubber_visibility'),
                               opacity: _isVisible ? 1.0 : 0.0,

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 
@@ -64,6 +66,52 @@ final class ChronicleEntryFeedItem extends ChronicleFeedItem {
   int get hashCode => Object.hash(summary, entryIndex, isLastEntry);
 }
 
+void _visitChronicleMonthBoundaries(
+  List<TimelineEntrySummary> entries, {
+  required int maxIndex,
+  required void Function(
+    int index,
+    TimelineEntrySummary summary,
+    bool isNewMonth,
+  ) onEntry,
+}) {
+  if (entries.isEmpty || maxIndex < 0) return;
+
+  final limit = math.min(maxIndex, entries.length - 1);
+  int? previousYear;
+  int? previousMonth;
+
+  for (var index = 0; index <= limit; index++) {
+    final summary = entries[index];
+    final year = summary.entryDate.year;
+    final month = summary.entryDate.month;
+    final isNewMonth = previousYear != year || previousMonth != month;
+    if (isNewMonth) {
+      previousYear = year;
+      previousMonth = month;
+    }
+    onEntry(index, summary, isNewMonth);
+  }
+}
+
+/// Counts the `Month Spine Divider` headers preceding or at [targetIndex] in
+/// [entries] using the exact same month/year boundary rule as
+/// [buildChronicleFeedItems].
+int countChronicleMonthDividersThrough(
+  List<TimelineEntrySummary> entries,
+  int targetIndex,
+) {
+  var count = 0;
+  _visitChronicleMonthBoundaries(
+    entries,
+    maxIndex: targetIndex,
+    onEntry: (index, summary, isNewMonth) {
+      if (isNewMonth) count++;
+    },
+  );
+  return count;
+}
+
 /// Builds the interleaved sequence of [ChronicleMonthDividerItem] headers and
 /// [ChronicleEntryFeedItem] rows for a sorted list of [entries].
 ///
@@ -75,32 +123,28 @@ List<ChronicleFeedItem> buildChronicleFeedItems(
   if (entries.isEmpty) return const [];
 
   final items = <ChronicleFeedItem>[];
-  int? previousYear;
-  int? previousMonth;
-
-  for (var index = 0; index < entries.length; index++) {
-    final summary = entries[index];
-    final year = summary.entryDate.year;
-    final month = summary.entryDate.month;
-    if (previousYear != year || previousMonth != month) {
+  _visitChronicleMonthBoundaries(
+    entries,
+    maxIndex: entries.length - 1,
+    onEntry: (index, summary, isNewMonth) {
+      if (isNewMonth) {
+        items.add(
+          ChronicleMonthDividerItem(
+            year: summary.entryDate.year,
+            month: summary.entryDate.month,
+            isFirstInFeed: index == 0,
+          ),
+        );
+      }
       items.add(
-        ChronicleMonthDividerItem(
-          year: year,
-          month: month,
-          isFirstInFeed: index == 0,
+        ChronicleEntryFeedItem(
+          summary: summary,
+          entryIndex: index,
+          isLastEntry: index == entries.length - 1,
         ),
       );
-      previousYear = year;
-      previousMonth = month;
-    }
-    items.add(
-      ChronicleEntryFeedItem(
-        summary: summary,
-        entryIndex: index,
-        isLastEntry: index == entries.length - 1,
-      ),
-    );
-  }
+    },
+  );
 
   return items;
 }

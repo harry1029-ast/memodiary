@@ -17,19 +17,8 @@ import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.da
 import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
 
-class _TimelineSqlCaptureInterceptor extends QueryInterceptor {
-  final List<String> executedSql = [];
-
-  @override
-  Future<List<Map<String, Object?>>> runSelect(
-    QueryExecutor executor,
-    String statement,
-    List<Object?> args,
-  ) {
-    executedSql.add(statement);
-    return super.runSelect(executor, statement, args);
-  }
-}
+import '../../helpers/sql_capture_interceptor.dart';
+import '../../helpers/timeline_test_harness.dart';
 
 void main() {
   late AppDatabase db;
@@ -44,25 +33,28 @@ void main() {
     await db.close();
   });
 
-  Future<void> pumpTimelineScreen(
+  Future<void> pumpScreen(
     WidgetTester tester, {
     AppDatabase? database,
     MediaSandboxService? sandboxService,
-  }) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: TimelineScreen(
-          database: database ?? db,
-          mediaService: sandboxService ?? mediaService,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-  }
+    Size? surfaceSize,
+    double textScale = 1.0,
+    HomeTabPrimaryAction? primaryAction,
+    Listenable? diaryChanged,
+  }) =>
+      pumpTimelineScreen(
+        tester,
+        database: database ?? db,
+        mediaService: sandboxService ?? mediaService,
+        surfaceSize: surfaceSize,
+        textScale: textScale,
+        primaryAction: primaryAction,
+        diaryChanged: diaryChanged,
+      );
 
   group('TimelineScreen Widget Tests', () {
     testWidgets('displays empty state when no entries exist', (WidgetTester tester) async {
-      await pumpTimelineScreen(tester);
+      await pumpScreen(tester);
 
       expect(find.text('云皓日记'), findsOneWidget);
       expect(find.text('YUNHAO'), findsOneWidget);
@@ -110,16 +102,7 @@ void main() {
         ),
       );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
+      await pumpScreen(tester);
 
       // Sealed Time Capsule is rendered with capsule banner and countdown
       expect(find.text('时间胶囊'), findsOneWidget);
@@ -155,15 +138,7 @@ void main() {
     });
 
     testWidgets('AppBar Weekly Review shortcut navigates to WeeklyReviewScreen', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      await pumpScreen(tester);
 
       final weeklyBtn = find.byKey(const Key('timeline_weekly_review_button'));
       expect(weeklyBtn, findsOneWidget);
@@ -176,15 +151,7 @@ void main() {
     });
 
     testWidgets('AppBar renders 3 octagonal medallions without back arrow or albums overflow', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      await pumpScreen(tester);
 
       // Top bar actions: Weekly Review, Search, Settings (Albums removed to declutter Title)
       expect(find.byKey(const Key('timeline_weekly_review_button')), findsOneWidget);
@@ -206,22 +173,7 @@ void main() {
     });
 
     testWidgets('AppBar renders streamlined actions without overflow on mobile screen width', (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(360, 640);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      await pumpScreen(tester, surfaceSize: const Size(360, 640));
 
       // Top bar actions: 3 octagonal medallions
       expect(find.byKey(const Key('timeline_weekly_review_button')), findsOneWidget);
@@ -248,7 +200,7 @@ void main() {
     });
 
     testWidgets('ShanshuiSceneryCard renders unobstructed in header without ThoughtSparkDock', (tester) async {
-      await pumpTimelineScreen(tester);
+      await pumpScreen(tester);
 
       expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
       expect(find.byKey(const Key('thought_spark_dock')), findsNothing);
@@ -256,7 +208,7 @@ void main() {
     });
 
     testWidgets('pull-cord collapses ShanshuiSceneryCard into 44dp bamboo bar and tapping bar restores it', (tester) async {
-      await pumpTimelineScreen(tester);
+      await pumpScreen(tester);
 
       expect(find.byKey(const Key('scenery_card_expanded')), findsOneWidget);
       expect(find.byKey(const Key('scenery_card_collapsed')), findsNothing);
@@ -277,7 +229,7 @@ void main() {
     });
 
     testWidgets('tapping scenery area navigates to ContemplationViewScreen', (tester) async {
-      await pumpTimelineScreen(tester);
+      await pumpScreen(tester);
 
       await tester.tap(find.byKey(const Key('scenery_canvas_tap_target')));
       await tester.pumpAndSettle();
@@ -306,7 +258,7 @@ void main() {
         ),
       );
 
-      await pumpTimelineScreen(tester);
+      await pumpScreen(tester);
 
       // Weather badge contains 小雨
       expect(find.textContaining('小雨'), findsAtLeast(1));
@@ -328,7 +280,7 @@ void main() {
         );
       }
 
-      await pumpTimelineScreen(tester);
+      await pumpScreen(tester);
 
       // Initially scenery card is visible
       expect(find.byType(ShanshuiSceneryCard), findsOneWidget);
@@ -407,7 +359,7 @@ void main() {
           }
         }
 
-        await pumpTimelineScreen(tester);
+        await pumpScreen(tester);
 
         // Legacy notebook selector button is replaced by charm filter plaque
         expect(
@@ -495,28 +447,11 @@ void main() {
     testWidgets(
       'ChronicleDeskHeader charm filter plaque never overflows on 320dp viewport at 1.6x text scale',
       (tester) async {
-        tester.view.physicalSize = const Size(320, 640);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() {
-          tester.view.resetPhysicalSize();
-          tester.view.resetDevicePixelRatio();
-        });
-
-        await tester.pumpWidget(
-          MaterialApp(
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: const TextScaler.linear(1.6),
-              ),
-              child: child ?? const SizedBox.shrink(),
-            ),
-            home: TimelineScreen(
-              database: db,
-              mediaService: mediaService,
-            ),
-          ),
+        await pumpScreen(
+          tester,
+          surfaceSize: const Size(320, 640),
+          textScale: 1.6,
         );
-        await tester.pumpAndSettle();
 
         await tester.tap(find.byKey(const Key('timeline_charm_filter_button')));
         await tester.pumpAndSettle();
@@ -541,21 +476,11 @@ void main() {
         expect(find.byKey(const Key('timeline_charm_filter_button')), findsOneWidget);
 
         // Expand 三旬 at 320dp + 2.0x text scale to verify zero header sliver overflow
-        await tester.pumpWidget(
-          MaterialApp(
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: const TextScaler.linear(2.0),
-              ),
-              child: child ?? const SizedBox.shrink(),
-            ),
-            home: TimelineScreen(
-              database: db,
-              mediaService: mediaService,
-            ),
-          ),
+        await pumpScreen(
+          tester,
+          surfaceSize: const Size(320, 640),
+          textScale: 2.0,
         );
-        await tester.pumpAndSettle();
         await tester.ensureVisible(find.byKey(const Key('timeline_month_chip_11')));
         await tester.tap(find.byKey(const Key('timeline_month_chip_11')));
         await tester.pumpAndSettle();
@@ -578,7 +503,7 @@ void main() {
         ),
       );
 
-      await pumpTimelineScreen(tester);
+      await pumpScreen(tester);
 
       // Legacy retrospection & poetic header are gone
       expect(find.textContaining('岁时忆昔'), findsNothing);
@@ -636,7 +561,7 @@ void main() {
         );
       }
 
-      await pumpTimelineScreen(tester);
+      await pumpScreen(tester);
 
       // Default state: 全部, 最新 ↓, 三旬 collapsed, all 4 entries shown
       expect(find.text('共 4 篇'), findsOneWidget);
@@ -730,7 +655,7 @@ void main() {
 
     testWidgets('loads timeline via summary projection without content_delta and reloads full entry on detail open', (tester) async {
       await db.close();
-      final interceptor = _TimelineSqlCaptureInterceptor();
+      final interceptor = SqlCaptureInterceptor();
       final interceptedDb = AppDatabase.forTesting(
         NativeDatabase.memory().interceptWith(interceptor),
       );
@@ -752,17 +677,8 @@ void main() {
         ),
       );
 
-      interceptor.executedSql.clear();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: interceptedDb,
-            mediaService: mediaService,
-            enableSceneryAnimation: false,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      interceptor.clear();
+      await pumpScreen(tester, database: interceptedDb);
 
       // Timeline query must not select content_delta
       expect(interceptor.executedSql, isNotEmpty);
@@ -810,16 +726,7 @@ void main() {
         );
       }
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-            enableSceneryAnimation: false,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      await pumpScreen(tester);
 
       expect(find.text('共 30 篇'), findsOneWidget);
       expect(find.text('Entry Number 29'), findsOneWidget);
@@ -897,18 +804,11 @@ void main() {
       final diaryChanged = ValueNotifier<int>(0);
       addTearDown(diaryChanged.dispose);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-            enableSceneryAnimation: false,
-            primaryAction: primaryAction,
-            diaryChanged: diaryChanged,
-          ),
-        ),
+      await pumpScreen(
+        tester,
+        primaryAction: primaryAction,
+        diaryChanged: diaryChanged,
       );
-      await tester.pumpAndSettle();
 
       // Scroll past page 1 so page 2 loads
       final scrollViewFinder = find.byType(CustomScrollView);
