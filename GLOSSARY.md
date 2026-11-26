@@ -212,6 +212,14 @@ _Avoid_: Date navbar, calendar filter bar, date chips, 案头岁时检目, 纪�
 The silk-brocade bordered media preview with mitered corner seams displayed inside a timeline entry card.
 _Avoid_: Photo thumbnail, Polaroid preview, image box
 
+**Timeline Scrubber**:
+The auto-hiding right-edge fast-scroll thumb and floating `YYYY年M月` date plaque on the Chronicle Desk for jumping across the full filtered timeline.
+_Avoid_: Scrollbar, date slider, progress rail, timeline bar
+
+**Month Spine Divider**:
+The inline `YYYY年M月` section header placed along the Chronicle Desk's vertical timeline spine at the top of the feed and wherever consecutive entries cross a calendar month or year boundary.
+_Avoid_: Date header, month separator, sticky month banner
+
 **Twin Bamboo Brushes**:
 The pair of bamboo calligraphy brushes in the Scholar's Stationery Chest (`笔刷动画`) governing live writing choreography, bristle stiffness (`狼毫 (偏硬)`, `兼毫 (适中)`, `羊毫 (偏软)`), and writing cadence.
 _Avoid_: Twin brushes placeholder, brush toggle, animation menu, 双管毛笔
