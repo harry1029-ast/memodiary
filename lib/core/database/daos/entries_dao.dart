@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:drift/drift.dart';
+import '../../../features/timeline/models/timeline_date_index_entry.dart';
 import '../../../features/timeline/models/timeline_entry_summary.dart';
 import '../../../features/timeline/models/timeline_filter_state.dart';
 import '../../../features/weekly_review/services/calendar_week_utils.dart';
@@ -196,6 +197,13 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
     TimelineFilterState filters = const TimelineFilterState(),
   }) =>
       countMatchingTimelineEntries(this, filters: filters);
+
+  /// Retrieves lightweight ordered `(id, entryDate)` records matching [filters]
+  /// in the active sort order for the `Timeline Scrubber`.
+  Future<List<TimelineDateIndexEntry>> getFilteredTimelineDateIndex({
+    TimelineFilterState filters = const TimelineFilterState(),
+  }) =>
+      queryFilteredTimelineDateIndex(this, filters: filters);
 
   /// Summarizes active years, populated months (`1..12`), and total entry count
   /// matching [filters] (year + charm attributes; month/xun ignored so Row 2

@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../../features/timeline/models/timeline_date_index_entry.dart';
 import '../../../features/timeline/models/timeline_entry_summary.dart';
 import '../../../features/timeline/models/timeline_filter_state.dart';
 import '../app_database.dart';
@@ -198,4 +199,38 @@ Future<TimelineDateFacetSummary> queryTimelineDateFacetSummary(
     activeMonths: activeMonths,
     totalActiveEntries: allDateRows.length,
   );
+}
+
+/// Executes a lightweight ordered date-index query returning only `(id, entryDate)`
+/// pairs matching [filters] in the active sort order.
+Future<List<TimelineDateIndexEntry>> queryFilteredTimelineDateIndex(
+  EntriesDao dao, {
+  TimelineFilterState filters = const TimelineFilterState(),
+}) async {
+  final entryTable = dao.entries;
+  final query = dao.selectOnly(entryTable)
+    ..addColumns([
+      entryTable.id,
+      entryTable.entryDate,
+    ])
+    ..where(
+      buildTimelineFilterPredicate(
+        dao: dao,
+        entryTable: entryTable,
+        filters: filters,
+      ),
+    )
+    ..orderBy([
+      filters.sortOrder == TimelineSortOrder.oldestFirst
+          ? OrderingTerm.asc(entryTable.entryDate)
+          : OrderingTerm.desc(entryTable.entryDate),
+    ]);
+
+  final rows = await query.get();
+  return rows.map((row) {
+    return TimelineDateIndexEntry(
+      id: row.read(entryTable.id)!,
+      entryDate: row.read(entryTable.entryDate)!,
+    );
+  }).toList();
 }

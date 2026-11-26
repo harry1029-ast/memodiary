@@ -9,9 +9,11 @@ import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dar
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
 import 'package:memodiary/features/timeline/models/chronicle_feed_item.dart';
+import 'package:memodiary/features/timeline/models/timeline_date_index_entry.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
+import 'package:memodiary/features/timeline/services/timeline_viewport_tracker.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_desk_header.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 import 'package:memodiary/features/timeline/widgets/filtered_chronicle_empty_card.dart';
@@ -19,6 +21,7 @@ import 'package:memodiary/features/timeline/widgets/month_spine_divider.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_date_spine_item.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_empty_states.dart';
+import 'package:memodiary/features/timeline/widgets/timeline_scrubber.dart';
 import 'package:memodiary/features/timeline/widgets/window_sill_ledge.dart';
 
 /// Configuration for the upper Jiangnan window (`Shanshui Scenery Card`) and
@@ -68,12 +71,14 @@ class ChronicleDeskFilterData {
 @immutable
 class ChronicleDeskFeedData {
   final List<TimelineEntrySummary> entries;
+  final List<TimelineDateIndexEntry> dateIndex;
   final Map<String, MediaAttachment> mediaMap;
   final MediaSandboxService mediaService;
   final bool hasMore;
 
   const ChronicleDeskFeedData({
     required this.entries,
+    this.dateIndex = const [],
     required this.mediaMap,
     required this.mediaService,
     required this.hasMore,
@@ -92,6 +97,7 @@ class ChronicleDeskFeedCallbacks {
   final VoidCallback onCreateEntry;
   final VoidCallback onClearFilters;
   final ValueChanged<TimelineEntrySummary> onEntryTap;
+  final Future<void> Function(int targetIndex)? onScrubberJump;
 
   const ChronicleDeskFeedCallbacks({
     required this.onRefresh,
@@ -103,17 +109,19 @@ class ChronicleDeskFeedCallbacks {
     required this.onCreateEntry,
     required this.onClearFilters,
     required this.onEntryTap,
+    this.onScrubberJump,
   });
 }
 
 /// Composite scrollable body for [TimelineScreen], combining the upper
-/// window + sill, pinned `Chronicle Desk` header, and entry feed.
+/// window + sill, pinned `Chronicle Desk` header, entry feed, and `Timeline Scrubber`.
 class ChronicleDeskScrollBody extends StatelessWidget {
   final ScrollController scrollController;
   final TimelineSceneryHeaderConfig sceneryConfig;
   final ChronicleDeskFilterData filterData;
   final ChronicleDeskFeedData feedData;
   final ChronicleDeskFeedCallbacks callbacks;
+  final TimelineViewportTracker? viewportTracker;
 
   const ChronicleDeskScrollBody({
     super.key,
@@ -122,6 +130,7 @@ class ChronicleDeskScrollBody extends StatelessWidget {
     required this.filterData,
     required this.feedData,
     required this.callbacks,
+    this.viewportTracker,
   });
 
   @override
@@ -131,54 +140,92 @@ class ChronicleDeskScrollBody extends StatelessWidget {
     final textScale =
         MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.3).scale(1.0);
 
-    return RefreshIndicator(
-      color: tokens.cinnabar,
-      onRefresh: callbacks.onRefresh,
-      child: AnimatedBuilder(
-        animation: filterData.xunExpandAnimation,
-        builder: (context, _) {
-          return CustomScrollView(
-            controller: scrollController,
-            slivers: [
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => UpperWindowAndSill(
-                    scrollController: scrollController,
-                    sceneryConfig: sceneryConfig,
+    return AnimatedBuilder(
+      animation: filterData.xunExpandAnimation,
+      builder: (context, _) {
+        final headerDelegate = ChronicleDeskHeaderDelegate(
+          filters: filterData.filters,
+          facetSummary: filterData.facetSummary,
+          totalFilteredCount: filterData.totalFilteredCount,
+          xunExpandFactor: filterData.xunExpandAnimation.value,
+          textScaleFactor: textScale,
+          hasEntriesBelow: feedData.entries.isNotEmpty,
+          isDarkTheme: isDarkTheme,
+          paletteId: context.atmospherePalette.id,
+          isCandleLit: sceneryConfig.isCandleLit,
+          onOpenCharmFilter: callbacks.onOpenCharmFilter,
+          onSelectYear: callbacks.onSelectYear,
+          onSelectMonth: callbacks.onSelectMonth,
+          onSelectXun: callbacks.onSelectXun,
+          onToggleSort: callbacks.onToggleSort,
+        );
+        viewportTracker?.lastPinnedHeaderHeight = headerDelegate.maxExtent;
+
+        final scrollView = NotificationListener<ScrollMetricsNotification>(
+          onNotification: (notification) {
+            if (notification.depth == 0) {
+              viewportTracker?.updateScrollMetrics(notification.metrics);
+            }
+            return false;
+          },
+          child: RefreshIndicator(
+            color: tokens.cinnabar,
+            onRefresh: callbacks.onRefresh,
+            child: TimelineScrollViewMarker(
+              tracker: viewportTracker,
+              child: CustomScrollView(
+                controller: scrollController,
+                slivers: [
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => TimelineUpperWindowMarker(
+                        tracker: viewportTracker,
+                        child: UpperWindowAndSill(
+                          scrollController: scrollController,
+                          sceneryConfig: sceneryConfig,
+                        ),
+                      ),
+                      childCount: 1,
+                    ),
                   ),
-                  childCount: 1,
-                ),
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: headerDelegate,
+                  ),
+                  ChronicleDeskFeedSliver(
+                    feedData: feedData,
+                    totalActiveInDb: filterData.facetSummary.totalActiveEntries,
+                    viewportTracker: viewportTracker,
+                    onCreateEntry: callbacks.onCreateEntry,
+                    onClearFilters: callbacks.onClearFilters,
+                    onEntryTap: callbacks.onEntryTap,
+                  ),
+                ],
               ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: ChronicleDeskHeaderDelegate(
-                  filters: filterData.filters,
-                  facetSummary: filterData.facetSummary,
-                  totalFilteredCount: filterData.totalFilteredCount,
-                  xunExpandFactor: filterData.xunExpandAnimation.value,
-                  textScaleFactor: textScale,
-                  hasEntriesBelow: feedData.entries.isNotEmpty,
-                  isDarkTheme: isDarkTheme,
-                  paletteId: context.atmospherePalette.id,
-                  isCandleLit: sceneryConfig.isCandleLit,
-                  onOpenCharmFilter: callbacks.onOpenCharmFilter,
-                  onSelectYear: callbacks.onSelectYear,
-                  onSelectMonth: callbacks.onSelectMonth,
-                  onSelectXun: callbacks.onSelectXun,
-                  onToggleSort: callbacks.onToggleSort,
-                ),
-              ),
-              ChronicleDeskFeedSliver(
-                feedData: feedData,
-                totalActiveInDb: filterData.facetSummary.totalActiveEntries,
-                onCreateEntry: callbacks.onCreateEntry,
-                onClearFilters: callbacks.onClearFilters,
-                onEntryTap: callbacks.onEntryTap,
-              ),
-            ],
-          );
-        },
-      ),
+            ),
+          ),
+        );
+
+        final tracker = viewportTracker;
+        final onScrubberJump = callbacks.onScrubberJump;
+        if (tracker == null || onScrubberJump == null) {
+          return scrollView;
+        }
+
+        return Stack(
+          children: [
+            scrollView,
+            TimelineScrubber(
+              scrollController: scrollController,
+              dateIndex: feedData.dateIndex,
+              viewportTracker: tracker,
+              isScrollableListenable: tracker.isScrollableNotifier,
+              pinnedHeaderHeight: headerDelegate.maxExtent,
+              onJumpToIndex: onScrubberJump,
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -247,6 +294,7 @@ class UpperWindowAndSill extends StatelessWidget {
 class ChronicleDeskFeedSliver extends StatelessWidget {
   final ChronicleDeskFeedData feedData;
   final int totalActiveInDb;
+  final TimelineViewportTracker? viewportTracker;
   final VoidCallback onCreateEntry;
   final VoidCallback onClearFilters;
   final ValueChanged<TimelineEntrySummary> onEntryTap;
@@ -255,6 +303,7 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
     super.key,
     required this.feedData,
     required this.totalActiveInDb,
+    this.viewportTracker,
     required this.onCreateEntry,
     required this.onClearFilters,
     required this.onEntryTap,
@@ -313,7 +362,10 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
                 :final month,
                 :final isFirstInFeed,
               ):
-              return _wrapInDeskMat(
+              final nextFeedItem = index + 1 < feedItems.length
+                  ? feedItems[index + 1]
+                  : null;
+              final dividerWidget = _wrapInDeskMat(
                 palette: palette,
                 child: MonthSpineDivider(
                   year: year,
@@ -321,6 +373,14 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
                   isFirstInFeed: isFirstInFeed,
                 ),
               );
+              if (nextFeedItem is ChronicleEntryFeedItem) {
+                return TimelineDividerViewportMarker(
+                  firstEntryIndex: nextFeedItem.entryIndex,
+                  tracker: viewportTracker,
+                  child: dividerWidget,
+                );
+              }
+              return dividerWidget;
             case ChronicleEntryFeedItem(
                 :final summary,
                 :final entryIndex,
@@ -342,15 +402,19 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
                       customMargin: EdgeInsets.zero,
                     );
 
-              return _wrapInDeskMat(
-                palette: palette,
-                child: TimelineDateSpineItem(
-                  date: summary.entryDate,
-                  isFirst: false,
-                  isLast: isLast,
-                  isHighlighted: isHighlighted,
-                  connectFromTop: true,
-                  child: card,
+              return TimelineViewportMarker(
+                entryIndex: entryIndex,
+                tracker: viewportTracker,
+                child: _wrapInDeskMat(
+                  palette: palette,
+                  child: TimelineDateSpineItem(
+                    date: summary.entryDate,
+                    isFirst: false,
+                    isLast: isLast,
+                    isHighlighted: isHighlighted,
+                    connectFromTop: true,
+                    child: card,
+                  ),
                 ),
               );
           }

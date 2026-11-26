@@ -779,6 +779,73 @@ void main() {
       );
       expect(zhongMediaWeekly.map((item) => item.id).toList(), equals(['sum_2026_11_15']));
     });
+
+    test('getFilteredTimelineDateIndex returns ordered (id, entryDate) pairs matching filters without heavy columns', () async {
+      final interceptor = _SqlCaptureInterceptor();
+      final interceptedDb = AppDatabase.forTesting(
+        NativeDatabase.memory().interceptWith(interceptor),
+      );
+      addTearDown(interceptedDb.close);
+
+      final seeds = [
+        (id: 'idx_2026_11', date: DateTime(2026, 11, 20, 18, 0), mood: 5, deleted: false),
+        (id: 'idx_2026_10', date: DateTime(2026, 10, 15, 10, 0), mood: 3, deleted: false),
+        (id: 'idx_2025_08', date: DateTime(2025, 8, 5, 9, 0), mood: 5, deleted: false),
+        (id: 'idx_deleted', date: DateTime(2026, 12, 1, 8, 0), mood: 5, deleted: true),
+      ];
+
+      for (final seed in seeds) {
+        await interceptedDb.entriesDao.createEntry(
+          EntriesCompanion.insert(
+            id: seed.id,
+            notebookId: 'notebook_default',
+            templateId: 'template_minimalist_white',
+            title: Value('Title ${seed.id}'),
+            contentDelta: jsonEncode([
+              {'insert': 'Heavy delta ${seed.id}\n'}
+            ]),
+            plainText: 'Heavy plain text ${seed.id}',
+            entryDate: seed.date,
+            mood: Value(seed.mood),
+            isDeleted: Value(seed.deleted),
+          ),
+        );
+      }
+
+      interceptor.executedSql.clear();
+      final newestIndex = await interceptedDb.entriesDao.getFilteredTimelineDateIndex();
+      expect(
+        newestIndex.map((item) => (item.id, item.entryDate)).toList(),
+        equals([
+          ('idx_2026_11', DateTime(2026, 11, 20, 18, 0)),
+          ('idx_2026_10', DateTime(2026, 10, 15, 10, 0)),
+          ('idx_2025_08', DateTime(2025, 8, 5, 9, 0)),
+        ]),
+      );
+
+      expect(interceptor.executedSql, isNotEmpty);
+      for (final sql in interceptor.executedSql) {
+        final lower = sql.toLowerCase();
+        expect(lower, isNot(contains('content_delta')));
+        expect(lower, isNot(contains('plain_text')));
+      }
+
+      final oldestIndex = await interceptedDb.entriesDao.getFilteredTimelineDateIndex(
+        filters: const TimelineFilterState(sortOrder: TimelineSortOrder.oldestFirst),
+      );
+      expect(
+        oldestIndex.map((item) => item.id).toList(),
+        equals(['idx_2025_08', 'idx_2026_10', 'idx_2026_11']),
+      );
+
+      final moodFiveIndex = await interceptedDb.entriesDao.getFilteredTimelineDateIndex(
+        filters: const TimelineFilterState(mood: 5),
+      );
+      expect(
+        moodFiveIndex.map((item) => item.id).toList(),
+        equals(['idx_2026_11', 'idx_2025_08']),
+      );
+    });
   });
 }
 
