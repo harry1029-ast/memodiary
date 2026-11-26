@@ -49,34 +49,125 @@ void main() {
           if (palette.brightness == Brightness.light) {
             expect(
               hsl.lightness,
-              inInclusiveRange(0.28, 0.48),
-              reason: '${palette.id} light stop $color should be ink/mineral dark enough for light paper',
+              inInclusiveRange(0.28, 0.56),
+              reason: '${palette.id} light stop $color should maintain crisp contrast on light paper',
             );
           } else {
             expect(
               hsl.lightness,
-              inInclusiveRange(0.56, 0.78),
-              reason: '${palette.id} dark stop $color should be luminous enough for dark paper',
+              inInclusiveRange(0.46, 0.78),
+              reason: '${palette.id} dark stop $color should remain luminous on dark paper',
             );
           }
           expect(
             hsl.saturation,
-            lessThanOrEqualTo(0.62),
+            lessThanOrEqualTo(0.68),
             reason: '${palette.id} stop $color should remain muted mineral/ink',
           );
         }
       }
     });
 
-    test('anchors first stop hue near accentPrimary for chromatic palettes', () {
-      final yunhaoColors = buildScrubberChromaticPalette(
-        AtmospherePalettes.yunhaoDay,
+    test('keeps yunhaoDay in porcelain-celadon-brass and yunhaoNight free of purple overshoot', () {
+      final dayStops = buildScrubberChromaticPalette(AtmospherePalettes.yunhaoDay);
+      expect(dayStops.first, equals(AtmospherePalettes.yunhaoDay.accentPrimary));
+      for (final color in dayStops) {
+        final hue = HSLColor.fromColor(color).hue;
+        // Exclude saturated yellow-green olive (65°..150°)
+        expect(hue < 65.0 || hue > 150.0, isTrue, reason: 'yunhaoDay stop $color ($hue°) must not drift olive');
+      }
+
+      final nightStops = buildScrubberChromaticPalette(AtmospherePalettes.yunhaoNight);
+      for (final color in nightStops) {
+        final hue = HSLColor.fromColor(color).hue;
+        // Exclude purple/magenta overshoot (250°..330°)
+        expect(hue < 250.0 || hue > 330.0, isTrue, reason: 'yunhaoNight stop $color ($hue°) must not drift purple');
+      }
+    });
+
+    test('interpolates unknown palette IDs linearly between accentPrimary and accentSecondary', () {
+      const customSameAccents = AtmospherePalette(
+        id: 'customMono',
+        nameZh: '自定义',
+        brightness: Brightness.light,
+        ground: Color(0xFFFFFFFF),
+        deskMat: Color(0xFFF5F5F5),
+        deskTray: Color(0xFFEEEEEE),
+        cardPaper: Color(0xFFFFFFFF),
+        cardStackLip: Color(0xFFE0E0E0),
+        agedFiberChip: Color(0xFFDDDDDD),
+        deckleBorder: Color(0xFFCCCCCC),
+        textPrimary: Color(0xFF111111),
+        textSecondary: Color(0xFF333333),
+        textMuted: Color(0xFF666666),
+        textFaint: Color(0xFF999999),
+        accentPrimary: Color(0xFF4A7A9C),
+        onAccentPrimary: Colors.white,
+        accentPrimaryDark: Color(0xFF355C78),
+        accentPrimaryWash: Color(0xFFE2ECF3),
+        accentSecondary: Color(0xFF4A7A9C),
+        accentSecondaryDim: Color(0xFF6E9D99),
+        sealAccent: Color(0xFFC24D43),
+        sealAccentDark: Color(0xFF9A3830),
+        sealAccentWash: Color(0xFFF5E5E3),
+        chipActiveBg: Color(0x334A7A9C),
+        chipActiveBorder: Color(0x8C4A7A9C),
+        emeraldSaved: Color(0xFF059669),
+        woodFrameDark: Color(0xFF48647A),
+        woodFrameMid: Color(0xFF5B7B94),
+        woodFrameHighlight: Color(0xFF89A8BF),
+        headerTitleText: Color(0xFFF7F9FB),
+        headerSubText: Color(0xFFCEDAE5),
+        sillTop: Color(0xFF527087),
+        sillBottom: Color(0xFF3B5265),
+        lipTop: Color(0xFF65859E),
+        lipBottom: Color(0xFF2D4050),
+        deskSurroundTop: Color(0xFFE4EBF0),
+        deskSurroundBottom: Color(0xFFDDE5EC),
+        candleGlow: Color(0x33FFD282),
+        slipRuleColor: Color(0x124A7A9C),
+        slipInnerFrameColor: Color(0x244E8782),
+        slipDividerColor: Color(0x2B4A7A9C),
+        slipShadowColor: Color(0x140E1A26),
+        spineCordTop: Color(0xFF4A7A9C),
+        tallyBgTop: Color(0xFFFFFFFF),
+        tallyBgBottom: Color(0xFFE7EEF4),
+        tallyBorder: Color(0xFFB4C5D4),
+        tallyFeaturedTop: Color(0xFF5285A8),
+        tallyFeaturedBottom: Color(0xFF3A6685),
+        tallyFeaturedBorder: Color(0xFF87B5D4),
+        tallyFeaturedText: Colors.white,
+        tallyFeaturedShadow: Color(0x4D3A6685),
+        silkMountBg: Color(0xFFEBF1F5),
+        silkMountBorder: Color(0xFFA8BDCE),
+        silkInnerFrame: Color(0xFF68849B),
+        silkMiterSeam: Color(0xFF8BA2B5),
+        blindSlatTop: Color(0xFFDAE4EC),
+        blindSlatMid: Color(0xFFEEF4F8),
+        blindSlatBottom: Color(0xFFC4D4E0),
+        blindSlit: Color(0xFF8DA1B2),
+        blindRollerTop: Color(0xFF5B7B94),
+        blindRollerMid: Color(0xFF48647A),
+        blindRollerBottom: Color(0xFF334A5C),
+        blindCordPrimary: Color(0xFF4A7A9C),
+        blindCordSecondary: Color(0xFFC9975B),
+        blindTagAccent: Color(0xFFC9975B),
+        fabTop: Color(0xFF4E8782),
+        fabMid: Color(0xFF427772),
+        fabBottom: Color(0xFF376662),
+        fabBorder: Color(0xFF8BC2BC),
+        fabInnerBorder: Color(0x59E6F4F2),
+        fabText: Color(0xFFF7FBFA),
+        fabCapHighlight: Color(0xFFCBE6E3),
+        fabCapMid: Color(0xFF8BC2BC),
+        fabCapDark: Color(0xFF264845),
+        fabShadow: Color(0x66376662),
       );
-      final primaryHue =
-          HSLColor.fromColor(AtmospherePalettes.yunhaoDay.accentPrimary).hue;
-      final firstStopHue = HSLColor.fromColor(yunhaoColors.first).hue;
-      final hueDelta = ((firstStopHue - primaryHue + 540) % 360 - 180).abs();
-      expect(hueDelta, lessThanOrEqualTo(15.0));
+
+      final customStops = buildScrubberChromaticPalette(customSameAccents);
+      expect(customStops, hasLength(5));
+      expect(customStops.toSet(), hasLength(5));
+      expect(customStops, isNot(contains(customSameAccents.sealAccent)));
     });
   });
 

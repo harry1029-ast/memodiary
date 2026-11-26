@@ -387,6 +387,7 @@ class TimelineScrubberState extends State<TimelineScrubber> {
                                         palette: palette,
                                         topInset: TimelineScrubber._thumbHeight / 2,
                                         bottomInset: TimelineScrubber._thumbHeight / 2,
+                                        railOpacity: (_isDragging || _isPressHoldActive) ? 1.0 : 0.82,
                                       ),
                                     ),
                                   ),

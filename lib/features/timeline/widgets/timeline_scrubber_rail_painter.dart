@@ -20,6 +20,7 @@ class ChromaticScrubberRailPainter extends CustomPainter {
   final AtmospherePalette palette;
   final double topInset;
   final double bottomInset;
+  final double railOpacity;
 
   const ChromaticScrubberRailPainter({
     required this.chromaticPalette,
@@ -28,6 +29,7 @@ class ChromaticScrubberRailPainter extends CustomPainter {
     required this.palette,
     required this.topInset,
     required this.bottomInset,
+    this.railOpacity = 1.0,
   });
 
   @override
@@ -42,19 +44,26 @@ class ChromaticScrubberRailPainter extends CustomPainter {
     );
     final railRRect = RRect.fromRectAndRadius(railRect, const Radius.circular(railWidth / 2));
     final (colors, stops) = _resolveGradientStops();
+    final effectiveOpacity = railOpacity.clamp(0.0, 1.0);
+    final fadedColors = [
+      for (final color in colors) color.withValues(alpha: color.a * effectiveOpacity),
+    ];
     canvas.drawRRect(
       railRRect,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: colors,
+          colors: fadedColors,
           stops: stops,
         ).createShader(railRect),
     );
     canvas.drawRRect(
       railRRect,
-      Paint()..style = PaintingStyle.stroke..strokeWidth = 0.5..color = palette.deckleBorder,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5
+        ..color = palette.deckleBorder.withValues(alpha: palette.deckleBorder.a * effectiveOpacity),
     );
 
     final nodeFill = Paint()..color = palette.cardPaper;
@@ -62,7 +71,7 @@ class ChromaticScrubberRailPainter extends CustomPainter {
     for (final milestone in nodeMilestones) {
       final center = Offset(centerX, topInset + milestone.progress.clamp(0.0, 1.0) * usableHeight);
       canvas.drawCircle(center, nodeRadius, nodeFill);
-      nodeRing.color = milestone.color;
+      nodeRing.color = milestone.color.withValues(alpha: milestone.color.a * effectiveOpacity);
       canvas.drawCircle(center, nodeRadius, nodeRing);
     }
   }
@@ -99,6 +108,7 @@ class ChromaticScrubberRailPainter extends CustomPainter {
     return oldDelegate.palette != palette ||
         oldDelegate.topInset != topInset ||
         oldDelegate.bottomInset != bottomInset ||
+        oldDelegate.railOpacity != railOpacity ||
         !listEquals(oldDelegate.chromaticPalette, chromaticPalette) ||
         !listEquals(oldDelegate.allMilestones, allMilestones) ||
         !listEquals(oldDelegate.nodeMilestones, nodeMilestones);

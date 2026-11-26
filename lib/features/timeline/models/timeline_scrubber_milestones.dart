@@ -43,49 +43,81 @@ class VisibleScrubberMilestones {
   const VisibleScrubberMilestones({required this.nodes, required this.labels});
 }
 
-/// Builds a 5-stop muted mineral/ink progression anchored to
-/// `palette.accentPrimary` and `palette.accentSecondary`, calibrated for light
-/// and dark [AtmospherePalette]s while strictly excluding `palette.sealAccent`.
+/// Builds a 5-stop muted mineral/ink progression curated per [AtmospherePalette]
+/// and calibrated for light and dark contrast while excluding `sealAccent`.
 List<Color> buildScrubberChromaticPalette(AtmospherePalette palette) {
-  final isDark = palette.brightness == Brightness.dark;
-  final primaryHsl = HSLColor.fromColor(palette.accentPrimary);
-  final secondaryHsl = HSLColor.fromColor(palette.accentSecondary);
-  final rawDelta = ((secondaryHsl.hue - primaryHsl.hue + 540.0) % 360.0) - 180.0;
-  final effectiveDelta =
-      rawDelta.abs() < 15.0 ? (rawDelta >= 0 ? 32.0 : -32.0) : rawDelta;
-  final direction = effectiveDelta >= 0 ? 1.0 : -1.0;
+  switch (palette.id) {
+    case 'yunhaoDay':
+      return const <Color>[
+        Color(0xFF4A7A9C), // Cerulean porcelain
+        Color(0xFF5D89A3), // Misty glaze blue
+        Color(0xFF4E8782), // Celadon verdigris
+        Color(0xFF6B9691), // Soft misty jade
+        Color(0xFFB58E5B), // Warm brass grommet
+      ];
+    case 'classicWalnut':
+      return const <Color>[
+        Color(0xFFA65443), // Muted terracotta
+        Color(0xFFB07846), // Warm ochre
+        Color(0xFF9A7432), // Antique bronze
+        Color(0xFF7F6A4A), // Tea walnut
+        Color(0xFF6B5847), // Walnut umber
+      ];
+    case 'mistyTwilight':
+      return const <Color>[
+        Color(0xFF5F6E7D), // Twilight slate
+        Color(0xFF72808C), // Misty ink grey
+        Color(0xFF848B88), // Rain-washed pebble
+        Color(0xFF9E875E), // Pale dusk ochre
+        Color(0xFFB08642), // Warm dusk gold
+      ];
+    case 'yunhaoNight':
+      return const <Color>[
+        Color(0xFFE2BA78), // Warm lantern gold
+        Color(0xFFD8C292), // Pale champagne moonlight
+        Color(0xFFB3C3CE), // Moonlit silver
+        Color(0xFF8CB0CC), // Clear moonlight blue
+        Color(0xFF638BAB), // Midnight cerulean
+      ];
+    case 'classicEbony':
+      return const <Color>[
+        Color(0xFFD4B478), // Antique gold
+        Color(0xFFC29C63), // Burnished bronze
+        Color(0xFFB57C5A), // Warm sandalwood
+        Color(0xFF9E6B5A), // Muted clay terracotta
+        Color(0xFF8A7D6B), // Stele taupe
+      ];
+    case 'silveryRain':
+      return const <Color>[
+        Color(0xFF8FB2C9), // Rain-silver blue
+        Color(0xFF7FA8B4), // Misty blue-teal
+        Color(0xFF84ABA3), // Soft rain jade
+        Color(0xFFB6BDAE), // Cloud silver
+        Color(0xFFDFC086), // Warm lamp gold
+      ];
+    case 'blossomLantern':
+      return const <Color>[
+        Color(0xFFE89AA4), // Blossom pink
+        Color(0xFFE2AF8E), // Warm peach-apricot
+        Color(0xFFE2BC7E), // Lantern amber
+        Color(0xFF9CC0B4), // Bamboo jade
+        Color(0xFF6FA0A6), // Night pine-teal
+      ];
+    default:
+      return _buildLinearAccentFallback(palette);
+  }
+}
 
-  final baseSaturations = isDark
-      ? const [0.46, 0.42, 0.48, 0.40, 0.36]
-      : const [0.40, 0.36, 0.42, 0.34, 0.30];
-  final targetLightnesses = isDark
-      ? const [0.68, 0.66, 0.70, 0.64, 0.62]
-      : const [0.38, 0.40, 0.37, 0.39, 0.35];
-  final hues = <double>[
-    primaryHsl.hue,
-    (primaryHsl.hue + effectiveDelta * 0.5) % 360.0,
-    (primaryHsl.hue + effectiveDelta) % 360.0,
-    (primaryHsl.hue + effectiveDelta + direction * 34.0) % 360.0,
-    (primaryHsl.hue + effectiveDelta + direction * 68.0) % 360.0,
-  ];
-
+List<Color> _buildLinearAccentFallback(AtmospherePalette palette) {
   final stops = <Color>[];
   for (var index = 0; index < 5; index++) {
-    final sourceSat = index < 2
-        ? primaryHsl.saturation
-        : (index == 2
-            ? secondaryHsl.saturation
-            : (primaryHsl.saturation + secondaryHsl.saturation) / 2);
-    final saturation = ((sourceSat * 0.45) + (baseSaturations[index] * 0.55))
-        .clamp(0.18, isDark ? 0.56 : 0.50);
-    var color = HSLColor.fromAHSL(
-      1.0,
-      (hues[index] + 360.0) % 360.0,
-      saturation,
-      targetLightnesses[index],
-    ).toColor();
+    var color = Color.lerp(
+      palette.accentPrimary,
+      palette.accentSecondary,
+      index / 4.0,
+    )!;
     if (color == palette.sealAccent || stops.contains(color)) {
-      color = Color.lerp(color, palette.textSecondary, 0.16)!;
+      color = Color.lerp(color, palette.textSecondary, 0.14 + index * 0.08)!;
     }
     stops.add(color);
   }
