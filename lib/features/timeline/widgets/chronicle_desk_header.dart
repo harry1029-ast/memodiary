@@ -189,57 +189,11 @@ class _ChronicleDeskHeaderBody extends StatelessWidget {
                             Row(
                               children: [
                                 Expanded(
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 4,
-                                        height: 14,
-                                        decoration: BoxDecoration(
-                                          color: palette.accentPrimary,
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Flexible(
-                                        child: Text(
-                                          '日记',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: palette.textPrimary,
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Container(
-                                        key: const Key('timeline_entry_count_badge'),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 7,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: palette.agedFiberChip,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: palette.deckleBorder,
-                                            width: 1.0,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          '共 $totalFilteredCount 篇',
-                                          style: TextStyle(
-                                            fontFamily: InkDiaryTheme.fontNotoSerif,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: palette.accentSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: _ChronicleDeskTapToTopTitle(
+                                      totalFilteredCount: totalFilteredCount,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -337,5 +291,172 @@ class _ChronicleDeskHeaderBody extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Interactive left title + entry-count region (`日记 · 共 N 篇`) of the pinned
+/// Chronicle Desk header that briskly scrolls back to offset `0` on tap when
+/// scrolled down.
+class _ChronicleDeskTapToTopTitle extends StatefulWidget {
+  final int totalFilteredCount;
+
+  const _ChronicleDeskTapToTopTitle({
+    required this.totalFilteredCount,
+  });
+
+  @override
+  State<_ChronicleDeskTapToTopTitle> createState() =>
+      _ChronicleDeskTapToTopTitleState();
+}
+
+class _ChronicleDeskTapToTopTitleState
+    extends State<_ChronicleDeskTapToTopTitle> {
+  static const double _preJumpThreshold = 1600.0;
+
+  ScrollPosition? _scrollPosition;
+  bool _isScrolledDown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scrollable = Scrollable.maybeOf(context);
+    final nextPosition = scrollable != null &&
+            axisDirectionToAxis(scrollable.axisDirection) == Axis.vertical
+        ? scrollable.position
+        : null;
+    if (nextPosition != _scrollPosition) {
+      _scrollPosition?.removeListener(_handleScrollChanged);
+      _scrollPosition = nextPosition;
+      _scrollPosition?.addListener(_handleScrollChanged);
+    }
+    _isScrolledDown = _computeIsScrolledDown();
+  }
+
+  @override
+  void dispose() {
+    _scrollPosition?.removeListener(_handleScrollChanged);
+    super.dispose();
+  }
+
+  bool _computeIsScrolledDown() {
+    final position = _scrollPosition;
+    return position != null && position.hasPixels && position.pixels > 0.0;
+  }
+
+  void _handleScrollChanged() {
+    if (!mounted) return;
+    final nextIsScrolledDown = _computeIsScrolledDown();
+    if (nextIsScrolledDown != _isScrolledDown) {
+      setState(() => _isScrolledDown = nextIsScrolledDown);
+    }
+  }
+
+  void _handleTap() {
+    final position = _scrollPosition;
+    if (position == null || !position.hasPixels || position.pixels <= 0.0) {
+      return;
+    }
+    if (MediaQuery.disableAnimationsOf(context)) {
+      position.jumpTo(0.0);
+      return;
+    }
+    if (position.pixels > _preJumpThreshold) {
+      position.jumpTo(_preJumpThreshold);
+    }
+    final durationMs =
+        (position.pixels / _preJumpThreshold * 140 + 220).round().clamp(220, 360);
+    position.animateTo(
+      0.0,
+      duration: Duration(milliseconds: durationMs),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = context.atmospherePalette;
+
+    final Widget tapArea = Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        key: const Key('timeline_tap_to_top_button'),
+        borderRadius: BorderRadius.circular(8),
+        onTap: _isScrolledDown ? _handleTap : null,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: 44.0,
+            minHeight: 44.0,
+          ),
+          child: Center(
+            widthFactor: 1.0,
+            heightFactor: 1.0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 4,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: palette.accentPrimary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    '日记',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: palette.textPrimary,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  key: const Key('timeline_entry_count_badge'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: palette.agedFiberChip,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: palette.deckleBorder,
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Text(
+                    '共 ${widget.totalFilteredCount} 篇',
+                    style: TextStyle(
+                      fontFamily: InkDiaryTheme.fontNotoSerif,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: palette.accentSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (_isScrolledDown) {
+      return Semantics(
+        button: true,
+        enabled: true,
+        label: '点击返回顶部',
+        excludeSemantics: true,
+        child: tapArea,
+      );
+    }
+    return tapArea;
   }
 }
