@@ -6,12 +6,14 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:memodiary/core/theme/atmosphere_palette.dart';
-import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/models/timeline_date_index_entry.dart';
+import 'package:memodiary/features/timeline/models/timeline_scrubber_milestones.dart';
 import 'package:memodiary/features/timeline/services/timeline_viewport_tracker.dart';
+import 'package:memodiary/features/timeline/widgets/timeline_scrubber_rail_painter.dart';
 
-/// Auto-hiding right-edge `Timeline Scrubber` thumb and floating `YYYY年M月`
-/// date plaque for jumping directly across the full filtered timeline.
+/// Auto-hiding right-edge `Timeline Scrubber` chromatic rail, hollow ring
+/// thumb, two-stage milestone orientation overlay, and floating `YYYY年M月`
+/// date plaque for jumping across the full filtered timeline.
 class TimelineScrubber extends StatefulWidget {
   /// Minimum filtered entries required before the scrubber activates.
   static const int minEntriesForScrubber = 15;
@@ -56,6 +58,11 @@ class TimelineScrubberState extends State<TimelineScrubber> {
   int _dragTargetIndex = 0;
   (int, int)? _lastHapticYearMonth;
 
+  List<TimelineDateIndexEntry>? _cachedDateIndex;
+  AtmospherePalette? _cachedPalette;
+  List<Color> _cachedChromaticPalette = const [];
+  List<ScrubberMilestone> _cachedMilestones = const [];
+
   bool get _hasEnoughEntries =>
       widget.dateIndex.length >= TimelineScrubber.minEntriesForScrubber;
 
@@ -92,6 +99,20 @@ class TimelineScrubberState extends State<TimelineScrubber> {
     widget.scrollController.removeListener(_handleScrollControllerChanged);
     widget.isScrollableListenable.removeListener(_handleScrollabilityChanged);
     super.dispose();
+  }
+
+  void _ensureMilestones(AtmospherePalette palette) {
+    if (identical(_cachedDateIndex, widget.dateIndex) &&
+        _cachedPalette == palette) {
+      return;
+    }
+    _cachedDateIndex = widget.dateIndex;
+    _cachedPalette = palette;
+    _cachedChromaticPalette = buildScrubberChromaticPalette(palette);
+    _cachedMilestones = buildScrubberMilestones(
+      widget.dateIndex,
+      _cachedChromaticPalette,
+    );
   }
 
   void _handleScrollabilityChanged() {
@@ -174,20 +195,20 @@ class TimelineScrubberState extends State<TimelineScrubber> {
   void _handleVerticalDragDown(DragDownDetails details) {
     if (!_hasEnoughEntries || !widget.isScrollableListenable.value) return;
     _hideTimer?.cancel();
-    _isPressHoldActive = true;
-    if (!_isVisible) {
-      setState(() => _isVisible = true);
-    }
+    setState(() {
+      _isPressHoldActive = true;
+      _isVisible = true;
+    });
   }
 
   void _handleVerticalDragStart(DragStartDetails details, double trackHeight) {
     if (!_hasEnoughEntries || !widget.isScrollableListenable.value) return;
     _hideTimer?.cancel();
-    _isPressHoldActive = false;
     final progress = _progressForLocalY(details.localPosition.dy, trackHeight);
     final targetIndex = _indexForProgress(progress);
     final date = widget.dateIndex[targetIndex].entryDate;
     setState(() {
+      _isPressHoldActive = false;
       _isDragging = true;
       _isVisible = true;
       _progress = progress;
@@ -220,19 +241,22 @@ class TimelineScrubberState extends State<TimelineScrubber> {
       return;
     }
     if (_isPressHoldActive) {
-      _isPressHoldActive = false;
+      setState(() => _isPressHoldActive = false);
       _scheduleHide();
     }
   }
 
   Future<void> _finishDrag() async {
-    _isPressHoldActive = false;
     if (!_isDragging) {
+      if (_isPressHoldActive) {
+        setState(() => _isPressHoldActive = false);
+      }
       _scheduleHide();
       return;
     }
     final targetIndex = _dragTargetIndex;
     setState(() {
+      _isPressHoldActive = false;
       _isDragging = false;
       _lastHapticYearMonth = null;
     });
@@ -251,30 +275,44 @@ class TimelineScrubberState extends State<TimelineScrubber> {
     return remainingUpper + widget.pinnedHeaderHeight + 6.0;
   }
 
+  Map<Type, GestureRecognizerFactory> _buildTrackGestures(double trackHeight) {
+    return {
+      VerticalDragGestureRecognizer:
+          GestureRecognizerFactoryWithHandlers<VerticalDragGestureRecognizer>(
+        () => VerticalDragGestureRecognizer()..onlyAcceptDragOnThreshold = true,
+        (recognizer) {
+          recognizer.dragStartBehavior = DragStartBehavior.start;
+          recognizer.onlyAcceptDragOnThreshold = true;
+          recognizer.onDown = _handleVerticalDragDown;
+          recognizer.onStart =
+              (details) => _handleVerticalDragStart(details, trackHeight);
+          recognizer.onUpdate =
+              (details) => _handleVerticalDragUpdate(details, trackHeight);
+          recognizer.onEnd = (_) => unawaited(_finishDrag());
+          recognizer.onCancel = _handleVerticalDragCancel;
+        },
+      ),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
       valueListenable: widget.isScrollableListenable,
       builder: (context, isScrollable, _) {
-        if (!_hasEnoughEntries || !isScrollable) {
-          return const SizedBox.shrink();
-        }
+        if (!_hasEnoughEntries || !isScrollable) return const SizedBox.shrink();
 
-        final disableAnimations = MediaQuery.disableAnimationsOf(context);
-        final fadeDuration = disableAnimations
-            ? Duration.zero
-            : const Duration(milliseconds: 200);
-        final bottomClearance = math.max(
-          28.0,
-          MediaQuery.paddingOf(context).bottom + 12.0,
-        );
+        final reduced = MediaQuery.disableAnimationsOf(context);
+        final fadeDuration = reduced ? Duration.zero : const Duration(milliseconds: 200);
+        final chipFadeDuration = reduced ? Duration.zero : const Duration(milliseconds: 120);
+        final thumbAnimDuration = reduced ? Duration.zero : const Duration(milliseconds: 140);
+        final bottomClearance = math.max(28.0, MediaQuery.paddingOf(context).bottom + 12.0);
 
         return AnimatedBuilder(
           animation: widget.scrollController,
           builder: (context, _) {
-            final trackTop = _resolveTrackTop();
             return Positioned(
-              top: trackTop,
+              top: _resolveTrackTop(),
               bottom: bottomClearance,
               right: TimelineScrubber._rightEdgeInset,
               left: 0,
@@ -286,24 +324,41 @@ class TimelineScrubberState extends State<TimelineScrubber> {
                   }
 
                   final palette = context.atmospherePalette;
-                  final usableHeight =
-                      trackHeight - TimelineScrubber._thumbHeight;
-                  final thumbTop = (_progress.clamp(0.0, 1.0)) * usableHeight;
-                  final plaqueTop = (thumbTop +
-                          (TimelineScrubber._thumbHeight -
-                                  TimelineScrubber._plaqueHeight) /
-                              2)
-                      .clamp(0.0, trackHeight - TimelineScrubber._plaqueHeight);
-
-                  final activeIndex = _dragTargetIndex.clamp(
-                    0,
-                    widget.dateIndex.length - 1,
+                  _ensureMilestones(palette);
+                  final usableHeight = trackHeight - TimelineScrubber._thumbHeight;
+                  final visibleMilestones = selectVisibleMilestones(_cachedMilestones, usableHeight);
+                  final clampedProgress = _progress.clamp(0.0, 1.0);
+                  final activeColor = colorForScrubberProgress(
+                    clampedProgress,
+                    _cachedMilestones,
+                    palette.accentPrimary,
                   );
-                  final monthLabel = widget.dateIndex[activeIndex].monthLabel;
+                  final thumbTop = clampedProgress * usableHeight;
+                  final plaqueTop = (thumbTop +
+                          (TimelineScrubber._thumbHeight - TimelineScrubber._plaqueHeight) / 2)
+                      .clamp(0.0, trackHeight - TimelineScrubber._plaqueHeight);
+                  final activeIndex = _dragTargetIndex.clamp(0, widget.dateIndex.length - 1);
 
                   return Stack(
                     clipBehavior: Clip.none,
                     children: [
+                      if (_isPressHoldActive || _isDragging)
+                        Positioned.fill(
+                          child: ScrubberMilestoneOverlay(
+                            labelMilestones: visibleMilestones.labels,
+                            trackHeight: trackHeight,
+                            topInset: TimelineScrubber._thumbHeight / 2,
+                            usableHeight: usableHeight,
+                            hitStripWidth: TimelineScrubber._hitStripWidth,
+                            rightEdgeInset: TimelineScrubber._rightEdgeInset,
+                            isDragging: _isDragging,
+                            plaqueCenterY: _isDragging
+                                ? plaqueTop + TimelineScrubber._plaqueHeight / 2
+                                : null,
+                            palette: palette,
+                            fadeDuration: chipFadeDuration,
+                          ),
+                        ),
                       Positioned(
                         key: const ValueKey('timeline_scrubber_track_slot'),
                         top: 0,
@@ -313,61 +368,37 @@ class TimelineScrubberState extends State<TimelineScrubber> {
                         child: Semantics(
                           label: '时间轴快速滚动条',
                           container: true,
-                          child: GestureDetector(
+                          child: RawGestureDetector(
                             key: const Key('timeline_scrubber_track'),
                             behavior: HitTestBehavior.translucent,
-                            dragStartBehavior: DragStartBehavior.down,
-                            onVerticalDragDown: _handleVerticalDragDown,
-                            onVerticalDragStart: (details) =>
-                                _handleVerticalDragStart(details, trackHeight),
-                            onVerticalDragUpdate: (details) =>
-                                _handleVerticalDragUpdate(details, trackHeight),
-                            onVerticalDragEnd: (_) => unawaited(_finishDrag()),
-                            onVerticalDragCancel: _handleVerticalDragCancel,
+                            gestures: _buildTrackGestures(trackHeight),
                             child: AnimatedOpacity(
                               key: const Key('timeline_scrubber_visibility'),
                               opacity: _isVisible ? 1.0 : 0.0,
                               duration: fadeDuration,
                               child: Stack(
                                 children: [
-                                  Positioned(
-                                    right: 6.0,
-                                    top: 4.0,
-                                    bottom: 4.0,
-                                    width: 2.0,
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: palette.deckleBorder
-                                            .withValues(alpha: 0.45),
-                                        borderRadius: BorderRadius.circular(1),
+                                  Positioned.fill(
+                                    child: CustomPaint(
+                                      painter: ChromaticScrubberRailPainter(
+                                        chromaticPalette: _cachedChromaticPalette,
+                                        allMilestones: _cachedMilestones,
+                                        nodeMilestones: visibleMilestones.nodes,
+                                        palette: palette,
+                                        topInset: TimelineScrubber._thumbHeight / 2,
+                                        bottomInset: TimelineScrubber._thumbHeight / 2,
                                       ),
                                     ),
                                   ),
                                   Positioned(
-                                    right: 2.0,
+                                    right: 0.0,
                                     top: thumbTop,
-                                    height: TimelineScrubber._thumbHeight,
-                                    width: _isDragging ? 10.0 : 8.0,
-                                    child: DecoratedBox(
-                                      key: const Key('timeline_scrubber_thumb'),
-                                      decoration: BoxDecoration(
-                                        color: _isDragging
-                                            ? palette.accentPrimary
-                                            : palette.accentSecondary,
-                                        borderRadius: BorderRadius.circular(5),
-                                        border: Border.all(
-                                          color: palette.cardPaper
-                                              .withValues(alpha: 0.7),
-                                          width: 0.8,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: palette.slipShadowColor,
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ],
-                                      ),
+                                    child: ScrubberHollowRingThumb(
+                                      isActive: _isDragging || _isPressHoldActive,
+                                      activeColor: activeColor,
+                                      palette: palette,
+                                      thumbHeight: TimelineScrubber._thumbHeight,
+                                      animationDuration: thumbAnimDuration,
                                     ),
                                   ),
                                 ],
@@ -381,9 +412,11 @@ class TimelineScrubberState extends State<TimelineScrubber> {
                           key: const ValueKey('timeline_scrubber_plaque_slot'),
                           right: TimelineScrubber._hitStripWidth + 8.0,
                           top: plaqueTop,
-                          child: _FloatingMonthPlaque(
-                            monthLabel: monthLabel,
+                          child: FloatingMonthPlaque(
+                            monthLabel: widget.dateIndex[activeIndex].monthLabel,
+                            activeColor: activeColor,
                             palette: palette,
+                            minHeight: TimelineScrubber._plaqueHeight,
                           ),
                         ),
                     ],
@@ -394,60 +427,6 @@ class TimelineScrubberState extends State<TimelineScrubber> {
           },
         );
       },
-    );
-  }
-}
-
-class _FloatingMonthPlaque extends StatelessWidget {
-  final String monthLabel;
-  final AtmospherePalette palette;
-
-  const _FloatingMonthPlaque({
-    required this.monthLabel,
-    required this.palette,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: MediaQuery.withClampedTextScaling(
-        maxScaleFactor: 1.3,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 160,
-            minHeight: TimelineScrubber._plaqueHeight,
-          ),
-          child: Container(
-            key: const Key('timeline_scrubber_plaque'),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: palette.cardPaper,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: palette.deckleBorder, width: 1.0),
-              boxShadow: [
-                BoxShadow(
-                  color: palette.slipShadowColor,
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Text(
-              monthLabel,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: InkDiaryTheme.fontNotoSerif,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: palette.textPrimary,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

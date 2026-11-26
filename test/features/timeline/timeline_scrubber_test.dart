@@ -8,6 +8,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
+import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
+import 'package:memodiary/core/theme/ink_diary_theme.dart';
+import 'package:memodiary/features/timeline/widgets/timeline_scrubber_rail_painter.dart';
 import 'package:memodiary/features/timeline/widgets/wet_mounted_thumbnail.dart';
 
 import '../../helpers/editor_test_harness.dart';
@@ -56,11 +59,13 @@ void main() {
     Size surfaceSize = const Size(360, 780),
     double textScale = 1.0,
     bool disableAnimations = false,
+    ThemeData? theme,
   }) =>
       pumpTimelineScreen(
         tester,
         database: db,
         mediaService: mediaService,
+        theme: theme,
         surfaceSize: surfaceSize,
         textScale: textScale,
         disableAnimations: disableAnimations,
@@ -615,6 +620,208 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         expect(find.byKey(const Key('timeline_scrubber_track')), findsOneWidget);
+
+        // Dragging on short landscape renders milestone overlay + plaque without overflow.
+        final trackRect = tester.getRect(
+          find.byKey(const Key('timeline_scrubber_track')),
+        );
+        final gesture = await tester.startGesture(
+          Offset(trackRect.center.dx, trackRect.top + 8),
+        );
+        await tester.pump();
+        await gesture.moveBy(const Offset(0, 32));
+        await tester.pump();
+        expect(find.byKey(const Key('timeline_scrubber_plaque')), findsOneWidget);
+        expect(find.byType(ScrubberMilestoneOverlay), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      },
+    );
+  });
+
+  group('TimelineScrubber chromatic rail, two-stage disclosure, and collision fade', () {
+    Finder milestoneChipFinder(int index) =>
+        find.byKey(Key('timeline_scrubber_milestone_chip_$index'));
+
+    double chipOpacity(WidgetTester tester, int index) {
+      final animated = tester.widget<AnimatedOpacity>(
+        find
+            .ancestor(
+              of: milestoneChipFinder(index),
+              matching: find.byType(AnimatedOpacity),
+            )
+            .first,
+      );
+      return animated.opacity;
+    }
+
+    testWidgets(
+      'hides milestone chips during passive scroll, reveals on press-hold without jumping on cancel',
+      (tester) async {
+        // Multi-year feed: 30 entries spaced 20 days apart (~2026..2025)
+        await seedMonthlyEntries(count: 30, daysStep: 20);
+        await pumpScreen(tester);
+
+        // Passive scroll shows scrubber rail/thumb only, keeping milestone chips hidden
+        await tester.drag(find.byType(CustomScrollView), const Offset(0, -320));
+        await tester.pump();
+        expect(scrubberOpacity(tester), equals(1.0));
+        expect(find.byType(ScrubberMilestoneOverlay), findsNothing);
+        expect(milestoneChipFinder(0), findsNothing);
+
+        final offsetBeforePress = tester
+            .widget<CustomScrollView>(find.byType(CustomScrollView))
+            .controller!
+            .offset;
+
+        // Resting hollow ring bead is 14dp
+        final restingBeadSize = tester.getSize(
+          find.byKey(const Key('timeline_scrubber_thumb_bead')),
+        );
+        expect(restingBeadSize.width, closeTo(14.0, 0.1));
+        expect(restingBeadSize.height, closeTo(14.0, 0.1));
+
+        // Press-hold reveals milestone overlay and Year chips without showing plaque
+        final trackRect = tester.getRect(
+          find.byKey(const Key('timeline_scrubber_track')),
+        );
+        final gesture = await tester.startGesture(
+          Offset(trackRect.center.dx, trackRect.top + 22),
+        );
+        await tester.pump();
+
+        expect(find.byType(ScrubberMilestoneOverlay), findsOneWidget);
+        expect(milestoneChipFinder(0), findsOneWidget);
+        expect(find.byKey(const Key('timeline_scrubber_plaque')), findsNothing);
+        expect(find.text('2026'), findsWidgets);
+        expect(find.text('2025'), findsWidgets);
+
+        // Releasing without drag hides milestone overlay and does NOT jump
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(find.byType(ScrubberMilestoneOverlay), findsNothing);
+        expect(milestoneChipFinder(0), findsNothing);
+        final offsetAfterCancel = tester
+            .widget<CustomScrollView>(find.byType(CustomScrollView))
+            .controller!
+            .offset;
+        expect(offsetAfterCancel, closeTo(offsetBeforePress, 0.5));
+      },
+    );
+
+    testWidgets(
+      'active drag expands thumb bead to 18dp, shows color-keyed plaque, and fades colliding chips within 34dp',
+      (tester) async {
+        // 30 entries spaced 20 days apart -> 2026 (index 0) and 2025 (near bottom/mid)
+        await seedMonthlyEntries(count: 30, daysStep: 20);
+        await pumpScreen(tester);
+
+        final trackRect = tester.getRect(
+          find.byKey(const Key('timeline_scrubber_track')),
+        );
+        final gesture = await tester.startGesture(
+          Offset(trackRect.center.dx, trackRect.top + 8),
+        );
+        await tester.pump();
+        // Move past slop near the top -> plaque collides with first milestone chip (2026)
+        await gesture.moveBy(const Offset(0, 20));
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('timeline_scrubber_plaque')), findsOneWidget);
+        expect(find.byType(ScrubberMilestoneOverlay), findsOneWidget);
+
+        // Active hollow ring bead expands to 18dp
+        final activeBeadSize = tester.getSize(
+          find.byKey(const Key('timeline_scrubber_thumb_bead')),
+        );
+        expect(activeBeadSize.width, closeTo(18.0, 0.1));
+        expect(activeBeadSize.height, closeTo(18.0, 0.1));
+
+        // Top chip (2026) is within 34dp of plaque -> faded to 0.0; bottom chip remains visible (1.0)
+        expect(chipOpacity(tester, 0), equals(0.0));
+        expect(chipOpacity(tester, 1), equals(1.0));
+
+        // Drag down far from top chip -> top chip fades back to 1.0
+        await gesture.moveBy(const Offset(0, 180));
+        await tester.pumpAndSettle();
+        expect(chipOpacity(tester, 0), equals(1.0));
+
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        // Reduced motion uses Duration.zero for chip proximity AnimatedOpacity
+        await pumpScreen(tester, disableAnimations: true);
+        final reducedTrackRect = tester.getRect(
+          find.byKey(const Key('timeline_scrubber_track')),
+        );
+        final reducedGesture = await tester.startGesture(
+          Offset(reducedTrackRect.center.dx, reducedTrackRect.top + 8),
+        );
+        await tester.pump();
+        await reducedGesture.moveBy(const Offset(0, 20));
+        await tester.pump();
+        final chipAnimatedOpacity = tester.widget<AnimatedOpacity>(
+          find
+              .ancestor(
+                of: milestoneChipFinder(0),
+                matching: find.byType(AnimatedOpacity),
+              )
+              .first,
+        );
+        expect(chipAnimatedOpacity.duration, equals(Duration.zero));
+        await reducedGesture.up();
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
+      'renders cleanly across light and dark AtmospherePalettes and 320x640 at 1.3x with milestone chips',
+      (tester) async {
+        // Single-year > 6 months -> quarter-bucketed M月 chips
+        await seedMonthlyEntries(
+          count: 20,
+          newestDate: DateTime(2026, 12, 15, 12, 0),
+          daysStep: 15,
+        );
+
+        for (final theme in [
+          InkDiaryTheme.forLightPalette(LightAtmospherePaletteId.classicWalnut),
+          InkDiaryTheme.forDarkPalette(DarkAtmospherePaletteId.yunhaoNight),
+        ]) {
+          await pumpScreen(
+            tester,
+            theme: theme,
+            surfaceSize: const Size(320, 640),
+            textScale: 1.3,
+          );
+          final trackRect = tester.getRect(
+            find.byKey(const Key('timeline_scrubber_track')),
+          );
+          final gesture = await tester.startGesture(
+            Offset(trackRect.center.dx, trackRect.top + 12),
+          );
+          await tester.pump();
+          await gesture.moveBy(const Offset(0, 36));
+          await tester.pump();
+
+          expect(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is CustomPaint &&
+                  widget.painter is ChromaticScrubberRailPainter,
+            ),
+            findsOneWidget,
+          );
+          expect(find.byType(ScrubberMilestoneOverlay), findsOneWidget);
+          expect(find.byKey(const Key('timeline_scrubber_plaque')), findsOneWidget);
+          expect(tester.takeException(), isNull);
+
+          await gesture.up();
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        }
       },
     );
   });
