@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -93,8 +94,17 @@ class _TimelineScreenState extends State<TimelineScreen>
     );
     _scrollController.addListener(_onScroll);
     widget.diaryChanged?.addListener(_handleDiaryChanged);
+    unawaited(_warmMediaSandbox());
     _loadInitial();
     _loadScenerySettings();
+  }
+
+  Future<void> _warmMediaSandbox() async {
+    try {
+      await widget.mediaService.getBaseDirectory();
+    } catch (error, stackTrace) {
+      debugPrint('Error warming media sandbox base directory: $error\n$stackTrace');
+    }
   }
 
   Future<void> _loadScenerySettings() async {
@@ -113,6 +123,9 @@ class _TimelineScreenState extends State<TimelineScreen>
     if (oldWidget.diaryChanged != widget.diaryChanged) {
       oldWidget.diaryChanged?.removeListener(_handleDiaryChanged);
       widget.diaryChanged?.addListener(_handleDiaryChanged);
+    }
+    if (oldWidget.mediaService != widget.mediaService) {
+      unawaited(_warmMediaSandbox());
     }
   }
 
