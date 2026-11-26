@@ -326,6 +326,15 @@ class TimelineScrubberState extends State<TimelineScrubber> {
                   final palette = context.atmospherePalette;
                   _ensureMilestones(palette);
                   final usableHeight = trackHeight - TimelineScrubber._thumbHeight;
+                  const trackInset = TimelineScrubber._thumbHeight / 2;
+                  final trackGeometry = ScrubberTrackGeometry(
+                    trackHeight: trackHeight,
+                    topInset: trackInset,
+                    bottomInset: trackInset,
+                    usableHeight: usableHeight,
+                    hitStripWidth: TimelineScrubber._hitStripWidth,
+                    rightEdgeInset: TimelineScrubber._rightEdgeInset,
+                  );
                   final visibleMilestones = selectVisibleMilestones(_cachedMilestones, usableHeight);
                   final clampedProgress = _progress.clamp(0.0, 1.0);
                   final activeColor = colorForScrubberProgress(
@@ -346,11 +355,7 @@ class TimelineScrubberState extends State<TimelineScrubber> {
                         Positioned.fill(
                           child: ScrubberMilestoneOverlay(
                             labelMilestones: visibleMilestones.labels,
-                            trackHeight: trackHeight,
-                            topInset: TimelineScrubber._thumbHeight / 2,
-                            usableHeight: usableHeight,
-                            hitStripWidth: TimelineScrubber._hitStripWidth,
-                            rightEdgeInset: TimelineScrubber._rightEdgeInset,
+                            geometry: trackGeometry,
                             isDragging: _isDragging,
                             plaqueCenterY: _isDragging
                                 ? plaqueTop + TimelineScrubber._plaqueHeight / 2
@@ -385,8 +390,7 @@ class TimelineScrubberState extends State<TimelineScrubber> {
                                         allMilestones: _cachedMilestones,
                                         nodeMilestones: visibleMilestones.nodes,
                                         palette: palette,
-                                        topInset: TimelineScrubber._thumbHeight / 2,
-                                        bottomInset: TimelineScrubber._thumbHeight / 2,
+                                        geometry: trackGeometry,
                                         railOpacity: (_isDragging || _isPressHoldActive) ? 1.0 : 0.82,
                                       ),
                                     ),

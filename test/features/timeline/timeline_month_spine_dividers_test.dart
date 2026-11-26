@@ -210,7 +210,7 @@ void main() {
             find.byType(MonthSpineDivider).first,
           );
           final firstDividerSpineRect = tester.getRect(
-            find.byKey(const Key('month_spine_divider_line')).first,
+            find.byKey(const Key('timeline_month_spine_divider_line')).first,
           );
           final firstEntryItemRect = tester.getRect(
             find.byType(TimelineDateSpineItem).first,

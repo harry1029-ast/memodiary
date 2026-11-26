@@ -6,6 +6,49 @@ import 'package:memodiary/core/theme/atmosphere_palette.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/timeline/models/timeline_scrubber_milestones.dart';
 
+/// Immutable layout geometry shared across the chromatic scrubber rail, nodes,
+/// and two-stage milestone overlay.
+@immutable
+class ScrubberTrackGeometry {
+  final double trackHeight;
+  final double topInset;
+  final double bottomInset;
+  final double usableHeight;
+  final double hitStripWidth;
+  final double rightEdgeInset;
+
+  const ScrubberTrackGeometry({
+    required this.trackHeight,
+    required this.topInset,
+    required this.bottomInset,
+    required this.usableHeight,
+    required this.hitStripWidth,
+    required this.rightEdgeInset,
+  });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ScrubberTrackGeometry &&
+        other.trackHeight == trackHeight &&
+        other.topInset == topInset &&
+        other.bottomInset == bottomInset &&
+        other.usableHeight == usableHeight &&
+        other.hitStripWidth == hitStripWidth &&
+        other.rightEdgeInset == rightEdgeInset;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        trackHeight,
+        topInset,
+        bottomInset,
+        usableHeight,
+        hitStripWidth,
+        rightEdgeInset,
+      );
+}
+
 /// Paints the `5.5dp` continuous chromatic mineral gradient rail, `0.5dp`
 /// `deckleBorder` outline, and `7dp` hollow ring milestone nodes.
 class ChromaticScrubberRailPainter extends CustomPainter {
@@ -18,8 +61,7 @@ class ChromaticScrubberRailPainter extends CustomPainter {
   final List<ScrubberMilestone> allMilestones;
   final List<ScrubberMilestone> nodeMilestones;
   final AtmospherePalette palette;
-  final double topInset;
-  final double bottomInset;
+  final ScrubberTrackGeometry geometry;
   final double railOpacity;
 
   const ChromaticScrubberRailPainter({
@@ -27,18 +69,17 @@ class ChromaticScrubberRailPainter extends CustomPainter {
     required this.allMilestones,
     required this.nodeMilestones,
     required this.palette,
-    required this.topInset,
-    required this.bottomInset,
+    required this.geometry,
     this.railOpacity = 1.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final usableHeight = math.max(1.0, size.height - topInset - bottomInset);
+    final usableHeight = math.max(1.0, size.height - geometry.topInset - geometry.bottomInset);
     final centerX = size.width - railCenterFromRight;
     final railRect = Rect.fromLTWH(
       centerX - railWidth / 2,
-      topInset - railWidth / 2,
+      geometry.topInset - railWidth / 2,
       railWidth,
       usableHeight + railWidth,
     );
@@ -69,7 +110,7 @@ class ChromaticScrubberRailPainter extends CustomPainter {
     final nodeFill = Paint()..color = palette.cardPaper;
     final nodeRing = Paint()..style = PaintingStyle.stroke..strokeWidth = nodeStrokeWidth;
     for (final milestone in nodeMilestones) {
-      final center = Offset(centerX, topInset + milestone.progress.clamp(0.0, 1.0) * usableHeight);
+      final center = Offset(centerX, geometry.topInset + milestone.progress.clamp(0.0, 1.0) * usableHeight);
       canvas.drawCircle(center, nodeRadius, nodeFill);
       nodeRing.color = milestone.color.withValues(alpha: milestone.color.a * effectiveOpacity);
       canvas.drawCircle(center, nodeRadius, nodeRing);
@@ -106,8 +147,7 @@ class ChromaticScrubberRailPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant ChromaticScrubberRailPainter oldDelegate) {
     return oldDelegate.palette != palette ||
-        oldDelegate.topInset != topInset ||
-        oldDelegate.bottomInset != bottomInset ||
+        oldDelegate.geometry != geometry ||
         oldDelegate.railOpacity != railOpacity ||
         !listEquals(oldDelegate.chromaticPalette, chromaticPalette) ||
         !listEquals(oldDelegate.allMilestones, allMilestones) ||
@@ -166,17 +206,20 @@ class ScrubberMilestoneOverlay extends StatelessWidget {
   static const double collisionDistance = 34.0;
 
   final List<ScrubberMilestone> labelMilestones;
-  final double trackHeight, topInset, usableHeight, hitStripWidth, rightEdgeInset;
+  final ScrubberTrackGeometry geometry;
   final bool isDragging;
   final double? plaqueCenterY;
   final AtmospherePalette palette;
   final Duration fadeDuration;
 
   const ScrubberMilestoneOverlay({
-    super.key, required this.labelMilestones, required this.trackHeight,
-    required this.topInset, required this.usableHeight, required this.hitStripWidth,
-    required this.rightEdgeInset, required this.isDragging, required this.plaqueCenterY,
-    required this.palette, required this.fadeDuration,
+    super.key,
+    required this.labelMilestones,
+    required this.geometry,
+    required this.isDragging,
+    required this.plaqueCenterY,
+    required this.palette,
+    required this.fadeDuration,
   });
 
   @override
@@ -186,7 +229,10 @@ class ScrubberMilestoneOverlay extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Positioned(
-            top: 0, bottom: 0, right: -rightEdgeInset, width: scrimWidth + rightEdgeInset,
+            top: 0,
+            bottom: 0,
+            right: -geometry.rightEdgeInset,
+            width: scrimWidth + geometry.rightEdgeInset,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -205,14 +251,16 @@ class ScrubberMilestoneOverlay extends StatelessWidget {
   }
 
   Widget _buildMilestoneChip(int index, ScrubberMilestone milestone) {
-    final targetY = topInset + milestone.progress.clamp(0.0, 1.0) * usableHeight;
-    final chipTop = (targetY - chipHeight / 2).clamp(0.0, math.max(0.0, trackHeight - chipHeight)).toDouble();
+    final targetY = geometry.topInset + milestone.progress.clamp(0.0, 1.0) * geometry.usableHeight;
+    final chipTop = (targetY - chipHeight / 2)
+        .clamp(0.0, math.max(0.0, geometry.trackHeight - chipHeight))
+        .toDouble();
     final isColliding = isDragging &&
         plaqueCenterY != null &&
         ((chipTop + chipHeight / 2) - plaqueCenterY!).abs() <= collisionDistance;
 
     return Positioned(
-      right: hitStripWidth + 4.0,
+      right: geometry.hitStripWidth + 4.0,
       top: chipTop,
       child: AnimatedOpacity(
         opacity: isColliding ? 0.0 : 1.0,

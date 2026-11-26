@@ -169,6 +169,24 @@ void main() {
       expect(customStops.toSet(), hasLength(5));
       expect(customStops, isNot(contains(customSameAccents.sealAccent)));
     });
+
+    test('interpolates scrubberRailStops cleanly in AtmospherePalette.lerp', () {
+      final blended = AtmospherePalettes.yunhaoDay.lerp(
+        AtmospherePalettes.yunhaoNight,
+        0.5,
+      );
+      expect(blended.scrubberRailStops, hasLength(5));
+      expect(
+        blended.scrubberRailStops.first,
+        equals(
+          Color.lerp(
+            AtmospherePalettes.yunhaoDay.scrubberRailStops.first,
+            AtmospherePalettes.yunhaoNight.scrubberRailStops.first,
+            0.5,
+          ),
+        ),
+      );
+    });
   });
 
   group('buildScrubberMilestones', () {

@@ -139,7 +139,7 @@ void main() {
 
       final dividerRect = tester.getRect(find.byType(MonthSpineDivider));
       final spineRect = tester.getRect(
-        find.byKey(const Key('month_spine_divider_line')),
+        find.byKey(const Key('timeline_month_spine_divider_line')),
       );
       expect(spineRect.center.dx, closeTo(37.0, 0.1));
       expect(spineRect.width, closeTo(2.0, 0.1));
@@ -171,7 +171,7 @@ void main() {
         await tester.pumpAndSettle();
 
         final spineLine = tester.widget<Container>(
-          find.byKey(const Key('month_spine_divider_line')),
+          find.byKey(const Key('timeline_month_spine_divider_line')),
         );
         final spineDec = spineLine.decoration! as BoxDecoration;
         if (isFirstInFeed) {

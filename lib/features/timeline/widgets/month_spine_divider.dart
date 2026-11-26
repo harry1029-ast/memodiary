@@ -36,7 +36,7 @@ class MonthSpineDivider extends StatelessWidget {
             top: 0.0,
             bottom: 0.0,
             child: Container(
-              key: const Key('month_spine_divider_line'),
+              key: const Key('timeline_month_spine_divider_line'),
               width: 2.0,
               decoration: BoxDecoration(
                 gradient: isFirstInFeed

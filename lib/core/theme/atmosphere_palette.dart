@@ -59,6 +59,7 @@ class AtmospherePalette extends ThemeExtension<AtmospherePalette> {
 
   // Timeline spine & waist tally
   final Color spineCordTop;
+  final List<Color> scrubberRailStops;
   final Color tallyBgTop;
   final Color tallyBgBottom;
   final Color tallyBorder;
@@ -142,6 +143,7 @@ class AtmospherePalette extends ThemeExtension<AtmospherePalette> {
     required this.slipDividerColor,
     required this.slipShadowColor,
     required this.spineCordTop,
+    this.scrubberRailStops = const [],
     required this.tallyBgTop,
     required this.tallyBgBottom,
     required this.tallyBorder,
@@ -229,6 +231,7 @@ class AtmospherePalette extends ThemeExtension<AtmospherePalette> {
     Color? slipDividerColor,
     Color? slipShadowColor,
     Color? spineCordTop,
+    List<Color>? scrubberRailStops,
     Color? tallyBgTop,
     Color? tallyBgBottom,
     Color? tallyBorder,
@@ -306,6 +309,7 @@ class AtmospherePalette extends ThemeExtension<AtmospherePalette> {
       slipDividerColor: slipDividerColor ?? this.slipDividerColor,
       slipShadowColor: slipShadowColor ?? this.slipShadowColor,
       spineCordTop: spineCordTop ?? this.spineCordTop,
+      scrubberRailStops: scrubberRailStops ?? this.scrubberRailStops,
       tallyBgTop: tallyBgTop ?? this.tallyBgTop,
       tallyBgBottom: tallyBgBottom ?? this.tallyBgBottom,
       tallyBorder: tallyBorder ?? this.tallyBorder,
@@ -388,6 +392,7 @@ class AtmospherePalette extends ThemeExtension<AtmospherePalette> {
       slipDividerColor: Color.lerp(slipDividerColor, other.slipDividerColor, t)!,
       slipShadowColor: Color.lerp(slipShadowColor, other.slipShadowColor, t)!,
       spineCordTop: Color.lerp(spineCordTop, other.spineCordTop, t)!,
+      scrubberRailStops: _lerpColorList(scrubberRailStops, other.scrubberRailStops, t),
       tallyBgTop: Color.lerp(tallyBgTop, other.tallyBgTop, t)!,
       tallyBgBottom: Color.lerp(tallyBgBottom, other.tallyBgBottom, t)!,
       tallyBorder: Color.lerp(tallyBorder, other.tallyBorder, t)!,
@@ -421,6 +426,19 @@ class AtmospherePalette extends ThemeExtension<AtmospherePalette> {
       fabCapDark: Color.lerp(fabCapDark, other.fabCapDark, t)!,
       fabShadow: Color.lerp(fabShadow, other.fabShadow, t)!,
     );
+  }
+
+  static List<Color> _lerpColorList(
+    List<Color> a,
+    List<Color> b,
+    double t,
+  ) {
+    if (a.isEmpty && b.isEmpty) return const [];
+    if (a.length != b.length) return t < 0.5 ? a : b;
+    return List<Color>.unmodifiable([
+      for (var index = 0; index < a.length; index++)
+        Color.lerp(a[index], b[index], t)!,
+    ]);
   }
 }
 

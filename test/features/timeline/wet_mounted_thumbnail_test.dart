@@ -8,11 +8,11 @@ import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
-import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/wet_mounted_thumbnail.dart';
 
 import '../../helpers/editor_test_harness.dart';
 import '../../helpers/mock_secure_storage.dart';
+import '../../helpers/timeline_test_harness.dart';
 
 void main() {
   late Directory tempDir;
@@ -245,25 +245,18 @@ void main() {
       final diaryChanged = ChangeNotifier();
       addTearDown(diaryChanged.dispose);
 
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: InkDiaryTheme.light,
-          home: TimelineScreen(
-            database: db,
-            mediaService: mediaService,
-            scenerySettingsService: ScenerySettingsService(
-              storage: MockSecureStorage(),
-            ),
-            enableSceneryAnimation: false,
-            diaryChanged: diaryChanged,
-          ),
+      await pumpTimelineScreen(
+        tester,
+        database: db,
+        mediaService: mediaService,
+        scenerySettingsService: ScenerySettingsService(
+          storage: MockSecureStorage(),
         ),
+        enableSceneryAnimation: false,
+        diaryChanged: diaryChanged,
+        theme: InkDiaryTheme.light,
+        surfaceSize: const Size(390, 844),
       );
-      await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
       expect(baseDirLookups, 1);
