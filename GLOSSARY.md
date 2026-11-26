@@ -213,7 +213,7 @@ The silk-brocade bordered media preview with mitered corner seams displayed insi
 _Avoid_: Photo thumbnail, Polaroid preview, image box
 
 **Timeline Scrubber**:
-The auto-hiding right-edge fast-scroll thumb and floating `YYYY年M月` date plaque on the Chronicle Desk for jumping across the full filtered timeline.
+The auto-hiding right-edge chromatic fast-scroll rail with hollow ring milestone nodes, two-stage date orientation labels, hollow ring thumb, and floating `YYYY年M月` date plaque on the Chronicle Desk for jumping across the full filtered timeline.
 _Avoid_: Scrollbar, date slider, progress rail, timeline bar
 
 **Month Spine Divider**:

@@ -1,7 +1,7 @@
 ---
 id: SPEC-025
 title: Timeline Scrubber, Month Spine Dividers and Scroll Performance
-status: completed
+status: ready-for-agent
 created_at: 2026-11-26T17:58:23+08:00
 adr: ADR-0015
 ---
@@ -17,7 +17,7 @@ adr: ADR-0015
 
 ## Solution
 
-1. **Timeline Scrubber**: An auto-hiding right-edge fast-scroll thumb paired with a floating `YYYY年M月` date plaque on the Chronicle Desk. It spans the entire filtered timeline using a lightweight ordered date index, previews `YYYY年M月` live while dragging, and jumps directly to the target position on release without altering Date Index Tray filters.
+1. **Timeline Scrubber**: An auto-hiding right-edge chromatic fast-scroll rail with hollow ring milestone nodes, a hollow ring bead thumb, two-stage date orientation labels, and a floating color-keyed `YYYY年M月` date plaque on the Chronicle Desk. It spans the entire filtered timeline using a lightweight ordered date index, smoothly blends theme-harmonized mineral hues across adaptive Year (`YYYY`) or Month/Quarter (`M月`) milestones, reveals compact orientation labels on press-hold or drag without cluttering passive scrolling, previews `YYYY年M月` live while dragging, and jumps directly to the target position on release without altering Date Index Tray filters.
 2. **Month Spine Divider**: An inline `YYYY年M月` section header integrated along the Chronicle Desk's vertical timeline spine at the top of a non-empty feed and wherever consecutive entries cross a calendar month or year boundary.
 3. **Header Tap-to-Top**: Tapping the pinned Chronicle Desk title area (`日记 · 共 N 篇`) smoothly scrolls back to offset `0` to reveal the Shanshui Scenery Card and Window Sill Ledge without adding any floating chrome above the Tab Rail.
 4. **Back-Navigation Scroll & Page Preservation**: Returning from `EntryDetailScreen` refreshes loaded pages in place (`keepLoadedPages: true`) so the diarist stays at their reading position, whereas creating a new entry via the Scroll Roller Button refreshes at the top.
@@ -35,8 +35,10 @@ adr: ADR-0015
 6. As a diarist dragging across calendar month boundaries, I want a subtle selection haptic tick each time the previewed month changes, so that scrubbing has tactile precision without looking away from the plaque.
 7. As a diarist releasing the Timeline Scrubber at an older month, I want the timeline to jump directly to that entry without altering my active Date Index Tray or charm filters, so that I keep full chronological context and can scroll freely both up and down from the landing spot.
 8. As a diarist who jumped via the Timeline Scrubber and then scrolls further down, I want subsequent pagination batches to continue loading seamlessly below the landing point, so that I never hit an artificial dead end.
-9. As a diarist switching between `最新 ↓` and `最早 ↑` sort orders or applying Year, Month, Ten-Day Period, Mood, Weather, Media, or Weekly Review filters, I want the Timeline Scrubber's date range and jumps to match the filtered and sorted result set, so that the scrubber is always consistent with the feed.
-10. As an Android diarist using edge-swipe navigation, I want vertical drags on the Timeline Scrubber not to conflict with horizontal system Back gestures or the left-edge Diarist Panel drag, so that navigation gestures remain reliable.
+9. As a diarist switching between `最新 ↓` and `最早 ↑` sort orders or applying Year, Month, Ten-Day Period, Mood, Weather, Media, or Weekly Review filters, I want the Timeline Scrubber's date range, chromatic milestone segments, and jumps to match the filtered and sorted result set, so that the scrubber is always consistent with the feed.
+10. As a diarist scrolling or scrubbing across multi-year or single-year feeds, I want the Timeline Scrubber rail to render a smooth theme-harmonized mineral gradient with hollow ring milestone nodes (Year `YYYY` when spanning multiple years, or Month/Quarter `M月` inside a single year), showing only the slim rail during passive scrolling and fading in compact labeled milestone chips when pressing or dragging, so that I get visual time orientation without covering cards during reading.
+11. As a diarist pressing or holding the Timeline Scrubber without dragging, I want the labeled orientation map to appear without jumping on release, and when dragging I want any milestone chip near the active `YYYY年M月` plaque to fade away cleanly, so that edge touches never cause accidental jumps or overlapping labels.
+12. As an Android diarist using edge-swipe navigation, I want vertical drags on the Timeline Scrubber not to conflict with horizontal system Back gestures or the left-edge Diarist Panel drag, so that navigation gestures remain reliable.
 
 ### Month Spine Divider
 
@@ -86,8 +88,11 @@ adr: ADR-0015
   - Batch-fetch primary `MediaAttachment` rows around the jump target window (and merge incrementally as the user scrolls) so Wet-Mounted Thumbnails near the landing spot render promptly without querying media for every skipped prefix row upfront.
   - Drive the scrubber thumb position from the topmost visible entry index relative to `totalFilteredCount` (avoiding `scrollOffset / maxScrollExtent`, which jumps backward as `_loadMore()` appends pages).
   - Track the topmost visible item index reliably across variable-height entry cards and Month Spine Dividers (e.g., via lightweight item-key / render-box inspection or viewport offset estimation synchronized with visible item extents) so jumping and post-jump scrolling stay accurate.
-  - During a drag, update the thumb and floating `YYYY年M月` plaque at 60 FPS from the ordered date index, trigger `HapticFeedback.selectionClick()` whenever the previewed `(year, month)` changes, and perform the prefix load + scroll jump upon finger release.
-  - Hide the scrubber whenever `totalFilteredCount < 15` or the scroll view is not scrollable; fade it in on scroll or right-edge drag, and auto-fade out after ~1.5 seconds of inactivity (never fading while actively dragged).
+  - Paint the scrubber rail (`5–6dp` width with a subtle `0.5dp` `deckleBorder` outline) as a smooth continuous `LinearGradient` using a theme-harmonized 5-stop mineral/ink palette derived from the active `AtmospherePalette` (`accentPrimary`, `accentSecondary`, and light/dark-calibrated intermediates, reserving `sealAccent` for seals per `ADR-0013`).
+  - Group milestones adaptively from the ordered date index: **Year** (`YYYY`) when filtered entries span `>= 2` calendar years; **Month** (`M月`) when single-year with `<= 6` distinct months; **Quarter-bucketed Month** (`M月`) when single-year with `> 6` distinct months. Paint full gradients across all segments, draw hollow ring nodes (`7dp`) separated by `>= 12dp`, and place milestone chips (`>= 28dp` apart, prioritizing first & last milestones).
+  - Use two-stage disclosure: during passive scrolling, show only the slim chromatic rail, hollow ring nodes, and a hollow ring bead thumb (`14dp` resting / `18dp` dragging, `cardPaper` center + active hue stroke); on press-hold (`onVerticalDragDown`) or active drag, reveal a soft right-edge `deskMat` fade scrim (`~72dp`) and compact `cardPaper` (`~92%` opacity, hairline `deckleBorder`, color-matched text) milestone chips while fading out any chip within `34dp` vertically of the floating color-keyed `YYYY年M月` plaque.
+  - Reveal the orientation map on press-hold without jumping if released/canceled before dragging; trigger `HapticFeedback.selectionClick()` on calendar month-boundary crossings while dragging, update at 60 FPS, and perform prefix load + scroll jump only upon drag release.
+  - Hide the scrubber whenever `totalFilteredCount < 15` or the scroll view is not scrollable; fade it in on scroll or right-edge press/drag, and auto-fade out after ~1.5 seconds of inactivity (never fading while held or actively dragged).
   - Position the scrubber inside the Chronicle Desk's right margin with a vertical-drag gesture detector so horizontal Android edge-back swipes and the left-edge Diarist Panel drag remain undisturbed.
 
 - **Month Spine Divider**:
@@ -112,7 +117,7 @@ adr: ADR-0015
 - **Primary seam — `TimelineScreen` widget test seam** *(prior art: existing timeline screen widget tests)*:
   - Test with a real in-memory `AppDatabase` and temporary-directory `MediaSandboxService`.
   - Verify Month Spine Dividers (`YYYY年M月`) at feed start and across month/year boundaries in both `newestFirst` and `oldestFirst` orders.
-  - Verify Timeline Scrubber hidden state (`< 15` entries), scroll/drag visibility and auto-fade idle behavior, live `YYYY年M月` plaque preview during drag, release jump to an unloaded older month without altering Date Index Tray filters, subsequent scroll pagination below the jump point, and reduced-motion behavior.
+  - Verify Timeline Scrubber hidden state (`< 15` entries), scroll/drag visibility and auto-fade idle behavior, chromatic rail & adaptive milestone grouping across light/dark `AtmospherePalette`s, two-stage disclosure (passive rail vs. press-hold/drag milestone chips + plaque proximity fade without jump on press-hold cancel), live `YYYY年M月` plaque preview during drag, release jump to an unloaded older month without altering Date Index Tray filters, subsequent scroll pagination below the jump point, and reduced-motion behavior.
   - Verify Header Tap-to-Top scrolling from deep in the feed back to offset `0`, no-op when already at top, instant `jumpTo(0)` under reduced motion, and non-interference with `筛选` and Date Index Tray taps.
   - Verify back-navigation page and scroll preservation after returning from `EntryDetailScreen`, contrasted with top refresh after creating a new entry via the Scroll Roller Button.
   - Verify Wet-Mounted Thumbnail synchronous rendering without placeholder flicker once the sandbox base directory is warm and bounded `cacheWidth` / `cacheHeight` image configuration.
