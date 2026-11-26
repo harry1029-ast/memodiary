@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import '../../../features/timeline/models/timeline_entry_summary.dart';
 import '../../../features/timeline/models/timeline_filter_state.dart';
 import '../app_database.dart';
 
@@ -59,6 +60,68 @@ Future<List<Entry>> queryFilteredTimelineEntries(
     ])
     ..limit(limit, offset: offset);
   return query.get();
+}
+
+/// Executes a paginated filtered/sorted timeline summary projection omitting
+/// `content_delta` and capping `plain_text` to [snippetMaxLength] characters.
+Future<List<TimelineEntrySummary>> queryFilteredTimelineSummaries(
+  EntriesDao dao, {
+  TimelineFilterState filters = const TimelineFilterState(),
+  int limit = 20,
+  int offset = 0,
+  int snippetMaxLength = TimelineEntrySummary.defaultSnippetMaxLength,
+}) async {
+  final entryTable = dao.entries;
+  final cappedLength = snippetMaxLength < 0 ? 0 : snippetMaxLength;
+  final snippetExpr = FunctionCallExpression<String>(
+    'substr',
+    [entryTable.plainText, const Constant<int>(1), Constant<int>(cappedLength)],
+  );
+
+  final query = dao.selectOnly(entryTable)
+    ..addColumns([
+      entryTable.id,
+      entryTable.title,
+      snippetExpr,
+      entryTable.entryDate,
+      entryTable.mood,
+      entryTable.weather,
+      entryTable.isLocked,
+      entryTable.isWeeklyReview,
+      entryTable.weekNumber,
+      entryTable.unlockAt,
+      entryTable.isDeleted,
+    ])
+    ..where(
+      buildTimelineFilterPredicate(
+        dao: dao,
+        entryTable: entryTable,
+        filters: filters,
+      ),
+    )
+    ..orderBy([
+      filters.sortOrder == TimelineSortOrder.oldestFirst
+          ? OrderingTerm.asc(entryTable.entryDate)
+          : OrderingTerm.desc(entryTable.entryDate),
+    ])
+    ..limit(limit, offset: offset);
+
+  final rows = await query.get();
+  return rows.map((row) {
+    return TimelineEntrySummary(
+      id: row.read(entryTable.id)!,
+      title: row.read(entryTable.title),
+      plainTextSnippet: row.read(snippetExpr) ?? '',
+      entryDate: row.read(entryTable.entryDate)!,
+      mood: row.read(entryTable.mood),
+      weather: row.read(entryTable.weather),
+      isLocked: row.read(entryTable.isLocked) ?? false,
+      isWeeklyReview: row.read(entryTable.isWeeklyReview) ?? false,
+      weekNumber: row.read(entryTable.weekNumber),
+      unlockAt: row.read(entryTable.unlockAt),
+      isDeleted: row.read(entryTable.isDeleted) ?? false,
+    );
+  }).toList();
 }
 
 /// Counts all non-deleted entries matching [filters].

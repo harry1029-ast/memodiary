@@ -1,16 +1,35 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/widgets/begonia_plaque_button.dart';
+import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
+import 'package:memodiary/features/home/models/home_tab.dart';
+import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
 import 'package:memodiary/features/timeline/screens/timeline_screen.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
+import 'package:memodiary/features/timeline/widgets/folio/thread_bound_folio_screen.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_empty_states.dart';
 import 'package:memodiary/features/weekly_review/screens/weekly_review_screen.dart';
 import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
+
+class _TimelineSqlCaptureInterceptor extends QueryInterceptor {
+  final List<String> executedSql = [];
+
+  @override
+  Future<List<Map<String, Object?>>> runSelect(
+    QueryExecutor executor,
+    String statement,
+    List<Object?> args,
+  ) {
+    executedSql.add(statement);
+    return super.runSelect(executor, statement, args);
+  }
+}
 
 void main() {
   late AppDatabase db;
@@ -693,6 +712,230 @@ void main() {
       expect(find.text('重试'), findsOneWidget);
       await tester.tap(find.text('重试'));
       expect(retried, isTrue);
+    });
+
+    testWidgets('loads timeline via summary projection without content_delta and reloads full entry on detail open', (tester) async {
+      await db.close();
+      final interceptor = _TimelineSqlCaptureInterceptor();
+      final interceptedDb = AppDatabase.forTesting(
+        NativeDatabase.memory().interceptWith(interceptor),
+      );
+      addTearDown(interceptedDb.close);
+
+      final paddingPrefix = List.filled(245, '风').join();
+      const tailMarker = 'TAIL_240';
+      await interceptedDb.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'detail_reload_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('长文详情校验'),
+          contentDelta: jsonEncode([
+            {'insert': '详情正文\n$tailMarker\n'}
+          ]),
+          plainText: '$paddingPrefix$tailMarker',
+          entryDate: DateTime(2026, 11, 20, 15, 0),
+        ),
+      );
+
+      interceptor.executedSql.clear();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TimelineScreen(
+            database: interceptedDb,
+            mediaService: mediaService,
+            enableSceneryAnimation: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Timeline query must not select content_delta
+      expect(interceptor.executedSql, isNotEmpty);
+      for (final sql in interceptor.executedSql) {
+        expect(sql.toLowerCase(), isNot(contains('content_delta')));
+      }
+      expect(find.text('长文详情校验'), findsOneWidget);
+      expect(find.textContaining(tailMarker), findsNothing);
+
+      // Tapping entry opens EntryDetailScreen which loads full entry by entryId
+      await tester.tap(find.text('长文详情校验'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(EntryDetailScreen), findsOneWidget);
+      final detailWidget = tester.widget<EntryDetailScreen>(
+        find.byType(EntryDetailScreen),
+      );
+      expect(detailWidget.entryId, equals('detail_reload_1'));
+      expect(detailWidget.entry, isNull);
+
+      final folioWidget = tester.widget<ThreadBoundFolioScreen>(
+        find.byType(ThreadBoundFolioScreen),
+      );
+      expect(folioWidget.entry.contentDelta, contains(tailMarker));
+
+      // Flip from frontispiece cover to body leaf to confirm full contentDelta renders
+      await tester.tap(find.byKey(const Key('folio_next_page_btn')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining(tailMarker, findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('preserves loaded pages and scroll position when returning from EntryDetailScreen while reflecting edits and deletions', (tester) async {
+      final baseDate = DateTime(2026, 11, 1, 12, 0);
+      for (int index = 0; index < 30; index++) {
+        await db.entriesDao.createEntry(
+          EntriesCompanion.insert(
+            id: 'page_entry_$index',
+            notebookId: 'notebook_default',
+            templateId: 'template_minimalist_white',
+            title: Value('Entry Number $index'),
+            contentDelta: jsonEncode([{'insert': 'Body $index\n'}]),
+            plainText: 'Body $index',
+            entryDate: baseDate.add(Duration(days: index)),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TimelineScreen(
+            database: db,
+            mediaService: mediaService,
+            enableSceneryAnimation: false,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('共 30 篇'), findsOneWidget);
+      expect(find.text('Entry Number 29'), findsOneWidget);
+      expect(find.text('Entry Number 5'), findsNothing);
+
+      // Scroll down past page 1 so page 2 loads and Entry Number 5 sits cleanly in viewport
+      final scrollViewFinder = find.byType(CustomScrollView);
+      final scrollController =
+          tester.widget<CustomScrollView>(scrollViewFinder).controller!;
+      await tester.drag(scrollViewFinder, const Offset(0, -3200));
+      await tester.pumpAndSettle();
+      await tester.drag(scrollViewFinder, const Offset(0, -500));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Entry Number 5'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('Entry Number 5')).dy, greaterThan(260));
+
+      final offsetBeforeDetail = scrollController.offset;
+      expect(offsetBeforeDetail, greaterThan(1000));
+
+      // Open Entry Number 5 in EntryDetailScreen
+      await tester.tap(find.text('Entry Number 5'));
+      await tester.pumpAndSettle();
+      expect(find.byType(EntryDetailScreen), findsOneWidget);
+
+      // Simulate edit persisted for Entry Number 5, then return via back button
+      await db.entriesDao.updateEntryMetadata(
+        'page_entry_5',
+        title: 'Entry Number 5 Edited',
+      );
+      await tester.tap(find.byKey(const Key('folio_back_btn')));
+      await tester.pumpAndSettle();
+
+      // Loaded page 2 and scroll position are preserved, and updated title is visible
+      expect(find.byType(TimelineScreen), findsOneWidget);
+      expect(find.text('Entry Number 5 Edited'), findsOneWidget);
+      expect(find.text('Entry Number 29'), findsNothing);
+      expect(scrollController.offset, closeTo(offsetBeforeDetail, 1.0));
+
+      // Re-open Entry Number 5 Edited and soft-delete it via EntryDetailScreen
+      await tester.tap(find.text('Entry Number 5 Edited'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('folio_more_menu_btn')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('folio_menu_delete_entry')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, '移入回收站'));
+      await tester.pumpAndSettle();
+
+      // Returned to TimelineScreen: deleted entry is gone, count decremented, page 2 & scroll preserved
+      expect(find.text('共 29 篇'), findsOneWidget);
+      expect(find.text('Entry Number 5 Edited'), findsNothing);
+      expect(find.text('Entry Number 4'), findsOneWidget);
+      expect(scrollController.offset, greaterThan(1000));
+    });
+
+    testWidgets('refreshes at top after creating entry via Scroll Roller Button while Diarist Panel diaryChanged preserves pages', (tester) async {
+      final baseDate = DateTime(2026, 11, 1, 12, 0);
+      for (int index = 0; index < 30; index++) {
+        await db.entriesDao.createEntry(
+          EntriesCompanion.insert(
+            id: 'roller_entry_$index',
+            notebookId: 'notebook_default',
+            templateId: 'template_minimalist_white',
+            title: Value('Roller Entry $index'),
+            contentDelta: jsonEncode([{'insert': 'Body $index\n'}]),
+            plainText: 'Body $index',
+            entryDate: baseDate.add(Duration(days: index)),
+          ),
+        );
+      }
+
+      final primaryAction = HomeTabPrimaryAction();
+      final diaryChanged = ValueNotifier<int>(0);
+      addTearDown(diaryChanged.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TimelineScreen(
+            database: db,
+            mediaService: mediaService,
+            enableSceneryAnimation: false,
+            primaryAction: primaryAction,
+            diaryChanged: diaryChanged,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll past page 1 so page 2 loads
+      final scrollViewFinder = find.byType(CustomScrollView);
+      final scrollController =
+          tester.widget<CustomScrollView>(scrollViewFinder).controller!;
+      await tester.drag(scrollViewFinder, const Offset(0, -3200));
+      await tester.pumpAndSettle();
+      await tester.drag(scrollViewFinder, const Offset(0, -500));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Roller Entry 5'), findsOneWidget);
+      final offsetBeforePanelRefresh = scrollController.offset;
+      expect(offsetBeforePanelRefresh, greaterThan(1000));
+
+      // Diarist Panel external change preserves loaded pages & scroll position
+      await db.entriesDao.updateEntryMetadata(
+        'roller_entry_5',
+        title: 'Roller Entry 5 Updated',
+      );
+      diaryChanged.value++;
+      await tester.pumpAndSettle();
+
+      expect(find.text('Roller Entry 5 Updated'), findsOneWidget);
+      expect(scrollController.offset, closeTo(offsetBeforePanelRefresh, 1.0));
+
+      // Scroll Roller Button (写日记) opens EntryEditorScreen and refreshes at the top on return
+      final createFuture = primaryAction.run();
+      for (int i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(find.byType(EntryEditorScreen), findsOneWidget);
+
+      await tester.tap(find.byTooltip('返回'));
+      for (int i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await createFuture;
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TimelineScreen), findsOneWidget);
+      expect(find.text('共 31 篇'), findsOneWidget);
+      expect(scrollController.offset, equals(0.0));
     });
   });
 }

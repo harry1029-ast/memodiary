@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:drift/drift.dart';
+import '../../../features/timeline/models/timeline_entry_summary.dart';
 import '../../../features/timeline/models/timeline_filter_state.dart';
 import '../../../features/weekly_review/services/calendar_week_utils.dart';
 import '../app_database.dart';
@@ -159,6 +160,35 @@ class EntriesDao extends DatabaseAccessor<AppDatabase> with _$EntriesDaoMixin {
         filters: filters,
         limit: limit,
         offset: offset,
+      );
+
+  /// Retrieves paginated timeline summary projections ordered reverse-chronologically,
+  /// omitting `content_delta`.
+  Future<List<TimelineEntrySummary>> getTimelineSummaries({
+    int limit = 20,
+    int offset = 0,
+    int snippetMaxLength = TimelineEntrySummary.defaultSnippetMaxLength,
+  }) =>
+      getFilteredTimelineSummaries(
+        limit: limit,
+        offset: offset,
+        snippetMaxLength: snippetMaxLength,
+      );
+
+  /// Retrieves paginated timeline summary projections filtered and sorted by [filters],
+  /// omitting `content_delta` and capping `plain_text` to [snippetMaxLength] characters.
+  Future<List<TimelineEntrySummary>> getFilteredTimelineSummaries({
+    TimelineFilterState filters = const TimelineFilterState(),
+    int limit = 20,
+    int offset = 0,
+    int snippetMaxLength = TimelineEntrySummary.defaultSnippetMaxLength,
+  }) =>
+      queryFilteredTimelineSummaries(
+        this,
+        filters: filters,
+        limit: limit,
+        offset: offset,
+        snippetMaxLength: snippetMaxLength,
       );
 
   /// Counts all active entries matching [filters].

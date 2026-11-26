@@ -9,6 +9,7 @@ import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dar
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
+import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_desk_header.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
@@ -64,7 +65,7 @@ class ChronicleDeskFilterData {
 /// Paginated entry and media payload rendered in `ChronicleDeskFeedSliver`.
 @immutable
 class ChronicleDeskFeedData {
-  final List<Entry> entries;
+  final List<TimelineEntrySummary> entries;
   final Map<String, MediaAttachment> mediaMap;
   final MediaSandboxService mediaService;
   final bool hasMore;
@@ -88,7 +89,7 @@ class ChronicleDeskFeedCallbacks {
   final VoidCallback onToggleSort;
   final VoidCallback onCreateEntry;
   final VoidCallback onClearFilters;
-  final ValueChanged<Entry> onEntryTap;
+  final ValueChanged<TimelineEntrySummary> onEntryTap;
 
   const ChronicleDeskFeedCallbacks({
     required this.onRefresh,
@@ -246,7 +247,7 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
   final int totalActiveInDb;
   final VoidCallback onCreateEntry;
   final VoidCallback onClearFilters;
-  final ValueChanged<Entry> onEntryTap;
+  final ValueChanged<TimelineEntrySummary> onEntryTap;
 
   const ChronicleDeskFeedSliver({
     super.key,
@@ -302,28 +303,28 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
             );
           }
 
-          final entry = entries[index];
+          final summary = entries[index];
           final item = TimelineEntryItem(
-            entry: entry,
-            primaryMedia: feedData.mediaMap[entry.id],
+            summary: summary,
+            primaryMedia: feedData.mediaMap[summary.id],
           );
           final isFirst = index == 0;
           final isLast = index == entries.length - 1 && !hasMore;
-          final isHighlighted = isFirst || entry.isWeeklyReview;
+          final isHighlighted = isFirst || summary.isWeeklyReview;
 
           final Widget card = item.isSealedTimeCapsule
               ? TimeCapsuleCard(item: item, customMargin: EdgeInsets.zero)
               : EntrySummaryCard(
                   item: item,
                   mediaService: feedData.mediaService,
-                  onTap: () => onEntryTap(entry),
+                  onTap: () => onEntryTap(summary),
                   customMargin: EdgeInsets.zero,
                 );
 
           return _wrapInDeskMat(
             palette: palette,
             child: TimelineDateSpineItem(
-              date: entry.entryDate,
+              date: summary.entryDate,
               isFirst: isFirst,
               isLast: isLast,
               isHighlighted: isHighlighted,

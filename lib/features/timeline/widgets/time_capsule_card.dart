@@ -25,7 +25,7 @@ class TimeCapsuleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
     final palette = context.atmospherePalette;
-    final unlockDate = item.entry.unlockAt;
+    final unlockDate = item.summary.unlockAt;
     final unlockDateStr = unlockDate != null
         ? DateFormat('yyyy年M月d日').format(unlockDate)
         : '未指定日期';
@@ -34,7 +34,7 @@ class TimeCapsuleCard extends StatelessWidget {
     final remainingDays = unlockDate != null
         ? unlockDate.difference(now).inDays.clamp(0, 9999)
         : 0;
-    final trimmedTitle = item.entry.title?.trim() ?? '';
+    final trimmedTitle = item.summary.title?.trim() ?? '';
 
     return FoldedXuanSlip(
       margin: customMargin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

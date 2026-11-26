@@ -1,27 +1,34 @@
 import 'package:memodiary/core/database/app_database.dart';
+import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 
-/// Compound model combining an entry with its visual template and primary media attachment.
+/// Compound model combining a lightweight [TimelineEntrySummary] with its
+/// optional visual template and primary media attachment.
 class TimelineEntryItem {
-  final Entry entry;
+  final TimelineEntrySummary summary;
   final Template? template;
   final MediaAttachment? primaryMedia;
 
-  const TimelineEntryItem({
-    required this.entry,
+  TimelineEntryItem({
+    TimelineEntrySummary? summary,
+    Entry? entry,
     this.template,
     this.primaryMedia,
-  });
+  })  : assert(
+          summary != null || entry != null,
+          'Either summary or entry must be provided.',
+        ),
+        summary = summary ?? TimelineEntrySummary.fromEntry(entry!);
 
   /// True if the entry has an unlock date in the future (Time Capsule)
   bool get isSealedTimeCapsule {
-    final unlockAt = entry.unlockAt;
+    final unlockAt = summary.unlockAt;
     if (unlockAt == null) return false;
     return DateTime.now().isBefore(unlockAt);
   }
 
   /// Remaining duration until the time capsule unlocks
   Duration? get timeUntilUnlock {
-    final unlockAt = entry.unlockAt;
+    final unlockAt = summary.unlockAt;
     if (unlockAt == null) return null;
     final diff = unlockAt.difference(DateTime.now());
     return diff.isNegative ? Duration.zero : diff;

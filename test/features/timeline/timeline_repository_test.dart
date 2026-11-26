@@ -1,9 +1,25 @@
 import 'dart:convert';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:memodiary/core/database/app_database.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
+import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
+
+class _SqlCaptureInterceptor extends QueryInterceptor {
+  final List<String> executedSql = [];
+
+  @override
+  Future<List<Map<String, Object?>>> runSelect(
+    QueryExecutor executor,
+    String statement,
+    List<Object?> args,
+  ) {
+    executedSql.add(statement);
+    return super.runSelect(executor, statement, args);
+  }
+}
 
 void main() {
   late AppDatabase db;
@@ -564,6 +580,204 @@ void main() {
         await db.entriesDao.countFilteredTimelineEntries(filters: mismatch),
         equals(0),
       );
+    });
+  });
+
+  group('Timeline Summary Projection DAO Tests', () {
+    test('getFilteredTimelineSummaries projects metadata and snippet without selecting content_delta', () async {
+      final interceptor = _SqlCaptureInterceptor();
+      final interceptedDb = AppDatabase.forTesting(
+        NativeDatabase.memory().interceptWith(interceptor),
+      );
+      addTearDown(interceptedDb.close);
+
+      final entryDate = DateTime(2026, 11, 18, 20, 15);
+      final unlockDate = DateTime(2027, 1, 1);
+      await interceptedDb.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'summary_1',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('西湖夜雨'),
+          contentDelta: jsonEncode([
+            {'insert': 'Heavy delta payload that should not be projected.\n'}
+          ]),
+          plainText: '暮雨初歇，断桥残灯映水波。',
+          entryDate: entryDate,
+          mood: const Value(4),
+          weather: const Value('rainy'),
+          isWeeklyReview: const Value(true),
+          weekNumber: const Value(47),
+          unlockAt: Value(unlockDate),
+          isLocked: const Value(true),
+        ),
+      );
+
+      interceptor.executedSql.clear();
+      final summaries = await interceptedDb.entriesDao.getFilteredTimelineSummaries();
+
+      expect(summaries, hasLength(1));
+      final summary = summaries.first;
+      expect(summary, isA<TimelineEntrySummary>());
+      expect(summary.id, equals('summary_1'));
+      expect(summary.title, equals('西湖夜雨'));
+      expect(summary.plainTextSnippet, equals('暮雨初歇，断桥残灯映水波。'));
+      expect(summary.entryDate, equals(entryDate));
+      expect(summary.mood, equals(4));
+      expect(summary.weather, equals('rainy'));
+      expect(summary.isWeeklyReview, isTrue);
+      expect(summary.weekNumber, equals(47));
+      expect(summary.unlockAt, equals(unlockDate));
+      expect(summary.isLocked, isTrue);
+      expect(summary.isDeleted, isFalse);
+
+      expect(interceptor.executedSql, isNotEmpty);
+      for (final sql in interceptor.executedSql) {
+        expect(sql.toLowerCase(), isNot(contains('content_delta')));
+      }
+    });
+
+    test('getFilteredTimelineSummaries caps long CJK plainText to snippetMaxLength and preserves fromEntry parity', () async {
+      final longBody = List.generate(300, (index) => '墨').join();
+      final entryDate = DateTime(2026, 11, 12, 9, 0);
+      await db.entriesDao.createEntry(
+        EntriesCompanion.insert(
+          id: 'long_entry',
+          notebookId: 'notebook_default',
+          templateId: 'template_minimalist_white',
+          title: const Value('长卷测试'),
+          contentDelta: jsonEncode([{'insert': '$longBody\n'}]),
+          plainText: longBody,
+          entryDate: entryDate,
+        ),
+      );
+
+      final defaultSummaries = await db.entriesDao.getTimelineSummaries();
+      expect(defaultSummaries, hasLength(1));
+      expect(
+        defaultSummaries.first.plainTextSnippet.length,
+        equals(TimelineEntrySummary.defaultSnippetMaxLength),
+      );
+
+      final shortSummaries = await db.entriesDao.getTimelineSummaries(
+        snippetMaxLength: 24,
+      );
+      expect(shortSummaries.first.plainTextSnippet.length, equals(24));
+
+      final fullEntry = (await db.entriesDao.getEntryById('long_entry'))!;
+      final fromEntry = TimelineEntrySummary.fromEntry(fullEntry);
+      expect(fromEntry.id, equals(fullEntry.id));
+      expect(fromEntry.plainTextSnippet, equals(longBody));
+      expect(fromEntry.entryDate, equals(entryDate));
+    });
+
+    test('getFilteredTimelineSummaries respects filters, sort order, pagination, and soft-delete exclusion', () async {
+      final records = [
+        (
+          id: 'sum_2026_11_05',
+          date: DateTime(2026, 11, 5, 10, 0),
+          mood: 5,
+          weather: 'sunny',
+          weekly: false,
+          hasMedia: true,
+          deleted: false,
+        ),
+        (
+          id: 'sum_2026_11_15',
+          date: DateTime(2026, 11, 15, 14, 0),
+          mood: 3,
+          weather: 'cloudy',
+          weekly: true,
+          hasMedia: true,
+          deleted: false,
+        ),
+        (
+          id: 'sum_2026_11_25',
+          date: DateTime(2026, 11, 25, 20, 0),
+          mood: 4,
+          weather: 'rainy',
+          weekly: false,
+          hasMedia: false,
+          deleted: false,
+        ),
+        (
+          id: 'sum_2025_08_01',
+          date: DateTime(2025, 8, 1, 8, 0),
+          mood: 5,
+          weather: 'sunny',
+          weekly: false,
+          hasMedia: false,
+          deleted: false,
+        ),
+        (
+          id: 'sum_deleted',
+          date: DateTime(2026, 11, 28, 12, 0),
+          mood: 5,
+          weather: 'sunny',
+          weekly: false,
+          hasMedia: true,
+          deleted: true,
+        ),
+      ];
+
+      for (final record in records) {
+        await db.entriesDao.createEntry(
+          EntriesCompanion.insert(
+            id: record.id,
+            notebookId: 'notebook_default',
+            templateId: 'template_minimalist_white',
+            title: Value('Title ${record.id}'),
+            contentDelta: jsonEncode([{'insert': 'Delta ${record.id}\n'}]),
+            plainText: 'Body ${record.id}',
+            entryDate: record.date,
+            mood: Value(record.mood),
+            weather: Value(record.weather),
+            isWeeklyReview: Value(record.weekly),
+            isDeleted: Value(record.deleted),
+          ),
+        );
+        if (record.hasMedia) {
+          await db.mediaOcrDao.attachMediaToEntry(
+            id: 'media_${record.id}',
+            entryId: record.id,
+            relativePath: 'media/${record.id}.webp',
+          );
+        }
+      }
+
+      // Default newestFirst pagination excludes soft-deleted row
+      final page1 = await db.entriesDao.getFilteredTimelineSummaries(
+        limit: 2,
+        offset: 0,
+      );
+      final page2 = await db.entriesDao.getFilteredTimelineSummaries(
+        limit: 2,
+        offset: 2,
+      );
+      expect(page1.map((item) => item.id).toList(), equals(['sum_2026_11_25', 'sum_2026_11_15']));
+      expect(page2.map((item) => item.id).toList(), equals(['sum_2026_11_05', 'sum_2025_08_01']));
+
+      // Oldest first
+      final oldest = await db.entriesDao.getFilteredTimelineSummaries(
+        filters: const TimelineFilterState(sortOrder: TimelineSortOrder.oldestFirst),
+        limit: 2,
+        offset: 0,
+      );
+      expect(oldest.map((item) => item.id).toList(), equals(['sum_2025_08_01', 'sum_2026_11_05']));
+
+      // Date + xun + charm filters
+      final zhongMediaWeekly = await db.entriesDao.getFilteredTimelineSummaries(
+        filters: const TimelineFilterState(
+          year: 2026,
+          month: 11,
+          xun: TimelineXun.zhong,
+          mood: 3,
+          weather: 'cloudy',
+          hasMediaOnly: true,
+          weeklyReviewOnly: true,
+        ),
+      );
+      expect(zhongMediaWeekly.map((item) => item.id).toList(), equals(['sum_2026_11_15']));
     });
   });
 }

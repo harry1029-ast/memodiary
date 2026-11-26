@@ -5,6 +5,7 @@ import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
+import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 import 'package:memodiary/features/timeline/widgets/folded_xuan_slip.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
 
@@ -201,6 +202,35 @@ void main() {
       );
       await tester.tap(find.byType(TimeCapsuleCard));
       expect(customTapped, isTrue);
+    });
+
+    testWidgets('renders sealed countdown from lightweight TimelineEntrySummary without an Entry row', (tester) async {
+      final unlockAt = DateTime.now().add(const Duration(days: 30));
+      final summaryItem = TimelineEntryItem(
+        summary: TimelineEntrySummary(
+          id: 'summary_capsule_1',
+          title: '致明年此时',
+          plainTextSnippet: 'Sealed secret snippet must not appear',
+          entryDate: DateTime.now(),
+          unlockAt: unlockAt,
+        ),
+      );
+      expect(summaryItem.isSealedTimeCapsule, isTrue);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: InkDiaryTheme.light,
+          home: Scaffold(
+            body: TimeCapsuleCard(item: summaryItem),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('时间胶囊'), findsOneWidget);
+      expect(find.text('致明年此时'), findsOneWidget);
+      expect(find.text('待解锁'), findsOneWidget);
+      expect(find.textContaining('Sealed secret snippet'), findsNothing);
     });
   });
 }

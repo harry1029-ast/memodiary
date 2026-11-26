@@ -7,6 +7,7 @@ import 'package:memodiary/core/theme/atmosphere_theme_models.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/core/theme/widgets/cinnabar_seal_badge.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
+import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 import 'package:memodiary/features/timeline/widgets/folded_xuan_slip.dart';
 import 'package:memodiary/features/timeline/widgets/wet_mounted_thumbnail.dart';
@@ -508,6 +509,34 @@ void main() {
       expect(EntrySummaryCard.moodEmojis[5], '😄');
       expect(EntrySummaryCard.weatherIcons['sunny'], Icons.wb_sunny_outlined);
       expect(EntrySummaryCard.weatherIcons['snowy'], Icons.ac_unit_outlined);
+    });
+
+    testWidgets('renders from lightweight TimelineEntrySummary without an Entry row', (tester) async {
+      final summaryItem = TimelineEntryItem(
+        summary: TimelineEntrySummary(
+          id: 'summary_card_1',
+          title: '轻量化摘要卡片',
+          plainTextSnippet: '不依赖 content_delta 即可直接渲染摘要。',
+          entryDate: DateTime(2026, 11, 20, 18, 30),
+          mood: 4,
+          weather: 'cloudy',
+          isWeeklyReview: true,
+          weekNumber: 47,
+        ),
+      );
+
+      await _pumpEntryCard(
+        tester,
+        item: summaryItem,
+        mediaService: mediaService,
+      );
+
+      expect(find.text('轻量化摘要卡片'), findsOneWidget);
+      expect(find.text('不依赖 content_delta 即可直接渲染摘要。'), findsOneWidget);
+      expect(find.text('2026-11-20 18:30'), findsOneWidget);
+      expect(find.text('W47'), findsOneWidget);
+      expect(find.text('多云'), findsOneWidget);
+      expect(find.text('开心'), findsOneWidget);
     });
   });
 }

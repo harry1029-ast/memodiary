@@ -45,26 +45,26 @@ class EntrySummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
     final palette = context.atmospherePalette;
-    final entry = item.entry;
+    final summary = item.summary;
 
-    final timestampText = DateFormat('yyyy-MM-dd HH:mm').format(entry.entryDate);
-    final moodOption = entry.mood == null
+    final timestampText = DateFormat('yyyy-MM-dd HH:mm').format(summary.entryDate);
+    final moodOption = summary.mood == null
         ? null
         : JournalLetterheadUtils.moodOptions
-            .where((option) => option.value == entry.mood)
+            .where((option) => option.value == summary.mood)
             .firstOrNull;
-    final weatherOption = entry.weather == null
+    final weatherOption = summary.weather == null
         ? null
         : JournalLetterheadUtils.weatherOptions
-            .where((option) => option.value == entry.weather)
+            .where((option) => option.value == summary.weather)
             .firstOrNull;
 
-    final isLocked = entry.isLocked;
-    final trimmedTitle = entry.title?.trim() ?? '';
+    final isLocked = summary.isLocked;
+    final trimmedTitle = summary.title?.trim() ?? '';
     final titleText = isLocked
         ? (trimmedTitle.isNotEmpty ? trimmedTitle : '私密日记')
         : (trimmedTitle.isNotEmpty ? trimmedTitle : '无题');
-    final snippetText = isLocked ? '🔒 已加锁' : entry.plainText.trim();
+    final snippetText = isLocked ? '🔒 已加锁' : summary.plainTextSnippet.trim();
     final hasThumbnail = !isLocked && item.primaryMedia != null;
     final hasTier2 = snippetText.isNotEmpty || hasThumbnail;
 
@@ -80,8 +80,8 @@ class EntrySummaryCard extends StatelessWidget {
             titleText: titleText,
             timestampText: timestampText,
             isLocked: isLocked,
-            isWeeklyReview: entry.isWeeklyReview,
-            weekNumber: entry.weekNumber,
+            isWeeklyReview: summary.isWeeklyReview,
+            weekNumber: summary.weekNumber,
             moodOption: moodOption,
             weatherOption: weatherOption,
             tokens: tokens,

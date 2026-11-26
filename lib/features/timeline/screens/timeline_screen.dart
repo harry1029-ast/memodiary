@@ -8,6 +8,7 @@ import 'package:memodiary/core/services/ocr/ocr_queue_manager.dart';
 import 'package:memodiary/core/theme/ink_diary_theme.dart';
 import 'package:memodiary/features/editor/screens/entry_editor_screen.dart';
 import 'package:memodiary/features/home/models/home_tab.dart';
+import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'package:memodiary/features/timeline/screens/entry_detail_screen.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_charm_filter_sheet.dart';
@@ -66,8 +67,8 @@ class _TimelineScreenState extends State<TimelineScreen>
   SceneryRealmPreference _realmPreference = SceneryRealmPreference.auto;
   TimelineFilterState _filters = const TimelineFilterState();
   TimelineDateFacetSummary _facetSummary = TimelineDateFacetSummary.empty();
-  List<Entry> _entries = [];
-  List<Entry> _recentEntriesForScenery = [];
+  List<TimelineEntrySummary> _entries = [];
+  List<TimelineEntrySummary> _recentEntriesForScenery = [];
   Map<String, MediaAttachment> _mediaMap = {};
   Notebook? _activeNotebook;
   int _totalFilteredCount = 0;
@@ -152,7 +153,7 @@ class _TimelineScreenState extends State<TimelineScreen>
     final sourceEntries = _recentEntriesForScenery.isNotEmpty
         ? _recentEntriesForScenery
         : _entries;
-    Entry? eligibleEntry;
+    TimelineEntrySummary? eligibleEntry;
     for (final entry in sourceEntries) {
       if (ShanshuiAtmosphereResolver.isEntryEligibleForInference(
         isDeleted: entry.isDeleted,
@@ -171,7 +172,7 @@ class _TimelineScreenState extends State<TimelineScreen>
       latestEntryWeather: latestWeather,
       entryTimestamp: eligibleEntry?.entryDate,
       entryTitle: eligibleEntry?.title,
-      entryPlainText: eligibleEntry?.plainText,
+      entryPlainText: eligibleEntry?.plainTextSnippet,
       realmPreference: _realmPreference,
     );
   }
@@ -185,7 +186,7 @@ class _TimelineScreenState extends State<TimelineScreen>
 
     try {
       final dao = widget.database.entriesDao;
-      final entries = await dao.getFilteredTimelineEntries(
+      final entries = await dao.getFilteredTimelineSummaries(
         filters: _filters,
         limit: limit,
         offset: 0,
@@ -201,13 +202,13 @@ class _TimelineScreenState extends State<TimelineScreen>
       final mediaMap =
           await widget.database.mediaOcrDao.getPrimaryMediaForEntries(ids);
 
-      List<Entry>? recentSceneryEntries;
+      List<TimelineEntrySummary>? recentSceneryEntries;
       if (refreshSceneryEntries) {
         if (!_filters.hasActiveFilters &&
             _filters.sortOrder == TimelineSortOrder.newestFirst) {
           recentSceneryEntries = entries;
         } else {
-          recentSceneryEntries = await dao.getTimelineEntries(limit: 5);
+          recentSceneryEntries = await dao.getTimelineSummaries(limit: 5);
         }
       }
 
@@ -248,7 +249,7 @@ class _TimelineScreenState extends State<TimelineScreen>
 
     try {
       final nextBatch =
-          await widget.database.entriesDao.getFilteredTimelineEntries(
+          await widget.database.entriesDao.getFilteredTimelineSummaries(
         filters: _filters,
         limit: _pageSize,
         offset: _offset,
@@ -326,21 +327,24 @@ class _TimelineScreenState extends State<TimelineScreen>
     );
     if (mounted) {
       await _loadInitial();
+      if (mounted && _scrollController.hasClients && _scrollController.offset > 0) {
+        _scrollController.jumpTo(0.0);
+      }
     }
   }
 
-  void _navigateToDetail(Entry entry) {
+  void _navigateToDetail(TimelineEntrySummary summary) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EntryDetailScreen(
-          entry: entry,
+          entryId: summary.id,
           database: widget.database,
           mediaService: widget.mediaService,
         ),
       ),
     ).then((_) {
-      if (mounted) _loadInitial();
+      if (mounted) _loadInitial(keepLoadedPages: true);
     });
   }
 
