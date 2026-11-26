@@ -8,12 +8,14 @@ import 'package:memodiary/features/scenery/models/shanshui_atmosphere.dart';
 import 'package:memodiary/features/scenery/screens/contemplation_view_screen.dart';
 import 'package:memodiary/features/scenery/services/scenery_settings_service.dart';
 import 'package:memodiary/features/scenery/widgets/shanshui_scenery_card.dart';
+import 'package:memodiary/features/timeline/models/chronicle_feed_item.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_item.dart';
 import 'package:memodiary/features/timeline/models/timeline_entry_summary.dart';
 import 'package:memodiary/features/timeline/models/timeline_filter_state.dart';
 import 'package:memodiary/features/timeline/widgets/chronicle_desk_header.dart';
 import 'package:memodiary/features/timeline/widgets/entry_summary_card.dart';
 import 'package:memodiary/features/timeline/widgets/filtered_chronicle_empty_card.dart';
+import 'package:memodiary/features/timeline/widgets/month_spine_divider.dart';
 import 'package:memodiary/features/timeline/widgets/time_capsule_card.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_date_spine_item.dart';
 import 'package:memodiary/features/timeline/widgets/timeline_empty_states.dart';
@@ -264,7 +266,8 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
     final entries = feedData.entries;
     final hasMore = feedData.hasMore;
     final isEmpty = entries.isEmpty;
-    final itemCount = isEmpty ? 2 : entries.length + (hasMore ? 2 : 1);
+    final feedItems = buildChronicleFeedItems(entries);
+    final itemCount = isEmpty ? 2 : feedItems.length + (hasMore ? 2 : 1);
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
@@ -287,7 +290,7 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
             return _wrapInDeskMat(palette: palette, child: emptyChild);
           }
 
-          if (index == entries.length) {
+          if (index == feedItems.length) {
             return _wrapInDeskMat(
               palette: palette,
               child: const Padding(
@@ -303,35 +306,54 @@ class ChronicleDeskFeedSliver extends StatelessWidget {
             );
           }
 
-          final summary = entries[index];
-          final item = TimelineEntryItem(
-            summary: summary,
-            primaryMedia: feedData.mediaMap[summary.id],
-          );
-          final isFirst = index == 0;
-          final isLast = index == entries.length - 1 && !hasMore;
-          final isHighlighted = isFirst || summary.isWeeklyReview;
+          final feedItem = feedItems[index];
+          switch (feedItem) {
+            case ChronicleMonthDividerItem(
+                :final year,
+                :final month,
+                :final isFirstInFeed,
+              ):
+              return _wrapInDeskMat(
+                palette: palette,
+                child: MonthSpineDivider(
+                  year: year,
+                  month: month,
+                  isFirstInFeed: isFirstInFeed,
+                ),
+              );
+            case ChronicleEntryFeedItem(
+                :final summary,
+                :final entryIndex,
+                :final isLastEntry,
+              ):
+              final item = TimelineEntryItem(
+                summary: summary,
+                primaryMedia: feedData.mediaMap[summary.id],
+              );
+              final isLast = isLastEntry && !hasMore;
+              final isHighlighted = entryIndex == 0 || summary.isWeeklyReview;
 
-          final Widget card = item.isSealedTimeCapsule
-              ? TimeCapsuleCard(item: item, customMargin: EdgeInsets.zero)
-              : EntrySummaryCard(
-                  item: item,
-                  mediaService: feedData.mediaService,
-                  onTap: () => onEntryTap(summary),
-                  customMargin: EdgeInsets.zero,
-                );
+              final Widget card = item.isSealedTimeCapsule
+                  ? TimeCapsuleCard(item: item, customMargin: EdgeInsets.zero)
+                  : EntrySummaryCard(
+                      item: item,
+                      mediaService: feedData.mediaService,
+                      onTap: () => onEntryTap(summary),
+                      customMargin: EdgeInsets.zero,
+                    );
 
-          return _wrapInDeskMat(
-            palette: palette,
-            child: TimelineDateSpineItem(
-              date: summary.entryDate,
-              isFirst: isFirst,
-              isLast: isLast,
-              isHighlighted: isHighlighted,
-              connectFromTop: isFirst,
-              child: card,
-            ),
-          );
+              return _wrapInDeskMat(
+                palette: palette,
+                child: TimelineDateSpineItem(
+                  date: summary.entryDate,
+                  isFirst: false,
+                  isLast: isLast,
+                  isHighlighted: isHighlighted,
+                  connectFromTop: true,
+                  child: card,
+                ),
+              );
+          }
         },
         childCount: itemCount,
       ),

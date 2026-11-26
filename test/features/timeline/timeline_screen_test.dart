@@ -142,7 +142,7 @@ void main() {
       expect(find.text('😄'), findsOneWidget); // Mood 5 emoji
 
       // Scroll back up to tap sealed Time Capsule
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, 180));
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 220));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Letter to my 2030 Self'));
       await tester.pumpAndSettle();
@@ -682,13 +682,27 @@ void main() {
 
       expect(find.text('共 4 篇'), findsOneWidget);
       expect(find.text('上旬'), findsNothing);
+      await tester.scrollUntilVisible(
+        find.text('Autumn 2025 Entry'),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('Autumn 2025 Entry'), findsOneWidget);
 
       // Toggle sort order -> oldestFirst puts Autumn 2025 Entry at the top
       await tester.tap(find.byKey(const Key('timeline_sort_toggle_button')));
       await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 300));
+      await tester.pumpAndSettle();
 
       expect(find.text('最早'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Late Nov Entry'),
+        150,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       final oldestTop = tester.getTopLeft(find.text('Autumn 2025 Entry')).dy;
       final newestTop = tester.getTopLeft(find.text('Late Nov Entry')).dy;
       expect(oldestTop, lessThan(newestTop));
@@ -817,11 +831,12 @@ void main() {
           tester.widget<CustomScrollView>(scrollViewFinder).controller!;
       await tester.drag(scrollViewFinder, const Offset(0, -3200));
       await tester.pumpAndSettle();
-      await tester.drag(scrollViewFinder, const Offset(0, -500));
+      await tester.drag(scrollViewFinder, const Offset(0, -700));
       await tester.pumpAndSettle();
 
       expect(find.text('Entry Number 5'), findsOneWidget);
       expect(tester.getTopLeft(find.text('Entry Number 5')).dy, greaterThan(260));
+      expect(tester.getBottomRight(find.text('Entry Number 5')).dy, lessThan(590));
 
       final offsetBeforeDetail = scrollController.offset;
       expect(offsetBeforeDetail, greaterThan(1000));
@@ -901,7 +916,7 @@ void main() {
           tester.widget<CustomScrollView>(scrollViewFinder).controller!;
       await tester.drag(scrollViewFinder, const Offset(0, -3200));
       await tester.pumpAndSettle();
-      await tester.drag(scrollViewFinder, const Offset(0, -500));
+      await tester.drag(scrollViewFinder, const Offset(0, -560));
       await tester.pumpAndSettle();
 
       expect(find.text('Roller Entry 5'), findsOneWidget);
