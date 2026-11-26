@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:memodiary/core/services/media_sandbox_service.dart';
 import 'package:memodiary/core/theme/atmosphere_palette.dart';
@@ -9,7 +10,7 @@ import 'package:memodiary/core/theme/ink_diary_theme.dart';
 /// Frames the entry's primary photo inside a palette-harmonized Song-brocade silk
 /// mat, 45° corner miter seam lines, inner core rule, and a non-interactive
 /// bottom-left 2×2 `云皓珍藏` cinnabar collector seal.
-class WetMountedThumbnail extends StatelessWidget {
+class WetMountedThumbnail extends StatefulWidget {
   final String relativePath;
   final MediaSandboxService mediaService;
   final double width;
@@ -24,13 +25,44 @@ class WetMountedThumbnail extends StatelessWidget {
   });
 
   @override
+  State<WetMountedThumbnail> createState() => _WetMountedThumbnailState();
+}
+
+class _WetMountedThumbnailState extends State<WetMountedThumbnail> {
+  Future<File>? _pendingFileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareFutureIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant WetMountedThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.relativePath != widget.relativePath ||
+        oldWidget.mediaService != widget.mediaService) {
+      _prepareFutureIfNeeded();
+    }
+  }
+
+  void _prepareFutureIfNeeded() {
+    if (widget.relativePath.isEmpty ||
+        widget.mediaService.resolveFileSync(widget.relativePath) != null) {
+      _pendingFileFuture = null;
+      return;
+    }
+    _pendingFileFuture = widget.mediaService.getFileFromRelativePath(widget.relativePath);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tokens = context.inkTokens;
     final palette = context.atmospherePalette;
 
     return Container(
-      width: width,
-      height: height,
+      width: widget.width,
+      height: widget.height,
       decoration: BoxDecoration(
         color: palette.silkMountBg,
         borderRadius: BorderRadius.circular(2.0),
@@ -63,7 +95,7 @@ class WetMountedThumbnail extends StatelessWidget {
                 color: const Color(0xFF1C2226),
                 border: Border.all(color: palette.silkInnerFrame, width: 1.0),
               ),
-              child: _buildMediaContent(tokens),
+              child: _buildMediaContent(context, tokens),
             ),
           ),
           _buildCollectorSeal(palette),
@@ -118,22 +150,45 @@ class WetMountedThumbnail extends StatelessWidget {
     );
   }
 
-  Widget _buildMediaContent(InkDiaryTokens tokens) {
+  Widget _buildMediaContent(BuildContext context, InkDiaryTokens tokens) {
+    if (widget.relativePath.isEmpty) {
+      return _buildPlaceholder(tokens);
+    }
+
+    final syncFile = widget.mediaService.resolveFileSync(widget.relativePath);
+    if (syncFile != null) {
+      return _buildFileImage(context, syncFile, tokens);
+    }
+
+    final future = _pendingFileFuture;
+    if (future == null) {
+      return _buildPlaceholder(tokens);
+    }
+
     return FutureBuilder<File>(
-      future: mediaService.getFileFromRelativePath(relativePath),
-      builder: (context, snapshot) {
+      future: future,
+      builder: (futureContext, snapshot) {
         final file = snapshot.data;
-        if (file != null && file.existsSync()) {
-          return Image.file(
-            file,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-            errorBuilder: (context, error, stackTrace) => _buildPlaceholder(tokens),
-          );
+        if (file != null) {
+          return _buildFileImage(futureContext, file, tokens);
         }
         return _buildPlaceholder(tokens);
       },
+    );
+  }
+
+  Widget _buildFileImage(BuildContext context, File file, InkDiaryTokens tokens) {
+    final devicePixelRatio = MediaQuery.maybeDevicePixelRatioOf(context) ?? 1.0;
+    final cacheWidth = math.max(1, (widget.width * devicePixelRatio).round());
+    final cacheHeight = math.max(1, (widget.height * devicePixelRatio).round());
+    return Image.file(
+      file,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      cacheWidth: cacheWidth,
+      cacheHeight: cacheHeight,
+      errorBuilder: (errorContext, error, stackTrace) => _buildPlaceholder(tokens),
     );
   }
 
